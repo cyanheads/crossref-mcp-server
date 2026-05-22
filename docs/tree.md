@@ -1,6 +1,6 @@
 # crossref-mcp-server - Directory Structure
 
-Generated on: 2026-05-22 03:31:15
+Generated on: 2026-05-22 06:39:45
 
 ```text
 crossref-mcp-server/
@@ -28,6 +28,7 @@ crossref-mcp-server/
 │   ├── clean.ts
 │   ├── devcheck.ts
 │   ├── lint-mcp.ts
+│   ├── list-skills.ts
 │   ├── split-changelog.ts
 │   └── tree.ts
 ├── skills/
@@ -101,6 +102,8 @@ crossref-mcp-server/
 │   └── tool-defs-analysis/
 │       └── SKILL.md
 ├── src/
+│   ├── config/
+│   │   └── server-config.ts
 │   ├── mcp-server/
 │   │   ├── prompts/
 │   │   │   └── definitions/
@@ -108,22 +111,41 @@ crossref-mcp-server/
 │   │   │   └── definitions/
 │   │   └── tools/
 │   │       └── definitions/
-│   │           └── echo.tool.ts
+│   │           ├── get-references.tool.ts
+│   │           ├── get-work.tool.ts
+│   │           ├── index.ts
+│   │           ├── search-funders.tool.ts
+│   │           ├── search-journals.tool.ts
+│   │           └── search-works.tool.ts
+│   ├── services/
+│   │   ├── crossref/
+│   │   │   ├── crossref-service.ts
+│   │   │   └── types.ts
+│   │   └── canvas-accessor.ts
 │   └── index.ts
 ├── tests/
 │   ├── prompts/
 │   ├── resources/
+│   ├── services/
+│   │   └── crossref/
+│   │       └── crossref-service.test.ts
 │   └── tools/
-│       └── echo.tool.test.ts
+│       ├── get-references.tool.test.ts
+│       ├── get-work.tool.test.ts
+│       ├── search-funders.tool.test.ts
+│       ├── search-journals.tool.test.ts
+│       └── search-works.tool.test.ts
 ├── .dockerignore
 ├── .env.example
 ├── .gitignore
 ├── biome.json
 ├── bun.lock
+├── CHANGELOG.md
 ├── CLAUDE.md
 ├── devcheck.config.json
 ├── Dockerfile
 ├── package.json
+├── README.md
 ├── server.json
 ├── tsconfig.build.json
 ├── tsconfig.json

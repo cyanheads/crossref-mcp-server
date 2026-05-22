@@ -5,10 +5,24 @@
  */
 
 import { createApp } from '@cyanheads/mcp-ts-core';
-import { echoTool } from './mcp-server/tools/definitions/echo.tool.js';
+import { getServerConfig } from './config/server-config.js';
+import { allToolDefinitions } from './mcp-server/tools/definitions/index.js';
+import { setCanvas } from './services/canvas-accessor.js';
+import { initCrossrefService } from './services/crossref/crossref-service.js';
 
 await createApp({
-  tools: [echoTool],
+  tools: [...allToolDefinitions],
   resources: [],
   prompts: [],
+  setup(core) {
+    const cfg = getServerConfig();
+    if (!cfg.mailto) {
+      core.logger.warning(
+        'CROSSREF_MAILTO is not set — using the anonymous pool with stricter rate limits. ' +
+          'Set CROSSREF_MAILTO to your contact email for polite-pool priority access.',
+      );
+    }
+    initCrossrefService();
+    setCanvas(core.canvas);
+  },
 });
