@@ -5,38 +5,42 @@
  */
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
-import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
+import { JsonRpcErrorCode, McpError } from '@cyanheads/mcp-ts-core/errors';
 import {
   getCrossrefService,
   type JournalsSearchOptions,
 } from '@/services/crossref/crossref-service.js';
 import type { RawCrossrefJournal } from '@/services/crossref/types.js';
 
-const JournalSchema = z.object({
-  title: z.string().optional().describe('Journal title'),
-  issnL: z.string().optional().describe('Linking ISSN (ISSN-L)'),
-  issn: z.array(z.string()).optional().describe('All ISSN variants for this journal'),
-  publisher: z.string().optional().describe('Publisher name'),
-  subjects: z
-    .array(z.object({ name: z.string().describe('Subject area name') }))
-    .optional()
-    .describe('Subject classifications'),
-  totalDois: z.number().optional().describe('Total registered DOIs in this journal'),
-});
+const JournalSchema = z
+  .object({
+    title: z.string().optional().describe('Journal title'),
+    issnL: z.string().optional().describe('Linking ISSN (ISSN-L)'),
+    issn: z.array(z.string()).optional().describe('All ISSN variants for this journal'),
+    publisher: z.string().optional().describe('Publisher name'),
+    subjects: z
+      .array(z.object({ name: z.string().describe('Subject area name') }).describe('Subject'))
+      .optional()
+      .describe('Subject classifications'),
+    totalDois: z.number().optional().describe('Total registered DOIs in this journal'),
+  })
+  .describe('Journal record');
 
-const WorkSummarySchema = z.object({
-  doi: z.string().describe('Work DOI'),
-  title: z.string().optional().describe('Work title'),
-  type: z.string().optional().describe('Work type'),
-  published: z
-    .object({
-      year: z.number().optional().describe('Year'),
-      month: z.number().optional().describe('Month'),
-    })
-    .optional()
-    .describe('Publication date'),
-  isReferencedByCount: z.number().optional().describe('Incoming citation count'),
-});
+const WorkSummarySchema = z
+  .object({
+    doi: z.string().describe('Work DOI'),
+    title: z.string().optional().describe('Work title'),
+    type: z.string().optional().describe('Work type'),
+    published: z
+      .object({
+        year: z.number().optional().describe('Year'),
+        month: z.number().optional().describe('Month'),
+      })
+      .optional()
+      .describe('Publication date'),
+    isReferencedByCount: z.number().optional().describe('Incoming citation count'),
+  })
+  .describe('Work summary');
 
 export const searchJournalsTool = tool('crossref_search_journals', {
   title: 'Search Journals',
@@ -103,20 +107,15 @@ export const searchJournalsTool = tool('crossref_search_journals', {
 
     const journalOpts: JournalsSearchOptions = {
       rows: input.rows,
+      ...(input.query !== undefined && { query: input.query }),
+      ...(input.issn !== undefined && { issn: input.issn }),
     };
-    if (input.query !== undefined) journalOpts.query = input.query;
-    if (input.issn !== undefined) journalOpts.issn = input.issn;
 
     let rawJournals: RawCrossrefJournal[];
     try {
       rawJournals = await svc.searchJournals(journalOpts, ctx);
     } catch (err) {
-      if (
-        input.issn &&
-        err instanceof Error &&
-        'code' in err &&
-        (err as { code?: number }).code === -32001
-      ) {
+      if (input.issn && err instanceof McpError && err.code === -32001) {
         throw ctx.fail('issn_not_found', `No journal found for ISSN: ${input.issn}`, {
           issn: input.issn,
           ...ctx.recoveryFor('issn_not_found'),
@@ -141,7 +140,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
     }
 
     // Use the first matched journal's ISSN for the works call
-    const firstJournal = rawJournals[0] as (typeof rawJournals)[number] | undefined;
+    const firstJournal = rawJournals[0];
     const issnForWorks = firstJournal?.['ISSN-L'] ?? firstJournal?.ISSN?.[0];
     if (!issnForWorks) {
       return { journals };

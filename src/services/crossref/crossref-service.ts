@@ -7,6 +7,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { Context } from '@cyanheads/mcp-ts-core';
+import { McpError } from '@cyanheads/mcp-ts-core/errors';
 import { httpErrorFromResponse, withRetry } from '@cyanheads/mcp-ts-core/utils';
 import { getServerConfig } from '@/config/server-config.js';
 import type {
@@ -80,10 +81,9 @@ export class CrossrefService {
   constructor() {
     const cfg = getServerConfig();
     this.baseUrl = cfg.baseUrl;
-    const version = _packageVersion;
     this.userAgent = cfg.mailto
-      ? `crossref-mcp-server/${version} (mailto:${cfg.mailto})`
-      : `crossref-mcp-server/${version}`;
+      ? `crossref-mcp-server/${_packageVersion} (mailto:${cfg.mailto})`
+      : `crossref-mcp-server/${_packageVersion}`;
   }
 
   private request<T>(path: string, ctx: Context): Promise<T> {
@@ -125,10 +125,7 @@ export class CrossrefService {
       return envelope.message;
     } catch (err) {
       // httpErrorFromResponse maps 404 → McpError(NotFound, code = -32001).
-      // withRetry surfaces non-retryable errors immediately.
-      if (err instanceof Error && 'code' in err && (err as { code?: number }).code === -32001) {
-        return null;
-      }
+      if (err instanceof McpError && err.code === -32001) return null;
       throw err;
     }
   }

@@ -16,34 +16,38 @@ import {
 /** Offset ceiling enforced by Crossref before cursor paging is required. */
 const OFFSET_CAP = 10_000;
 
-const WorkSummarySchema = z.object({
-  doi: z.string().describe('Canonical DOI'),
-  title: z.string().optional().describe('Work title'),
-  type: z.string().optional().describe('Work type'),
-  authors: z
-    .array(
-      z.object({
-        given: z.string().optional().describe('Given name'),
-        family: z.string().optional().describe('Family name'),
-        name: z.string().optional().describe('Name when no given/family split is available'),
-      }),
-    )
-    .optional()
-    .describe('Author list'),
-  published: z
-    .object({
-      year: z.number().optional().describe('Year'),
-      month: z.number().optional().describe('Month'),
-      day: z.number().optional().describe('Day'),
-    })
-    .optional()
-    .describe('Publication date'),
-  containerTitle: z.string().optional().describe('Journal or container name'),
-  publisher: z.string().optional().describe('Publisher name'),
-  isReferencedByCount: z.number().optional().describe('Incoming citation count'),
-  score: z.number().optional().describe('Relevance score assigned by Crossref'),
-  abstract: z.string().optional().describe('Abstract when present in the indexed record'),
-});
+const WorkSummarySchema = z
+  .object({
+    doi: z.string().describe('Canonical DOI'),
+    title: z.string().optional().describe('Work title'),
+    type: z.string().optional().describe('Work type'),
+    authors: z
+      .array(
+        z
+          .object({
+            given: z.string().optional().describe('Given name'),
+            family: z.string().optional().describe('Family name'),
+            name: z.string().optional().describe('Name when no given/family split is available'),
+          })
+          .describe('Author'),
+      )
+      .optional()
+      .describe('Author list'),
+    published: z
+      .object({
+        year: z.number().optional().describe('Year'),
+        month: z.number().optional().describe('Month'),
+        day: z.number().optional().describe('Day'),
+      })
+      .optional()
+      .describe('Publication date'),
+    containerTitle: z.string().optional().describe('Journal or container name'),
+    publisher: z.string().optional().describe('Publisher name'),
+    isReferencedByCount: z.number().optional().describe('Incoming citation count'),
+    score: z.number().optional().describe('Relevance score assigned by Crossref'),
+    abstract: z.string().optional().describe('Abstract when present in the indexed record'),
+  })
+  .describe('Work summary');
 
 export const searchWorksTool = tool('crossref_search_works', {
   title: 'Search Works',
@@ -162,7 +166,7 @@ export const searchWorksTool = tool('crossref_search_works', {
     }
 
     // Validate: offset cap
-    const rows = input.rows ?? 20;
+    const rows = input.rows;
     if (
       input.offset !== undefined &&
       input.cursor === undefined &&
@@ -186,14 +190,14 @@ export const searchWorksTool = tool('crossref_search_works', {
     const svc = getCrossrefService();
     const searchOpts: WorksSearchOptions = {
       rows,
+      ...(input.query !== undefined && { query: input.query }),
+      ...(input.filter !== undefined && { filter: input.filter }),
+      ...(input.fields !== undefined && { fields: input.fields }),
+      ...(input.offset !== undefined && { offset: input.offset }),
+      ...(input.cursor !== undefined && { cursor: input.cursor }),
+      ...(input.sort !== undefined && { sort: input.sort }),
+      ...(input.order !== undefined && { order: input.order }),
     };
-    if (input.query !== undefined) searchOpts.query = input.query;
-    if (input.filter !== undefined) searchOpts.filter = input.filter as Record<string, string>;
-    if (input.fields !== undefined) searchOpts.fields = input.fields;
-    if (input.offset !== undefined) searchOpts.offset = input.offset;
-    if (input.cursor !== undefined) searchOpts.cursor = input.cursor;
-    if (input.sort !== undefined) searchOpts.sort = input.sort;
-    if (input.order !== undefined) searchOpts.order = input.order;
     const result = await svc.searchWorks(searchOpts, ctx);
 
     const works = result.items.map((raw) => {

@@ -5,39 +5,43 @@
  */
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
-import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
+import { JsonRpcErrorCode, McpError } from '@cyanheads/mcp-ts-core/errors';
 import {
   type FundersSearchOptions,
   getCrossrefService,
 } from '@/services/crossref/crossref-service.js';
 import type { RawCrossrefFunder } from '@/services/crossref/types.js';
 
-const FunderSchema = z.object({
-  id: z.string().optional().describe('Funder registry ID'),
-  name: z.string().optional().describe('Funder canonical name'),
-  altNames: z.array(z.string()).optional().describe('Alternate names for this funder'),
-  country: z.string().optional().describe('Country name'),
-  countryCode: z.string().optional().describe('ISO country code'),
-  uri: z.string().optional().describe('Funder registry URI'),
-  worksCount: z
-    .number()
-    .optional()
-    .describe('Number of works associated with this funder in Crossref'),
-});
+const FunderSchema = z
+  .object({
+    id: z.string().optional().describe('Funder registry ID'),
+    name: z.string().optional().describe('Funder canonical name'),
+    altNames: z.array(z.string()).optional().describe('Alternate names for this funder'),
+    country: z.string().optional().describe('Country name'),
+    countryCode: z.string().optional().describe('ISO country code'),
+    uri: z.string().optional().describe('Funder registry URI'),
+    worksCount: z
+      .number()
+      .optional()
+      .describe('Number of works associated with this funder in Crossref'),
+  })
+  .describe('Funder record');
 
-const WorkSummarySchema = z.object({
-  doi: z.string().describe('Work DOI'),
-  title: z.string().optional().describe('Work title'),
-  type: z.string().optional().describe('Work type'),
-  published: z
-    .object({
-      year: z.number().optional().describe('Year'),
-      month: z.number().optional().describe('Month'),
-    })
-    .optional()
-    .describe('Publication date'),
-  isReferencedByCount: z.number().optional().describe('Incoming citation count'),
-});
+const WorkSummarySchema = z
+  .object({
+    doi: z.string().describe('Work DOI'),
+    title: z.string().optional().describe('Work title'),
+    type: z.string().optional().describe('Work type'),
+    published: z
+      .object({
+        year: z.number().optional().describe('Year'),
+        month: z.number().optional().describe('Month'),
+      })
+      .optional()
+      .describe('Publication date'),
+    isReferencedByCount: z.number().optional().describe('Incoming citation count'),
+  })
+  .describe('Work summary');
 
 export const searchFundersTool = tool('crossref_search_funders', {
   title: 'Search Funders',
@@ -101,20 +105,15 @@ export const searchFundersTool = tool('crossref_search_funders', {
 
     const funderOpts: FundersSearchOptions = {
       rows: input.rows,
+      ...(input.query !== undefined && { query: input.query }),
+      ...(input.funder_doi !== undefined && { funderDoi: input.funder_doi }),
     };
-    if (input.query !== undefined) funderOpts.query = input.query;
-    if (input.funder_doi !== undefined) funderOpts.funderDoi = input.funder_doi;
 
     let rawFunders: RawCrossrefFunder[];
     try {
       rawFunders = await svc.searchFunders(funderOpts, ctx);
     } catch (err) {
-      if (
-        input.funder_doi &&
-        err instanceof Error &&
-        'code' in err &&
-        (err as { code?: number }).code === -32001
-      ) {
+      if (input.funder_doi && err instanceof McpError && err.code === -32001) {
         throw ctx.fail('funder_not_found', `No funder found for DOI: ${input.funder_doi}`, {
           funderDoi: input.funder_doi,
           ...ctx.recoveryFor('funder_not_found'),
@@ -137,7 +136,7 @@ export const searchFundersTool = tool('crossref_search_funders', {
       return { funders };
     }
 
-    const firstFunder = rawFunders[0] as (typeof rawFunders)[number] | undefined;
+    const firstFunder = rawFunders[0];
     const funderId = firstFunder?.id ?? input.funder_doi;
     if (!funderId) {
       return { funders };

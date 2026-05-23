@@ -9,18 +9,23 @@ import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { getCrossrefService } from '@/services/crossref/crossref-service.js';
 
-const ReferenceSchema = z.object({
-  key: z.string().optional().describe('Reference key as deposited'),
-  doi: z.string().optional().describe('Resolved DOI for this reference, when available'),
-  unstructured: z.string().optional().describe('Raw citation string as deposited by the publisher'),
-  author: z.string().optional().describe('Author field from the reference entry'),
-  year: z.string().optional().describe('Publication year of the referenced work'),
-  journalTitle: z.string().optional().describe('Journal title of the referenced work'),
-  articleTitle: z.string().optional().describe('Article title of the referenced work'),
-  volume: z.string().optional().describe('Volume'),
-  firstPage: z.string().optional().describe('First page'),
-  issn: z.string().optional().describe('ISSN of the referenced journal'),
-});
+const ReferenceSchema = z
+  .object({
+    key: z.string().optional().describe('Reference key as deposited'),
+    doi: z.string().optional().describe('Resolved DOI for this reference, when available'),
+    unstructured: z
+      .string()
+      .optional()
+      .describe('Raw citation string as deposited by the publisher'),
+    author: z.string().optional().describe('Author field from the reference entry'),
+    year: z.string().optional().describe('Publication year of the referenced work'),
+    journalTitle: z.string().optional().describe('Journal title of the referenced work'),
+    articleTitle: z.string().optional().describe('Article title of the referenced work'),
+    volume: z.string().optional().describe('Volume'),
+    firstPage: z.string().optional().describe('First page'),
+    issn: z.string().optional().describe('ISSN of the referenced journal'),
+  })
+  .describe('Reference entry');
 
 export const getReferencesTool = tool('crossref_get_references', {
   title: 'Get Reference List',

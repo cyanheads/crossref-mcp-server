@@ -20,6 +20,7 @@ vi.mock('@/config/server-config.js', () => ({
   }),
 }));
 
+import { JsonRpcErrorCode, McpError } from '@cyanheads/mcp-ts-core/errors';
 import { httpErrorFromResponse, withRetry } from '@cyanheads/mcp-ts-core/utils';
 import { CrossrefService } from '@/services/crossref/crossref-service.js';
 
@@ -79,21 +80,9 @@ describe('CrossrefService', () => {
   });
 
   it('returns null for a 404 response on getWork', async () => {
-    const notFoundError = Object.assign(new Error('Not Found'), { code: -32001 });
-    vi.mocked(httpErrorFromResponse).mockResolvedValue(notFoundError);
-    mockFetch.mockResolvedValue({ ok: false, status: 404, text: vi.fn().mockResolvedValue('') });
-    // withRetry should re-throw the error from httpErrorFromResponse
-    vi.mocked(withRetry).mockImplementation(async (fn) => {
-      try {
-        return await fn();
-      } catch (err) {
-        throw err;
-      }
-    });
-    // Override: simulate the 404 path where httpErrorFromResponse is called and throws code -32001
-    mockFetch.mockImplementation(async () => ({ ok: false, status: 404 }));
+    // Simulate httpErrorFromResponse mapping a 404 → McpError(NotFound)
     vi.mocked(withRetry).mockImplementation(async () => {
-      throw Object.assign(new Error('Not Found'), { code: -32001 });
+      throw new McpError(JsonRpcErrorCode.NotFound, 'Not Found');
     });
 
     const ctx = createMockContext();
@@ -103,7 +92,7 @@ describe('CrossrefService', () => {
 
   it('propagates non-404 errors from getWork', async () => {
     vi.mocked(withRetry).mockRejectedValue(
-      Object.assign(new Error('Service Unavailable'), { code: -32002 }),
+      new McpError(JsonRpcErrorCode.Conflict, 'Service Unavailable'),
     );
 
     const ctx = createMockContext();

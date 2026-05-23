@@ -6,39 +6,48 @@
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { getCrossrefService, stripJats } from '@/services/crossref/crossref-service.js';
+import type { CrossrefAuthor } from '@/services/crossref/types.js';
 
-const AuthorSchema = z.object({
-  given: z.string().optional().describe('Given (first) name'),
-  family: z.string().optional().describe('Family (last) name'),
-  name: z.string().optional().describe('Name when no given/family split is available'),
-  orcid: z.string().optional().describe('ORCID identifier URI'),
-  affiliation: z
-    .array(z.object({ name: z.string().describe('Affiliation name') }))
-    .optional()
-    .describe('Institutional affiliations'),
-  sequence: z.string().optional().describe('Author order role (first, additional)'),
-});
+const AuthorSchema = z
+  .object({
+    given: z.string().optional().describe('Given (first) name'),
+    family: z.string().optional().describe('Family (last) name'),
+    name: z.string().optional().describe('Name when no given/family split is available'),
+    orcid: z.string().optional().describe('ORCID identifier URI'),
+    affiliation: z
+      .array(z.object({ name: z.string().describe('Affiliation name') }).describe('Affiliation'))
+      .optional()
+      .describe('Institutional affiliations'),
+    sequence: z.string().optional().describe('Author order role (first, additional)'),
+  })
+  .describe('Author or contributor');
 
-const FunderSchema = z.object({
-  name: z.string().describe('Funder name'),
-  doi: z.string().optional().describe('Funder DOI'),
-  award: z.array(z.string()).optional().describe('Grant or award numbers'),
-});
+const FunderSchema = z
+  .object({
+    name: z.string().describe('Funder name'),
+    doi: z.string().optional().describe('Funder DOI'),
+    award: z.array(z.string()).optional().describe('Grant or award numbers'),
+  })
+  .describe('Funding assertion');
 
-const LicenseSchema = z.object({
-  url: z.string().describe('License URL'),
-  contentVersion: z.string().optional().describe('Content version (vor, am, tdm, unspecified)'),
-  delayInDays: z.number().optional().describe('Embargo delay in days from publication date'),
-});
+const LicenseSchema = z
+  .object({
+    url: z.string().describe('License URL'),
+    contentVersion: z.string().optional().describe('Content version (vor, am, tdm, unspecified)'),
+    delayInDays: z.number().optional().describe('Embargo delay in days from publication date'),
+  })
+  .describe('License entry');
 
-const LinkSchema = z.object({
-  url: z.string().describe('Full-text URL'),
-  contentType: z.string().optional().describe('MIME type of linked content'),
-  intendedApplication: z
-    .string()
-    .optional()
-    .describe('Intended use (text-mining, similarity-checking, etc.)'),
-});
+const LinkSchema = z
+  .object({
+    url: z.string().describe('Full-text URL'),
+    contentType: z.string().optional().describe('MIME type of linked content'),
+    intendedApplication: z
+      .string()
+      .optional()
+      .describe('Intended use (text-mining, similarity-checking, etc.)'),
+  })
+  .describe('Registered full-text link');
 
 const DatePartsSchema = z.object({
   year: z.number().optional().describe('Year'),
@@ -251,14 +260,7 @@ export const getWorkTool = tool('crossref_get_work', {
 
 // --- Helpers ---
 
-function normalizeAuthor(a: {
-  given?: string;
-  family?: string;
-  name?: string;
-  ORCID?: string;
-  affiliation?: Array<{ name: string }>;
-  sequence?: string;
-}) {
+function normalizeAuthor(a: CrossrefAuthor) {
   return {
     ...(a.given && { given: a.given }),
     ...(a.family && { family: a.family }),
