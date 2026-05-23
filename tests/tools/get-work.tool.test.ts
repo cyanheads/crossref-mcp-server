@@ -8,9 +8,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getWorkTool } from '@/mcp-server/tools/definitions/get-work.tool.js';
 
 // Mock the service module so tests never hit the network
-vi.mock('@/services/crossref/crossref-service.js', () => ({
-  getCrossrefService: vi.fn(),
-}));
+vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/services/crossref/crossref-service.js')>();
+  return {
+    ...actual,
+    getCrossrefService: vi.fn(),
+  };
+});
 
 import { getCrossrefService } from '@/services/crossref/crossref-service.js';
 

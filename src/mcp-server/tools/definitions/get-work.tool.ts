@@ -5,7 +5,7 @@
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
-import { getCrossrefService } from '@/services/crossref/crossref-service.js';
+import { getCrossrefService, stripJats } from '@/services/crossref/crossref-service.js';
 
 const AuthorSchema = z.object({
   given: z.string().optional().describe('Given (first) name'),
@@ -65,7 +65,10 @@ export const getWorkTool = tool('crossref_get_work', {
     doi: z.string().describe('Canonical DOI'),
     title: z.string().optional().describe('Work title'),
     subtitle: z.string().optional().describe('Subtitle when present'),
-    type: z.string().describe('Work type (e.g. journal-article, book-chapter, posted-content)'),
+    type: z
+      .string()
+      .optional()
+      .describe('Work type (e.g. journal-article, book-chapter, posted-content)'),
     authors: z.array(AuthorSchema).optional().describe('Author and contributor list'),
     abstract: z
       .string()
@@ -95,13 +98,6 @@ export const getWorkTool = tool('crossref_get_work', {
   }),
 
   errors: [
-    {
-      reason: 'invalid_doi',
-      code: JsonRpcErrorCode.ValidationError,
-      when: 'DOI fails the regex pattern check before any network call.',
-      recovery:
-        'Fix the DOI format: must start with "10." followed by 4+ digits, a slash, and a non-whitespace suffix.',
-    },
     {
       reason: 'doi_not_found',
       code: JsonRpcErrorCode.NotFound,
@@ -134,9 +130,9 @@ export const getWorkTool = tool('crossref_get_work', {
       doi: raw.DOI,
       ...(title !== undefined && { title }),
       ...(subtitle !== undefined && { subtitle }),
-      type: raw.type,
+      ...(raw.type != null && { type: raw.type }),
       ...(raw.author && { authors: raw.author.map(normalizeAuthor) }),
-      ...(raw.abstract !== undefined && { abstract: raw.abstract }),
+      ...(raw.abstract !== undefined && { abstract: stripJats(raw.abstract) }),
       ...(raw['is-referenced-by-count'] !== undefined && {
         isReferencedByCount: raw['is-referenced-by-count'],
       }),
@@ -183,7 +179,7 @@ export const getWorkTool = tool('crossref_get_work', {
     if (result.subtitle) lines.push(`*${result.subtitle}*`);
     lines.push('');
 
-    lines.push(`**DOI:** ${result.doi} | **Type:** ${result.type}`);
+    lines.push(`**DOI:** ${result.doi}${result.type ? ` | **Type:** ${result.type}` : ''}`);
     if (result.publisher) lines.push(`**Publisher:** ${result.publisher}`);
     if (result.containerTitle) lines.push(`**Journal/Container:** ${result.containerTitle}`);
     if (result.issn?.length) lines.push(`**ISSN:** ${result.issn.join(', ')}`);

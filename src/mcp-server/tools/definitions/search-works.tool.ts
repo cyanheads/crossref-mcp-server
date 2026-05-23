@@ -9,6 +9,7 @@ import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { getCanvas } from '@/services/canvas-accessor.js';
 import {
   getCrossrefService,
+  stripJats,
   type WorksSearchOptions,
 } from '@/services/crossref/crossref-service.js';
 
@@ -18,7 +19,7 @@ const OFFSET_CAP = 10_000;
 const WorkSummarySchema = z.object({
   doi: z.string().describe('Canonical DOI'),
   title: z.string().optional().describe('Work title'),
-  type: z.string().describe('Work type'),
+  type: z.string().optional().describe('Work type'),
   authors: z
     .array(
       z.object({
@@ -47,7 +48,7 @@ const WorkSummarySchema = z.object({
 export const searchWorksTool = tool('crossref_search_works', {
   title: 'Search Works',
   description:
-    'Searches the Crossref works index (~155M records) by free text and/or structured filters. Filter keys use Crossref hyphen-separated syntax: from-pub-date, until-pub-date, type (e.g. journal-article), funder (funder DOI), issn, member (publisher member ID), has-abstract, has-references, has-full-text, directory (DOAJ for open-access content). Sort options: relevance, score, is-referenced-by-count, published, deposited, indexed. Offset-based paging is capped at ~10K results; use cursor="*" to start cursor-based deep paging, then pass the next_cursor value from each response to continue. Cursor and offset cannot be combined. When CANVAS_PROVIDER_TYPE=duckdb is set, large result sets spill to a DataCanvas table for SQL querying.',
+    'Searches the Crossref works index (~155M records) by free text and/or structured filters. Filter keys use Crossref hyphen-separated syntax: from-pub-date, until-pub-date, type (e.g. journal-article), funder (funder DOI), issn, member (publisher member ID), has-abstract, has-references, has-full-text, directory (DOAJ for open-access content). Sort options: relevance, score, is-referenced-by-count, published, deposited, indexed. Offset-based paging is capped at ~10K results; use cursor="*" to start cursor-based deep paging, then pass the nextCursor value from each response to continue. Cursor and offset cannot be combined. When CANVAS_PROVIDER_TYPE=duckdb is set, large result sets spill to a DataCanvas table for SQL querying.',
   annotations: { readOnlyHint: true, openWorldHint: true },
 
   input: z.object({
@@ -61,7 +62,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       .record(z.string(), z.string())
       .optional()
       .describe(
-        'Structured filter object using Crossref hyphen-separated keys. Valid keys: has-abstract, has-references, has-full-text, from-pub-date (YYYY-MM-DD), until-pub-date (YYYY-MM-DD), type (journal-article, book-chapter, posted-content, …), funder (funder DOI), issn, member, directory (DOAJ for open-access). Example: {"type":"journal-article","from-pub-date":"2023-01-01","directory":"DOAJ"}',
+        'Structured filter object using Crossref hyphen-separated keys. All values must be strings. Boolean flag keys (has-abstract, has-references, has-full-text) require string values "true" or "false". Example: {"type":"journal-article","has-abstract":"true","from-pub-date":"2023-01-01","directory":"DOAJ"}',
       ),
     fields: z
       .array(z.string())
@@ -86,7 +87,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       .string()
       .optional()
       .describe(
-        'Cursor token for deep paging. Pass "*" to start cursor-based paging (required past ~10K results), then pass the next_cursor value from each response. Cannot be combined with offset.',
+        'Cursor token for deep paging. Pass "*" to start cursor-based paging (required past ~10K results), then pass the nextCursor value from each response. Cannot be combined with offset.',
       ),
     sort: z
       .enum([
@@ -148,7 +149,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       code: JsonRpcErrorCode.ValidationError,
       when: 'The requested offset exceeds the ~10K Crossref limit for offset-based paging.',
       recovery:
-        'Switch to cursor-based paging by passing cursor="*" on the first request, then chaining the next_cursor token from each response.',
+        'Switch to cursor-based paging by passing cursor="*" on the first request, then chaining the nextCursor token from each response.',
     },
   ],
 
@@ -203,7 +204,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       return {
         doi: raw.DOI,
         ...(raw.title?.[0] !== undefined && { title: raw.title[0] }),
-        type: raw.type,
+        ...(raw.type != null && { type: raw.type }),
         ...(raw.author && {
           authors: raw.author.slice(0, 10).map((a) => ({
             ...(a.given && { given: a.given }),
@@ -226,7 +227,7 @@ export const searchWorksTool = tool('crossref_search_works', {
           isReferencedByCount: raw['is-referenced-by-count'],
         }),
         ...(raw.score !== undefined && { score: raw.score }),
-        ...(raw.abstract !== undefined && { abstract: raw.abstract }),
+        ...(raw.abstract !== undefined && { abstract: stripJats(raw.abstract) }),
       };
     });
 
@@ -294,7 +295,7 @@ export const searchWorksTool = tool('crossref_search_works', {
 
     for (const w of result.works) {
       lines.push(`### ${w.title ?? w.doi}`);
-      lines.push(`**DOI:** ${w.doi} | **Type:** ${w.type}`);
+      lines.push(`**DOI:** ${w.doi}${w.type ? ` | **Type:** ${w.type}` : ''}`);
       if (w.published?.year) {
         const parts = [w.published.year, w.published.month, w.published.day].filter(
           (x) => x !== undefined,

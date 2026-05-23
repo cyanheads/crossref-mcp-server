@@ -4,6 +4,8 @@
  * @module services/crossref/crossref-service
  */
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import type { Context } from '@cyanheads/mcp-ts-core';
 import { httpErrorFromResponse, withRetry } from '@cyanheads/mcp-ts-core/utils';
 import { getServerConfig } from '@/config/server-config.js';
@@ -14,6 +16,28 @@ import type {
   RawCrossrefJournal,
   RawCrossrefWork,
 } from './types.js';
+
+/** Resolve package version at init time — avoids hardcoding the version string. */
+function readPackageVersion(): string {
+  try {
+    // dist/services/crossref/ → dist/ → project root
+    const pkgPath = fileURLToPath(new URL('../../../package.json', import.meta.url));
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as { version: string };
+    return pkg.version;
+  } catch {
+    return 'unknown';
+  }
+}
+
+const _packageVersion = readPackageVersion();
+
+/** Strip JATS XML tags from an abstract string. Many publishers deposit abstracts as JATS XML. */
+export function stripJats(raw: string): string {
+  return raw
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
 
 /** Crossref works search options. */
 export type WorksSearchOptions = {
@@ -56,9 +80,10 @@ export class CrossrefService {
   constructor() {
     const cfg = getServerConfig();
     this.baseUrl = cfg.baseUrl;
+    const version = _packageVersion;
     this.userAgent = cfg.mailto
-      ? `crossref-mcp-server/0.1.1 (mailto:${cfg.mailto})`
-      : 'crossref-mcp-server/0.1.1';
+      ? `crossref-mcp-server/${version} (mailto:${cfg.mailto})`
+      : `crossref-mcp-server/${version}`;
   }
 
   private request<T>(path: string, ctx: Context): Promise<T> {

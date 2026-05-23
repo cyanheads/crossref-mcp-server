@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.1.4](changelog/0.1.x/0.1.4.md) — 2026-05-23
+
+field-test bug fixes: JATS stripping, null type handling, 404 recovery, filter docs, nextCursor naming
+
 ## [0.1.3](changelog/0.1.x/0.1.3.md) — 2026-05-23
 
 mcp-ts-core ^0.9.5 → ^0.9.6, LICENSE added, lint-packaging and skill updates

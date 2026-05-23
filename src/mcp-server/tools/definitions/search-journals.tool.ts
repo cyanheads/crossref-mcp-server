@@ -5,10 +5,12 @@
  */
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
+import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import {
   getCrossrefService,
   type JournalsSearchOptions,
 } from '@/services/crossref/crossref-service.js';
+import type { RawCrossrefJournal } from '@/services/crossref/types.js';
 
 const JournalSchema = z.object({
   title: z.string().optional().describe('Journal title'),
@@ -25,7 +27,7 @@ const JournalSchema = z.object({
 const WorkSummarySchema = z.object({
   doi: z.string().describe('Work DOI'),
   title: z.string().optional().describe('Work title'),
-  type: z.string().describe('Work type'),
+  type: z.string().optional().describe('Work type'),
   published: z
     .object({
       year: z.number().optional().describe('Year'),
@@ -41,6 +43,16 @@ export const searchJournalsTool = tool('crossref_search_journals', {
   description:
     "Finds Crossref journal records by ISSN or title query. Provide issn for an exact single-journal lookup, or query for title-based search returning up to rows results. Set include_works to true to fetch the journal's most recent registered works in a second call (sequential — requires a resolved ISSN from step 1). Returns journal metadata: title, publisher, ISSN-L, subject areas, and total DOI count.",
   annotations: { readOnlyHint: true, openWorldHint: true },
+
+  errors: [
+    {
+      reason: 'issn_not_found',
+      code: JsonRpcErrorCode.NotFound,
+      when: 'ISSN lookup returned 404 — ISSN is not registered in Crossref.',
+      recovery:
+        'Verify the ISSN format (xxxx-xxxx) and check that the journal is registered in Crossref, or use a title query instead.',
+    },
+  ],
 
   input: z.object({
     query: z
@@ -94,7 +106,24 @@ export const searchJournalsTool = tool('crossref_search_journals', {
     };
     if (input.query !== undefined) journalOpts.query = input.query;
     if (input.issn !== undefined) journalOpts.issn = input.issn;
-    const rawJournals = await svc.searchJournals(journalOpts, ctx);
+
+    let rawJournals: RawCrossrefJournal[];
+    try {
+      rawJournals = await svc.searchJournals(journalOpts, ctx);
+    } catch (err) {
+      if (
+        input.issn &&
+        err instanceof Error &&
+        'code' in err &&
+        (err as { code?: number }).code === -32001
+      ) {
+        throw ctx.fail('issn_not_found', `No journal found for ISSN: ${input.issn}`, {
+          issn: input.issn,
+          ...ctx.recoveryFor('issn_not_found'),
+        });
+      }
+      throw err;
+    }
 
     const journals = rawJournals.map((j) => ({
       ...(j.title !== undefined && { title: j.title }),
@@ -127,7 +156,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       return {
         doi: raw.DOI,
         ...(raw.title?.[0] !== undefined && { title: raw.title[0] }),
-        type: raw.type,
+        ...(raw.type != null && { type: raw.type }),
         ...(parts?.length && {
           published: {
             ...(parts[0] !== undefined && { year: parts[0] }),
@@ -174,7 +203,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
         const cited =
           w.isReferencedByCount !== undefined ? ` | Cited: ${w.isReferencedByCount}` : '';
         lines.push(`- **${w.title ?? w.doi}**${date}${cited}`);
-        lines.push(`  DOI: ${w.doi} | Type: ${w.type}`);
+        lines.push(`  DOI: ${w.doi}${w.type ? ` | Type: ${w.type}` : ''}`);
       }
     }
 

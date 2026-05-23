@@ -61,10 +61,10 @@ export type CrossrefReference = {
   issue?: string;
 };
 
-/** Raw upstream work shape from the Crossref REST API. All optional except DOI and type. */
+/** Raw upstream work shape from the Crossref REST API. All optional except DOI; type can be null. */
 export type RawCrossrefWork = {
   DOI: string;
-  type: string;
+  type: string | null;
   title?: string[];
   'short-title'?: string[];
   subtitle?: string[];

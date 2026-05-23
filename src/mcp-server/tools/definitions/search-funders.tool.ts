@@ -5,10 +5,12 @@
  */
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
+import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import {
   type FundersSearchOptions,
   getCrossrefService,
 } from '@/services/crossref/crossref-service.js';
+import type { RawCrossrefFunder } from '@/services/crossref/types.js';
 
 const FunderSchema = z.object({
   id: z.string().optional().describe('Funder registry ID'),
@@ -26,7 +28,7 @@ const FunderSchema = z.object({
 const WorkSummarySchema = z.object({
   doi: z.string().describe('Work DOI'),
   title: z.string().optional().describe('Work title'),
-  type: z.string().describe('Work type'),
+  type: z.string().optional().describe('Work type'),
   published: z
     .object({
       year: z.number().optional().describe('Year'),
@@ -42,6 +44,15 @@ export const searchFundersTool = tool('crossref_search_funders', {
   description:
     'Finds funders registered in the Crossref Funder Registry by name or funder DOI. Provide funder_doi for an exact single-funder lookup (accepts the full DOI like "10.13039/100000001" or just the registry ID), or query for name-based search. Set include_works to true to fetch a paginated list of works funded by the first matched funder (adds a second upstream call). Returns funder name, DOI, country, and alternate names.',
   annotations: { readOnlyHint: true, openWorldHint: true },
+
+  errors: [
+    {
+      reason: 'funder_not_found',
+      code: JsonRpcErrorCode.NotFound,
+      when: 'Funder DOI lookup returned 404 — funder is not in the Crossref Funder Registry.',
+      recovery: 'Verify the funder DOI (10.13039/...) is correct, or use a name query instead.',
+    },
+  ],
 
   input: z.object({
     query: z
@@ -93,7 +104,24 @@ export const searchFundersTool = tool('crossref_search_funders', {
     };
     if (input.query !== undefined) funderOpts.query = input.query;
     if (input.funder_doi !== undefined) funderOpts.funderDoi = input.funder_doi;
-    const rawFunders = await svc.searchFunders(funderOpts, ctx);
+
+    let rawFunders: RawCrossrefFunder[];
+    try {
+      rawFunders = await svc.searchFunders(funderOpts, ctx);
+    } catch (err) {
+      if (
+        input.funder_doi &&
+        err instanceof Error &&
+        'code' in err &&
+        (err as { code?: number }).code === -32001
+      ) {
+        throw ctx.fail('funder_not_found', `No funder found for DOI: ${input.funder_doi}`, {
+          funderDoi: input.funder_doi,
+          ...ctx.recoveryFor('funder_not_found'),
+        });
+      }
+      throw err;
+    }
 
     const funders = rawFunders.map((f) => ({
       ...(f.id !== undefined && { id: f.id }),
@@ -124,7 +152,7 @@ export const searchFundersTool = tool('crossref_search_funders', {
       return {
         doi: raw.DOI,
         ...(raw.title?.[0] !== undefined && { title: raw.title[0] }),
-        type: raw.type,
+        ...(raw.type != null && { type: raw.type }),
         ...(parts?.length && {
           published: {
             ...(parts[0] !== undefined && { year: parts[0] }),
@@ -173,7 +201,7 @@ export const searchFundersTool = tool('crossref_search_funders', {
         const cited =
           w.isReferencedByCount !== undefined ? ` | Cited: ${w.isReferencedByCount}` : '';
         lines.push(`- **${w.title ?? w.doi}**${date}${cited}`);
-        lines.push(`  DOI: ${w.doi} | Type: ${w.type}`);
+        lines.push(`  DOI: ${w.doi}${w.type ? ` | Type: ${w.type}` : ''}`);
       }
     }
 
