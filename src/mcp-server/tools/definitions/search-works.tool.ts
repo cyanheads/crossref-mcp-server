@@ -8,6 +8,7 @@ import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { getCanvas } from '@/services/canvas-accessor.js';
 import {
+  decodeHtmlEntities,
   getCrossrefService,
   stripJats,
   type WorksSearchOptions,
@@ -52,7 +53,7 @@ const WorkSummarySchema = z
 export const searchWorksTool = tool('crossref_search_works', {
   title: 'Search Works',
   description:
-    'Searches the Crossref works index (~155M records) by free text and/or structured filters. Filter keys use Crossref hyphen-separated syntax: from-pub-date, until-pub-date, type (e.g. journal-article), funder (funder DOI), issn, member (publisher member ID), has-abstract, has-references, has-full-text, directory (DOAJ for open-access content). Sort options: relevance, score, is-referenced-by-count, published, deposited, indexed. Offset-based paging is capped at ~10K results; use cursor="*" to start cursor-based deep paging, then pass the nextCursor value from each response to continue. Cursor and offset cannot be combined. When CANVAS_PROVIDER_TYPE=duckdb is set, large result sets spill to a DataCanvas table for SQL querying.',
+    'Searches the Crossref works index (~155M records) by free text and/or structured filters. Use the filter parameter for structured filtering (object with hyphen-separated Crossref keys). Sort options: relevance, score, is-referenced-by-count, published, deposited, indexed. Offset-based paging is capped at ~10K results; use cursor="*" to start cursor-based deep paging, then pass the nextCursor value from each response to continue. Cursor and offset cannot be combined. Large result sets may spill to a DataCanvas table when available.',
   annotations: { readOnlyHint: true, openWorldHint: true },
 
   input: z.object({
@@ -207,7 +208,7 @@ export const searchWorksTool = tool('crossref_search_works', {
         raw['published-online']?.['date-parts']?.[0];
       return {
         doi: raw.DOI,
-        ...(raw.title?.[0] !== undefined && { title: raw.title[0] }),
+        ...(raw.title?.[0] !== undefined && { title: decodeHtmlEntities(raw.title[0]) }),
         ...(raw.type != null && { type: raw.type }),
         ...(raw.author && {
           authors: raw.author.slice(0, 10).map((a) => ({
@@ -224,14 +225,16 @@ export const searchWorksTool = tool('crossref_search_works', {
           },
         }),
         ...(raw['container-title']?.[0] !== undefined && {
-          containerTitle: raw['container-title'][0],
+          containerTitle: decodeHtmlEntities(raw['container-title'][0]),
         }),
         ...(raw.publisher !== undefined && { publisher: raw.publisher }),
         ...(raw['is-referenced-by-count'] !== undefined && {
           isReferencedByCount: raw['is-referenced-by-count'],
         }),
         ...(raw.score !== undefined && { score: raw.score }),
-        ...(raw.abstract !== undefined && { abstract: stripJats(raw.abstract) }),
+        ...(raw.abstract !== undefined && {
+          abstract: decodeHtmlEntities(stripJats(raw.abstract)),
+        }),
       };
     });
 
@@ -301,9 +304,12 @@ export const searchWorksTool = tool('crossref_search_works', {
       lines.push(`### ${w.title ?? w.doi}`);
       lines.push(`**DOI:** ${w.doi}${w.type ? ` | **Type:** ${w.type}` : ''}`);
       if (w.published?.year) {
-        const parts = [w.published.year, w.published.month, w.published.day].filter(
-          (x) => x !== undefined,
-        );
+        const d = w.published;
+        const parts = [
+          String(d.year),
+          ...(d.month !== undefined ? [String(d.month).padStart(2, '0')] : []),
+          ...(d.day !== undefined ? [String(d.day).padStart(2, '0')] : []),
+        ];
         lines.push(`**Published:** ${parts.join('-')}`);
       }
       if (w.containerTitle) lines.push(`**Journal:** ${w.containerTitle}`);

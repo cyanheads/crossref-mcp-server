@@ -7,9 +7,13 @@ import { createMockContext } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { searchFundersTool } from '@/mcp-server/tools/definitions/search-funders.tool.js';
 
-vi.mock('@/services/crossref/crossref-service.js', () => ({
-  getCrossrefService: vi.fn(),
-}));
+vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/services/crossref/crossref-service.js')>();
+  return {
+    ...actual,
+    getCrossrefService: vi.fn(),
+  };
+});
 
 import { getCrossrefService } from '@/services/crossref/crossref-service.js';
 
@@ -29,8 +33,9 @@ const RAW_FUNDER = {
   id: '100000001',
   name: 'National Science Foundation',
   'alt-names': ['NSF'],
-  country: 'United States',
-  'country-code': 'US',
+  country: null,
+  'country-code': null,
+  location: 'United States',
   uri: 'http://dx.doi.org/10.13039/100000001',
   works: 250000,
 };

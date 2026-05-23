@@ -36,7 +36,10 @@ export const getReferencesTool = tool('crossref_get_references', {
   input: z.object({
     doi: z
       .string()
-      .regex(/^10\.\d{4,9}\/\S+$/)
+      .regex(/^10\.\d{4,9}\/\S+$/, {
+        message:
+          'DOI must start with "10." followed by 4–9 digits and a slash, e.g. "10.1038/nature12373". Strip any https://doi.org/ prefix before passing.',
+      })
       .describe(
         'DOI in the format "10.NNNN/suffix", e.g. "10.1038/nature12373". Must start with "10." followed by 4–9 digits and a slash.',
       ),

@@ -40,6 +40,18 @@ export function stripJats(raw: string): string {
     .trim();
 }
 
+/** Decode HTML entities in a string (e.g. &amp; → &, &lt; → <). */
+export function decodeHtmlEntities(raw: string): string {
+  return raw
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_, n: string) => String.fromCharCode(parseInt(n, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h: string) => String.fromCharCode(parseInt(h, 16)));
+}
+
 /** Crossref works search options. */
 export type WorksSearchOptions = {
   query?: string;
@@ -96,6 +108,40 @@ export class CrossrefService {
           headers: { 'User-Agent': userAgent },
         });
         if (!response.ok) {
+          if (response.status === 400) {
+            // Crossref returns a structured validation-failure body on 400.
+            // Parse it and surface an actionable message instead of leaking the raw body.
+            let detail = '';
+            try {
+              const json = (await response.json()) as {
+                'message-type'?: string;
+                message?: Array<{ type?: string; value?: string; message?: string }>;
+              };
+              if (json['message-type'] === 'validation-failure' && Array.isArray(json.message)) {
+                detail = json.message
+                  .map((m) => {
+                    const badKey = m.value ? `"${m.value}"` : '';
+                    const hint =
+                      m.type === 'filter-not-available'
+                        ? ` — Crossref filter keys use hyphens (e.g. "${(m.value ?? '').replace(/_/g, '-')}")`
+                        : m.message
+                          ? ` — ${m.message}`
+                          : '';
+                    return `${badKey}${hint}`;
+                  })
+                  .filter(Boolean)
+                  .join('; ');
+              }
+            } catch {
+              // fall through to generic message
+            }
+            const { validationError } = await import('@cyanheads/mcp-ts-core/errors');
+            throw validationError(
+              detail
+                ? `Crossref rejected the request: ${detail}`
+                : 'Crossref returned HTTP 400 Bad Request — check filter key names (use hyphens, not underscores) and field names.',
+            );
+          }
           throw await httpErrorFromResponse(response, { service: 'Crossref', data: { url } });
         }
         const text = await response.text();
@@ -245,6 +291,14 @@ let _service: CrossrefService | undefined;
 
 export function initCrossrefService(): void {
   _service = new CrossrefService();
+  const cfg = getServerConfig();
+  if (!cfg.mailto) {
+    // Logger is not yet initialized when setup() runs, so use console.warn directly.
+    console.warn(
+      '[crossref-mcp-server] CROSSREF_MAILTO is not set — using the anonymous Crossref pool with stricter rate limits. ' +
+        'Set CROSSREF_MAILTO to your contact email to enable polite-pool priority access.',
+    );
+  }
 }
 
 export function getCrossrefService(): CrossrefService {

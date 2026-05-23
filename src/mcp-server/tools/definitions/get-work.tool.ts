@@ -5,7 +5,11 @@
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
-import { getCrossrefService, stripJats } from '@/services/crossref/crossref-service.js';
+import {
+  decodeHtmlEntities,
+  getCrossrefService,
+  stripJats,
+} from '@/services/crossref/crossref-service.js';
 import type { CrossrefAuthor } from '@/services/crossref/types.js';
 
 const AuthorSchema = z
@@ -64,7 +68,10 @@ export const getWorkTool = tool('crossref_get_work', {
   input: z.object({
     doi: z
       .string()
-      .regex(/^10\.\d{4,9}\/\S+$/)
+      .regex(/^10\.\d{4,9}\/\S+$/, {
+        message:
+          'DOI must start with "10." followed by 4–9 digits and a slash, e.g. "10.1038/nature12373". Strip any https://doi.org/ prefix before passing.',
+      })
       .describe(
         'DOI in the format "10.NNNN/suffix", e.g. "10.1038/nature12373". Must start with "10." followed by 4–9 digits and a slash.',
       ),
@@ -127,9 +134,17 @@ export const getWorkTool = tool('crossref_get_work', {
       });
     }
 
-    const title = raw.title?.[0];
-    const subtitle = raw.subtitle?.[0] ?? raw['short-title']?.[0];
-    const containerTitle = raw['container-title']?.[0];
+    const title = raw.title?.[0] !== undefined ? decodeHtmlEntities(raw.title[0]) : undefined;
+    const subtitle =
+      raw.subtitle?.[0] !== undefined
+        ? decodeHtmlEntities(raw.subtitle[0])
+        : raw['short-title']?.[0] !== undefined
+          ? decodeHtmlEntities(raw['short-title'][0])
+          : undefined;
+    const containerTitle =
+      raw['container-title']?.[0] !== undefined
+        ? decodeHtmlEntities(raw['container-title'][0])
+        : undefined;
 
     const published = parseDateParts(
       raw.published ?? raw['published-print'] ?? raw['published-online'] ?? raw.issued,
@@ -141,7 +156,7 @@ export const getWorkTool = tool('crossref_get_work', {
       ...(subtitle !== undefined && { subtitle }),
       ...(raw.type != null && { type: raw.type }),
       ...(raw.author && { authors: raw.author.map(normalizeAuthor) }),
-      ...(raw.abstract !== undefined && { abstract: stripJats(raw.abstract) }),
+      ...(raw.abstract !== undefined && { abstract: decodeHtmlEntities(stripJats(raw.abstract)) }),
       ...(raw['is-referenced-by-count'] !== undefined && {
         isReferencedByCount: raw['is-referenced-by-count'],
       }),
@@ -194,7 +209,11 @@ export const getWorkTool = tool('crossref_get_work', {
     if (result.issn?.length) lines.push(`**ISSN:** ${result.issn.join(', ')}`);
     if (result.published?.year) {
       const d = result.published;
-      const parts = [d.year, d.month, d.day].filter((x) => x !== undefined);
+      const parts = [
+        String(d.year),
+        ...(d.month !== undefined ? [String(d.month).padStart(2, '0')] : []),
+        ...(d.day !== undefined ? [String(d.day).padStart(2, '0')] : []),
+      ];
       lines.push(`**Published:** ${parts.join('-')}`);
     }
     if (result.language) lines.push(`**Language:** ${result.language}`);

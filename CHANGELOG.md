@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.1.6](changelog/0.1.x/0.1.6.md) — 2026-05-23
+
+Field-test bug fixes: error handling, data mapping, validation, and formatting across all five Crossref tools
+
 ## [0.1.5](changelog/0.1.x/0.1.5.md) — 2026-05-23
 
 Pre-launch polish: type-safe error handling, .describe() on output schemas, AGENTS.md, Dockerfile OCI labels, bunfig.toml

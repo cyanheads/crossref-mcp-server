@@ -7,6 +7,7 @@
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode, McpError } from '@cyanheads/mcp-ts-core/errors';
 import {
+  decodeHtmlEntities,
   type FundersSearchOptions,
   getCrossrefService,
 } from '@/services/crossref/crossref-service.js';
@@ -124,9 +125,9 @@ export const searchFundersTool = tool('crossref_search_funders', {
 
     const funders = rawFunders.map((f) => ({
       ...(f.id !== undefined && { id: f.id }),
-      ...(f.name !== undefined && { name: f.name }),
-      ...(f['alt-names']?.length && { altNames: f['alt-names'] }),
-      ...(f.country !== undefined && { country: f.country }),
+      ...(f.name !== undefined && { name: decodeHtmlEntities(f.name) }),
+      ...(f['alt-names']?.length && { altNames: f['alt-names'].map(decodeHtmlEntities) }),
+      ...(f.location !== undefined && { country: f.location }),
       ...(f['country-code'] !== undefined && { countryCode: f['country-code'] }),
       ...(f.uri !== undefined && { uri: f.uri }),
       ...(f.works !== undefined && { worksCount: f.works }),
@@ -150,7 +151,7 @@ export const searchFundersTool = tool('crossref_search_funders', {
         raw['published-online']?.['date-parts']?.[0];
       return {
         doi: raw.DOI,
-        ...(raw.title?.[0] !== undefined && { title: raw.title[0] }),
+        ...(raw.title?.[0] !== undefined && { title: decodeHtmlEntities(raw.title[0]) }),
         ...(raw.type != null && { type: raw.type }),
         ...(parts?.length && {
           published: {
@@ -195,7 +196,15 @@ export const searchFundersTool = tool('crossref_search_funders', {
         `### Funded works (${result.fundedWorksTotal ?? result.fundedWorks.length} total)`,
       );
       for (const w of result.fundedWorks) {
-        const dateParts = [w.published?.year, w.published?.month].filter((x) => x !== undefined);
+        const dateParts =
+          w.published?.year !== undefined
+            ? [
+                String(w.published.year),
+                ...(w.published.month !== undefined
+                  ? [String(w.published.month).padStart(2, '0')]
+                  : []),
+              ]
+            : [];
         const date = dateParts.length ? ` (${dateParts.join('-')})` : '';
         const cited =
           w.isReferencedByCount !== undefined ? ` | Cited: ${w.isReferencedByCount}` : '';

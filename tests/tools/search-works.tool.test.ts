@@ -7,9 +7,13 @@ import { createMockContext } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { searchWorksTool } from '@/mcp-server/tools/definitions/search-works.tool.js';
 
-vi.mock('@/services/crossref/crossref-service.js', () => ({
-  getCrossrefService: vi.fn(),
-}));
+vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/services/crossref/crossref-service.js')>();
+  return {
+    ...actual,
+    getCrossrefService: vi.fn(),
+  };
+});
 vi.mock('@/services/canvas-accessor.js', () => ({
   getCanvas: vi.fn().mockReturnValue(undefined),
 }));

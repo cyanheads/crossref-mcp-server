@@ -7,6 +7,7 @@
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode, McpError } from '@cyanheads/mcp-ts-core/errors';
 import {
+  decodeHtmlEntities,
   getCrossrefService,
   type JournalsSearchOptions,
 } from '@/services/crossref/crossref-service.js';
@@ -125,7 +126,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
     }
 
     const journals = rawJournals.map((j) => ({
-      ...(j.title !== undefined && { title: j.title }),
+      ...(j.title !== undefined && { title: decodeHtmlEntities(j.title) }),
       ...(j['ISSN-L'] !== undefined && { issnL: j['ISSN-L'] }),
       ...(j.ISSN?.length && { issn: j.ISSN }),
       ...(j.publisher !== undefined && { publisher: j.publisher }),
@@ -137,6 +138,16 @@ export const searchJournalsTool = tool('crossref_search_journals', {
 
     if (!input.include_works || journals.length === 0) {
       return { journals };
+    }
+
+    // When include_works is requested without an ISSN, multiple journals may match.
+    // Require an unambiguous ISSN to avoid silently fetching works from the wrong journal.
+    if (!input.issn && rawJournals.length > 1) {
+      throw new Error(
+        `include_works requires an unambiguous journal. The query matched ${rawJournals.length} journals ` +
+          `(e.g. "${journals[0]?.title ?? 'unknown'}", "${journals[1]?.title ?? 'unknown'}"). ` +
+          `Re-run with issn set to one of the ISSNs listed above to fetch its works.`,
+      );
     }
 
     // Use the first matched journal's ISSN for the works call
@@ -154,7 +165,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
         raw['published-online']?.['date-parts']?.[0];
       return {
         doi: raw.DOI,
-        ...(raw.title?.[0] !== undefined && { title: raw.title[0] }),
+        ...(raw.title?.[0] !== undefined && { title: decodeHtmlEntities(raw.title[0]) }),
         ...(raw.type != null && { type: raw.type }),
         ...(parts?.length && {
           published: {
@@ -197,7 +208,15 @@ export const searchJournalsTool = tool('crossref_search_journals', {
     if (result.recentWorks?.length) {
       lines.push(`### Recent works (${result.worksTotal ?? result.recentWorks.length} total)`);
       for (const w of result.recentWorks) {
-        const dateParts = [w.published?.year, w.published?.month].filter((x) => x !== undefined);
+        const dateParts =
+          w.published?.year !== undefined
+            ? [
+                String(w.published.year),
+                ...(w.published.month !== undefined
+                  ? [String(w.published.month).padStart(2, '0')]
+                  : []),
+              ]
+            : [];
         const date = dateParts.length ? ` (${dateParts.join('-')})` : '';
         const cited =
           w.isReferencedByCount !== undefined ? ` | Cited: ${w.isReferencedByCount}` : '';
