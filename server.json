@@ -27,9 +27,9 @@
       "environmentVariables": [
         {
           "name": "CROSSREF_MAILTO",
-          "description": "Email address embedded in the polite-pool User-Agent header. Required for priority access; server starts without it but uses the anonymous pool with stricter rate limits.",
+          "description": "Email for polite-pool User-Agent header \u2014 optional. Without: anonymous pool with stricter rate limits.",
           "format": "string",
-          "isRequired": true
+          "isRequired": false
         },
         {
           "name": "CROSSREF_BASE_URL",
@@ -76,9 +76,9 @@
       "environmentVariables": [
         {
           "name": "CROSSREF_MAILTO",
-          "description": "Email address embedded in the polite-pool User-Agent header. Required for priority access; server starts without it but uses the anonymous pool with stricter rate limits.",
+          "description": "Email for polite-pool User-Agent header \u2014 optional. Without: anonymous pool with stricter rate limits.",
           "format": "string",
-          "isRequired": true
+          "isRequired": false
         },
         {
           "name": "CROSSREF_BASE_URL",

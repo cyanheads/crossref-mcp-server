@@ -1,9 +1,11 @@
 {
   "manifest_version": "0.3",
-  "name": "@cyanheads/crossref-mcp-server",
+  "name": "crossref-mcp-server",
   "version": "0.1.2",
   "description": "Resolve DOIs and search ~155M scholarly works via the Crossref REST API.",
-  "author": { "name": "cyanheads" },
+  "author": {
+    "name": "cyanheads"
+  },
   "server": {
     "type": "node",
     "entry_point": "dist/index.js",
@@ -19,7 +21,9 @@
     }
   },
   "compatibility": {
-    "runtimes": { "node": ">=24.0.0" }
+    "runtimes": {
+      "node": ">=24.0.0"
+    }
   },
   "tools_generated": true,
   "prompts_generated": true,
@@ -27,8 +31,8 @@
     "CROSSREF_MAILTO": {
       "type": "string",
       "title": "Crossref Polite Pool Email",
-      "description": "Email address for polite-pool User-Agent header. Required for priority access; server starts without it but uses the anonymous pool with stricter rate limits.",
-      "required": true
+      "description": "Email for polite-pool User-Agent header \u2014 optional. Without: anonymous pool with stricter rate limits.",
+      "required": false
     }
   }
 }

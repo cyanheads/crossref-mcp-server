@@ -99,7 +99,7 @@ Crossref-specific:
 
 ## Getting started
 
-Add the following to your MCP client configuration file. `CROSSREF_MAILTO` is required — without it the server uses Crossref's anonymous pool with stricter rate limits.
+Add the following to your MCP client configuration file. `CROSSREF_MAILTO` is optional but recommended — without it the server uses Crossref's anonymous pool with stricter rate limits.
 
 ```json
 {
@@ -166,7 +166,7 @@ MCP_TRANSPORT_TYPE=http MCP_HTTP_PORT=3010 CROSSREF_MAILTO=your-email@example.co
 ### Prerequisites
 
 - [Bun v1.3.2](https://bun.sh/) or higher (or Node.js v24+).
-- A valid email address for `CROSSREF_MAILTO` — Crossref's polite pool grants priority access to clients that identify themselves. No account or token is required.
+- An email address for `CROSSREF_MAILTO` is optional but recommended — Crossref's polite pool grants priority access to clients that identify themselves. No account or token is required.
 
 ### Installation
 
@@ -192,7 +192,7 @@ bun install
 
 ```sh
 cp .env.example .env
-# edit .env and set CROSSREF_MAILTO
+# edit .env and optionally set CROSSREF_MAILTO for polite-pool access
 ```
 
 ## Configuration
@@ -201,7 +201,7 @@ All configuration is validated at startup via Zod schemas in `src/config/server-
 
 | Variable | Description | Default |
 |:---------|:------------|:--------|
-| `CROSSREF_MAILTO` | **Required.** Email address embedded in the polite-pool `User-Agent` header. Server starts without it but logs a warning and uses the anonymous pool. | — |
+| `CROSSREF_MAILTO` | Email address embedded in the polite-pool `User-Agent` header. Optional — server starts without it but logs a warning and uses the anonymous pool with stricter rate limits. | — |
 | `CROSSREF_BASE_URL` | Crossref API base URL. Override for testing against a local proxy. | `https://api.crossref.org` |
 | `CROSSREF_TIMEOUT_MS` | Per-request timeout in milliseconds. | `10000` |
 | `CANVAS_PROVIDER_TYPE` | Set to `duckdb` to enable DataCanvas spillover for large `crossref_search_works` result sets. Node only; omit on Workers deployments. | — |

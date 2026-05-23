@@ -57,7 +57,7 @@ crossref-mcp-server wraps the Crossref REST API to expose canonical scholarly me
 ## Requirements
 
 - Read-only. No writes to Crossref.
-- All requests must include a polite-pool `User-Agent` header (`crossref-mcp-server/0.1.0 (mailto:<CROSSREF_MAILTO>)`). The email address is required configuration; without it the server uses the anonymous pool with stricter rate limits. No token is required — polite-pool access is granted solely via the mailto User-Agent.
+- All requests include a polite-pool `User-Agent` header (`crossref-mcp-server/0.1.0 (mailto:<CROSSREF_MAILTO>)`) when `CROSSREF_MAILTO` is set. The env var is optional — without it the server starts but uses the anonymous pool with stricter rate limits. No token is required — polite-pool access is granted solely via the mailto User-Agent.
 - Offset paging is capped at ~10K results per query. Results beyond that require cursor-based paging (`cursor=*` to start, then pass the `next-cursor` value from each response). Mixing `cursor` and `offset` is not supported.
 - Filter keys use hyphens (`has-abstract`, `has-references`, `has-full-text`, `from-pub-date`, `until-pub-date`). There is no `is_open_access` filter; use `directory:DOAJ` to restrict to DOAJ-indexed open-access content.
 - The `select` field parameter works on `/works` (search) only. It is not supported on `/works/{doi}` (single record fetch).
@@ -91,7 +91,7 @@ crossref-mcp-server wraps the Crossref REST API to expose canonical scholarly me
 
 | Env Var | Required | Description |
 |:--------|:---------|:------------|
-| `CROSSREF_MAILTO` | **Yes** | Email address embedded in the polite-pool `User-Agent` header. Required for priority access; server starts but logs a warning and uses the anonymous pool if missing. |
+| `CROSSREF_MAILTO` | No | Email address embedded in the polite-pool `User-Agent` header. Optional — server starts without it but logs a warning and uses the anonymous pool with stricter rate limits. |
 | `CROSSREF_BASE_URL` | No | Override API base URL. Defaults to `https://api.crossref.org`. Useful for testing against a local proxy. |
 | `CROSSREF_TIMEOUT_MS` | No | Per-request timeout in milliseconds. Default: `10000`. |
 | `CANVAS_PROVIDER_TYPE` | No | Set to `duckdb` to enable DataCanvas spillover for large result sets. Node only; omit on Workers deployments. |
