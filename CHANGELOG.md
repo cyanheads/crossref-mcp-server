@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.1.5](changelog/0.1.x/0.1.5.md) — 2026-05-23
+
+Pre-launch polish: type-safe error handling, .describe() on output schemas, AGENTS.md, Dockerfile OCI labels, bunfig.toml
+
 ## [0.1.4](changelog/0.1.x/0.1.4.md) — 2026-05-23
 
 field-test bug fixes: JATS stripping, null type handling, 404 recovery, filter docs, nextCursor naming
