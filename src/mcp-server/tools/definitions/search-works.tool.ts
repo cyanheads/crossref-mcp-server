@@ -138,14 +138,14 @@ export const searchWorksTool = tool('crossref_search_works', {
   errors: [
     {
       reason: 'cursor_offset_conflict',
-      code: JsonRpcErrorCode.InvalidParams,
+      code: JsonRpcErrorCode.ValidationError,
       when: 'Both cursor and offset were supplied in the same request.',
       recovery:
         'Use cursor or offset, not both. Pass cursor="*" to start cursor-based paging; use offset only for the first ~10K results.',
     },
     {
       reason: 'offset_too_large',
-      code: JsonRpcErrorCode.InvalidParams,
+      code: JsonRpcErrorCode.ValidationError,
       when: 'The requested offset exceeds the ~10K Crossref limit for offset-based paging.',
       recovery:
         'Switch to cursor-based paging by passing cursor="*" on the first request, then chaining the next_cursor token from each response.',
@@ -245,11 +245,7 @@ export const searchWorksTool = tool('crossref_search_works', {
     if (canvas && works.length >= 20) {
       try {
         const { spillover } = await import('@cyanheads/mcp-ts-core/canvas');
-        const instance = await canvas.acquire(
-          input.canvas_id,
-          // ctx satisfies RequestContext structurally; the type is @internal in the framework
-          ctx as unknown as Parameters<typeof canvas.acquire>[1],
-        );
+        const instance = await canvas.acquire(input.canvas_id, ctx);
 
         const spill = await spillover({
           canvas: instance,

@@ -1,8 +1,8 @@
 # Agent Protocol
 
 **Server:** @cyanheads/crossref-mcp-server
-**Version:** 0.1.1
-**Framework:** [@cyanheads/mcp-ts-core](https://www.npmjs.com/package/@cyanheads/mcp-ts-core) `^0.9.1`
+**Version:** 0.1.2
+**Framework:** [@cyanheads/mcp-ts-core](https://www.npmjs.com/package/@cyanheads/mcp-ts-core) `^0.9.5`
 **Engines:** Bun ≥1.3.0, Node ≥24.0.0
 **MCP SDK:** `@modelcontextprotocol/sdk` ^1.29.0
 **Zod:** ^4.4.3
@@ -38,7 +38,7 @@ crossref-mcp-server wraps the [Crossref REST API](https://api.crossref.org/) to 
 
 ### Key domain constraints
 
-- **Polite-pool `mailto` is required.** Every request must include `User-Agent: crossref-mcp-server/0.1.1 (mailto:<CROSSREF_MAILTO>)`. The server starts without it but logs a warning and uses the anonymous pool with stricter rate limits. Polite-pool access requires no token — just the email in the header.
+- **Polite-pool `mailto` is required.** Every request must include `User-Agent: crossref-mcp-server/0.1.2 (mailto:<CROSSREF_MAILTO>)`. The server starts without it but logs a warning and uses the anonymous pool with stricter rate limits. Polite-pool access requires no token — just the email in the header.
 - **No incoming citations.** Crossref does not expose which works cite a given DOI. Redirect to OpenAlex for citation counts or citation graphs.
 - **Abstract coverage is incomplete.** Abstracts are deposited voluntarily; many records — especially older works and books — have none.
 - **Reference list coverage varies.** Outgoing references are only present for publisher participants; pre-2000 literature has low coverage.
@@ -262,6 +262,16 @@ When you complete a skill's checklist, check the boxes and add a completion time
 | `bun run start:http` | Production mode (HTTP) |
 | `bun run changelog:build` | Regenerate `CHANGELOG.md` from `changelog/*.md` |
 | `bun run changelog:check` | Verify `CHANGELOG.md` is in sync (used by devcheck) |
+| `bun run bundle` | Build and pack as `.mcpb` for one-click Claude Desktop install |
+| `bun run audit:refresh` | Delete `bun.lock`, reinstall, re-audit. Use when `devcheck` flags a transitive advisory — stale lockfile can mask already-patched deps. If advisory survives, it's real. |
+
+---
+
+## Bundling
+
+`bun run bundle` produces a `.mcpb` extension bundle for one-click install in Claude Desktop. MCPB is stdio-only — HTTP deployments are unaffected. Consumers who don't need it can delete `manifest.json` and `.mcpbignore`; `lint:packaging` skips cleanly.
+
+**Adding an env var requires both files:** `server.json` (registry discovery, `environmentVariables[]`) and `manifest.json` (bundle install UX, `mcp_config.env` + `user_config`). `lint:packaging` (run by `devcheck`) verifies the env var names match.
 
 ---
 

@@ -46,7 +46,7 @@ export const getReferencesTool = tool('crossref_get_references', {
   errors: [
     {
       reason: 'invalid_doi',
-      code: JsonRpcErrorCode.InvalidParams,
+      code: JsonRpcErrorCode.ValidationError,
       when: 'DOI fails the regex pattern check before any network call.',
       recovery:
         'Fix the DOI format: must start with "10." followed by 4+ digits, a slash, and a non-whitespace suffix.',
