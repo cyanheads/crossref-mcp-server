@@ -1,6 +1,6 @@
 # crossref-mcp-server - Directory Structure
 
-Generated on: 2026-05-23 09:08:16
+Generated on: 2026-05-23 10:50:21
 
 ```text
 crossref-mcp-server/
@@ -146,6 +146,7 @@ crossref-mcp-server/
 ├── CLAUDE.md
 ├── devcheck.config.json
 ├── Dockerfile
+├── LICENSE
 ├── manifest.json
 ├── package.json
 ├── README.md
