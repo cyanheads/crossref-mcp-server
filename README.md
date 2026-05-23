@@ -1,6 +1,6 @@
 <div align="center">
   <h1>@cyanheads/crossref-mcp-server</h1>
-  <p><b>Resolve DOIs and search ~155M scholarly works via the Crossref REST API. STDIO or Streamable HTTP.</b>
+  <p><b>Resolve DOIs, search ~155M scholarly works, and fetch references via the Crossref REST API. STDIO or Streamable HTTP.</b>
   <div>5 Tools</div>
   </p>
 </div>
