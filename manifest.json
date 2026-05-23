@@ -26,6 +26,7 @@
   "user_config": {
     "CROSSREF_MAILTO": {
       "type": "string",
+      "title": "Crossref Polite Pool Email",
       "description": "Email address for polite-pool User-Agent header. Required for priority access; server starts without it but uses the anonymous pool with stricter rate limits.",
       "required": true
     }
