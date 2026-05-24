@@ -130,7 +130,7 @@ export const searchFundersTool = tool('crossref_search_funders', {
       ...(f.location !== undefined && { country: f.location }),
       ...(f['country-code'] !== undefined && { countryCode: f['country-code'] }),
       ...(f.uri !== undefined && { uri: f.uri }),
-      ...(f.works !== undefined && { worksCount: f.works }),
+      ...(f['work-count'] !== undefined && { worksCount: f['work-count'] }),
     }));
 
     if (!input.include_works || funders.length === 0) {

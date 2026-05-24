@@ -37,7 +37,7 @@ const RAW_FUNDER = {
   'country-code': null,
   location: 'United States',
   uri: 'http://dx.doi.org/10.13039/100000001',
-  works: 250000,
+  'work-count': 250000,
 };
 
 describe('searchFundersTool', () => {

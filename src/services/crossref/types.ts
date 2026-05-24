@@ -132,7 +132,7 @@ export type RawCrossrefFunder = {
   location?: string;
   replaces?: string[];
   'replaced-by'?: string[];
-  works?: number;
+  'work-count'?: number;
 };
 
 /** Crossref REST API message envelope for a single item. */
