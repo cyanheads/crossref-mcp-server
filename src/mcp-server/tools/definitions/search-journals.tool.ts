@@ -57,6 +57,12 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       recovery:
         'Verify the ISSN format (xxxx-xxxx) and check that the journal is registered in Crossref, or use a title query instead.',
     },
+    {
+      reason: 'ambiguous_journal',
+      code: JsonRpcErrorCode.InvalidParams,
+      when: 'include_works is true but the title query matched more than one journal, making the target ambiguous.',
+      recovery: 'Re-run with issn set to the ISSN of the specific journal you want works for.',
+    },
   ],
 
   input: z.object({
@@ -143,10 +149,12 @@ export const searchJournalsTool = tool('crossref_search_journals', {
     // When include_works is requested without an ISSN, multiple journals may match.
     // Require an unambiguous ISSN to avoid silently fetching works from the wrong journal.
     if (!input.issn && rawJournals.length > 1) {
-      throw new Error(
+      throw ctx.fail(
+        'ambiguous_journal',
         `include_works requires an unambiguous journal. The query matched ${rawJournals.length} journals ` +
           `(e.g. "${journals[0]?.title ?? 'unknown'}", "${journals[1]?.title ?? 'unknown'}"). ` +
           `Re-run with issn set to one of the ISSNs listed above to fetch its works.`,
+        ctx.recoveryFor('ambiguous_journal'),
       );
     }
 

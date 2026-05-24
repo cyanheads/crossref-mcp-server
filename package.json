@@ -1,6 +1,6 @@
 {
   "name": "@cyanheads/crossref-mcp-server",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "mcpName": "io.github.cyanheads/crossref-mcp-server",
   "description": "Resolve DOIs, search ~155M scholarly works, and fetch references via the Crossref REST API. STDIO or Streamable HTTP.",
   "type": "module",
@@ -52,8 +52,6 @@
     "model-context-protocol",
     "typescript",
     "bun",
-    "stdio",
-    "streamable-http",
     "ai-agent"
   ],
   "repository": {

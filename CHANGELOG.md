@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.1.7](changelog/0.1.x/0.1.7.md) — 2026-05-24
+
+Fix crossref_search_funders worksCount always null; replace InternalError with typed ctx.fail in crossref_search_journals ambiguity path
+
 ## [0.1.6](changelog/0.1.x/0.1.6.md) — 2026-05-23
 
 Field-test bug fixes: error handling, data mapping, validation, and formatting across all five Crossref tools
