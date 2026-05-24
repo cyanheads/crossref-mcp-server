@@ -1,8 +1,8 @@
 # Agent Protocol
 
 **Server:** @cyanheads/crossref-mcp-server
-**Version:** 0.1.7
-**Framework:** [@cyanheads/mcp-ts-core](https://www.npmjs.com/package/@cyanheads/mcp-ts-core) `^0.9.6`
+**Version:** 0.1.8
+**Framework:** [@cyanheads/mcp-ts-core](https://www.npmjs.com/package/@cyanheads/mcp-ts-core) `^0.9.9`
 **Engines:** Bun ≥1.3.0, Node ≥24.0.0
 **MCP SDK:** `@modelcontextprotocol/sdk` ^1.29.0
 **Zod:** ^4.4.3
@@ -38,7 +38,7 @@ crossref-mcp-server wraps the [Crossref REST API](https://api.crossref.org/) to 
 
 ### Key domain constraints
 
-- **Polite-pool `mailto` is optional but recommended.** Every request includes `User-Agent: crossref-mcp-server/0.1.7 (mailto:<CROSSREF_MAILTO>)` when set. Without it, the server starts but logs a warning and uses the anonymous pool with stricter rate limits. Polite-pool access requires no token — just the email in the header.
+- **Polite-pool `mailto` is optional but recommended.** Every request includes `User-Agent: crossref-mcp-server/0.1.8 (mailto:<CROSSREF_MAILTO>)` when set. Without it, the server starts but logs a warning and uses the anonymous pool with stricter rate limits. Polite-pool access requires no token — just the email in the header.
 - **No incoming citations.** Crossref does not expose which works cite a given DOI. Redirect to OpenAlex for citation counts or citation graphs.
 - **Abstract coverage is incomplete.** Abstracts are deposited voluntarily; many records — especially older works and books — have none.
 - **Reference list coverage varies.** Outgoing references are only present for publisher participants; pre-2000 literature has low coverage.
@@ -55,6 +55,7 @@ crossref-mcp-server wraps the [Crossref REST API](https://api.crossref.org/) to 
 - **Use `ctx.state`** for tenant-scoped storage. Never access persistence directly.
 - **Check `ctx.elicit` / `ctx.sample`** for presence before calling.
 - **Secrets in env vars only** — never hardcoded.
+- **Close the loop on issues.** When implementing work tracked by a GitHub issue, comment on the issue with what landed before moving on. The comment is for future readers — state the concrete changes, not the conversation that produced them.
 
 ---
 
@@ -147,9 +148,12 @@ Handlers receive a unified `ctx` object. Key properties used in this server:
 | Property | Description |
 |:---------|:------------|
 | `ctx.log` | Request-scoped logger — `.debug()`, `.info()`, `.notice()`, `.warning()`, `.error()`. Auto-correlates requestId, traceId, tenantId. |
+| `ctx.fail` | Typed error throw checked against the `errors[]` contract at compile time. `ctx.fail('reason', message, { recovery?: { hint } })` |
 | `ctx.signal` | `AbortSignal` for cancellation. |
 | `ctx.requestId` | Unique request ID. |
 | `ctx.tenantId` | Tenant ID from JWT, `'default'` for stdio or HTTP+`MCP_AUTH_MODE=none`. |
+| `ctx.notifyPromptListChanged` | Notify connected clients that the prompt list has changed. |
+| `ctx.notifyToolListChanged` | Notify connected clients that the tool list has changed. |
 
 ---
 
@@ -227,6 +231,7 @@ Available skills:
 | `security-pass` | Audit server for MCP-flavored security gaps: output injection, scope blast radius, input sinks, tenant isolation |
 | `devcheck` | Lint, format, typecheck, audit |
 | `polish-docs-meta` | Finalize docs, README, metadata, and agent protocol for shipping |
+| `git-wrapup` | Version-bump, changelog, commit, and tag workflow |
 | `maintenance` | Investigate changelogs, adopt upstream changes, and sync skills after `bun update --latest` |
 | `report-issue-framework` | File a bug or feature request against `@cyanheads/mcp-ts-core` via `gh` CLI |
 | `report-issue-local` | File a bug or feature request against this server's own repo via `gh` CLI |

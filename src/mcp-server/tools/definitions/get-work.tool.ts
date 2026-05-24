@@ -7,7 +7,9 @@ import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import {
   decodeHtmlEntities,
+  formatDateParts,
   getCrossrefService,
+  parseDateParts,
   stripJats,
 } from '@/services/crossref/crossref-service.js';
 import type { CrossrefAuthor } from '@/services/crossref/types.js';
@@ -207,15 +209,7 @@ export const getWorkTool = tool('crossref_get_work', {
     if (result.publisher) lines.push(`**Publisher:** ${result.publisher}`);
     if (result.containerTitle) lines.push(`**Journal/Container:** ${result.containerTitle}`);
     if (result.issn?.length) lines.push(`**ISSN:** ${result.issn.join(', ')}`);
-    if (result.published?.year) {
-      const d = result.published;
-      const parts = [
-        String(d.year),
-        ...(d.month !== undefined ? [String(d.month).padStart(2, '0')] : []),
-        ...(d.day !== undefined ? [String(d.day).padStart(2, '0')] : []),
-      ];
-      lines.push(`**Published:** ${parts.join('-')}`);
-    }
+    if (result.published?.year) lines.push(`**Published:** ${formatDateParts(result.published)}`);
     if (result.language) lines.push(`**Language:** ${result.language}`);
 
     if (result.isReferencedByCount !== undefined)
@@ -289,17 +283,5 @@ function normalizeAuthor(a: CrossrefAuthor) {
       affiliation: a.affiliation.map((af) => ({ name: af.name })),
     }),
     ...(a.sequence && { sequence: a.sequence }),
-  };
-}
-
-function parseDateParts(
-  raw: { 'date-parts'?: Array<Array<number>> } | undefined,
-): { year?: number; month?: number; day?: number } | undefined {
-  const parts = raw?.['date-parts']?.[0];
-  if (!parts?.length) return;
-  return {
-    ...(parts[0] !== undefined && { year: parts[0] }),
-    ...(parts[1] !== undefined && { month: parts[1] }),
-    ...(parts[2] !== undefined && { day: parts[2] }),
   };
 }

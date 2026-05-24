@@ -52,6 +52,37 @@ export function decodeHtmlEntities(raw: string): string {
     .replace(/&#x([0-9a-fA-F]+);/g, (_, h: string) => String.fromCharCode(parseInt(h, 16)));
 }
 
+/** Format a year/month/day object as an ISO-style date string (e.g. "2023-04-15" or "2023"). */
+export function formatDateParts(d: {
+  year?: number | undefined;
+  month?: number | undefined;
+  day?: number | undefined;
+}): string {
+  const parts: string[] = [];
+  if (d.year !== undefined) parts.push(String(d.year));
+  if (d.month !== undefined) parts.push(String(d.month).padStart(2, '0'));
+  if (d.day !== undefined) parts.push(String(d.day).padStart(2, '0'));
+  return parts.join('-');
+}
+
+/** Extract year/month/day from a Crossref date-parts array. Returns undefined when no parts exist. */
+export function parseDateParts(
+  raw: { 'date-parts'?: Array<Array<number>> } | undefined,
+): { year?: number; month?: number; day?: number } | undefined {
+  const parts = raw?.['date-parts']?.[0];
+  if (!parts?.length) return;
+  return {
+    ...(parts[0] !== undefined && { year: parts[0] }),
+    ...(parts[1] !== undefined && { month: parts[1] }),
+    ...(parts[2] !== undefined && { day: parts[2] }),
+  };
+}
+
+/** Strip URL/doi: prefix from a funder DOI, yielding a bare registry ID for the Crossref path. */
+function normalizeFunderId(raw: string): string {
+  return raw.replace(/^https?:\/\/dx\.doi\.org\//i, '').replace(/^doi:/i, '');
+}
+
 /** Crossref works search options. */
 export type WorksSearchOptions = {
   query?: string;
@@ -244,9 +275,8 @@ export class CrossrefService {
   /** Search funders by query or fetch one by funder DOI. */
   async searchFunders(opts: FundersSearchOptions, ctx: Context): Promise<RawCrossrefFunder[]> {
     if (opts.funderDoi) {
-      const id = opts.funderDoi.replace(/^https?:\/\/dx\.doi\.org\//i, '').replace(/^doi:/i, '');
       const envelope = await this.request<CrossrefSingleMessage<RawCrossrefFunder>>(
-        `/funders/${encodeURIComponent(id)}`,
+        `/funders/${encodeURIComponent(normalizeFunderId(opts.funderDoi))}`,
         ctx,
       );
       return [envelope.message];
@@ -264,7 +294,7 @@ export class CrossrefService {
 
   /** Fetch works for a specific funder by funder DOI/ID. */
   async getFunderWorks(funderId: string, rows: number, ctx: Context): Promise<WorksSearchResult> {
-    const id = funderId.replace(/^https?:\/\/dx\.doi\.org\//i, '').replace(/^doi:/i, '');
+    const id = normalizeFunderId(funderId);
     const params = new URLSearchParams({ rows: String(rows) });
     const envelope = await this.request<CrossrefListMessage<RawCrossrefWork>>(
       `/funders/${encodeURIComponent(id)}/works?${params}`,

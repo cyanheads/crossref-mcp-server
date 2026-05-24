@@ -9,7 +9,9 @@ import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { getCanvas } from '@/services/canvas-accessor.js';
 import {
   decodeHtmlEntities,
+  formatDateParts,
   getCrossrefService,
+  parseDateParts,
   stripJats,
   type WorksSearchOptions,
 } from '@/services/crossref/crossref-service.js';
@@ -202,10 +204,10 @@ export const searchWorksTool = tool('crossref_search_works', {
     const result = await svc.searchWorks(searchOpts, ctx);
 
     const works = result.items.map((raw) => {
-      const parts =
-        raw.published?.['date-parts']?.[0] ??
-        raw['published-print']?.['date-parts']?.[0] ??
-        raw['published-online']?.['date-parts']?.[0];
+      const published =
+        parseDateParts(raw.published) ??
+        parseDateParts(raw['published-print']) ??
+        parseDateParts(raw['published-online']);
       return {
         doi: raw.DOI,
         ...(raw.title?.[0] !== undefined && { title: decodeHtmlEntities(raw.title[0]) }),
@@ -217,13 +219,7 @@ export const searchWorksTool = tool('crossref_search_works', {
             ...(a.name && { name: a.name }),
           })),
         }),
-        ...(parts?.length && {
-          published: {
-            ...(parts[0] !== undefined && { year: parts[0] }),
-            ...(parts[1] !== undefined && { month: parts[1] }),
-            ...(parts[2] !== undefined && { day: parts[2] }),
-          },
-        }),
+        ...(published !== undefined && { published }),
         ...(raw['container-title']?.[0] !== undefined && {
           containerTitle: decodeHtmlEntities(raw['container-title'][0]),
         }),
@@ -303,15 +299,7 @@ export const searchWorksTool = tool('crossref_search_works', {
     for (const w of result.works) {
       lines.push(`### ${w.title ?? w.doi}`);
       lines.push(`**DOI:** ${w.doi}${w.type ? ` | **Type:** ${w.type}` : ''}`);
-      if (w.published?.year) {
-        const d = w.published;
-        const parts = [
-          String(d.year),
-          ...(d.month !== undefined ? [String(d.month).padStart(2, '0')] : []),
-          ...(d.day !== undefined ? [String(d.day).padStart(2, '0')] : []),
-        ];
-        lines.push(`**Published:** ${parts.join('-')}`);
-      }
+      if (w.published?.year) lines.push(`**Published:** ${formatDateParts(w.published)}`);
       if (w.containerTitle) lines.push(`**Journal:** ${w.containerTitle}`);
       if (w.publisher) lines.push(`**Publisher:** ${w.publisher}`);
       if (w.authors?.length) {
