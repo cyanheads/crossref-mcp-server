@@ -8,11 +8,17 @@ import { z } from '@cyanheads/mcp-ts-core';
 import { parseEnvConfig } from '@cyanheads/mcp-ts-core/config';
 
 const ServerConfigSchema = z.object({
-  mailto: z
-    .string()
-    .email()
-    .optional()
-    .describe('Contact email embedded in the polite-pool User-Agent header'),
+  mailto: z.preprocess(
+    // Strip MCPB placeholder literals (${user_config.X}) to undefined so
+    // the z.email() validator doesn't crash when the optional field is
+    // left blank in a bundle install.
+    (v) => (typeof v === 'string' && /^\$\{[^}]+\}$/.test(v) ? undefined : v),
+    z
+      .string()
+      .email()
+      .optional()
+      .describe('Contact email embedded in the polite-pool User-Agent header'),
+  ),
   baseUrl: z.string().url().default('https://api.crossref.org').describe('Crossref API base URL'),
   timeoutMs: z.coerce
     .number()

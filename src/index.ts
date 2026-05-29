@@ -13,6 +13,11 @@ await createApp({
   tools: [...allToolDefinitions],
   resources: [],
   prompts: [],
+  landing: {
+    // Public catalog: serve full tool inventory to unauthenticated callers
+    // even when MCP_AUTH_MODE is jwt or oauth.
+    requireAuth: false,
+  },
   setup(core) {
     initCrossrefService();
     setCanvas(core.canvas);

@@ -1,0 +1,25 @@
+{
+  "name": "@cyanheads/crossref-mcp-server",
+  "version": "0.1.9",
+  "description": "Resolve DOIs, search ~155M scholarly works, and fetch references via the Crossref REST API. STDIO or Streamable HTTP.",
+  "author": {
+    "name": "cyanheads",
+    "email": "casey@caseyjhand.com",
+    "url": "https://github.com/cyanheads"
+  },
+  "homepage": "https://github.com/cyanheads/crossref-mcp-server#readme",
+  "repository": "https://github.com/cyanheads/crossref-mcp-server",
+  "license": "Apache-2.0",
+  "keywords": ["mcp", "mcp-server", "model-context-protocol", "crossref", "doi", "scholarly", "research", "citations"],
+  "mcpServers": "./.codex-plugin/mcp.json",
+  "interface": {
+    "displayName": "@cyanheads/crossref-mcp-server",
+    "shortDescription": "Resolve DOIs, search ~155M scholarly works, and fetch references via the Crossref REST API.",
+    "longDescription": "MCP server wrapping the Crossref REST API. Exposes tools to resolve DOIs to full metadata records, search ~155M registered works, retrieve outgoing references, search journals by publisher/ISSN, and search funders. Supports STDIO and Streamable HTTP transports.",
+    "developerName": "cyanheads",
+    "category": "research",
+    "capabilities": ["Read"],
+    "websiteURL": "https://github.com/cyanheads/crossref-mcp-server",
+    "defaultPrompt": []
+  }
+}

@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.1.9](changelog/0.1.x/0.1.9.md) — 2026-05-28
+
+@cyanheads/mcp-ts-core ^0.9.9 → ^0.9.13: HTTP body cap, session-init gate, quieter 4xx logs, GET /mcp keywords, MCPB placeholder fix
+
 ## [0.1.8](changelog/0.1.x/0.1.8.md) — 2026-05-24
 
 Code simplification: shared parseDateParts/formatDateParts/normalizeFunderId helpers; mcp-ts-core ^0.9.6 → ^0.9.9; ambiguous_journal error code InvalidParams → ValidationError

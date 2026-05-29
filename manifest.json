@@ -1,11 +1,17 @@
 {
   "manifest_version": "0.3",
   "name": "crossref-mcp-server",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Resolve DOIs, search ~155M scholarly works, and fetch references via the Crossref REST API. STDIO or Streamable HTTP.",
   "author": {
     "name": "cyanheads"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cyanheads/crossref-mcp-server"
+  },
+  "homepage": "https://github.com/cyanheads/crossref-mcp-server#readme",
+  "license": "Apache-2.0",
   "server": {
     "type": "node",
     "entry_point": "dist/index.js",
@@ -31,8 +37,9 @@
     "CROSSREF_MAILTO": {
       "type": "string",
       "title": "Crossref Polite Pool Email",
-      "description": "Email for polite-pool User-Agent header \u2014 optional. Without: anonymous pool with stricter rate limits.",
-      "required": false
+      "description": "Email for polite-pool User-Agent header — optional. Without: anonymous pool with stricter rate limits.",
+      "required": false,
+      "default": ""
     }
   }
 }
