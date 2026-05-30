@@ -3,7 +3,7 @@
  * @module tests/tools/search-journals.tool.test
  */
 
-import { createMockContext } from '@cyanheads/mcp-ts-core/testing';
+import { createMockContext, getEnrichment } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { searchJournalsTool } from '@/mcp-server/tools/definitions/search-journals.tool.js';
 
@@ -52,9 +52,10 @@ describe('searchJournalsTool', () => {
     expect(result.journals[0]?.publisher).toBe('Springer Nature');
     expect(result.journals[0]?.totalDois).toBe(90000);
     expect(result.recentWorks).toBeUndefined();
+    expect(getEnrichment(ctx)).toMatchObject({ journalCount: 1 });
   });
 
-  it('fetches recent works when include_works is true', async () => {
+  it('fetches recent works when include_works is true and enriches worksTotal', async () => {
     const ctx = createMockContext();
     mockSearchJournals.mockResolvedValue([RAW_JOURNAL]);
     mockGetJournalWorks.mockResolvedValue({
@@ -70,10 +71,10 @@ describe('searchJournalsTool', () => {
 
     expect(result.recentWorks).toHaveLength(1);
     expect(result.recentWorks?.[0]?.doi).toBe('10.1038/s41586-024-0001-1');
-    expect(result.worksTotal).toBe(5000);
+    expect(getEnrichment(ctx)).toMatchObject({ journalCount: 1, worksTotal: 5000 });
   });
 
-  it('returns empty journals when none match', async () => {
+  it('returns empty journals and sets notice when none match', async () => {
     const ctx = createMockContext();
     mockSearchJournals.mockResolvedValue([]);
 
@@ -81,6 +82,9 @@ describe('searchJournalsTool', () => {
     const result = await searchJournalsTool.handler(input, ctx);
 
     expect(result.journals).toHaveLength(0);
+    const enrichment = getEnrichment(ctx);
+    expect(enrichment.journalCount).toBe(0);
+    expect(enrichment.notice).toBeDefined();
   });
 
   it('formats output with journal metadata', () => {

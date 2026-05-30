@@ -3,7 +3,7 @@
  * @module tests/tools/search-funders.tool.test
  */
 
-import { createMockContext } from '@cyanheads/mcp-ts-core/testing';
+import { createMockContext, getEnrichment } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { searchFundersTool } from '@/mcp-server/tools/definitions/search-funders.tool.js';
 
@@ -54,9 +54,10 @@ describe('searchFundersTool', () => {
     expect(result.funders[0]?.country).toBe('United States');
     expect(result.funders[0]?.worksCount).toBe(250000);
     expect(result.fundedWorks).toBeUndefined();
+    expect(getEnrichment(ctx)).toMatchObject({ funderCount: 1 });
   });
 
-  it('fetches funded works when include_works is true', async () => {
+  it('fetches funded works when include_works is true and enriches fundedWorksTotal', async () => {
     const ctx = createMockContext();
     mockSearchFunders.mockResolvedValue([RAW_FUNDER]);
     mockGetFunderWorks.mockResolvedValue({
@@ -75,10 +76,10 @@ describe('searchFundersTool', () => {
 
     expect(result.fundedWorks).toHaveLength(1);
     expect(result.fundedWorks?.[0]?.doi).toBe('10.1038/s41586-024-0001-1');
-    expect(result.fundedWorksTotal).toBe(250000);
+    expect(getEnrichment(ctx)).toMatchObject({ funderCount: 1, fundedWorksTotal: 250000 });
   });
 
-  it('returns empty funders when none match', async () => {
+  it('returns empty funders and sets notice when none match', async () => {
     const ctx = createMockContext();
     mockSearchFunders.mockResolvedValue([]);
 
@@ -86,6 +87,9 @@ describe('searchFundersTool', () => {
     const result = await searchFundersTool.handler(input, ctx);
 
     expect(result.funders).toHaveLength(0);
+    const enrichment = getEnrichment(ctx);
+    expect(enrichment.funderCount).toBe(0);
+    expect(enrichment.notice).toBeDefined();
   });
 
   it('formats output with funder metadata', () => {

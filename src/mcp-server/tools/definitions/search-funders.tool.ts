@@ -96,11 +96,21 @@ export const searchFundersTool = tool('crossref_search_funders', {
       .describe(
         'Works funded by the first matched funder. Only present when include_works is true.',
       ),
+  }),
+
+  enrichment: {
+    funderCount: z.number().describe('Number of funder records returned'),
     fundedWorksTotal: z
       .number()
       .optional()
-      .describe('Total count of funded works, when include_works is true'),
-  }),
+      .describe(
+        'Total count of funded works for the first matched funder, when include_works is true',
+      ),
+    notice: z
+      .string()
+      .optional()
+      .describe('Guidance when no funders matched the query. Absent on successful result pages.'),
+  },
 
   async handler(input, ctx) {
     ctx.log.info('Searching funders', { query: input.query, funderDoi: input.funder_doi });
@@ -136,12 +146,19 @@ export const searchFundersTool = tool('crossref_search_funders', {
     }));
 
     if (!input.include_works || funders.length === 0) {
+      const notice =
+        funders.length === 0
+          ? 'No funders matched the query. Try a name-based query or verify the funder DOI starts with "10.13039/".'
+          : undefined;
+      ctx.enrich({ funderCount: funders.length });
+      if (notice) ctx.enrich.notice(notice);
       return { funders };
     }
 
     const firstFunder = rawFunders[0];
     const funderId = firstFunder?.id ?? input.funder_doi;
     if (!funderId) {
+      ctx.enrich({ funderCount: funders.length });
       return { funders };
     }
 
@@ -164,20 +181,16 @@ export const searchFundersTool = tool('crossref_search_funders', {
       };
     });
 
+    ctx.enrich({ funderCount: funders.length, fundedWorksTotal: worksResult.totalResults });
+
     return {
       funders,
       fundedWorks,
-      fundedWorksTotal: worksResult.totalResults,
     };
   },
 
   format: (result) => {
     const lines: string[] = [];
-
-    if (result.funders.length === 0) {
-      lines.push('No funders matched the query.');
-      return [{ type: 'text', text: lines.join('\n') }];
-    }
 
     for (const f of result.funders) {
       lines.push(`## ${f.name ?? f.id ?? '(unknown)'}`);
@@ -191,9 +204,7 @@ export const searchFundersTool = tool('crossref_search_funders', {
     }
 
     if (result.fundedWorks?.length) {
-      lines.push(
-        `### Funded works (${result.fundedWorksTotal ?? result.fundedWorks.length} total)`,
-      );
+      lines.push(`### Funded works`);
       for (const w of result.fundedWorks) {
         const date = w.published?.year !== undefined ? ` (${formatDateParts(w.published)})` : '';
         const cited =

@@ -104,11 +104,19 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       .describe(
         'Most recent works from the first matched journal. Only present when include_works is true.',
       ),
+  }),
+
+  enrichment: {
+    journalCount: z.number().describe('Number of journal records returned'),
     worksTotal: z
       .number()
       .optional()
       .describe('Total works count for the journal, when include_works is true'),
-  }),
+    notice: z
+      .string()
+      .optional()
+      .describe('Guidance when no journals matched the query. Absent on successful result pages.'),
+  },
 
   async handler(input, ctx) {
     ctx.log.info('Searching journals', { query: input.query, issn: input.issn });
@@ -145,6 +153,12 @@ export const searchJournalsTool = tool('crossref_search_journals', {
     }));
 
     if (!input.include_works || journals.length === 0) {
+      const notice =
+        journals.length === 0
+          ? 'No journals matched the query. Try a shorter title or check the ISSN format (xxxx-xxxx).'
+          : undefined;
+      ctx.enrich({ journalCount: journals.length });
+      if (notice) ctx.enrich.notice(notice);
       return { journals };
     }
 
@@ -164,6 +178,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
     const firstJournal = rawJournals[0];
     const issnForWorks = firstJournal?.['ISSN-L'] ?? firstJournal?.ISSN?.[0];
     if (!issnForWorks) {
+      ctx.enrich({ journalCount: journals.length });
       return { journals };
     }
 
@@ -186,20 +201,16 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       };
     });
 
+    ctx.enrich({ journalCount: journals.length, worksTotal: worksResult.totalResults });
+
     return {
       journals,
       recentWorks,
-      worksTotal: worksResult.totalResults,
     };
   },
 
   format: (result) => {
     const lines: string[] = [];
-
-    if (result.journals.length === 0) {
-      lines.push('No journals matched the query.');
-      return [{ type: 'text', text: lines.join('\n') }];
-    }
 
     for (const j of result.journals) {
       lines.push(`## ${j.title ?? '(untitled)'}`);
@@ -213,7 +224,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
     }
 
     if (result.recentWorks?.length) {
-      lines.push(`### Recent works (${result.worksTotal ?? result.recentWorks.length} total)`);
+      lines.push(`### Recent works`);
       for (const w of result.recentWorks) {
         const date = w.published?.year !== undefined ? ` (${formatDateParts(w.published)})` : '';
         const cited =

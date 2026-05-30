@@ -122,13 +122,11 @@ export const searchWorksTool = tool('crossref_search_works', {
   }),
 
   output: z.object({
-    totalResults: z.number().describe('Total matching records in Crossref'),
-    returned: z.number().describe('Number of records returned in this response'),
+    works: z.array(WorkSummarySchema).describe('Matching works'),
     nextCursor: z
       .string()
       .optional()
       .describe('Cursor token to pass in the next call for cursor-based paging'),
-    works: z.array(WorkSummarySchema).describe('Matching works'),
     canvas: z
       .object({
         canvasId: z.string().describe('DataCanvas ID for SQL querying over the full result set'),
@@ -142,6 +140,17 @@ export const searchWorksTool = tool('crossref_search_works', {
         'DataCanvas reference when the result set was large enough to spill. Query with a separate canvas query tool.',
       ),
   }),
+
+  enrichment: {
+    totalResults: z.number().describe('Total matching records in Crossref'),
+    returned: z.number().describe('Number of records returned in this response'),
+    notice: z
+      .string()
+      .optional()
+      .describe(
+        'Guidance when no results matched — suggests broadening the query or adjusting filters. Absent on successful result pages.',
+      ),
+  },
 
   errors: [
     {
@@ -274,19 +283,24 @@ export const searchWorksTool = tool('crossref_search_works', {
       }
     }
 
+    const returned = works.length;
+    const notice =
+      result.totalResults === 0
+        ? 'No results matched the query. Try broadening the search terms or removing filters.'
+        : undefined;
+
+    ctx.enrich({ totalResults: result.totalResults, returned });
+    if (notice) ctx.enrich.notice(notice);
+
     return {
-      totalResults: result.totalResults,
-      returned: works.length,
-      ...(result.nextCursor && { nextCursor: result.nextCursor }),
       works,
+      ...(result.nextCursor && { nextCursor: result.nextCursor }),
       ...(canvasInfo && { canvas: canvasInfo }),
     };
   },
 
   format: (result) => {
-    const lines: string[] = [
-      `**Total results:** ${result.totalResults} | **Returned:** ${result.returned}`,
-    ];
+    const lines: string[] = [];
     if (result.nextCursor) lines.push(`**Next cursor:** \`${result.nextCursor}\``);
     if (result.canvas) {
       const newMark = result.canvas.isNew ? ' (new)' : '';
@@ -294,7 +308,7 @@ export const searchWorksTool = tool('crossref_search_works', {
         `**Canvas:** \`${result.canvas.canvasId}\`${newMark} — table \`${result.canvas.tableName}\` (${result.canvas.rowCount} rows, expires ${result.canvas.expiresAt})`,
       );
     }
-    lines.push('');
+    if (lines.length > 0) lines.push('');
 
     for (const w of result.works) {
       lines.push(`### ${w.title ?? w.doi}`);
@@ -313,12 +327,6 @@ export const searchWorksTool = tool('crossref_search_works', {
       if (w.score !== undefined) lines.push(`**Score:** ${w.score}`);
       if (w.abstract) lines.push(`**Abstract:** ${w.abstract.slice(0, 300)}…`);
       lines.push('');
-    }
-
-    if (result.works.length === 0) {
-      lines.push(
-        'No results matched the query. Try broadening the search terms or removing filters.',
-      );
     }
 
     return [{ type: 'text', text: lines.join('\n') }];

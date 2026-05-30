@@ -3,7 +3,7 @@
  * @module tests/tools/search-works.tool.test
  */
 
-import { createMockContext } from '@cyanheads/mcp-ts-core/testing';
+import { createMockContext, getEnrichment } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { searchWorksTool } from '@/mcp-server/tools/definitions/search-works.tool.js';
 
@@ -57,11 +57,30 @@ describe('searchWorksTool', () => {
     const input = searchWorksTool.input.parse({ query: 'CRISPR' });
     const result = await searchWorksTool.handler(input, ctx);
 
-    expect(result.totalResults).toBe(1500);
-    expect(result.returned).toBe(1);
     expect(result.works[0]?.doi).toBe('10.1038/nature12373');
     expect(result.works[0]?.authors?.[0]?.given).toBe('Le');
     expect(result.works[0]?.authors?.[0]?.family).toBe('Cong');
+  });
+
+  it('populates enrichment with totalResults and returned', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    mockSearchWorks.mockResolvedValue(makeSearchResult());
+
+    const input = searchWorksTool.input.parse({ query: 'CRISPR' });
+    await searchWorksTool.handler(input, ctx);
+
+    expect(getEnrichment(ctx)).toMatchObject({ totalResults: 1500, returned: 1 });
+  });
+
+  it('sets empty-result notice in enrichment when no results', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    mockSearchWorks.mockResolvedValue(makeSearchResult({ totalResults: 0, items: [] }));
+
+    const input = searchWorksTool.input.parse({ query: 'ZZZNoMatch' });
+    await searchWorksTool.handler(input, ctx);
+
+    const enrichment = getEnrichment(ctx);
+    expect(enrichment.notice).toMatch(/No results/);
   });
 
   it('throws cursor_offset_conflict when both cursor and offset are supplied', async () => {
@@ -94,8 +113,6 @@ describe('searchWorksTool', () => {
 
   it('formats output with title, doi, and authors', () => {
     const result = {
-      totalResults: 1500,
-      returned: 1,
       works: [
         {
           doi: '10.1038/nature12373',
