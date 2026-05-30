@@ -111,6 +111,124 @@ describe('searchWorksTool', () => {
     expect(result.nextCursor).toBe('AoE=');
   });
 
+  it('passes sort and order to the service', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    mockSearchWorks.mockResolvedValue(makeSearchResult());
+
+    const input = searchWorksTool.input.parse({ query: 'test', sort: 'published', order: 'desc' });
+    await searchWorksTool.handler(input, ctx);
+
+    expect(mockSearchWorks).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: 'published', order: 'desc' }),
+      expect.anything(),
+    );
+  });
+
+  it('passes filter to the service', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    mockSearchWorks.mockResolvedValue(makeSearchResult());
+
+    const input = searchWorksTool.input.parse({
+      query: 'climate',
+      filter: { type: 'journal-article', 'has-abstract': 'true' },
+    });
+    await searchWorksTool.handler(input, ctx);
+
+    expect(mockSearchWorks).toHaveBeenCalledWith(
+      expect.objectContaining({ filter: { type: 'journal-article', 'has-abstract': 'true' } }),
+      expect.anything(),
+    );
+  });
+
+  it('passes fields (select) to the service', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    mockSearchWorks.mockResolvedValue(makeSearchResult());
+
+    const input = searchWorksTool.input.parse({ query: 'test', fields: ['DOI', 'title'] });
+    await searchWorksTool.handler(input, ctx);
+
+    expect(mockSearchWorks).toHaveBeenCalledWith(
+      expect.objectContaining({ fields: ['DOI', 'title'] }),
+      expect.anything(),
+    );
+  });
+
+  it('truncates author list to first 10 per work', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    const authors = Array.from({ length: 15 }, (_, i) => ({ given: `G${i}`, family: `F${i}` }));
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        items: [{ DOI: '10.1234/test', type: 'journal-article', author: authors }],
+      }),
+    );
+
+    const input = searchWorksTool.input.parse({ query: 'test' });
+    const result = await searchWorksTool.handler(input, ctx);
+
+    expect(result.works[0]?.authors?.length).toBe(10);
+  });
+
+  it('handles items with no title or authors gracefully', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        items: [{ DOI: '10.1234/sparse', type: 'journal-article' }],
+      }),
+    );
+
+    const input = searchWorksTool.input.parse({ query: 'test' });
+    const result = await searchWorksTool.handler(input, ctx);
+
+    expect(result.works[0]?.doi).toBe('10.1234/sparse');
+    expect(result.works[0]?.title).toBeUndefined();
+    expect(result.works[0]?.authors).toBeUndefined();
+  });
+
+  it('decodes HTML entities in work titles from search results', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        items: [
+          {
+            DOI: '10.1234/test',
+            type: 'journal-article',
+            title: ['CO&lt;sub&gt;2&lt;/sub&gt; &amp; climate'],
+          },
+        ],
+      }),
+    );
+
+    const input = searchWorksTool.input.parse({ query: 'test' });
+    const result = await searchWorksTool.handler(input, ctx);
+
+    // HTML stripped by decodeHtmlEntities on the title string
+    expect(result.works[0]?.title).toContain('&');
+  });
+
+  it('accepts valid rows range (1–100)', () => {
+    expect(() => searchWorksTool.input.parse({ query: 'test', rows: 1 })).not.toThrow();
+    expect(() => searchWorksTool.input.parse({ query: 'test', rows: 100 })).not.toThrow();
+  });
+
+  it('rejects rows outside valid range', () => {
+    expect(() => searchWorksTool.input.parse({ query: 'test', rows: 0 })).toThrow();
+    expect(() => searchWorksTool.input.parse({ query: 'test', rows: 101 })).toThrow();
+  });
+
+  it('allows cursor="*" for the initial deep-page call', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    mockSearchWorks.mockResolvedValue(makeSearchResult({ nextCursor: 'token123' }));
+
+    const input = searchWorksTool.input.parse({ query: 'test', cursor: '*' });
+    const result = await searchWorksTool.handler(input, ctx);
+
+    expect(mockSearchWorks).toHaveBeenCalledWith(
+      expect.objectContaining({ cursor: '*' }),
+      expect.anything(),
+    );
+    expect(result.nextCursor).toBe('token123');
+  });
+
   it('formats output with title, doi, and authors', () => {
     const result = {
       works: [
@@ -130,5 +248,36 @@ describe('searchWorksTool', () => {
     expect(text).toContain('Le');
     expect(text).toContain('Cong');
     expect(text).toContain('1500');
+  });
+
+  it('formats output with nextCursor when present', () => {
+    const result = { works: [], nextCursor: 'cursor-abc' };
+    const blocks = searchWorksTool.format!(result);
+    const text = blocks[0]?.text ?? '';
+    expect(text).toContain('cursor-abc');
+  });
+
+  it('security: output does not include CROSSREF_BASE_URL or CROSSREF_MAILTO', async () => {
+    const originalMailto = process.env.CROSSREF_MAILTO;
+    const originalBase = process.env.CROSSREF_BASE_URL;
+    process.env.CROSSREF_MAILTO = 'private@example.com';
+    process.env.CROSSREF_BASE_URL = 'https://private.api.example.com';
+    try {
+      const ctx = createMockContext({ errors: searchWorksTool.errors });
+      mockSearchWorks.mockResolvedValue(makeSearchResult());
+
+      const input = searchWorksTool.input.parse({ query: 'test' });
+      const result = await searchWorksTool.handler(input, ctx);
+      const blocks = searchWorksTool.format!(result);
+      const outputText = JSON.stringify(result) + (blocks[0]?.text ?? '');
+
+      expect(outputText).not.toContain('private@example.com');
+      expect(outputText).not.toContain('private.api.example.com');
+    } finally {
+      if (originalMailto === undefined) delete process.env.CROSSREF_MAILTO;
+      else process.env.CROSSREF_MAILTO = originalMailto;
+      if (originalBase === undefined) delete process.env.CROSSREF_BASE_URL;
+      else process.env.CROSSREF_BASE_URL = originalBase;
+    }
   });
 });

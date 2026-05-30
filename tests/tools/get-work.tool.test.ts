@@ -66,6 +66,8 @@ describe('getWorkTool', () => {
     expect(result.isReferencedByCount).toBe(1500);
     expect(result.referencesCount).toBe(42);
     expect(result.published?.year).toBe(2013);
+    expect(result.published?.month).toBe(8);
+    expect(result.published?.day).toBe(22);
     expect(result.authors?.[0]?.given).toBe('Le');
     expect(result.authors?.[0]?.family).toBe('Cong');
   });
@@ -84,6 +86,170 @@ describe('getWorkTool', () => {
     expect(blocks[0]?.text).toContain('*Not deposited*');
   });
 
+  it('handles sparse record — no container title, no publisher, no date', async () => {
+    const ctx = createMockContext({ errors: getWorkTool.errors });
+    mockGetWork.mockResolvedValue(
+      makeRawWork({
+        'container-title': undefined,
+        publisher: undefined,
+        published: undefined,
+        'published-print': undefined,
+        'published-online': undefined,
+        issued: undefined,
+      }),
+    );
+
+    const input = getWorkTool.input.parse({ doi: '10.1038/nature12373' });
+    const result = await getWorkTool.handler(input, ctx);
+
+    expect(result.containerTitle).toBeUndefined();
+    expect(result.publisher).toBeUndefined();
+    expect(result.published).toBeUndefined();
+  });
+
+  it('normalizes funders, licenses, and links fields', async () => {
+    const ctx = createMockContext({ errors: getWorkTool.errors });
+    mockGetWork.mockResolvedValue(
+      makeRawWork({
+        funder: [{ name: 'NSF', DOI: '10.13039/100000001', award: ['DMR-0123'] }],
+        license: [
+          {
+            URL: 'https://creativecommons.org/licenses/by/4.0/',
+            'content-version': 'vor',
+            'delay-in-days': 0,
+          },
+        ],
+        link: [
+          {
+            URL: 'https://example.com/fulltext.pdf',
+            'content-type': 'application/pdf',
+            'intended-application': 'text-mining',
+          },
+        ],
+      }),
+    );
+
+    const input = getWorkTool.input.parse({ doi: '10.1038/nature12373' });
+    const result = await getWorkTool.handler(input, ctx);
+
+    expect(result.funders?.[0]?.name).toBe('NSF');
+    expect(result.funders?.[0]?.doi).toBe('10.13039/100000001');
+    expect(result.funders?.[0]?.award).toEqual(['DMR-0123']);
+    expect(result.licenses?.[0]?.url).toBe('https://creativecommons.org/licenses/by/4.0/');
+    expect(result.licenses?.[0]?.contentVersion).toBe('vor');
+    expect(result.licenses?.[0]?.delayInDays).toBe(0);
+    expect(result.links?.[0]?.url).toBe('https://example.com/fulltext.pdf');
+    expect(result.links?.[0]?.contentType).toBe('application/pdf');
+    expect(result.links?.[0]?.intendedApplication).toBe('text-mining');
+  });
+
+  it('returns subject and language fields', async () => {
+    const ctx = createMockContext({ errors: getWorkTool.errors });
+    mockGetWork.mockResolvedValue(
+      makeRawWork({
+        subject: ['Genetics', 'Biochemistry'],
+        language: 'en',
+        URL: 'https://doi.org/10.1038/nature12373',
+      }),
+    );
+
+    const input = getWorkTool.input.parse({ doi: '10.1038/nature12373' });
+    const result = await getWorkTool.handler(input, ctx);
+
+    expect(result.subject).toEqual(['Genetics', 'Biochemistry']);
+    expect(result.language).toBe('en');
+    expect(result.url).toBe('https://doi.org/10.1038/nature12373');
+  });
+
+  it('decodes HTML entities in title and abstract', async () => {
+    const ctx = createMockContext({ errors: getWorkTool.errors });
+    mockGetWork.mockResolvedValue(
+      makeRawWork({
+        title: ['Proteins &amp; Lipids &lt;3&gt;'],
+        abstract: 'Rate &gt; 50% &amp; efficiency &lt;100%.',
+      }),
+    );
+
+    const input = getWorkTool.input.parse({ doi: '10.1038/nature12373' });
+    const result = await getWorkTool.handler(input, ctx);
+
+    expect(result.title).toBe('Proteins & Lipids <3>');
+    expect(result.abstract).toBe('Rate > 50% & efficiency <100%.');
+  });
+
+  it('strips JATS XML tags from abstract', async () => {
+    const ctx = createMockContext({ errors: getWorkTool.errors });
+    mockGetWork.mockResolvedValue(
+      makeRawWork({
+        abstract: '<abstract><title>Background</title><p>Gene editing was studied.</p></abstract>',
+      }),
+    );
+
+    const input = getWorkTool.input.parse({ doi: '10.1038/nature12373' });
+    const result = await getWorkTool.handler(input, ctx);
+
+    expect(result.abstract).not.toContain('<');
+    expect(result.abstract).not.toContain('>');
+    expect(result.abstract).toContain('Gene editing was studied');
+  });
+
+  it('uses subtitle/short-title as subtitle when present', async () => {
+    const ctx = createMockContext({ errors: getWorkTool.errors });
+    mockGetWork.mockResolvedValue(makeRawWork({ subtitle: ['A systematic review'] }));
+
+    const input = getWorkTool.input.parse({ doi: '10.1038/nature12373' });
+    const result = await getWorkTool.handler(input, ctx);
+
+    expect(result.subtitle).toBe('A systematic review');
+  });
+
+  it('normalizes author ORCID and affiliation', async () => {
+    const ctx = createMockContext({ errors: getWorkTool.errors });
+    mockGetWork.mockResolvedValue(
+      makeRawWork({
+        author: [
+          {
+            given: 'Jane',
+            family: 'Doe',
+            ORCID: 'https://orcid.org/0000-0002-1234-5678',
+            affiliation: [{ name: 'MIT' }],
+            sequence: 'first',
+          },
+          {
+            name: 'The ENCODE Consortium',
+          },
+        ],
+      }),
+    );
+
+    const input = getWorkTool.input.parse({ doi: '10.1038/nature12373' });
+    const result = await getWorkTool.handler(input, ctx);
+
+    expect(result.authors?.[0]?.orcid).toBe('https://orcid.org/0000-0002-1234-5678');
+    expect(result.authors?.[0]?.affiliation?.[0]?.name).toBe('MIT');
+    expect(result.authors?.[0]?.sequence).toBe('first');
+    expect(result.authors?.[1]?.name).toBe('The ENCODE Consortium');
+    expect(result.authors?.[1]?.given).toBeUndefined();
+    expect(result.authors?.[1]?.family).toBeUndefined();
+  });
+
+  it('uses published-print date when published is absent', async () => {
+    const ctx = createMockContext({ errors: getWorkTool.errors });
+    mockGetWork.mockResolvedValue(
+      makeRawWork({
+        published: undefined,
+        'published-print': { 'date-parts': [[2019, 3]] },
+      }),
+    );
+
+    const input = getWorkTool.input.parse({ doi: '10.1038/nature12373' });
+    const result = await getWorkTool.handler(input, ctx);
+
+    expect(result.published?.year).toBe(2019);
+    expect(result.published?.month).toBe(3);
+    expect(result.published?.day).toBeUndefined();
+  });
+
   it('throws doi_not_found when service returns null', async () => {
     const ctx = createMockContext({ errors: getWorkTool.errors });
     mockGetWork.mockResolvedValue(null);
@@ -92,6 +258,17 @@ describe('getWorkTool', () => {
     await expect(getWorkTool.handler(input, ctx)).rejects.toMatchObject({
       data: { reason: 'doi_not_found' },
     });
+  });
+
+  it('rejects DOI with invalid format via Zod schema', () => {
+    expect(() => getWorkTool.input.parse({ doi: 'not-a-doi' })).toThrow();
+    expect(() => getWorkTool.input.parse({ doi: '10.x/suffix' })).toThrow();
+    expect(() => getWorkTool.input.parse({ doi: 'https://doi.org/10.1038/nature' })).toThrow();
+  });
+
+  it('accepts minimum-length DOI registrant (4 digits)', () => {
+    const parsed = getWorkTool.input.parse({ doi: '10.1234/suffix' });
+    expect(parsed.doi).toBe('10.1234/suffix');
   });
 
   it('formats output with title, doi, and authors', () => {
@@ -111,5 +288,55 @@ describe('getWorkTool', () => {
     expect(text).toContain('Cong');
     expect(text).toContain('Some abstract.');
     expect(text).toContain('1500');
+  });
+
+  it('formats funders, licenses, and links in output', () => {
+    const result = {
+      doi: '10.1038/nature12373',
+      title: 'Test',
+      isReferencedByCount: 0,
+      funders: [{ name: 'NIH', doi: '10.13039/100000002', award: ['R01-GM123'] }],
+      licenses: [
+        {
+          url: 'https://creativecommons.org/licenses/by/4.0/',
+          contentVersion: 'vor',
+          delayInDays: 0,
+        },
+      ],
+      links: [
+        {
+          url: 'https://example.com/full.pdf',
+          contentType: 'application/pdf',
+          intendedApplication: 'text-mining',
+        },
+      ],
+    };
+    const blocks = getWorkTool.format!(result);
+    const text = blocks[0]?.text ?? '';
+    expect(text).toContain('NIH');
+    expect(text).toContain('R01-GM123');
+    expect(text).toContain('creativecommons.org');
+    expect(text).toContain('vor');
+    expect(text).toContain('example.com/full.pdf');
+    expect(text).toContain('text-mining');
+  });
+
+  it('security: output does not leak CROSSREF_MAILTO env value', async () => {
+    const originalMailto = process.env.CROSSREF_MAILTO;
+    process.env.CROSSREF_MAILTO = 'secret@internal.example.com';
+    try {
+      const ctx = createMockContext({ errors: getWorkTool.errors });
+      mockGetWork.mockResolvedValue(makeRawWork());
+
+      const input = getWorkTool.input.parse({ doi: '10.1038/nature12373' });
+      const result = await getWorkTool.handler(input, ctx);
+      const blocks = getWorkTool.format!(result);
+      const outputText = JSON.stringify(result) + (blocks[0]?.text ?? '');
+
+      expect(outputText).not.toContain('secret@internal.example.com');
+    } finally {
+      if (originalMailto === undefined) delete process.env.CROSSREF_MAILTO;
+      else process.env.CROSSREF_MAILTO = originalMailto;
+    }
   });
 });
