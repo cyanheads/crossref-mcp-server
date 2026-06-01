@@ -1,6 +1,6 @@
 # crossref-mcp-server - Directory Structure
 
-Generated on: 2026-05-30 08:58:28
+Generated on: 2026-06-01 02:53:45
 
 ```text
 crossref-mcp-server/
@@ -126,10 +126,9 @@ crossref-mcp-server/
 │   │           ├── search-journals.tool.ts
 │   │           └── search-works.tool.ts
 │   ├── services/
-│   │   ├── crossref/
-│   │   │   ├── crossref-service.ts
-│   │   │   └── types.ts
-│   │   └── canvas-accessor.ts
+│   │   └── crossref/
+│   │       ├── crossref-service.ts
+│   │       └── types.ts
 │   └── index.ts
 ├── tests/
 │   ├── prompts/

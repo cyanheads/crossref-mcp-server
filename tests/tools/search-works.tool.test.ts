@@ -14,9 +14,6 @@ vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
     getCrossrefService: vi.fn(),
   };
 });
-vi.mock('@/services/canvas-accessor.js', () => ({
-  getCanvas: vi.fn().mockReturnValue(undefined),
-}));
 
 import { getCrossrefService } from '@/services/crossref/crossref-service.js';
 

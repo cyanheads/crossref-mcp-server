@@ -6,7 +6,6 @@
 
 import { createApp } from '@cyanheads/mcp-ts-core';
 import { allToolDefinitions } from './mcp-server/tools/definitions/index.js';
-import { setCanvas } from './services/canvas-accessor.js';
 import { initCrossrefService } from './services/crossref/crossref-service.js';
 
 await createApp({
@@ -18,8 +17,7 @@ await createApp({
     // even when MCP_AUTH_MODE is jwt or oauth.
     requireAuth: false,
   },
-  setup(core) {
+  setup() {
     initCrossrefService();
-    setCanvas(core.canvas);
   },
 });

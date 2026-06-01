@@ -7,7 +7,7 @@
 | Name | Description | Key Inputs | Annotations |
 |:-----|:------------|:-----------|:------------|
 | `crossref_get_work` | Resolves a DOI to its full Crossref metadata record: title, authors, affiliations, abstract (when deposited), journal/container, publication date, type, license, full-text links, funder acknowledgements, and outgoing reference list. Incoming citation counts (`is-referenced-by-count`) are included but the citing works themselves are not — use OpenAlex for full citation graphs. | `doi` (required) | `readOnlyHint: true`, `idempotentHint: true` |
-| `crossref_search_works` | Searches the Crossref works index by free text and/or structured filters. Filters use Crossref's hyphen-separated syntax: `from-pub-date`, `until-pub-date`, `type`, `funder`, `issn`, `member`, `has-abstract`, `has-references`, `has-full-text`, `directory` (DOAJ for open-access). Sort options: `relevance`, `is-referenced-by-count`, `published`, `deposited`, `score`. Results beyond ~10K require cursor-based paging. Large result sets spill to a DataCanvas table for SQL querying. | `query` (free text), `filter` (object with hyphen-key names), `fields` (select, reduces payload), `rows` (default 20, max 100), `cursor` (`*` for first page, then next-cursor token), `sort`, `order` | `readOnlyHint: true`, `openWorldHint: true` |
+| `crossref_search_works` | Searches the Crossref works index by free text and/or structured filters. Filters use Crossref's hyphen-separated syntax: `from-pub-date`, `until-pub-date`, `type`, `funder`, `issn`, `member`, `has-abstract`, `has-references`, `has-full-text`, `directory` (DOAJ for open-access). Sort options: `relevance`, `is-referenced-by-count`, `published`, `deposited`, `score`. Results beyond ~10K require cursor-based paging. | `query` (free text), `filter` (object with hyphen-key names), `fields` (select, reduces payload), `rows` (default 20, max 100), `cursor` (`*` for first page, then next-cursor token), `sort`, `order` | `readOnlyHint: true`, `openWorldHint: true` |
 | `crossref_get_references` | Returns the outgoing reference list for a DOI — the works cited by this paper. Each reference includes its raw citation string and, where Crossref has resolved it, a DOI for follow-up lookup. Incoming citations (works that cite this paper) are not available through Crossref; use OpenAlex for that. | `doi` (required) | `readOnlyHint: true`, `idempotentHint: true` |
 | `crossref_search_journals` | Finds Crossref journal records by ISSN or title query. Returns journal metadata (title, publisher, ISSN-L, subject areas, DOI prefix) plus optionally the journal's most recent works. | `query` (title text) or `issn`, `include_works` (bool, default false), `rows` | `readOnlyHint: true`, `openWorldHint: true` |
 | `crossref_search_funders` | Finds funders registered in the Crossref Funder Registry by name or funder DOI, then optionally retrieves works funded by the matched funder. Returns funder name, DOI, country, alternate names, and (when requested) a paginated list of funded works. | `query` (funder name) or `funder_doi`, `include_works` (bool, default false), `rows` | `readOnlyHint: true`, `openWorldHint: true` |
@@ -65,7 +65,6 @@ crossref-mcp-server wraps the Crossref REST API to expose canonical scholarly me
 - Abstracts are deposited at publisher discretion; many records lack them.
 - `has-full-text` filter returns works with registered full-text links — access may still require a subscription.
 - Incoming citations are not exposed by Crossref. Attempts to retrieve them must be redirected to OpenAlex.
-- DataCanvas (DuckDB, Node only) is used for large search result sets. Disabled automatically on Workers environments.
 
 ---
 
@@ -94,7 +93,6 @@ crossref-mcp-server wraps the Crossref REST API to expose canonical scholarly me
 | `CROSSREF_MAILTO` | No | Email address embedded in the polite-pool `User-Agent` header. Optional — server starts without it but logs a warning and uses the anonymous pool with stricter rate limits. |
 | `CROSSREF_BASE_URL` | No | Override API base URL. Defaults to `https://api.crossref.org`. Useful for testing against a local proxy. |
 | `CROSSREF_TIMEOUT_MS` | No | Per-request timeout in milliseconds. Default: `10000`. |
-| `CANVAS_PROVIDER_TYPE` | No | Set to `duckdb` to enable DataCanvas spillover for large result sets. Node only; omit on Workers deployments. |
 
 ---
 
@@ -104,7 +102,7 @@ crossref-mcp-server wraps the Crossref REST API to expose canonical scholarly me
 2. **CrossrefService** — `src/services/crossref-service.ts`: HTTP client with polite-pool User-Agent, retry, timeout, and pagination helpers.
 3. **`crossref_get_work`** — simplest tool; validates DOI format, fetches `/works/{doi}`, returns full record.
 4. **`crossref_get_references`** — fetches `/works/{doi}` (full record), extracts `reference[]` from the response body; structured per-ref output with resolved DOIs where present.
-5. **`crossref_search_works`** — search with filter mapping, DataCanvas spillover for large result sets.
+5. **`crossref_search_works`** — search with filter mapping and cursor-based deep paging for large result sets.
 6. **`crossref_search_journals`** — `/journals` query + optional `/journals/{issn}/works` follow-up.
 7. **`crossref_search_funders`** — `/funders` query + optional `/funders/{funder_doi}/works` follow-up.
 
@@ -168,7 +166,7 @@ No multi-hop reference traversal. `crossref_get_references` returns a single hop
 
 - **Polite-pool mailto — env var or hardcoded server contact?** → `CROSSREF_MAILTO` env var. Rationale: server operators may differ from the codebase author; env var lets each deployment supply its own contact without a code change.
 - **Citation graph traversal — multi-hop or single-hop?** → Single-hop only (`crossref_get_references` returns one level). Rationale: multi-hop traversal with configurable depth grows O(N^k) in upstream calls, burns rate-limit budget, and the agent already has the DOIs it needs to chain calls itself. Let the agent decide traversal depth.
-- **DataCanvas for large search result sets?** → Yes, opt-in via `CANVAS_PROVIDER_TYPE=duckdb`. Rationale: `crossref_search_works` can return thousands of results; DataCanvas gives agents SQL querying over the full set without context bloat. Disabled automatically on Workers (no DuckDB V8 build).
+- **DataCanvas for large search result sets?** → Initially yes (opt-in via `CANVAS_PROVIDER_TYPE=duckdb`), later removed. Rationale: the spillover was wired in but no `dataframe_query`/`dataframe_describe` consumer tool was ever added, so the `canvas_id` handle was dead output. Crossref works are categorical bibliographic metadata — the workflow is search-then-resolve-a-DOI, not aggregate-over-rows — so the integration was removed rather than completed.
 - **Incoming citations — expose a tool?** → No. Crossref genuinely does not provide this data; there is nothing to wrap. Documented in Known Limitations and reflected in `crossref_get_references` description so agents know not to try.
 - **`crossref_search_journals` and `crossref_search_funders` — separate tools or modes of one tool?** → Separate tools. Rationale: journals and funders are distinct entity types with different search fields, output shapes, and follow-up patterns; consolidating under a `mode` enum would obscure the difference rather than reduce surface.
 - **Member and Type endpoints — expose as tools?** → No. Members (publishers) are administrative detail with low agent-workflow value; Type is an enum used as a filter input, not a queryable entity.

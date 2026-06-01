@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.1.11](changelog/0.1.x/0.1.11.md) — 2026-05-31
+
+Remove DataCanvas integration from crossref_search_works — canvas_id input, canvas output block, spillover logic, and the canvas-accessor service
+
 ## [0.1.10](changelog/0.1.x/0.1.10.md) — 2026-05-30
 
 Enrichment adoption: search tools surface result totals, query echo, and empty-result guidance in a typed enrichment block

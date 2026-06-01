@@ -1,12 +1,10 @@
 /**
  * @fileoverview crossref_search_works — searches the Crossref works index by free text and/or filters.
- * Large result sets spill to a DataCanvas table when CANVAS_PROVIDER_TYPE=duckdb.
  * @module mcp-server/tools/definitions/search-works.tool
  */
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
-import { getCanvas } from '@/services/canvas-accessor.js';
 import {
   decodeHtmlEntities,
   formatDateParts,
@@ -55,7 +53,7 @@ const WorkSummarySchema = z
 export const searchWorksTool = tool('crossref_search_works', {
   title: 'Search Works',
   description:
-    'Searches the Crossref works index (~155M records) by free text and/or structured filters. Use the filter parameter for structured filtering (object with hyphen-separated Crossref keys). Sort options: relevance, score, is-referenced-by-count, published, deposited, indexed. Offset-based paging is capped at ~10K results; use cursor="*" to start cursor-based deep paging, then pass the nextCursor value from each response to continue. Cursor and offset cannot be combined. Large result sets may spill to a DataCanvas table when available.',
+    'Searches the Crossref works index (~155M records) by free text and/or structured filters. Use the filter parameter for structured filtering (object with hyphen-separated Crossref keys). Sort options: relevance, score, is-referenced-by-count, published, deposited, indexed. Offset-based paging is capped at ~10K results; use cursor="*" to start cursor-based deep paging, then pass the nextCursor value from each response to continue. Cursor and offset cannot be combined.',
   annotations: { readOnlyHint: true, openWorldHint: true },
 
   input: z.object({
@@ -113,12 +111,6 @@ export const searchWorksTool = tool('crossref_search_works', {
       .optional()
       .describe('Sort field'),
     order: z.enum(['asc', 'desc']).optional().describe('Sort direction (asc or desc)'),
-    canvas_id: z
-      .string()
-      .optional()
-      .describe(
-        'Optional 10-char DataCanvas ID from a prior call. Omit on first call to start a fresh canvas. Only relevant when CANVAS_PROVIDER_TYPE=duckdb is set.',
-      ),
   }),
 
   output: z.object({
@@ -127,18 +119,6 @@ export const searchWorksTool = tool('crossref_search_works', {
       .string()
       .optional()
       .describe('Cursor token to pass in the next call for cursor-based paging'),
-    canvas: z
-      .object({
-        canvasId: z.string().describe('DataCanvas ID for SQL querying over the full result set'),
-        tableName: z.string().describe('Canvas table name'),
-        rowCount: z.number().describe('Total rows registered on the canvas'),
-        isNew: z.boolean().describe('True if a new canvas was created'),
-        expiresAt: z.string().describe('Canvas expiry timestamp (ISO 8601)'),
-      })
-      .optional()
-      .describe(
-        'DataCanvas reference when the result set was large enough to spill. Query with a separate canvas query tool.',
-      ),
   }),
 
   enrichment: {
@@ -243,46 +223,6 @@ export const searchWorksTool = tool('crossref_search_works', {
       };
     });
 
-    // DataCanvas spillover when canvas is enabled and results are substantial
-    const canvas = getCanvas();
-    let canvasInfo:
-      | {
-          canvasId: string;
-          tableName: string;
-          rowCount: number;
-          isNew: boolean;
-          expiresAt: string;
-        }
-      | undefined;
-
-    if (canvas && works.length >= 20) {
-      try {
-        const { spillover } = await import('@cyanheads/mcp-ts-core/canvas');
-        const instance = await canvas.acquire(input.canvas_id, ctx);
-
-        const spill = await spillover({
-          canvas: instance,
-          source: works,
-          previewChars: 40_000,
-          caps: { maxRows: 10_000 },
-          signal: ctx.signal,
-        });
-
-        if (spill.spilled && spill.handle) {
-          canvasInfo = {
-            canvasId: instance.canvasId,
-            tableName: spill.handle.tableName,
-            rowCount: spill.handle.rowCount,
-            isNew: instance.isNew,
-            expiresAt: instance.expiresAt,
-          };
-        }
-      } catch {
-        // Canvas unavailable or failed — continue without spillover
-        ctx.log.info('Canvas spillover skipped');
-      }
-    }
-
     const returned = works.length;
     const notice =
       result.totalResults === 0
@@ -295,19 +235,12 @@ export const searchWorksTool = tool('crossref_search_works', {
     return {
       works,
       ...(result.nextCursor && { nextCursor: result.nextCursor }),
-      ...(canvasInfo && { canvas: canvasInfo }),
     };
   },
 
   format: (result) => {
     const lines: string[] = [];
     if (result.nextCursor) lines.push(`**Next cursor:** \`${result.nextCursor}\``);
-    if (result.canvas) {
-      const newMark = result.canvas.isNew ? ' (new)' : '';
-      lines.push(
-        `**Canvas:** \`${result.canvas.canvasId}\`${newMark} — table \`${result.canvas.tableName}\` (${result.canvas.rowCount} rows, expires ${result.canvas.expiresAt})`,
-      );
-    }
     if (lines.length > 0) lines.push('');
 
     for (const w of result.works) {
