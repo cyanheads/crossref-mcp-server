@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.1.12](changelog/0.1.x/0.1.12.md) — 2026-06-02
+
+Adopt @cyanheads/mcp-ts-core ^0.9.21 — per-request log context fix, secret-stripping in error messages, withRetry fail-fast on non-retryable errors
+
 ## [0.1.11](changelog/0.1.x/0.1.11.md) — 2026-05-31
 
 Remove DataCanvas integration from crossref_search_works — canvas_id input, canvas output block, spillover logic, and the canvas-accessor service
