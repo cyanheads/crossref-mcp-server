@@ -235,4 +235,24 @@ describe('searchFundersTool', () => {
     expect(() => searchFundersTool.input.parse({ query: 'test', rows: 0 })).toThrow();
     expect(() => searchFundersTool.input.parse({ query: 'test', rows: 101 })).toThrow();
   });
+
+  it('accepts valid funder_doi formats — bare, doi: prefix, and URL prefix', () => {
+    expect(() => searchFundersTool.input.parse({ funder_doi: '10.13039/100000001' })).not.toThrow();
+    expect(() =>
+      searchFundersTool.input.parse({ funder_doi: 'doi:10.13039/100000001' }),
+    ).not.toThrow();
+    expect(() =>
+      searchFundersTool.input.parse({ funder_doi: 'https://doi.org/10.13039/100000001' }),
+    ).not.toThrow();
+    expect(() =>
+      searchFundersTool.input.parse({ funder_doi: 'http://dx.doi.org/10.13039/100000001' }),
+    ).not.toThrow();
+  });
+
+  it('rejects malformed funder_doi values before any upstream call', () => {
+    expect(() => searchFundersTool.input.parse({ funder_doi: 'not-a-doi' })).toThrow();
+    expect(() => searchFundersTool.input.parse({ funder_doi: '10.1038/nature12373' })).toThrow();
+    expect(() => searchFundersTool.input.parse({ funder_doi: '10.13039/' })).toThrow();
+    expect(() => searchFundersTool.input.parse({ funder_doi: '100000001' })).toThrow();
+  });
 });

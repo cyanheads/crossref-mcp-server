@@ -80,7 +80,7 @@ export function parseDateParts(
 
 /** Strip URL/doi: prefix from a funder DOI, yielding a bare registry ID for the Crossref path. */
 function normalizeFunderId(raw: string): string {
-  return raw.replace(/^https?:\/\/dx\.doi\.org\//i, '').replace(/^doi:/i, '');
+  return raw.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').replace(/^doi:/i, '');
 }
 
 /** Crossref works search options. */
@@ -119,11 +119,13 @@ export type WorksSearchResult = {
 
 export class CrossrefService {
   private readonly baseUrl: string;
+  private readonly timeoutMs: number;
   private readonly userAgent: string;
 
   constructor() {
     const cfg = getServerConfig();
     this.baseUrl = cfg.baseUrl;
+    this.timeoutMs = cfg.timeoutMs;
     this.userAgent = cfg.mailto
       ? `crossref-mcp-server/${_packageVersion} (mailto:${cfg.mailto})`
       : `crossref-mcp-server/${_packageVersion}`;
@@ -131,11 +133,13 @@ export class CrossrefService {
 
   private request<T>(path: string, ctx: Context): Promise<T> {
     const url = `${this.baseUrl}${path}`;
-    const userAgent = this.userAgent;
+    const { userAgent, timeoutMs } = this;
     return withRetry(
       async () => {
+        const deadline = AbortSignal.timeout(timeoutMs);
+        const signal = AbortSignal.any([ctx.signal, deadline]);
         const response = await fetch(url, {
-          signal: ctx.signal,
+          signal,
           headers: { 'User-Agent': userAgent },
         });
         if (!response.ok) {

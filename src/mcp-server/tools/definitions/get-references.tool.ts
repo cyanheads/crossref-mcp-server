@@ -51,6 +51,15 @@ export const getReferencesTool = tool('crossref_get_references', {
     references: z.array(ReferenceSchema).describe('Outgoing reference list'),
   }),
 
+  enrichment: {
+    notice: z
+      .string()
+      .optional()
+      .describe(
+        'Coverage guidance when no references are indexed. Absent when references are present.',
+      ),
+  },
+
   errors: [
     {
       reason: 'doi_not_found',
@@ -58,13 +67,6 @@ export const getReferencesTool = tool('crossref_get_references', {
       when: 'Valid DOI format but no Crossref record exists.',
       recovery:
         'Verify the DOI is correct or use crossref_search_works to find the work by title or author.',
-    },
-    {
-      reason: 'no_references',
-      code: JsonRpcErrorCode.NotFound,
-      when: 'Record exists but no reference list is indexed for this work.',
-      recovery:
-        'Reference coverage varies by publisher. Try the DOI in OpenAlex for alternative reference data.',
     },
   ],
 
@@ -81,11 +83,12 @@ export const getReferencesTool = tool('crossref_get_references', {
     }
 
     if (!raw.reference || raw.reference.length === 0) {
-      throw ctx.fail(
-        'no_references',
-        `No indexed reference list for DOI: ${input.doi}. Coverage varies by publisher.`,
-        { doi: input.doi, ...ctx.recoveryFor('no_references') },
+      ctx.enrich.notice(
+        'No reference list indexed for this work. Coverage varies by publisher and era; ' +
+          'pre-2000 works and non-participating publishers often have no indexed references. ' +
+          'Try OpenAlex for alternative reference data.',
       );
+      return { doi: raw.DOI, referenceCount: 0, references: [] };
     }
 
     const references = raw.reference.map((r) => ({

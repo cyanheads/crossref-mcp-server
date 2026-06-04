@@ -68,6 +68,10 @@ export const searchFundersTool = tool('crossref_search_funders', {
       .describe('Funder name search query, e.g. "National Science Foundation" or "Wellcome Trust"'),
     funder_doi: z
       .string()
+      .regex(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:)?10\.13039\/\d+$/i, {
+        message:
+          'Funder DOI must start with "10.13039/" followed by digits, e.g. "10.13039/100000001".',
+      })
       .optional()
       .describe(
         'Funder DOI for exact lookup, e.g. "10.13039/100000001" (NSF). Supersedes query when provided.',

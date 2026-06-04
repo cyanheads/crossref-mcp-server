@@ -3,7 +3,7 @@
  * @module tests/tools/get-references.tool.test
  */
 
-import { createMockContext } from '@cyanheads/mcp-ts-core/testing';
+import { createMockContext, getEnrichment } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getReferencesTool } from '@/mcp-server/tools/definitions/get-references.tool.js';
 
@@ -105,7 +105,7 @@ describe('getReferencesTool', () => {
     });
   });
 
-  it('throws no_references when record has empty reference list', async () => {
+  it('returns empty reference list and notice when record has empty reference array', async () => {
     const ctx = createMockContext({ errors: getReferencesTool.errors });
     mockGetWork.mockResolvedValue({
       DOI: '10.1038/nature12373',
@@ -114,19 +114,28 @@ describe('getReferencesTool', () => {
     });
 
     const input = getReferencesTool.input.parse({ doi: '10.1038/nature12373' });
-    await expect(getReferencesTool.handler(input, ctx)).rejects.toMatchObject({
-      data: { reason: 'no_references' },
-    });
+    const result = await getReferencesTool.handler(input, ctx);
+
+    expect(result.doi).toBe('10.1038/nature12373');
+    expect(result.referenceCount).toBe(0);
+    expect(result.references).toHaveLength(0);
+    const enrichment = getEnrichment(ctx);
+    expect(enrichment.notice).toBeDefined();
+    expect(enrichment.notice).toMatch(/OpenAlex/);
   });
 
-  it('throws no_references when reference field is absent', async () => {
+  it('returns empty reference list and notice when reference field is absent', async () => {
     const ctx = createMockContext({ errors: getReferencesTool.errors });
     mockGetWork.mockResolvedValue({ DOI: '10.1038/nature12373', type: 'journal-article' });
 
     const input = getReferencesTool.input.parse({ doi: '10.1038/nature12373' });
-    await expect(getReferencesTool.handler(input, ctx)).rejects.toMatchObject({
-      data: { reason: 'no_references' },
-    });
+    const result = await getReferencesTool.handler(input, ctx);
+
+    expect(result.doi).toBe('10.1038/nature12373');
+    expect(result.referenceCount).toBe(0);
+    expect(result.references).toHaveLength(0);
+    const enrichment = getEnrichment(ctx);
+    expect(enrichment.notice).toBeDefined();
   });
 
   it('rejects DOI with invalid format via Zod schema', () => {

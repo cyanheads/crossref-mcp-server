@@ -76,9 +76,12 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       ),
     issn: z
       .string()
+      .regex(/^\d{4}-?\d{3}[\dX]$/i, {
+        message: 'ISSN must be 8 digits in the format xxxx-xxxx or xxxxxxxx, e.g. "1234-5678".',
+      })
       .optional()
       .describe(
-        'ISSN for exact single-journal lookup (print or electronic, with or without hyphen). Supersedes query when provided.',
+        'ISSN for exact single-journal lookup (print or electronic, with or without hyphen). Example: "1234-5678".',
       ),
     include_works: z
       .boolean()

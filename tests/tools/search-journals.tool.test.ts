@@ -214,4 +214,18 @@ describe('searchJournalsTool', () => {
     expect(() => searchJournalsTool.input.parse({ query: 'test', rows: 0 })).toThrow();
     expect(() => searchJournalsTool.input.parse({ query: 'test', rows: 101 })).toThrow();
   });
+
+  it('accepts valid ISSN formats — with and without hyphen, uppercase X check digit', () => {
+    expect(() => searchJournalsTool.input.parse({ issn: '0028-0836' })).not.toThrow();
+    expect(() => searchJournalsTool.input.parse({ issn: '00280836' })).not.toThrow();
+    expect(() => searchJournalsTool.input.parse({ issn: '1476-4687' })).not.toThrow();
+    expect(() => searchJournalsTool.input.parse({ issn: '0028-083X' })).not.toThrow();
+  });
+
+  it('rejects malformed ISSN values before any upstream call', () => {
+    expect(() => searchJournalsTool.input.parse({ issn: 'not-an-issn' })).toThrow();
+    expect(() => searchJournalsTool.input.parse({ issn: '123-456' })).toThrow();
+    expect(() => searchJournalsTool.input.parse({ issn: '12345-678' })).toThrow();
+    expect(() => searchJournalsTool.input.parse({ issn: '0028-08361' })).toThrow();
+  });
 });

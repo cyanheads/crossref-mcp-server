@@ -89,6 +89,20 @@ describe('CrossrefService', () => {
     );
   });
 
+  it('composes AbortSignal.timeout with ctx.signal on every request', async () => {
+    const rawWork = { DOI: '10.1038/nature12373', type: 'journal-article' };
+    mockFetch.mockResolvedValue(makeJsonResponse(makeSingleEnvelope(rawWork)));
+    vi.mocked(withRetry).mockImplementation((fn) => fn());
+
+    const ctx = createMockContext();
+    await service.getWork('10.1038/nature12373', ctx);
+
+    const callArgs = mockFetch.mock.calls[0]?.[1] as { signal: AbortSignal };
+    expect(callArgs.signal).toBeDefined();
+    // AbortSignal.any produces a composite signal — it is not the raw ctx.signal
+    expect(callArgs.signal).not.toBe(ctx.signal);
+  });
+
   it('returns null for a 404 response on getWork', async () => {
     // Simulate httpErrorFromResponse mapping a 404 → McpError(NotFound)
     vi.mocked(withRetry).mockImplementation(async () => {
