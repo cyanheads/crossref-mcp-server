@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.1.13](changelog/0.1.x/0.1.13.md) — 2026-06-04
+
+crossref_get_references returns structured empty data instead of throwing; ISSN and funder_doi validated at the tool boundary; CROSSREF_TIMEOUT_MS now enforced per-request
+
 ## [0.1.12](changelog/0.1.x/0.1.12.md) — 2026-06-02
 
 Adopt @cyanheads/mcp-ts-core ^0.9.21 — per-request log context fix, secret-stripping in error messages, withRetry fail-fast on non-retryable errors
