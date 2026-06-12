@@ -9,6 +9,8 @@ import { allToolDefinitions } from './mcp-server/tools/definitions/index.js';
 import { initCrossrefService } from './services/crossref/crossref-service.js';
 
 await createApp({
+  name: 'crossref-mcp-server',
+  title: 'crossref-mcp-server',
   tools: [...allToolDefinitions],
   resources: [],
   prompts: [],

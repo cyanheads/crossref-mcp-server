@@ -12,5 +12,16 @@
   },
   "outdated": {
     "allowlist": ["@cyanheads/mcp-ts-core"]
+  },
+  "skillVersions": {
+    "ignore": [
+      "api-auth",
+      "api-errors",
+      "api-services",
+      "api-telemetry",
+      "field-test",
+      "report-issue-local",
+      "tool-defs-analysis"
+    ]
   }
 }
