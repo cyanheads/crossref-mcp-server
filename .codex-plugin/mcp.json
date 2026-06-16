@@ -1,5 +1,5 @@
 {
-  "@cyanheads/crossref-mcp-server": {
+  "crossref-mcp-server": {
     "command": "npx",
     "args": ["-y", "@cyanheads/crossref-mcp-server"],
     "env": {

@@ -1,6 +1,6 @@
 {
-  "name": "@cyanheads/crossref-mcp-server",
-  "version": "0.1.14",
+  "name": "crossref-mcp-server",
+  "version": "0.1.15",
   "description": "Resolve DOIs, search ~155M scholarly works, and fetch references via the Crossref REST API. STDIO or Streamable HTTP.",
   "author": {
     "name": "cyanheads"
@@ -9,7 +9,7 @@
   "repository": "https://github.com/cyanheads/crossref-mcp-server",
   "license": "Apache-2.0",
   "mcpServers": {
-    "@cyanheads/crossref-mcp-server": {
+    "crossref-mcp-server": {
       "command": "npx",
       "args": ["-y", "@cyanheads/crossref-mcp-server"],
       "env": {
