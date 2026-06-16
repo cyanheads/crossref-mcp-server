@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.1.15](changelog/0.1.x/0.1.15.md) — 2026-06-15
+
+Server-level instructions on createApp(); plugin display identity unscoped to crossref-mcp-server; @biomejs/biome ^2.5.0, vitest ^4.1.9
+
 ## [0.1.14](changelog/0.1.x/0.1.14.md) — 2026-06-11
 
 Maintenance: @cyanheads/mcp-ts-core ^0.9.21 → ^0.10.6; explicit name/title identity pair; Dockerfile image.version + HEALTHCHECK; root-anchored .mcpbignore; post-pack bundle cleaner; packaging and antipattern linter checks; skill sync
