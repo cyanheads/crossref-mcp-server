@@ -133,14 +133,13 @@ export class CrossrefService {
 
   private request<T>(path: string, ctx: Context): Promise<T> {
     const url = `${this.baseUrl}${path}`;
-    const { userAgent, timeoutMs } = this;
     return withRetry(
       async () => {
-        const deadline = AbortSignal.timeout(timeoutMs);
+        const deadline = AbortSignal.timeout(this.timeoutMs);
         const signal = AbortSignal.any([ctx.signal, deadline]);
         const response = await fetch(url, {
           signal,
-          headers: { 'User-Agent': userAgent },
+          headers: { 'User-Agent': this.userAgent },
         });
         if (!response.ok) {
           if (response.status === 400) {
