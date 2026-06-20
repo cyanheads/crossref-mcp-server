@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.1.16](changelog/0.1.x/0.1.16.md) — 2026-06-20
+
+Adopt @cyanheads/mcp-ts-core ^0.10.9; re-sync 14 skills + 6 devcheck scripts; devcheck gains dependency-specifier and plugin-manifest packaging guards
+
 ## [0.1.15](changelog/0.1.x/0.1.15.md) — 2026-06-15
 
 Server-level instructions on createApp(); plugin display identity unscoped to crossref-mcp-server; @biomejs/biome ^2.5.0, vitest ^4.1.9
