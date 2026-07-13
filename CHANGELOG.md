@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.1.17](changelog/0.1.x/0.1.17.md) — 2026-07-13
+
+Field-specific search-works query params (title/author/container-title/bibliographic); journal and funder works sorted most-recent-first; README/design.md accuracy fixes; mcp-ts-core ^0.10.14 with Socket install-scanning and Docker build hardening
+
 ## [0.1.16](changelog/0.1.x/0.1.16.md) — 2026-06-20
 
 Adopt @cyanheads/mcp-ts-core ^0.10.9; re-sync 14 skills + 6 devcheck scripts; devcheck gains dependency-specifier and plugin-manifest packaging guards

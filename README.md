@@ -7,7 +7,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/Version-0.1.16-blue.svg?style=flat-square)](./CHANGELOG.md) [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg?style=flat-square)](./LICENSE) [![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/users/cyanheads/packages/container/package/crossref-mcp-server) [![MCP SDK](https://img.shields.io/badge/MCP%20SDK-^1.29.0-green.svg?style=flat-square)](https://modelcontextprotocol.io/) [![npm](https://img.shields.io/npm/v/@cyanheads/crossref-mcp-server?style=flat-square&logo=npm&logoColor=white)](https://www.npmjs.com/package/@cyanheads/crossref-mcp-server) [![TypeScript](https://img.shields.io/badge/TypeScript-^6.0.3-3178C6.svg?style=flat-square)](https://www.typescriptlang.org/) [![Bun](https://img.shields.io/badge/Bun-v1.3.11-blueviolet.svg?style=flat-square)](https://bun.sh/)
+[![Version](https://img.shields.io/badge/Version-0.1.17-blue.svg?style=flat-square)](./CHANGELOG.md) [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg?style=flat-square)](./LICENSE) [![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/users/cyanheads/packages/container/package/crossref-mcp-server) [![MCP SDK](https://img.shields.io/badge/MCP%20SDK-^1.29.0-green.svg?style=flat-square)](https://modelcontextprotocol.io/) [![npm](https://img.shields.io/npm/v/@cyanheads/crossref-mcp-server?style=flat-square&logo=npm&logoColor=white)](https://www.npmjs.com/package/@cyanheads/crossref-mcp-server) [![TypeScript](https://img.shields.io/badge/TypeScript-^6.0.3-3178C6.svg?style=flat-square)](https://www.typescriptlang.org/) [![Bun](https://img.shields.io/badge/Bun-v1.3.14-blueviolet.svg?style=flat-square)](https://bun.sh/)
 
 [![Install in Claude Desktop](https://img.shields.io/badge/Install_in-Claude_Desktop-D97757?style=for-the-badge&logo=anthropic&logoColor=white)](https://github.com/cyanheads/crossref-mcp-server/releases/latest/download/crossref-mcp-server.mcpb) [![Install in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=crossref-mcp-server&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBjeWFuaGVhZHMvY3Jvc3NyZWYtbWNwLXNlcnZlciJdfQ==) [![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Server-0098FF?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect?url=vscode:mcp/install?%7B%22name%22%3A%22crossref-mcp-server%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40cyanheads/crossref-mcp-server%22%5D%7D)
 
@@ -26,7 +26,7 @@ Five tools for working with Crossref data — DOI resolution, full-text search a
 | `crossref_get_work` | Resolve a DOI to its full Crossref metadata record: title, authors, affiliations, abstract (when deposited), journal, publication date, type, license, full-text links, funder acknowledgements, and outgoing reference list |
 | `crossref_search_works` | Search the Crossref works index by free text and/or structured filters. Supports sort, field selection, and cursor-based deep paging. |
 | `crossref_get_references` | Return the outgoing reference list for a DOI — the works cited by this paper, with raw citation strings and resolved DOIs where available |
-| `crossref_search_journals` | Find Crossref journal records by ISSN or title query; optionally retrieve the journal's most recent works |
+| `crossref_search_journals` | Find Crossref journal records by ISSN or title query; optionally retrieve the journal's most recent works by publication date |
 | `crossref_search_funders` | Find funders registered in the Crossref Funder Registry by name or funder DOI; optionally retrieve funded works |
 
 ### `crossref_get_work`
@@ -44,9 +44,10 @@ Resolve a DOI to its canonical Crossref record.
 Search across ~155M Crossref-registered works.
 
 - Free-text `query` plus a structured `filter` object using Crossref's hyphen-separated key syntax: `from-pub-date`, `until-pub-date`, `type`, `funder`, `issn`, `member`, `has-abstract`, `has-references`, `has-full-text`, `directory` (use `DOAJ` to restrict to open-access content)
+- Field-specific query parameters scope matching beyond the generic `query`: `queryTitle`, `queryAuthor`, `queryContainerTitle` (journal/book name), and `queryBibliographic` (whole-citation match to resolve a known reference to its DOI) — all combine with each other and with `query`
 - Sort by `relevance`, `is-referenced-by-count`, `published`, `deposited`, or `score`
 - `fields` parameter narrows response payload — useful for large result sets
-- Offset paging up to ~10K results; deep paging requires `cursor=*` on the first call, then pass the returned `next-cursor` token. Cursor and offset cannot be combined.
+- Offset paging up to ~10K results; deep paging requires `cursor=*` on the first call, then pass the returned `nextCursor` token. Cursor and offset cannot be combined.
 
 ---
 
@@ -64,8 +65,8 @@ Fetch the outgoing reference list for a DOI.
 
 Find journal records by ISSN or title.
 
-- `include_works: true` triggers a second upstream call to fetch the journal's most recent works
-- Returns journal title, publisher, ISSN-L, subject areas, and DOI prefix
+- `include_works: true` triggers a second upstream call to fetch the journal's most recent works by publication date
+- Returns journal title, publisher, ISSN-L, subject areas, and total DOI count
 
 ---
 
@@ -163,7 +164,7 @@ MCP_TRANSPORT_TYPE=http MCP_HTTP_PORT=3010 CROSSREF_MAILTO=your-email@example.co
 
 ### Prerequisites
 
-- [Bun v1.3.11](https://bun.sh/) or higher (or Node.js v24+).
+- [Bun v1.3.14](https://bun.sh/) or higher (or Node.js v24+).
 - An email address for `CROSSREF_MAILTO` is optional but recommended — Crossref's polite pool grants priority access to clients that identify themselves. No account or token is required.
 
 ### Installation
