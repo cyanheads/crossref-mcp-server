@@ -202,6 +202,61 @@ describe('CrossrefService', () => {
     expect(calledUrl).toContain('order=desc');
   });
 
+  it('builds field-specific query.* params with hyphenated keys for searchWorks', async () => {
+    mockFetch.mockResolvedValue(makeJsonResponse(makeListEnvelope([])));
+    vi.mocked(withRetry).mockImplementation((fn) => fn());
+
+    const ctx = createMockContext();
+    await service.searchWorks(
+      {
+        queryBibliographic: 'Harris Array programming with NumPy Nature 2020',
+        queryTitle: 'Array programming with NumPy',
+        queryAuthor: 'Charles R. Harris',
+        queryContainerTitle: 'Nature',
+      },
+      ctx,
+    );
+
+    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
+    // container-title carries a hyphen in Crossref's field-query syntax
+    expect(calledUrl).toContain('query.container-title=');
+    const qs = new URLSearchParams(calledUrl.split('?')[1]);
+    expect(qs.get('query.bibliographic')).toBe('Harris Array programming with NumPy Nature 2020');
+    expect(qs.get('query.title')).toBe('Array programming with NumPy');
+    expect(qs.get('query.author')).toBe('Charles R. Harris');
+    expect(qs.get('query.container-title')).toBe('Nature');
+  });
+
+  it('sorts journal works by publication date descending in getJournalWorks', async () => {
+    mockFetch.mockResolvedValue(makeJsonResponse(makeListEnvelope([])));
+    vi.mocked(withRetry).mockImplementation((fn) => fn());
+
+    const ctx = createMockContext();
+    await service.getJournalWorks('0028-0836', 8, ctx);
+
+    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
+    expect(calledUrl).toContain('/journals/');
+    expect(calledUrl).toContain('0028-0836');
+    expect(calledUrl).toContain('sort=published');
+    expect(calledUrl).toContain('order=desc');
+    expect(calledUrl).toContain('rows=8');
+  });
+
+  it('sorts funder works by publication date descending in getFunderWorks', async () => {
+    mockFetch.mockResolvedValue(makeJsonResponse(makeListEnvelope([])));
+    vi.mocked(withRetry).mockImplementation((fn) => fn());
+
+    const ctx = createMockContext();
+    await service.getFunderWorks('10.13039/100000001', 6, ctx);
+
+    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
+    expect(calledUrl).toContain('/funders/');
+    expect(calledUrl).toContain('100000001');
+    expect(calledUrl).toContain('sort=published');
+    expect(calledUrl).toContain('order=desc');
+    expect(calledUrl).toContain('rows=6');
+  });
+
   it('uses ISSN path for journal lookup when issn provided', async () => {
     const journalEnvelope = {
       status: 'ok',

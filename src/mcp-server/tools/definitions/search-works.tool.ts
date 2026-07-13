@@ -53,7 +53,7 @@ const WorkSummarySchema = z
 export const searchWorksTool = tool('crossref_search_works', {
   title: 'Search Works',
   description:
-    'Searches the Crossref works index (~155M records) by free text and/or structured filters. Use the filter parameter for structured filtering (object with hyphen-separated Crossref keys). Sort options: relevance, score, is-referenced-by-count, published, deposited, indexed. Offset-based paging is capped at ~10K results; use cursor="*" to start cursor-based deep paging, then pass the nextCursor value from each response to continue. Cursor and offset cannot be combined.',
+    'Searches the Crossref works index (~155M records) by free text and/or structured filters. The generic query matches loosely across all fields; scope precisely with the field-specific parameters queryTitle, queryAuthor, and queryContainerTitle, or resolve a known citation to its DOI with queryBibliographic — all combine with each other and with query. Use the filter parameter for structured filtering (object with hyphen-separated Crossref keys). Sort options: relevance, score, is-referenced-by-count, published, deposited, indexed. Offset-based paging is capped at ~10K results; use cursor="*" to start cursor-based deep paging, then pass the nextCursor value from each response to continue. Cursor and offset cannot be combined.',
   annotations: { readOnlyHint: true, openWorldHint: true },
 
   input: z.object({
@@ -63,6 +63,24 @@ export const searchWorksTool = tool('crossref_search_works', {
       .describe(
         'Free-text search query, e.g. "CRISPR gene editing" or "climate change adaptation"',
       ),
+    queryBibliographic: z
+      .string()
+      .optional()
+      .describe(
+        'Whole-citation match to resolve a known reference to its DOI. Combine title, author, year, and container into one string, e.g. "Watson Crick molecular structure of nucleic acids Nature 1953".',
+      ),
+    queryTitle: z
+      .string()
+      .optional()
+      .describe('Match against work titles only, e.g. "Array programming with NumPy".'),
+    queryAuthor: z
+      .string()
+      .optional()
+      .describe('Match against author names only, e.g. "Charles R. Harris".'),
+    queryContainerTitle: z
+      .string()
+      .optional()
+      .describe('Match against the container title (journal or book name) only, e.g. "Nature".'),
     filter: z
       .record(z.string(), z.string())
       .optional()
@@ -183,6 +201,14 @@ export const searchWorksTool = tool('crossref_search_works', {
     const searchOpts: WorksSearchOptions = {
       rows,
       ...(input.query !== undefined && { query: input.query }),
+      ...(input.queryBibliographic !== undefined && {
+        queryBibliographic: input.queryBibliographic,
+      }),
+      ...(input.queryTitle !== undefined && { queryTitle: input.queryTitle }),
+      ...(input.queryAuthor !== undefined && { queryAuthor: input.queryAuthor }),
+      ...(input.queryContainerTitle !== undefined && {
+        queryContainerTitle: input.queryContainerTitle,
+      }),
       ...(input.filter !== undefined && { filter: input.filter }),
       ...(input.fields !== undefined && { fields: input.fields }),
       ...(input.offset !== undefined && { offset: input.offset }),

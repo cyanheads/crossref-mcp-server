@@ -150,6 +150,59 @@ describe('searchWorksTool', () => {
     );
   });
 
+  it('passes queryTitle to the service (field-specific query)', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    mockSearchWorks.mockResolvedValue(makeSearchResult());
+
+    const input = searchWorksTool.input.parse({ queryTitle: 'Array programming with NumPy' });
+    await searchWorksTool.handler(input, ctx);
+
+    expect(mockSearchWorks).toHaveBeenCalledWith(
+      expect.objectContaining({ queryTitle: 'Array programming with NumPy' }),
+      expect.anything(),
+    );
+  });
+
+  it('passes multiple field-specific query params together to the service', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    mockSearchWorks.mockResolvedValue(makeSearchResult());
+
+    const input = searchWorksTool.input.parse({
+      queryTitle: 'Array programming with NumPy',
+      queryAuthor: 'Charles R. Harris',
+      queryContainerTitle: 'Nature',
+    });
+    await searchWorksTool.handler(input, ctx);
+
+    expect(mockSearchWorks).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryTitle: 'Array programming with NumPy',
+        queryAuthor: 'Charles R. Harris',
+        queryContainerTitle: 'Nature',
+      }),
+      expect.anything(),
+    );
+  });
+
+  it('maps a sparse field-query result without fabricating fields', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        items: [{ DOI: '10.1038/s41586-020-2649-2', type: 'journal-article' }],
+      }),
+    );
+
+    const input = searchWorksTool.input.parse({ queryBibliographic: 'Harris NumPy Nature 2020' });
+    const result = await searchWorksTool.handler(input, ctx);
+
+    // Upstream omitted title/authors/abstract — output preserves the gap, invents nothing.
+    expect(() => searchWorksTool.output.parse(result)).not.toThrow();
+    expect(result.works[0]?.doi).toBe('10.1038/s41586-020-2649-2');
+    expect(result.works[0]?.title).toBeUndefined();
+    expect(result.works[0]?.authors).toBeUndefined();
+    expect(result.works[0]?.abstract).toBeUndefined();
+  });
+
   it('truncates author list to first 10 per work', async () => {
     const ctx = createMockContext({ errors: searchWorksTool.errors });
     const authors = Array.from({ length: 15 }, (_, i) => ({ given: `G${i}`, family: `F${i}` }));

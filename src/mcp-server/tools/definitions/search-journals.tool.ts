@@ -48,7 +48,7 @@ const WorkSummarySchema = z
 export const searchJournalsTool = tool('crossref_search_journals', {
   title: 'Search Journals',
   description:
-    "Finds Crossref journal records by ISSN or title query. Provide issn for an exact single-journal lookup, or query for title-based search returning up to rows results. Set include_works to true to fetch the journal's most recent registered works in a second call (sequential — requires a resolved ISSN from step 1). Returns journal metadata: title, publisher, ISSN-L, subject areas, and total DOI count.",
+    "Finds Crossref journal records by ISSN or title query. Provide issn for an exact single-journal lookup, or query for title-based search returning up to rows results. Set include_works to true to fetch the journal's most recent works by publication date in a second call (sequential — requires a resolved ISSN from step 1). Returns journal metadata: title, publisher, ISSN-L, subject areas, and total DOI count.",
   annotations: { readOnlyHint: true, openWorldHint: true },
 
   errors: [
@@ -87,7 +87,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       .boolean()
       .default(false)
       .describe(
-        "When true, fetch the journal's most recent registered works (adds a second upstream call)",
+        "When true, fetch the journal's most recent works by publication date (adds a second upstream call)",
       ),
     rows: z
       .number()
@@ -105,7 +105,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       .array(WorkSummarySchema)
       .optional()
       .describe(
-        'Most recent works from the first matched journal. Only present when include_works is true.',
+        'Works from the first matched journal, ordered by publication date (newest first). Only present when include_works is true.',
       ),
   }),
 

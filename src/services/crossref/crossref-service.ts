@@ -86,6 +86,10 @@ function normalizeFunderId(raw: string): string {
 /** Crossref works search options. */
 export type WorksSearchOptions = {
   query?: string;
+  queryBibliographic?: string;
+  queryTitle?: string;
+  queryAuthor?: string;
+  queryContainerTitle?: string;
   filter?: Record<string, string>;
   fields?: string[];
   rows?: number;
@@ -214,6 +218,12 @@ export class CrossrefService {
   async searchWorks(opts: WorksSearchOptions, ctx: Context): Promise<WorksSearchResult> {
     const params = new URLSearchParams();
     if (opts.query) params.set('query', opts.query);
+    // Field-specific query.* params scope matching to one indexed field and combine
+    // with each other and with the generic query. Keys are hyphenated per Crossref.
+    if (opts.queryBibliographic) params.set('query.bibliographic', opts.queryBibliographic);
+    if (opts.queryTitle) params.set('query.title', opts.queryTitle);
+    if (opts.queryAuthor) params.set('query.author', opts.queryAuthor);
+    if (opts.queryContainerTitle) params.set('query.container-title', opts.queryContainerTitle);
     if (opts.rows != null) params.set('rows', String(opts.rows));
 
     if (opts.cursor) {
@@ -265,9 +275,16 @@ export class CrossrefService {
     return envelope.message.items;
   }
 
-  /** Fetch works for a specific journal by ISSN. */
+  /** Fetch works for a specific journal by ISSN, most recent first. */
   async getJournalWorks(issn: string, rows: number, ctx: Context): Promise<WorksSearchResult> {
-    const params = new URLSearchParams({ rows: String(rows) });
+    // Sort by publication date descending so "most recent works" is accurate — the
+    // /works endpoint's default ordering is not chronological. `published` (chosen)
+    // reflects publication date; `deposited` would reflect Crossref registration date.
+    const params = new URLSearchParams({
+      rows: String(rows),
+      sort: 'published',
+      order: 'desc',
+    });
     const envelope = await this.request<CrossrefListMessage<RawCrossrefWork>>(
       `/journals/${encodeURIComponent(issn)}/works?${params}`,
       ctx,
@@ -295,10 +312,17 @@ export class CrossrefService {
     return envelope.message.items;
   }
 
-  /** Fetch works for a specific funder by funder DOI/ID. */
+  /** Fetch works for a specific funder by funder DOI/ID, most recent first. */
   async getFunderWorks(funderId: string, rows: number, ctx: Context): Promise<WorksSearchResult> {
     const id = normalizeFunderId(funderId);
-    const params = new URLSearchParams({ rows: String(rows) });
+    // Sort by publication date descending for predictable, most-recent-first ordering —
+    // the /works endpoint's default ordering is not chronological. Matches
+    // getJournalWorks so both funded-works and journal-works surfaces agree.
+    const params = new URLSearchParams({
+      rows: String(rows),
+      sort: 'published',
+      order: 'desc',
+    });
     const envelope = await this.request<CrossrefListMessage<RawCrossrefWork>>(
       `/funders/${encodeURIComponent(id)}/works?${params}`,
       ctx,
