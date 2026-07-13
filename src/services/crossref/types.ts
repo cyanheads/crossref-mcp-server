@@ -135,6 +135,42 @@ export type RawCrossrefFunder = {
   'work-count'?: number;
 };
 
+/**
+ * Raw member (publisher/organization) record from Crossref /members/{id}.
+ * `coverage` is a flat map of `<category>-current` / `<category>-backfile` → 0–1 fraction;
+ * `flags` is a flat map of `deposits`, `deposits-articles`, and `deposits-<category>-<window>` → boolean.
+ */
+export type RawCrossrefMember = {
+  id: number;
+  'primary-name'?: string;
+  names?: string[];
+  prefixes?: string[];
+  prefix?: Array<{ name?: string; value?: string }>;
+  counts?: {
+    'current-dois'?: number;
+    'backfile-dois'?: number;
+    'total-dois'?: number;
+  };
+  'counts-type'?: {
+    all?: Record<string, number>;
+    current?: Record<string, number>;
+    backfile?: Record<string, number>;
+  };
+  coverage?: Record<string, number>;
+  flags?: Record<string, boolean>;
+  location?: string;
+  tokens?: string[];
+  'last-status-check-time'?: number;
+  breakdowns?: { 'dois-by-issued-year'?: Array<[number, number]> };
+};
+
+/** Raw prefix record from Crossref /prefixes/{prefix}. `member` and `prefix` are URIs, not bare values. */
+export type RawCrossrefPrefix = {
+  member?: string;
+  name?: string;
+  prefix?: string;
+};
+
 /** Crossref REST API message envelope for a single item. */
 export type CrossrefSingleMessage<T> = {
   status: string;

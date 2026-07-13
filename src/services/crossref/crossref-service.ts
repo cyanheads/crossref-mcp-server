@@ -15,6 +15,8 @@ import type {
   CrossrefSingleMessage,
   RawCrossrefFunder,
   RawCrossrefJournal,
+  RawCrossrefMember,
+  RawCrossrefPrefix,
   RawCrossrefWork,
 } from './types.js';
 
@@ -209,6 +211,40 @@ export class CrossrefService {
       return envelope.message;
     } catch (err) {
       // httpErrorFromResponse maps 404 → McpError(NotFound, code = -32001).
+      if (err instanceof McpError && err.code === -32001) return null;
+      throw err;
+    }
+  }
+
+  /**
+   * Fetch a Crossref member (publisher/organization) by numeric ID. Returns null on 404,
+   * letting the caller throw the appropriate typed error. Mirrors getWork()'s 404→null pattern.
+   */
+  async getMember(id: number, ctx: Context): Promise<RawCrossrefMember | null> {
+    try {
+      const envelope = await this.request<CrossrefSingleMessage<RawCrossrefMember>>(
+        `/members/${encodeURIComponent(String(id))}`,
+        ctx,
+      );
+      return envelope.message;
+    } catch (err) {
+      if (err instanceof McpError && err.code === -32001) return null;
+      throw err;
+    }
+  }
+
+  /**
+   * Resolve a DOI prefix (e.g. "10.1038") to its owning member. Returns null on 404.
+   * Same 404→null pattern as getWork()/getMember().
+   */
+  async getPrefix(prefix: string, ctx: Context): Promise<RawCrossrefPrefix | null> {
+    try {
+      const envelope = await this.request<CrossrefSingleMessage<RawCrossrefPrefix>>(
+        `/prefixes/${encodeURIComponent(prefix)}`,
+        ctx,
+      );
+      return envelope.message;
+    } catch (err) {
       if (err instanceof McpError && err.code === -32001) return null;
       throw err;
     }

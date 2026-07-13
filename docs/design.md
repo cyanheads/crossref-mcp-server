@@ -11,6 +11,8 @@
 | `crossref_get_references` | Returns the outgoing reference list for a DOI — the works cited by this paper. Each reference includes its raw citation string and, where Crossref has resolved it, a DOI for follow-up lookup. Incoming citations (works that cite this paper) are not available through Crossref; use OpenAlex for that. | `doi` (required) | `readOnlyHint: true`, `idempotentHint: true` |
 | `crossref_search_journals` | Finds Crossref journal records by ISSN or title query. Returns journal metadata (title, publisher, ISSN-L, subject areas, total DOI count) plus optionally the journal's most recent works. | `query` (title text) or `issn`, `include_works` (bool, default false), `rows` | `readOnlyHint: true`, `openWorldHint: true` |
 | `crossref_search_funders` | Finds funders registered in the Crossref Funder Registry by name or funder DOI, then optionally retrieves works funded by the matched funder. Returns funder name, DOI, country, alternate names, and (when requested) a paginated list of funded works. | `query` (funder name) or `funder_doi`, `include_works` (bool, default false), `rows` | `readOnlyHint: true`, `openWorldHint: true` |
+| `crossref_get_member` | Resolves a Crossref member ID to its publisher/organization record: primary name, alternate imprint names, owned DOI prefixes, DOI counts (total/current/backfile), per-work-type breakdown, and per-category metadata deposit coverage (references, abstracts, ORCIDs, funders, licenses, etc.) as current/backfile fractions plus the two summary deposit flags. | `member_id` (required, positive integer) | `readOnlyHint: true`, `idempotentHint: true` |
+| `crossref_get_prefix` | Resolves a DOI prefix (the registrant portion, e.g. `10.1038`) to its owning member: publisher name and numeric member ID. The member ID chains into `crossref_get_member`. The upstream prefix record is thin — three fields, all reflected honestly. | `prefix` (required, `10.NNNN`) | `readOnlyHint: true`, `idempotentHint: true` |
 
 ### Input Schema Notes
 
@@ -30,6 +32,10 @@
 | `crossref_get_references` | `no_references` | `NotFound` | Record exists but has no indexed reference list | No — coverage varies by publisher |
 | `crossref_search_works` | `cursor_offset_conflict` | `InvalidParams` | Both `cursor` and `offset` supplied | No — use one or the other |
 | `crossref_search_works` | `offset_too_large` | `InvalidParams` | `offset + rows > ~10K` without cursor | No — switch to `cursor=*` for deep paging |
+| `crossref_get_member` | `member_not_found` | `NotFound` | No Crossref member for the given ID | No — verify the ID or resolve it via `crossref_get_prefix` |
+| `crossref_get_member` | `invalid_member_id` | `ValidationError` | `member_id` is not a positive integer (Zod schema) | No — pass a positive integer |
+| `crossref_get_prefix` | `prefix_not_found` | `NotFound` | DOI prefix not registered in Crossref | No — verify the prefix or search for the work |
+| `crossref_get_prefix` | `invalid_prefix` | `ValidationError` | `prefix` fails the `10.NNNN` regex (Zod schema) | No — pass the registrant prefix only, no `/suffix` |
 | All | `rate_limited` | `ServiceUnavailable` | 429 or 503 from Crossref | Yes — retry with backoff |
 
 ### `format()` Notes
@@ -72,7 +78,7 @@ crossref-mcp-server wraps the Crossref REST API to expose canonical scholarly me
 
 | Service | Wraps | Used By |
 |:--------|:------|:---------|
-| `CrossrefService` | Crossref REST API (`https://api.crossref.org/`) | All five tools |
+| `CrossrefService` | Crossref REST API (`https://api.crossref.org/`) | All seven tools |
 
 ### CrossrefService design
 
@@ -120,7 +126,8 @@ Each step is independently testable; steps 3–7 build on the service from step 
 | Journal works | `GET /journals/{issn}/works` | `crossref_search_journals` (with `include_works`) |
 | Funder | `GET /funders?query=…`, `GET /funders/{id}` | `crossref_search_funders` |
 | Funder works | `GET /funders/{id}/works` | `crossref_search_funders` (with `include_works`) |
-| Member | — | Not exposed (publisher admin detail; low agent value) |
+| Member | `GET /members/{id}` | `crossref_get_member` |
+| Prefix | `GET /prefixes/{prefix}` | `crossref_get_prefix` |
 | Type | — | Not exposed (enum used as a filter value; no dedicated tool warranted) |
 
 ---
@@ -169,13 +176,13 @@ No multi-hop reference traversal. `crossref_get_references` returns a single hop
 - **DataCanvas for large search result sets?** → Initially yes (opt-in via `CANVAS_PROVIDER_TYPE=duckdb`), later removed. Rationale: the spillover was wired in but no `dataframe_query`/`dataframe_describe` consumer tool was ever added, so the `canvas_id` handle was dead output. Crossref works are categorical bibliographic metadata — the workflow is search-then-resolve-a-DOI, not aggregate-over-rows — so the integration was removed rather than completed.
 - **Incoming citations — expose a tool?** → No. Crossref genuinely does not provide this data; there is nothing to wrap. Documented in Known Limitations and reflected in `crossref_get_references` description so agents know not to try.
 - **`crossref_search_journals` and `crossref_search_funders` — separate tools or modes of one tool?** → Separate tools. Rationale: journals and funders are distinct entity types with different search fields, output shapes, and follow-up patterns; consolidating under a `mode` enum would obscure the difference rather than reduce surface.
-- **Member and Type endpoints — expose as tools?** → No. Members (publishers) are administrative detail with low agent-workflow value; Type is an enum used as a filter input, not a queryable entity.
+- **Member and Type endpoints — expose as tools?** → No. Members (publishers) are administrative detail with low agent-workflow value; Type is an enum used as a filter input, not a queryable entity. *(Member portion superseded 2026-07-13 — `crossref_get_member` was added; see Reversals. Type still stands.)*
 - **Resources — add any?** → No. Crossref records are live-fetched; there are no addressable stable URIs the server owns. Tool surface is self-sufficient.
 
 ### Options declined
 
 - **Multi-hop `crossref_get_references` with a `depth` parameter** → Declined. Exponential upstream call growth per hop, unbounded latency, and rate-limit risk disproportionate to the use case. Agent chaining is the right model.
-- **`crossref_get_member` tool** → Declined. Publisher administrative metadata (member records) has minimal agent utility and would widen the surface with low-value data.
+- **`crossref_get_member` tool** → Declined. Publisher administrative metadata (member records) has minimal agent utility and would widen the surface with low-value data. *(Superseded 2026-07-13 — see Reversals.)*
 - **`crossref_list_types` tool** → Declined. Work types are a closed enum (journal-article, book, book-chapter, etc.) better represented as an inline enum in `crossref_search_works`'s filter schema than as a separate tool call.
 - **App tools** → Declined. No real-time human-in-the-loop interaction with Crossref data warrants the iframe/CSP overhead.
 - **Instruction tool** → Declined. No recurring "how do I do X given my current state" pattern; this is a straightforward data-retrieval server.
@@ -192,3 +199,7 @@ These items were wrong in the initial design. All were verified against the live
 - **Sort field for citation ranking is `is-referenced-by-count`**, not "citation count". Additional valid sort fields: `score`, `relevance`, `published`, `published-print`, `published-online`, `deposited`, `indexed`, `created`, `updated`, `references-count`.
 - **Tool description leakage fixed.** `crossref_get_work` original description included "prefer `crossref_get_references`" — meta-coaching directing the consumer. Removed. The incoming citations scope boundary is now stated as a fact ("use OpenAlex for full citation graphs") rather than a directive.
 - **Error contracts, `format()` requirements, DOI validation, `fields`/`cursor` parameters** were absent from the initial design. Added under Input Schema Notes, Error Contracts, and `format()` Notes sections.
+
+### Reversals
+
+- **`crossref_get_member` and `crossref_get_prefix` added (2026-07-13).** Reverses the earlier "Member and Type endpoints — expose as tools? → No" (Answered questions) and "`crossref_get_member` tool → Declined" (Options declined). The prior calls judged member records as low-value administrative detail; that under-weighted publisher identification as an agent workflow — "who publishes DOIs under prefix 10.1038?" and "how completely does this publisher deposit references/abstracts/ORCIDs?" The member record carries genuine signal (owned prefixes, DOI counts, per-work-type breakdown, per-category deposit coverage), and `crossref_get_prefix` resolves a DOI prefix to its owning member ID for a clean two-step lookup. The prefix response is honestly thin (owner name + member link only), so its output mirrors exactly that. Type-listing stays declined — a closed enum is better as a `crossref_search_works` filter value than a tool. Event Data (`crossref_search_events`, the third tool proposed alongside these) was dropped: the Event Data public API was permanently sunset on 2026-04-23, so there is no live upstream to wrap.

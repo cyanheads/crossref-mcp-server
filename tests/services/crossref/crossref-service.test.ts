@@ -125,6 +125,54 @@ describe('CrossrefService', () => {
     });
   });
 
+  it('builds the /members/{id} URL and returns the member message for getMember', async () => {
+    const rawMember = { id: 297, 'primary-name': 'Springer Science and Business Media LLC' };
+    mockFetch.mockResolvedValue(makeJsonResponse(makeSingleEnvelope(rawMember)));
+    vi.mocked(withRetry).mockImplementation((fn) => fn());
+
+    const ctx = createMockContext();
+    const result = await service.getMember(297, ctx);
+
+    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
+    expect(calledUrl).toContain('/members/297');
+    expect(result).toMatchObject({ id: 297 });
+  });
+
+  it('returns null for a 404 response on getMember', async () => {
+    vi.mocked(withRetry).mockImplementation(async () => {
+      throw new McpError(JsonRpcErrorCode.NotFound, 'Not Found');
+    });
+
+    const ctx = createMockContext();
+    expect(await service.getMember(999999999, ctx)).toBeNull();
+  });
+
+  it('builds the /prefixes/{prefix} URL and returns the prefix message for getPrefix', async () => {
+    const rawPrefix = {
+      member: 'https://id.crossref.org/member/297',
+      name: 'Springer Science and Business Media LLC',
+      prefix: 'https://id.crossref.org/prefix/10.1038',
+    };
+    mockFetch.mockResolvedValue(makeJsonResponse(makeSingleEnvelope(rawPrefix)));
+    vi.mocked(withRetry).mockImplementation((fn) => fn());
+
+    const ctx = createMockContext();
+    const result = await service.getPrefix('10.1038', ctx);
+
+    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
+    expect(calledUrl).toContain('/prefixes/10.1038');
+    expect(result).toMatchObject({ name: 'Springer Science and Business Media LLC' });
+  });
+
+  it('returns null for a 404 response on getPrefix', async () => {
+    vi.mocked(withRetry).mockImplementation(async () => {
+      throw new McpError(JsonRpcErrorCode.NotFound, 'Not Found');
+    });
+
+    const ctx = createMockContext();
+    expect(await service.getPrefix('10.99999999', ctx)).toBeNull();
+  });
+
   it('builds correct URL with filter and select params for searchWorks', async () => {
     mockFetch.mockResolvedValue(
       makeJsonResponse(makeListEnvelope([{ DOI: '10.1038/nature12373', type: 'journal-article' }])),
