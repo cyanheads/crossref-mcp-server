@@ -1,6 +1,6 @@
 {
   "name": "crossref-mcp-server",
-  "version": "0.1.17",
+  "version": "0.2.0",
   "description": "Resolve DOIs, search ~155M scholarly works, and fetch references via the Crossref REST API. STDIO or Streamable HTTP.",
   "author": {
     "name": "cyanheads",
@@ -14,8 +14,8 @@
   "mcpServers": "./.codex-plugin/mcp.json",
   "interface": {
     "displayName": "crossref-mcp-server",
-    "shortDescription": "Resolve DOIs, search ~155M scholarly works, and fetch references via the Crossref REST API.",
-    "longDescription": "MCP server wrapping the Crossref REST API. Exposes tools to resolve DOIs to full metadata records, search ~155M registered works, retrieve outgoing references, search journals by publisher/ISSN, and search funders. Supports STDIO and Streamable HTTP transports.",
+    "shortDescription": "Resolve DOIs, search ~155M scholarly works, fetch references, and look up publishers via the Crossref REST API.",
+    "longDescription": "MCP server wrapping the Crossref REST API. Exposes tools to resolve DOIs to full metadata records, search ~155M registered works, retrieve outgoing references, search journals by ISSN or title, search funders, resolve a member ID to its publisher record (prefixes, DOI counts, metadata deposit coverage), and resolve a DOI prefix to its owning publisher. Supports STDIO and Streamable HTTP transports.",
     "developerName": "cyanheads",
     "category": "research",
     "capabilities": ["Read"],

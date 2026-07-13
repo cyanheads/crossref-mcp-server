@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.2.0](changelog/0.2.x/0.2.0.md) — 2026-07-13
+
+crossref_get_member resolves a member ID to its publisher record (DOI prefixes, counts, deposit coverage); crossref_get_prefix resolves a DOI prefix to its owning member
+
 ## [0.1.17](changelog/0.1.x/0.1.17.md) — 2026-07-13
 
 Field-specific search-works query params (title/author/container-title/bibliographic); journal and funder works sorted most-recent-first; README/design.md accuracy fixes; mcp-ts-core ^0.10.14 with Socket install-scanning and Docker build hardening

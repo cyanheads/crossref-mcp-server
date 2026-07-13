@@ -1,13 +1,13 @@
 <div align="center">
   <h1>@cyanheads/crossref-mcp-server</h1>
-  <p><b>Resolve DOIs, search ~155M scholarly works, and fetch references via the Crossref REST API. STDIO or Streamable HTTP.</b>
-  <div>5 Tools</div>
+  <p><b>Resolve DOIs, search ~155M scholarly works, fetch references, and look up publishers via the Crossref REST API. STDIO or Streamable HTTP.</b>
+  <div>7 Tools</div>
   </p>
 </div>
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/Version-0.1.17-blue.svg?style=flat-square)](./CHANGELOG.md) [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg?style=flat-square)](./LICENSE) [![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/users/cyanheads/packages/container/package/crossref-mcp-server) [![MCP SDK](https://img.shields.io/badge/MCP%20SDK-^1.29.0-green.svg?style=flat-square)](https://modelcontextprotocol.io/) [![npm](https://img.shields.io/npm/v/@cyanheads/crossref-mcp-server?style=flat-square&logo=npm&logoColor=white)](https://www.npmjs.com/package/@cyanheads/crossref-mcp-server) [![TypeScript](https://img.shields.io/badge/TypeScript-^6.0.3-3178C6.svg?style=flat-square)](https://www.typescriptlang.org/) [![Bun](https://img.shields.io/badge/Bun-v1.3.14-blueviolet.svg?style=flat-square)](https://bun.sh/)
+[![Version](https://img.shields.io/badge/Version-0.2.0-blue.svg?style=flat-square)](./CHANGELOG.md) [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg?style=flat-square)](./LICENSE) [![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/users/cyanheads/packages/container/package/crossref-mcp-server) [![MCP SDK](https://img.shields.io/badge/MCP%20SDK-^1.29.0-green.svg?style=flat-square)](https://modelcontextprotocol.io/) [![npm](https://img.shields.io/npm/v/@cyanheads/crossref-mcp-server?style=flat-square&logo=npm&logoColor=white)](https://www.npmjs.com/package/@cyanheads/crossref-mcp-server) [![TypeScript](https://img.shields.io/badge/TypeScript-^6.0.3-3178C6.svg?style=flat-square)](https://www.typescriptlang.org/) [![Bun](https://img.shields.io/badge/Bun-v1.3.14-blueviolet.svg?style=flat-square)](https://bun.sh/)
 
 [![Install in Claude Desktop](https://img.shields.io/badge/Install_in-Claude_Desktop-D97757?style=for-the-badge&logo=anthropic&logoColor=white)](https://github.com/cyanheads/crossref-mcp-server/releases/latest/download/crossref-mcp-server.mcpb) [![Install in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=crossref-mcp-server&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBjeWFuaGVhZHMvY3Jvc3NyZWYtbWNwLXNlcnZlciJdfQ==) [![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Server-0098FF?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect?url=vscode:mcp/install?%7B%22name%22%3A%22crossref-mcp-server%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40cyanheads/crossref-mcp-server%22%5D%7D)
 
@@ -19,7 +19,7 @@
 
 ## Tools
 
-Five tools for working with Crossref data — DOI resolution, full-text search across all scholarly works, outgoing reference lists, and journal/funder lookup:
+Seven tools for working with Crossref data — DOI resolution, full-text search across all scholarly works, outgoing reference lists, and journal, funder, and publisher lookup:
 
 | Tool | Description |
 |:-----|:------------|
@@ -28,6 +28,8 @@ Five tools for working with Crossref data — DOI resolution, full-text search a
 | `crossref_get_references` | Return the outgoing reference list for a DOI — the works cited by this paper, with raw citation strings and resolved DOIs where available |
 | `crossref_search_journals` | Find Crossref journal records by ISSN or title query; optionally retrieve the journal's most recent works by publication date |
 | `crossref_search_funders` | Find funders registered in the Crossref Funder Registry by name or funder DOI; optionally retrieve funded works |
+| `crossref_get_member` | Resolve a Crossref member ID to its publisher record — name, owned DOI prefixes, DOI counts, per-work-type breakdown, and per-category metadata deposit coverage |
+| `crossref_get_prefix` | Resolve a DOI prefix (e.g. `10.1038`) to its owning publisher — name and member ID, chaining into `crossref_get_member` |
 
 ### `crossref_get_work`
 
@@ -77,6 +79,26 @@ Find funders in the Crossref Funder Registry.
 - Accepts a name query or a direct funder DOI
 - `include_works: true` retrieves funded works for the matched funder
 - Returns funder name, DOI, country, and alternate names
+
+---
+
+### `crossref_get_member`
+
+Resolve a Crossref member ID to its publisher/organization record.
+
+- Members are the organizations that register DOIs — this answers "what does this publisher publish, and how completely do they deposit metadata?"
+- Returns primary name, alternate imprint names, owned DOI prefixes, DOI counts (total/current/backfile), a per-work-type breakdown, and per-category metadata deposit coverage (references, abstracts, ORCIDs, funders, licenses, and more) as current/backfile fractions
+- Pair with `crossref_get_prefix` to resolve a DOI prefix to the member ID first
+
+---
+
+### `crossref_get_prefix`
+
+Resolve a DOI prefix to its owning publisher.
+
+- Accepts the registrant prefix of a DOI (e.g. `10.1038`, no `/suffix`)
+- Returns the publisher name and numeric member ID — the ID chains directly into `crossref_get_member` for the full record
+- The Crossref prefix record is thin by design (owner name and member link only); richer publisher data lives on the member record
 
 ## Features
 
@@ -242,7 +264,7 @@ See [`.env.example`](./.env.example) for the full list of optional overrides.
 |:----------|:--------|
 | `src/index.ts` | `createApp()` entry point — registers tools and inits services. |
 | `src/config` | Server-specific environment variable parsing and validation with Zod. |
-| `src/mcp-server/tools` | Tool definitions (`*.tool.ts`). Five tools for Crossref data access. |
+| `src/mcp-server/tools` | Tool definitions (`*.tool.ts`). Seven tools for Crossref data access. |
 | `src/services/crossref` | CrossrefService — HTTP client, polite-pool header, retry, pagination helpers. |
 | `tests/` | Unit and integration tests mirroring `src/`. |
 

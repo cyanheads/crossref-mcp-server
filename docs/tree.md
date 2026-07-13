@@ -1,6 +1,6 @@
 # crossref-mcp-server - Directory Structure
 
-Generated on: 2026-06-20 11:06:12
+Generated on: 2026-07-13 18:35:28
 
 ```text
 crossref-mcp-server/
@@ -12,15 +12,18 @@ crossref-mcp-server/
 │   ├── mcp.json
 │   └── plugin.json
 ├── .github/
-│   └── ISSUE_TEMPLATE/
-│       ├── bug_report.yml
-│       ├── config.yml
-│       └── feature_request.yml
+│   ├── ISSUE_TEMPLATE/
+│   │   ├── bug_report.yml
+│   │   ├── config.yml
+│   │   └── feature_request.yml
+│   ├── FUNDING.yml
+│   └── SECURITY.md
 ├── .vscode/
 │   ├── extensions.json
 │   └── settings.json
 ├── changelog/
 │   ├── 0.1.x/
+│   ├── 0.2.x/
 │   └── template.md
 ├── docs/
 │   ├── design.md
@@ -137,6 +140,8 @@ crossref-mcp-server/
 │   │   │   └── definitions/
 │   │   └── tools/
 │   │       └── definitions/
+│   │           ├── get-member.tool.ts
+│   │           ├── get-prefix.tool.ts
 │   │           ├── get-references.tool.ts
 │   │           ├── get-work.tool.ts
 │   │           ├── index.ts
@@ -155,6 +160,8 @@ crossref-mcp-server/
 │   │   └── crossref/
 │   │       └── crossref-service.test.ts
 │   └── tools/
+│       ├── get-member.tool.test.ts
+│       ├── get-prefix.tool.test.ts
 │       ├── get-references.tool.test.ts
 │       ├── get-work.tool.test.ts
 │       ├── search-funders.tool.test.ts
@@ -162,6 +169,7 @@ crossref-mcp-server/
 │       └── search-works.tool.test.ts
 ├── .dockerignore
 ├── .env.example
+├── .gitattributes
 ├── .gitignore
 ├── .mcpbignore
 ├── AGENTS.md
