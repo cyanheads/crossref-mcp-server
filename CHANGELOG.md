@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.3.1](changelog/0.3.x/0.3.1.md) — 2026-08-07
+
+Upstream and transport failures from Crossref now classify by wire code instead of by accident, and every upstream reason carries a recovery hint on content[] as well as structuredContent
+
 ## [0.3.0](changelog/0.3.x/0.3.0.md) — 2026-08-06 · ⚠️ Breaking
 
 crossref_search_journals and crossref_search_funders page both the name-search and works lists by offset; crossref_search_funders rejects ambiguous include_works targets instead of silently picking one; funder_doi accepts bare registry IDs
