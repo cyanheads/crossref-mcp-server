@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.2.1](changelog/0.2.x/0.2.1.md) — 2026-08-06
+
+crossref_search_works force-includes DOI in select= and stops capping author lists at 10; crossref_get_references pages instead of truncating content[]; crossref_get_member scales coverage precision so small fractions don't round to 0%
+
 ## [0.2.0](changelog/0.2.x/0.2.0.md) — 2026-07-13
 
 crossref_get_member resolves a member ID to its publisher record (DOI prefixes, counts, deposit coverage); crossref_get_prefix resolves a DOI prefix to its owning member
