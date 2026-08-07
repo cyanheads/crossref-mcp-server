@@ -1,6 +1,6 @@
 # crossref-mcp-server - Directory Structure
 
-Generated on: 2026-07-13 18:35:28
+Generated on: 2026-08-07 03:27:45
 
 ```text
 crossref-mcp-server/
@@ -24,6 +24,7 @@ crossref-mcp-server/
 ├── changelog/
 │   ├── 0.1.x/
 │   ├── 0.2.x/
+│   ├── 0.3.x/
 │   └── template.md
 ├── docs/
 │   ├── design.md
