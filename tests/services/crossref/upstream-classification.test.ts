@@ -148,8 +148,27 @@ describe('upstream failure classification', () => {
     expect(error.code).toBe(JsonRpcErrorCode.Timeout);
     expect(error.data).toMatchObject({ reason: 'request_timeout', timeoutMs: 10_000 });
     expect(textOf(result)).toContain(REQUEST_TIMEOUT.recovery);
-    // Retry policy is out of #37's scope: a timeout still costs the full budget.
-    expect(http.calls).toHaveLength(TOTAL_ATTEMPTS);
+    // A deadline expiry costs the full CROSSREF_TIMEOUT_MS per attempt, so four of them is
+    // ~47s of silence before the caller hears anything and can act on the hint above.
+    expect(error.data).toMatchObject({ retryable: false });
+    expect(http.calls).toHaveLength(1);
+  });
+
+  it('maps 408 and 504 onto the timeout reason and keeps their full retry budget', async () => {
+    for (const status of [408, 504]) {
+      http.reset();
+      http.route({ match: WORKS_ROUTE, respond: () => new Response('gateway', { status }) });
+
+      const error = errorOf(await getWork());
+
+      expect(error.code, `HTTP ${status}`).toBe(JsonRpcErrorCode.Timeout);
+      expect(error.data, `HTTP ${status}`).toMatchObject({ reason: 'request_timeout' });
+      // Same reason as a deadline expiry, opposite retry economics: the response arrives as
+      // fast as Crossref answers, so an attempt here is no more expensive than any other
+      // transient status. Only the throw site whose cost this server's own clock sets opts out.
+      expect(error.data, `HTTP ${status}`).not.toMatchObject({ retryable: false });
+      expect(http.calls, `HTTP ${status}`).toHaveLength(TOTAL_ATTEMPTS);
+    }
   });
 
   it('reclassifies an upstream 500 as ServiceUnavailable rather than InternalError', async () => {
@@ -166,18 +185,6 @@ describe('upstream failure classification', () => {
     expect(errorOf(result).data).toMatchObject({ reason: 'upstream_unavailable' });
     expect(textOf(result)).toContain(UPSTREAM_UNAVAILABLE.recovery);
     expect(http.calls).toHaveLength(TOTAL_ATTEMPTS);
-  });
-
-  it('maps 408 and 504 onto the timeout reason rather than the generic status code', async () => {
-    for (const status of [408, 504]) {
-      http.reset();
-      http.route({ match: WORKS_ROUTE, respond: () => new Response('gateway', { status }) });
-
-      const error = errorOf(await getWork());
-
-      expect(error.code, `HTTP ${status}`).toBe(JsonRpcErrorCode.Timeout);
-      expect(error.data, `HTTP ${status}`).toMatchObject({ reason: 'request_timeout' });
-    }
   });
 
   it('classifies a body read that fails mid-stream as unavailable, not malformed', async () => {

@@ -2,7 +2,8 @@
  * @fileoverview CrossrefService wraps the Crossref REST API with polite-pool User-Agent injection,
  * per-request timeout, retry with exponential backoff, and pagination helpers. Offset paging is
  * honored on the name-search and works sub-resource routes, whose ceilings differ by an order of
- * magnitude — see NAME_SEARCH_OFFSET_CAP and WORKS_OFFSET_CAP.
+ * magnitude — see NAME_SEARCH_OFFSET_CAP and WORKS_OFFSET_CAP. Cursor paging has no ceiling and
+ * is available on `/works` and on both works sub-resources.
  * @module services/crossref/crossref-service
  */
 
@@ -127,10 +128,15 @@ export type FundersSearchOptions = {
   offset?: number;
 };
 
-/** Paging options for the `/journals/{issn}/works` and `/funders/{id}/works` sub-resources. */
+/**
+ * Paging options for the `/journals/{issn}/works` and `/funders/{id}/works` sub-resources.
+ * `cursor` and `offset` are alternatives, not a pair — Crossref rejects the combination with
+ * `cursor-with-offset-or-sample`, so `cursor` wins here and callers validate ahead of the call.
+ */
 export type SubResourceWorksOptions = {
   rows: number;
   offset?: number;
+  cursor?: string;
 };
 
 /** Result of a works search, including pagination metadata. */
@@ -155,9 +161,9 @@ export const NAME_SEARCH_OFFSET_CAP = 100_000;
 
 /**
  * The `/journals/{issn}/works` and `/funders/{id}/works` sub-resources cap ten times lower —
- * `offset + rows <= 10000` — and their rejection body directs callers to cursor paging. This
- * server does not thread a cursor through those sub-resources, so the deep-paging path it offers
- * instead is `/works` with an `issn:` / `funder:` filter.
+ * `offset + rows <= 10000` — and their rejection body directs callers to cursor paging. It is a
+ * ceiling on the `offset` input alone: both routes accept `cursor=*` and return a `next-cursor`
+ * token, which the tools thread as `works_cursor` / `nextWorksCursor` to read past it.
  */
 export const WORKS_OFFSET_CAP = 10_000;
 
@@ -205,7 +211,9 @@ export class CrossrefService {
    * place deliberately — the fix for "retries burned on a failure that can never
    * succeed" belongs one layer down, in `attempt()`, which returns every failure as an
    * `McpError` so the predicate classifies by error code. A custom predicate would only
-   * re-sort the same unclassified exceptions by shape at the wrong layer.
+   * re-sort the same unclassified exceptions by shape at the wrong layer. The same holds
+   * for retry *cost*: the deadline-expiry opt-out sets `retryable: false` at its throw
+   * site, which the stock predicate honors, so no budget arithmetic lives here.
    */
   private request<T>(path: string, ctx: Context): Promise<T> {
     const url = `${this.baseUrl}${path}`;
@@ -300,11 +308,22 @@ export class CrossrefService {
    */
   private transportError(err: unknown, url: string, timedOut: boolean, ctx: Context): unknown {
     if (timedOut) {
+      /**
+       * Opted out of retry at the throw site rather than on the contract entry. A deadline
+       * expiry is the one transient failure whose cost is set by this server's own clock
+       * instead of by how fast the upstream answers, so each retry spends the full
+       * `CROSSREF_TIMEOUT_MS` — four attempts plus backoff is ~47s of silence at the
+       * default, past what an MCP client's own request budget usually allows, and the
+       * recovery hint is then never read. 408 and 504 keep the full budget: they carry the
+       * same reason but arrive at upstream speed, so retrying one costs nothing near the
+       * deadline. The quantity that decides is which clock bounded the failure, not the code.
+       */
       return upstreamError(
         REQUEST_TIMEOUT,
         `Crossref did not respond within ${this.timeoutMs}ms.`,
         {
           data: { url, timeoutMs: this.timeoutMs },
+          retryable: false,
           cause: err,
         },
       );
@@ -488,7 +507,7 @@ export class CrossrefService {
       sort: 'published',
       order: 'desc',
     });
-    if (opts.offset != null && opts.offset > 0) params.set('offset', String(opts.offset));
+    setSubResourcePage(params, opts);
     const envelope = await this.request<CrossrefListMessage<RawCrossrefWork>>(
       `/journals/${encodeURIComponent(issn)}/works?${params}`,
       ctx,
@@ -538,7 +557,7 @@ export class CrossrefService {
       sort: 'published',
       order: 'desc',
     });
-    if (opts.offset != null && opts.offset > 0) params.set('offset', String(opts.offset));
+    setSubResourcePage(params, opts);
     const envelope = await this.request<CrossrefListMessage<RawCrossrefWork>>(
       `/funders/${encodeURIComponent(id)}/works?${params}`,
       ctx,
@@ -591,6 +610,19 @@ async function crossrefValidationError(response: Response): Promise<McpError> {
       ? `Crossref rejected the request: ${detail}`
       : 'Crossref returned HTTP 400 Bad Request — check filter key names (use hyphens, not underscores) and field names.',
   );
+}
+
+/**
+ * Apply the page selector for a works sub-resource. Cursor and offset are mutually exclusive
+ * upstream, so only one is ever written — the same precedence `searchWorks` uses on `/works`.
+ * An offset of 0 is the start of the list and is left off the query string entirely.
+ */
+function setSubResourcePage(params: URLSearchParams, opts: SubResourceWorksOptions): void {
+  if (opts.cursor) {
+    params.set('cursor', opts.cursor);
+  } else if (opts.offset != null && opts.offset > 0) {
+    params.set('offset', String(opts.offset));
+  }
 }
 
 function toWorksSearchResult(

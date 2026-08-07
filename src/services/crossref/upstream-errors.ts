@@ -55,11 +55,17 @@ export const MALFORMED_RESPONSE = {
     'Do not repeat the call unchanged — the body is corrupt rather than transient. Request less of the record (fewer rows, a narrower select) so a smaller response is serialized, or report the query that reproduces it.',
 } as const satisfies ErrorContract;
 
-/** The request exceeded `CROSSREF_TIMEOUT_MS`, or Crossref answered 408/504. */
+/**
+ * The request exceeded `CROSSREF_TIMEOUT_MS`, or Crossref answered 408/504.
+ *
+ * The entry stays retryable because 408 and 504 arrive at whatever speed the upstream answers,
+ * so retrying one costs about what any other transient status costs. The deadline-expiry throw
+ * site is the exception and opts itself out — see `transportError` in `crossref-service.ts`.
+ */
 export const REQUEST_TIMEOUT = {
   reason: 'request_timeout',
   code: JsonRpcErrorCode.Timeout,
-  when: 'Crossref did not respond within CROSSREF_TIMEOUT_MS.',
+  when: 'Crossref did not respond within CROSSREF_TIMEOUT_MS, or answered HTTP 408/504.',
   recovery:
     'Ask for less work per call — lower rows, drop select fields, or split a broad query — or raise CROSSREF_TIMEOUT_MS on the server, then retry.',
 } as const satisfies ErrorContract;
@@ -87,6 +93,10 @@ export const UPSTREAM_ERROR_CONTRACT = [
  * specifics worth carrying (the concrete `Retry-After` value, for instance). The
  * override lands on `data.recovery.hint`, which is the only surface a content-only
  * client sees — `error.data` itself never reaches it.
+ *
+ * `retryable` overrides the entry's own value for a throw site whose retry cost differs
+ * from the rest of the reason. `withRetry`'s default predicate reads `data.retryable`,
+ * so a `false` here fails the call on its first attempt.
  */
 export function upstreamError(
   entry: ErrorContract,
@@ -94,16 +104,18 @@ export function upstreamError(
   options: {
     data?: Record<string, unknown> | undefined;
     hint?: string | undefined;
+    retryable?: boolean | undefined;
     cause?: unknown;
   } = {},
 ): McpError {
-  const { data, hint, cause } = options;
+  const { data, hint, retryable, cause } = options;
+  const effectiveRetryable = retryable ?? entry.retryable;
   return new McpError(
     entry.code,
     message,
     {
       ...data,
-      ...(entry.retryable !== undefined && { retryable: entry.retryable }),
+      ...(effectiveRetryable !== undefined && { retryable: effectiveRetryable }),
       reason: entry.reason,
       recovery: { hint: hint ?? entry.recovery },
     },
