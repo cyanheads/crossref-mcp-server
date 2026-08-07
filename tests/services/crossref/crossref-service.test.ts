@@ -1,34 +1,37 @@
 /**
- * @fileoverview Tests for CrossrefService — polite-pool header, 404 null return, error propagation,
- * utility functions (stripJats, decodeHtmlEntities, formatDateParts, parseDateParts),
- * service initialization guard, and HTTP error classification.
+ * @fileoverview Request shaping and response handling for CrossrefService — the polite-pool
+ * header, URL and query-string construction on every route, envelope unwrapping, the
+ * 404 → null convention, and the status mapping and retry cost each failure carries.
+ *
+ * Nothing here replaces `@cyanheads/mcp-ts-core/utils`. An earlier revision stubbed
+ * `withRetry` to a pass-through and `httpErrorFromResponse` to a bare `vi.fn()`, which put
+ * the retry loop and the real status table out of reach of every case in the file and made
+ * any new non-400 error status fail on `undefined.message` rather than on the behavior
+ * under test. Upstream is a fetch fake and backoff sleeps run on fake timers, so an
+ * exhausted retry path costs no wall time. `upstream-classification.test.ts` covers the
+ * classification of each failure at the wire; this file covers the service surface.
+ *
  * @module tests/services/crossref/crossref-service.test
  */
 
-import { createMockContext } from '@cyanheads/mcp-ts-core/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-// Stub network and retry utilities before importing the service
-vi.mock('@cyanheads/mcp-ts-core/utils', () => ({
-  httpErrorFromResponse: vi.fn(),
-  withRetry: vi.fn((fn: () => unknown) => fn()),
-}));
+import { createFetchMock, createMockContext } from '@cyanheads/mcp-ts-core/testing';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/config/server-config.js', () => ({
   getServerConfig: vi.fn().mockReturnValue({
     mailto: 'test@example.com',
-    baseUrl: 'https://api.crossref.org',
+    baseUrl: 'https://api.crossref.test',
     timeoutMs: 5000,
   }),
 }));
 
-import { JsonRpcErrorCode, McpError } from '@cyanheads/mcp-ts-core/errors';
-import { httpErrorFromResponse, withRetry } from '@cyanheads/mcp-ts-core/utils';
+import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import {
   CrossrefService,
   decodeHtmlEntities,
   formatDateParts,
   getCrossrefService,
+  initCrossrefService,
   NAME_SEARCH_OFFSET_CAP,
   nextPageOffset,
   parseDateParts,
@@ -36,23 +39,19 @@ import {
   WORKS_OFFSET_CAP,
 } from '@/services/crossref/crossref-service.js';
 
-const mockFetch = vi.fn();
-globalThis.fetch = mockFetch;
+/** Every route this service calls lives under the configured base URL. */
+const CROSSREF = /^https:\/\/api\.crossref\.test\//;
 
-function makeJsonResponse(body: unknown, status = 200) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    text: vi.fn().mockResolvedValue(JSON.stringify(body)),
-    json: vi.fn().mockResolvedValue(body),
-  };
-}
+/** `withRetry`'s default budget: one attempt plus three retries. */
+const TOTAL_ATTEMPTS = 4;
+
+const http = createFetchMock();
 
 function makeSingleEnvelope(message: unknown) {
   return { status: 'ok', 'message-type': 'work', 'message-version': '1.0.0', message };
 }
 
-function makeListEnvelope(items: unknown[], total = 1) {
+function makeListEnvelope(items: unknown[], total = 1, extra: Record<string, unknown> = {}) {
   return {
     status: 'ok',
     'message-type': 'work-list',
@@ -61,239 +60,261 @@ function makeListEnvelope(items: unknown[], total = 1) {
       'total-results': total,
       'items-per-page': 20,
       items,
+      ...extra,
     },
   };
+}
+
+/** Answer every Crossref route with one body. */
+function serve(body: unknown, init?: ResponseInit): void {
+  http.route({ match: CROSSREF, respond: () => Response.json(body, init) });
+}
+
+/** Answer every Crossref route with a raw body — for non-JSON and error payloads. */
+function serveRaw(body: BodyInit, init?: ResponseInit): void {
+  http.route({ match: CROSSREF, respond: () => new Response(body, init) });
+}
+
+/** The URL of the nth captured request. */
+function requestedUrl(index = 0): string {
+  const url = http.calls[index]?.request.url;
+  if (url === undefined) throw new Error(`No request captured at index ${index}`);
+  return url;
+}
+
+/** The query string of the nth captured request, parsed. */
+function requestedParams(index = 0): URLSearchParams {
+  return new URL(requestedUrl(index)).searchParams;
+}
+
+/**
+ * Drive a pending call past `withRetry`'s backoff sleeps without waiting on them. The outcome
+ * is captured before the timers advance — a rejection settling mid-advance with no handler
+ * attached would surface as an unhandled rejection rather than as this call's result.
+ */
+async function settle<T>(promise: Promise<T>): Promise<T> {
+  const outcome = promise.then(
+    (value) => ({ ok: true as const, value }),
+    (error: unknown) => ({ ok: false as const, error }),
+  );
+  await vi.runAllTimersAsync();
+  const settled = await outcome;
+  if (settled.ok) return settled.value;
+  throw settled.error;
 }
 
 describe('CrossrefService', () => {
   let service: CrossrefService;
 
   beforeEach(() => {
+    vi.useFakeTimers();
+    http.reset();
+    http.install();
     service = new CrossrefService();
-    mockFetch.mockReset();
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
-    vi.mocked(httpErrorFromResponse).mockReset();
+  });
+
+  afterEach(() => {
+    http.restore();
+    vi.useRealTimers();
   });
 
   it('injects polite-pool User-Agent header on every request', async () => {
-    const rawWork = { DOI: '10.1038/nature12373', type: 'journal-article' };
-    mockFetch.mockResolvedValue(makeJsonResponse(makeSingleEnvelope(rawWork)));
+    serve(makeSingleEnvelope({ DOI: '10.1038/nature12373', type: 'journal-article' }));
 
-    const ctx = createMockContext();
-    await service.getWork('10.1038/nature12373', ctx);
+    await service.getWork('10.1038/nature12373', createMockContext());
 
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining('/works/'),
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          'User-Agent': expect.stringContaining('mailto:test@example.com'),
-        }),
-      }),
-    );
+    expect(requestedUrl()).toContain('/works/');
+    expect(http.calls[0]?.request.headers.get('User-Agent')).toContain('mailto:test@example.com');
   });
 
-  it('composes AbortSignal.timeout with ctx.signal on every request', async () => {
-    const rawWork = { DOI: '10.1038/nature12373', type: 'journal-article' };
-    mockFetch.mockResolvedValue(makeJsonResponse(makeSingleEnvelope(rawWork)));
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+  it('composes ctx.signal into the request signal, so caller cancellation reaches fetch', async () => {
+    const controller = new AbortController();
+    http.route({
+      match: CROSSREF,
+      respond: (request) =>
+        new Promise<Response>((_, reject) => {
+          request.signal.addEventListener('abort', () => reject(request.signal.reason), {
+            once: true,
+          });
+        }),
+    });
 
-    const ctx = createMockContext();
-    await service.getWork('10.1038/nature12373', ctx);
+    const ctx = createMockContext({ signal: controller.signal });
+    const pending = service.getWork('10.1038/nature12373', ctx);
+    await vi.advanceTimersByTimeAsync(0);
+    controller.abort(new Error('caller cancelled'));
 
-    const callArgs = mockFetch.mock.calls[0]?.[1] as { signal: AbortSignal };
-    expect(callArgs.signal).toBeDefined();
-    // AbortSignal.any produces a composite signal — it is not the raw ctx.signal
-    expect(callArgs.signal).not.toBe(ctx.signal);
+    await expect(pending).rejects.toThrow('caller cancelled');
+    // A cancelled call is not an upstream failure — withRetry exits on the aborted signal
+    // rather than spending the budget on a request nobody is waiting for.
+    expect(http.calls).toHaveLength(1);
+  });
+
+  it('clears the per-request timeout timer once the call succeeds', async () => {
+    serve(makeSingleEnvelope({ DOI: '10.1038/nature12373', type: 'journal-article' }));
+
+    // Awaited directly: advancing timers would fire the abort timer and make an uncleared
+    // one indistinguishable from a cleared one.
+    await service.getWork('10.1038/nature12373', createMockContext());
+
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('returns null for a 404 response on getWork', async () => {
-    // Simulate httpErrorFromResponse mapping a 404 → McpError(NotFound)
-    vi.mocked(withRetry).mockImplementation(async () => {
-      throw new McpError(JsonRpcErrorCode.NotFound, 'Not Found');
-    });
+    serveRaw('Resource not found.', { status: 404 });
 
-    const ctx = createMockContext();
-    const result = await service.getWork('10.9999/nonexistent', ctx);
-    expect(result).toBeNull();
+    expect(await service.getWork('10.9999/nonexistent', createMockContext())).toBeNull();
+    // 404 is a routine outcome the handlers turn into a typed reason, never a retry.
+    expect(http.calls).toHaveLength(1);
   });
 
-  it('propagates non-404 errors from getWork', async () => {
-    vi.mocked(withRetry).mockRejectedValue(
-      new McpError(JsonRpcErrorCode.Conflict, 'Service Unavailable'),
-    );
+  it('propagates a non-404 client error from getWork instead of nulling it', async () => {
+    serveRaw('conflict', { status: 409 });
 
-    const ctx = createMockContext();
-    await expect(service.getWork('10.1038/nature12373', ctx)).rejects.toMatchObject({
-      code: -32002,
+    await expect(service.getWork('10.1038/nature12373', createMockContext())).rejects.toMatchObject(
+      { code: JsonRpcErrorCode.Conflict },
+    );
+  });
+
+  it('maps a 503 through the real status table rather than the caller-error path', async () => {
+    serveRaw('down', { status: 503 });
+
+    // 503 is outside the 400/404 statuses the handlers own, so it is reclassified onto the
+    // upstream contract and retried to exhaustion.
+    await expect(
+      settle(service.getWork('10.1038/nature12373', createMockContext())),
+    ).rejects.toMatchObject({
+      code: JsonRpcErrorCode.ServiceUnavailable,
+      data: { reason: 'upstream_unavailable' },
     });
+    expect(http.calls).toHaveLength(TOTAL_ATTEMPTS);
   });
 
   it('builds the /members/{id} URL and returns the member message for getMember', async () => {
-    const rawMember = { id: 297, 'primary-name': 'Springer Science and Business Media LLC' };
-    mockFetch.mockResolvedValue(makeJsonResponse(makeSingleEnvelope(rawMember)));
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    serve(
+      makeSingleEnvelope({ id: 297, 'primary-name': 'Springer Science and Business Media LLC' }),
+    );
 
-    const ctx = createMockContext();
-    const result = await service.getMember(297, ctx);
+    const result = await service.getMember(297, createMockContext());
 
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    expect(calledUrl).toContain('/members/297');
+    expect(requestedUrl()).toContain('/members/297');
     expect(result).toMatchObject({ id: 297 });
   });
 
   it('returns null for a 404 response on getMember', async () => {
-    vi.mocked(withRetry).mockImplementation(async () => {
-      throw new McpError(JsonRpcErrorCode.NotFound, 'Not Found');
-    });
+    serveRaw('Resource not found.', { status: 404 });
 
-    const ctx = createMockContext();
-    expect(await service.getMember(999999999, ctx)).toBeNull();
+    expect(await service.getMember(999999999, createMockContext())).toBeNull();
   });
 
   it('builds the /prefixes/{prefix} URL and returns the prefix message for getPrefix', async () => {
-    const rawPrefix = {
-      member: 'https://id.crossref.org/member/297',
-      name: 'Springer Science and Business Media LLC',
-      prefix: 'https://id.crossref.org/prefix/10.1038',
-    };
-    mockFetch.mockResolvedValue(makeJsonResponse(makeSingleEnvelope(rawPrefix)));
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    serve(
+      makeSingleEnvelope({
+        member: 'https://id.crossref.org/member/297',
+        name: 'Springer Science and Business Media LLC',
+        prefix: 'https://id.crossref.org/prefix/10.1038',
+      }),
+    );
 
-    const ctx = createMockContext();
-    const result = await service.getPrefix('10.1038', ctx);
+    const result = await service.getPrefix('10.1038', createMockContext());
 
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    expect(calledUrl).toContain('/prefixes/10.1038');
+    expect(requestedUrl()).toContain('/prefixes/10.1038');
     expect(result).toMatchObject({ name: 'Springer Science and Business Media LLC' });
   });
 
   it('returns null for a 404 response on getPrefix', async () => {
-    vi.mocked(withRetry).mockImplementation(async () => {
-      throw new McpError(JsonRpcErrorCode.NotFound, 'Not Found');
-    });
+    serveRaw('Resource not found.', { status: 404 });
 
-    const ctx = createMockContext();
-    expect(await service.getPrefix('10.99999999', ctx)).toBeNull();
+    expect(await service.getPrefix('10.99999999', createMockContext())).toBeNull();
   });
 
   it('builds correct URL with filter and select params for searchWorks', async () => {
-    mockFetch.mockResolvedValue(
-      makeJsonResponse(makeListEnvelope([{ DOI: '10.1038/nature12373', type: 'journal-article' }])),
-    );
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    serve(makeListEnvelope([{ DOI: '10.1038/nature12373', type: 'journal-article' }]));
 
-    const ctx = createMockContext();
     await service.searchWorks(
       { query: 'CRISPR', filter: { type: 'journal-article' }, fields: ['DOI', 'title'], rows: 10 },
-      ctx,
+      createMockContext(),
     );
 
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    expect(calledUrl).toContain('query=CRISPR');
-    expect(calledUrl).toContain('filter=type%3Ajournal-article');
-    expect(calledUrl).toContain('select=DOI%2Ctitle');
-    expect(calledUrl).toContain('rows=10');
+    const qs = requestedParams();
+    expect(qs.get('query')).toBe('CRISPR');
+    expect(qs.get('filter')).toBe('type:journal-article');
+    expect(qs.get('select')).toBe('DOI,title');
+    expect(qs.get('rows')).toBe('10');
   });
 
   it('injects DOI into select= when the caller omits it from fields', async () => {
-    mockFetch.mockResolvedValue(makeJsonResponse(makeListEnvelope([])));
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    serve(makeListEnvelope([]));
 
-    const ctx = createMockContext();
-    await service.searchWorks({ query: 'CRISPR', fields: ['title'] }, ctx);
+    await service.searchWorks({ query: 'CRISPR', fields: ['title'] }, createMockContext());
 
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    const qs = new URLSearchParams(calledUrl.split('?')[1]);
-    expect(qs.get('select')).toBe('DOI,title');
+    expect(requestedParams().get('select')).toBe('DOI,title');
   });
 
   it('does not duplicate DOI in select= when the caller already listed it', async () => {
-    mockFetch.mockResolvedValue(makeJsonResponse(makeListEnvelope([])));
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    serve(makeListEnvelope([]));
 
-    const ctx = createMockContext();
-    await service.searchWorks({ query: 'CRISPR', fields: ['title', 'DOI', 'author'] }, ctx);
+    await service.searchWorks(
+      { query: 'CRISPR', fields: ['title', 'DOI', 'author'] },
+      createMockContext(),
+    );
 
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    const qs = new URLSearchParams(calledUrl.split('?')[1]);
-    expect(qs.get('select')).toBe('title,DOI,author');
+    expect(requestedParams().get('select')).toBe('title,DOI,author');
   });
 
   it('omits select= entirely when no fields are supplied', async () => {
-    mockFetch.mockResolvedValue(makeJsonResponse(makeListEnvelope([])));
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    serve(makeListEnvelope([]));
 
-    const ctx = createMockContext();
-    await service.searchWorks({ query: 'CRISPR' }, ctx);
+    await service.searchWorks({ query: 'CRISPR' }, createMockContext());
 
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    const qs = new URLSearchParams(calledUrl.split('?')[1]);
-    expect(qs.get('select')).toBeNull();
+    expect(requestedParams().get('select')).toBeNull();
   });
 
   it('uses cursor param when provided and omits offset', async () => {
-    mockFetch.mockResolvedValue(
-      makeJsonResponse({
-        ...makeListEnvelope([]),
-        message: {
-          'total-results': 100,
-          'items-per-page': 20,
-          items: [],
-          'next-cursor': 'AoE=',
-        },
-      }),
-    );
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    serve(makeListEnvelope([], 100, { 'next-cursor': 'AoE=' }));
 
-    const ctx = createMockContext();
-    const result = await service.searchWorks({ cursor: '*', rows: 20 }, ctx);
+    const result = await service.searchWorks({ cursor: '*', rows: 20 }, createMockContext());
 
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    expect(calledUrl).toContain('cursor=');
-    expect(calledUrl).not.toContain('offset=');
+    const qs = requestedParams();
+    expect(qs.get('cursor')).toBe('*');
+    expect(qs.get('offset')).toBeNull();
     expect(result.nextCursor).toBe('AoE=');
   });
 
   it('includes offset in URL when offset > 0 and no cursor', async () => {
-    mockFetch.mockResolvedValue(makeJsonResponse(makeListEnvelope([])));
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    serve(makeListEnvelope([]));
 
-    const ctx = createMockContext();
-    await service.searchWorks({ query: 'test', offset: 40, rows: 20 }, ctx);
+    await service.searchWorks({ query: 'test', offset: 40, rows: 20 }, createMockContext());
 
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    expect(calledUrl).toContain('offset=40');
-    expect(calledUrl).not.toContain('cursor=');
+    const qs = requestedParams();
+    expect(qs.get('offset')).toBe('40');
+    expect(qs.get('cursor')).toBeNull();
   });
 
   it('omits offset from URL when offset is 0', async () => {
-    mockFetch.mockResolvedValue(makeJsonResponse(makeListEnvelope([])));
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    serve(makeListEnvelope([]));
 
-    const ctx = createMockContext();
-    await service.searchWorks({ query: 'test', offset: 0 }, ctx);
+    await service.searchWorks({ query: 'test', offset: 0 }, createMockContext());
 
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    expect(calledUrl).not.toContain('offset=');
+    expect(requestedParams().get('offset')).toBeNull();
   });
 
   it('includes sort and order in URL when provided', async () => {
-    mockFetch.mockResolvedValue(makeJsonResponse(makeListEnvelope([])));
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    serve(makeListEnvelope([]));
 
-    const ctx = createMockContext();
-    await service.searchWorks({ query: 'test', sort: 'published', order: 'desc' }, ctx);
+    await service.searchWorks(
+      { query: 'test', sort: 'published', order: 'desc' },
+      createMockContext(),
+    );
 
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    expect(calledUrl).toContain('sort=published');
-    expect(calledUrl).toContain('order=desc');
+    const qs = requestedParams();
+    expect(qs.get('sort')).toBe('published');
+    expect(qs.get('order')).toBe('desc');
   });
 
   it('builds field-specific query.* params with hyphenated keys for searchWorks', async () => {
-    mockFetch.mockResolvedValue(makeJsonResponse(makeListEnvelope([])));
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    serve(makeListEnvelope([]));
 
-    const ctx = createMockContext();
     await service.searchWorks(
       {
         queryBibliographic: 'Harris Array programming with NumPy Nature 2020',
@@ -301,13 +322,12 @@ describe('CrossrefService', () => {
         queryAuthor: 'Charles R. Harris',
         queryContainerTitle: 'Nature',
       },
-      ctx,
+      createMockContext(),
     );
 
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
     // container-title carries a hyphen in Crossref's field-query syntax
-    expect(calledUrl).toContain('query.container-title=');
-    const qs = new URLSearchParams(calledUrl.split('?')[1]);
+    expect(requestedUrl()).toContain('query.container-title=');
+    const qs = requestedParams();
     expect(qs.get('query.bibliographic')).toBe('Harris Array programming with NumPy Nature 2020');
     expect(qs.get('query.title')).toBe('Array programming with NumPy');
     expect(qs.get('query.author')).toBe('Charles R. Harris');
@@ -315,214 +335,249 @@ describe('CrossrefService', () => {
   });
 
   it('sorts journal works by publication date descending in getJournalWorks', async () => {
-    mockFetch.mockResolvedValue(makeJsonResponse(makeListEnvelope([])));
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    serve(makeListEnvelope([]));
 
-    const ctx = createMockContext();
-    await service.getJournalWorks('0028-0836', { rows: 8 }, ctx);
+    await service.getJournalWorks('0028-0836', { rows: 8 }, createMockContext());
 
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    expect(calledUrl).toContain('/journals/');
-    expect(calledUrl).toContain('0028-0836');
-    expect(calledUrl).toContain('sort=published');
-    expect(calledUrl).toContain('order=desc');
-    expect(calledUrl).toContain('rows=8');
-    expect(calledUrl).not.toContain('offset=');
+    expect(requestedUrl()).toContain('/journals/0028-0836/works');
+    const qs = requestedParams();
+    expect(qs.get('sort')).toBe('published');
+    expect(qs.get('order')).toBe('desc');
+    expect(qs.get('rows')).toBe('8');
+    expect(qs.get('offset')).toBeNull();
   });
 
   it('sorts funder works by publication date descending in getFunderWorks', async () => {
-    mockFetch.mockResolvedValue(makeJsonResponse(makeListEnvelope([])));
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    serve(makeListEnvelope([]));
 
-    const ctx = createMockContext();
-    await service.getFunderWorks('10.13039/100000001', { rows: 6 }, ctx);
+    await service.getFunderWorks('10.13039/100000001', { rows: 6 }, createMockContext());
 
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    expect(calledUrl).toContain('/funders/');
-    expect(calledUrl).toContain('100000001');
-    expect(calledUrl).toContain('sort=published');
-    expect(calledUrl).toContain('order=desc');
-    expect(calledUrl).toContain('rows=6');
-    expect(calledUrl).not.toContain('offset=');
+    // The full DOI is percent-encoded into the path, one of the three forms /funders/{id} takes.
+    expect(requestedUrl()).toContain('/funders/10.13039%2F100000001/works');
+    const qs = requestedParams();
+    expect(qs.get('sort')).toBe('published');
+    expect(qs.get('order')).toBe('desc');
+    expect(qs.get('rows')).toBe('6');
+    expect(qs.get('offset')).toBeNull();
   });
 
   it('sends offset on the journal works sub-resource when a page offset is given', async () => {
-    mockFetch.mockResolvedValue(makeJsonResponse(makeListEnvelope([], 446507)));
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    serve(makeListEnvelope([], 446507));
 
-    const ctx = createMockContext();
-    const result = await service.getJournalWorks('0028-0836', { rows: 10, offset: 20 }, ctx);
+    const result = await service.getJournalWorks(
+      '0028-0836',
+      { rows: 10, offset: 20 },
+      createMockContext(),
+    );
 
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    expect(calledUrl).toContain('offset=20');
+    expect(requestedParams().get('offset')).toBe('20');
     expect(result.totalResults).toBe(446507);
   });
 
   it('sends offset on the funder works sub-resource when a page offset is given', async () => {
-    mockFetch.mockResolvedValue(makeJsonResponse(makeListEnvelope([], 559017)));
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    serve(makeListEnvelope([], 559017));
 
-    const ctx = createMockContext();
-    const result = await service.getFunderWorks('100000001', { rows: 10, offset: 30 }, ctx);
+    const result = await service.getFunderWorks(
+      '100000001',
+      { rows: 10, offset: 30 },
+      createMockContext(),
+    );
 
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    expect(calledUrl).toContain('offset=30');
+    expect(requestedParams().get('offset')).toBe('30');
     expect(result.totalResults).toBe(559017);
   });
 
+  it('sends cursor instead of offset on the journal works sub-resource and returns the next token', async () => {
+    serve(makeListEnvelope([{ DOI: '10.1038/a' }], 446507, { 'next-cursor': 'AoJw8P3T3fAC' }));
+
+    const result = await service.getJournalWorks(
+      '0028-0836',
+      { rows: 2, cursor: '*', offset: 20 },
+      createMockContext(),
+    );
+
+    // Crossref rejects the pair with `cursor-with-offset-or-sample`, so only the cursor is sent.
+    const qs = requestedParams();
+    expect(qs.get('cursor')).toBe('*');
+    expect(qs.get('offset')).toBeNull();
+    expect(qs.get('sort')).toBe('published');
+    expect(result.nextCursor).toBe('AoJw8P3T3fAC');
+  });
+
+  it('sends cursor instead of offset on the funder works sub-resource and returns the next token', async () => {
+    serve(makeListEnvelope([{ DOI: '10.1038/a' }], 559033, { 'next-cursor': 'AoJw8P3T3fAC' }));
+
+    const result = await service.getFunderWorks(
+      '10.13039/100000001',
+      { rows: 2, cursor: 'continuation-token', offset: 20 },
+      createMockContext(),
+    );
+
+    const qs = requestedParams();
+    expect(qs.get('cursor')).toBe('continuation-token');
+    expect(qs.get('offset')).toBeNull();
+    expect(result.nextCursor).toBe('AoJw8P3T3fAC');
+  });
+
   it('uses ISSN path for journal lookup when issn provided', async () => {
-    const journalEnvelope = {
+    serve({
       status: 'ok',
       'message-type': 'journal',
       'message-version': '1.0.0',
       message: { title: 'Nature', 'ISSN-L': '0028-0836' },
-    };
-    mockFetch.mockResolvedValue(makeJsonResponse(journalEnvelope));
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    });
 
-    const ctx = createMockContext();
-    const result = await service.searchJournals({ issn: '0028-0836', offset: 40 }, ctx);
+    const result = await service.searchJournals(
+      { issn: '0028-0836', offset: 40 },
+      createMockContext(),
+    );
 
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    expect(calledUrl).toContain('/journals/');
-    expect(calledUrl).toContain('0028-0836');
+    expect(requestedUrl()).toContain('/journals/0028-0836');
     // Single-record lookup — offset has no meaning on this route and is never sent
-    expect(calledUrl).not.toContain('offset=');
+    expect(requestedUrl()).not.toContain('offset=');
     expect(result.totalResults).toBe(1);
     expect(result.items[0]).toMatchObject({ title: 'Nature' });
   });
 
   it('carries total-results and offset through the journal title search', async () => {
-    mockFetch.mockResolvedValue(
-      makeJsonResponse(makeListEnvelope([{ title: 'Naturen' }], 223), 200),
+    serve(makeListEnvelope([{ title: 'Naturen' }], 223));
+
+    const result = await service.searchJournals(
+      { query: 'nature', rows: 2, offset: 2 },
+      createMockContext(),
     );
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
 
-    const ctx = createMockContext();
-    const result = await service.searchJournals({ query: 'nature', rows: 2, offset: 2 }, ctx);
-
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    expect(calledUrl).toContain('query=nature');
-    expect(calledUrl).toContain('offset=2');
+    const qs = requestedParams();
+    expect(qs.get('query')).toBe('nature');
+    expect(qs.get('offset')).toBe('2');
     expect(result.totalResults).toBe(223);
     expect(result.items).toHaveLength(1);
   });
 
   it('uses funder DOI path for funder lookup when funderDoi provided', async () => {
-    const funderEnvelope = {
+    serve({
       status: 'ok',
       'message-type': 'funder',
       'message-version': '1.0.0',
       message: { id: '100000001', name: 'NSF' },
-    };
-    mockFetch.mockResolvedValue(makeJsonResponse(funderEnvelope));
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    });
 
-    const ctx = createMockContext();
-    const result = await service.searchFunders({ funderDoi: '10.13039/100000001' }, ctx);
+    const result = await service.searchFunders(
+      { funderDoi: '10.13039/100000001' },
+      createMockContext(),
+    );
 
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    expect(calledUrl).toContain('/funders/');
-    expect(calledUrl).toContain('100000001');
+    expect(requestedUrl()).toContain('/funders/10.13039%2F100000001');
     expect(result.totalResults).toBe(1);
     expect(result.items[0]).toMatchObject({ id: '100000001' });
   });
 
   it('passes a bare registry ID through unchanged on the funder lookup path', async () => {
-    const funderEnvelope = {
+    serve({
       status: 'ok',
       'message-type': 'funder',
       'message-version': '1.0.0',
       message: { id: '100000001', name: 'National Science Foundation' },
-    };
-    mockFetch.mockResolvedValue(makeJsonResponse(funderEnvelope));
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    });
 
-    const ctx = createMockContext();
-    await service.searchFunders({ funderDoi: '100000001' }, ctx);
+    await service.searchFunders({ funderDoi: '100000001' }, createMockContext());
 
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    expect(calledUrl).toContain('/funders/100000001');
+    expect(requestedUrl()).toContain('/funders/100000001');
   });
 
   it('carries total-results and offset through the funder name search', async () => {
-    mockFetch.mockResolvedValue(
-      makeJsonResponse(makeListEnvelope([{ id: '501100004795' }], 2252), 200),
+    serve(makeListEnvelope([{ id: '501100004795' }], 2252));
+
+    const result = await service.searchFunders(
+      { query: 'National', rows: 2, offset: 2 },
+      createMockContext(),
     );
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
 
-    const ctx = createMockContext();
-    const result = await service.searchFunders({ query: 'National', rows: 2, offset: 2 }, ctx);
-
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    expect(calledUrl).toContain('query=National');
-    expect(calledUrl).toContain('offset=2');
+    const qs = requestedParams();
+    expect(qs.get('query')).toBe('National');
+    expect(qs.get('offset')).toBe('2');
     expect(result.totalResults).toBe(2252);
   });
 
   it('strips doi: prefix from funder DOI when building the request URL', async () => {
-    const funderEnvelope = {
+    serve({
       status: 'ok',
       'message-type': 'funder',
       'message-version': '1.0.0',
       message: { id: '100000001', name: 'NSF' },
-    };
-    mockFetch.mockResolvedValue(makeJsonResponse(funderEnvelope));
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    });
 
-    const ctx = createMockContext();
-    await service.searchFunders({ funderDoi: 'doi:10.13039/100000001' }, ctx);
+    await service.searchFunders({ funderDoi: 'doi:10.13039/100000001' }, createMockContext());
 
-    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
-    // prefix stripped, bare ID in path
-    expect(calledUrl).not.toContain('doi%3A');
-    expect(calledUrl).toContain('100000001');
+    // prefix stripped; the 10.13039/ stem survives, percent-encoded into the path
+    expect(requestedUrl()).not.toContain('doi%3A');
+    expect(requestedUrl()).toContain('/funders/10.13039%2F100000001');
   });
 
   it('throws ServiceUnavailable when Crossref returns HTML instead of JSON', async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      text: vi.fn().mockResolvedValue('<!DOCTYPE html><html><body>Rate limited</body></html>'),
-    });
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    serveRaw('<!DOCTYPE html><html><body>Rate limited</body></html>', { status: 200 });
 
-    const ctx = createMockContext();
-    await expect(service.getWork('10.1038/nature12373', ctx)).rejects.toMatchObject({
+    await expect(
+      settle(service.getWork('10.1038/nature12373', createMockContext())),
+    ).rejects.toMatchObject({
+      code: JsonRpcErrorCode.ServiceUnavailable,
       message: expect.stringContaining('HTML'),
     });
+    expect(http.calls).toHaveLength(TOTAL_ATTEMPTS);
   });
 
   it('throws ValidationError for a Crossref 400 validation-failure response', async () => {
-    const validationBody = {
-      'message-type': 'validation-failure',
-      message: [
-        { type: 'filter-not-available', value: 'has_abstract', message: 'Filter not available' },
-      ],
-    };
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 400,
-      text: vi.fn().mockResolvedValue(JSON.stringify(validationBody)),
-      json: vi.fn().mockResolvedValue(validationBody),
-    });
-    vi.mocked(withRetry).mockImplementation((fn) => fn());
+    serve(
+      {
+        'message-type': 'validation-failure',
+        message: [
+          { type: 'filter-not-available', value: 'has_abstract', message: 'Filter not available' },
+        ],
+      },
+      { status: 400 },
+    );
 
-    const ctx = createMockContext();
     await expect(
-      service.searchWorks({ filter: { has_abstract: 'true' } }, ctx),
+      service.searchWorks({ filter: { has_abstract: 'true' } }, createMockContext()),
     ).rejects.toMatchObject({
+      code: JsonRpcErrorCode.ValidationError,
       message: expect.stringContaining('has-abstract'),
     });
+    // The caller's request to fix, so it is never retried.
+    expect(http.calls).toHaveLength(1);
+  });
+
+  it('does not retry a body that arrived whole and failed to parse', async () => {
+    serveRaw('{"status":"ok","message":{', { status: 200 });
+
+    await expect(
+      settle(service.getWork('10.1038/nature12373', createMockContext())),
+    ).rejects.toMatchObject({
+      code: JsonRpcErrorCode.SerializationError,
+      data: { reason: 'malformed_response', retryable: false },
+    });
+    expect(http.calls).toHaveLength(1);
+  });
+
+  it('recovers when a transient failure clears inside the retry budget', async () => {
+    http.route({
+      match: CROSSREF,
+      once: true,
+      respond: () => new Response('down', { status: 503 }),
+    });
+    serve(makeSingleEnvelope({ DOI: '10.1038/nature12373', type: 'journal-article' }));
+
+    const result = await settle(service.getWork('10.1038/nature12373', createMockContext()));
+
+    expect(result).toMatchObject({ DOI: '10.1038/nature12373' });
+    expect(http.calls).toHaveLength(2);
   });
 });
 
-describe('getCrossrefService (uninitialized guard)', () => {
-  it('throws when service has not been initialized', () => {
-    // Import the function directly — the module-level singleton may be set or unset.
-    // We only assert the expected signature of the error; service may already be set.
-    // This test documents the expected behavior on a fresh import path.
-    expect(typeof getCrossrefService).toBe('function');
+describe('service singleton', () => {
+  it('hands back the initialized instance', () => {
+    initCrossrefService();
+    expect(getCrossrefService()).toBeInstanceOf(CrossrefService);
   });
 });
 
