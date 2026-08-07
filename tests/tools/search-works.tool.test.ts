@@ -203,7 +203,7 @@ describe('searchWorksTool', () => {
     expect(result.works[0]?.abstract).toBeUndefined();
   });
 
-  it('truncates author list to first 10 per work', async () => {
+  it('returns the full author list per work, uncapped', async () => {
     const ctx = createMockContext({ errors: searchWorksTool.errors });
     const authors = Array.from({ length: 15 }, (_, i) => ({ given: `G${i}`, family: `F${i}` }));
     mockSearchWorks.mockResolvedValue(
@@ -215,7 +215,74 @@ describe('searchWorksTool', () => {
     const input = searchWorksTool.input.parse({ query: 'test' });
     const result = await searchWorksTool.handler(input, ctx);
 
-    expect(result.works[0]?.authors?.length).toBe(10);
+    expect(result.works[0]?.authors?.length).toBe(15);
+    expect(result.works[0]?.authors?.at(-1)).toMatchObject({ given: 'G14', family: 'F14' });
+  });
+
+  it('renders every author in format() — no cap between the two result paths', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    const authors = Array.from({ length: 15 }, (_, i) => ({ given: `G${i}`, family: `F${i}` }));
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        items: [{ DOI: '10.1234/test', type: 'journal-article', author: authors }],
+      }),
+    );
+
+    const input = searchWorksTool.input.parse({ query: 'test' });
+    const result = await searchWorksTool.handler(input, ctx);
+    const text = searchWorksTool.format!(result)[0]?.text ?? '';
+
+    for (const a of result.works[0]?.authors ?? []) {
+      expect(text).toContain(`${a.given} ${a.family}`);
+    }
+  });
+
+  it('succeeds end-to-end when fields omits DOI and upstream still returns it', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    // The service force-includes DOI in select=, so the projected record still carries it
+    // even though the caller asked only for title.
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ items: [{ DOI: '10.1038/nature12373', title: ['Cas9 in mammals'] }] }),
+    );
+
+    const input = searchWorksTool.input.parse({
+      queryTitle: 'CRISPR',
+      fields: ['title'],
+      rows: 1,
+    });
+    const result = await searchWorksTool.handler(input, ctx);
+
+    expect(() => searchWorksTool.output.parse(result)).not.toThrow();
+    expect(result.works[0]?.doi).toBe('10.1038/nature12373');
+    expect(result.works[0]?.type).toBeUndefined();
+  });
+
+  it('renders the abstract in full, with no truncation marker', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    const abstract = `Start. ${'x'.repeat(2_700)} End.`;
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        items: [{ DOI: '10.1234/long', type: 'journal-article', abstract }],
+      }),
+    );
+
+    const input = searchWorksTool.input.parse({ query: 'test' });
+    const result = await searchWorksTool.handler(input, ctx);
+    const text = searchWorksTool.format!(result)[0]?.text ?? '';
+
+    expect(result.works[0]?.abstract).toBe(abstract);
+    expect(text).toContain(abstract);
+    expect(text).not.toContain('…');
+  });
+
+  it('renders a short abstract without a false truncation marker', () => {
+    const text =
+      searchWorksTool.format!({
+        works: [{ doi: '10.1234/short', abstract: 'A very short abstract.' }],
+      })[0]?.text ?? '';
+
+    expect(text).toContain('A very short abstract.');
+    expect(text).not.toContain('…');
   });
 
   it('handles items with no title or authors gracefully', async () => {

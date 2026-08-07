@@ -23,7 +23,7 @@ Seven tools for working with Crossref data — DOI resolution, full-text search 
 
 | Tool | Description |
 |:-----|:------------|
-| `crossref_get_work` | Resolve a DOI to its full Crossref metadata record: title, authors, affiliations, abstract (when deposited), journal, publication date, type, license, full-text links, funder acknowledgements, and outgoing reference list |
+| `crossref_get_work` | Resolve a DOI to its full Crossref metadata record: title, authors, affiliations, abstract (when deposited), journal, publication date, type, license, full-text links, funder acknowledgements, and outgoing reference count |
 | `crossref_search_works` | Search the Crossref works index by free text and/or structured filters. Supports sort, field selection, and cursor-based deep paging. |
 | `crossref_get_references` | Return the outgoing reference list for a DOI — the works cited by this paper, with raw citation strings and resolved DOIs where available |
 | `crossref_search_journals` | Find Crossref journal records by ISSN or title query; optionally retrieve the journal's most recent works by publication date |
@@ -37,6 +37,7 @@ Resolve a DOI to its canonical Crossref record.
 
 - DOI validated against `10.NNNN/suffix` regex before the upstream call
 - Returns title, authors with affiliations, abstract (when deposited), container/journal, publication date, work type, ISSN, license URLs, full-text link URLs, and funder acknowledgements
+- Outgoing references are reported as a count; the entries themselves come from `crossref_get_references`
 - Incoming citation count (`is-referenced-by-count`) is included; citing works are not — Crossref does not expose that data. Use OpenAlex for citation graphs.
 
 ---
@@ -48,7 +49,7 @@ Search across ~155M Crossref-registered works.
 - Free-text `query` plus a structured `filter` object using Crossref's hyphen-separated key syntax: `from-pub-date`, `until-pub-date`, `type`, `funder`, `issn`, `member`, `has-abstract`, `has-references`, `has-full-text`, `directory` (use `DOAJ` to restrict to open-access content)
 - Field-specific query parameters scope matching beyond the generic `query`: `queryTitle`, `queryAuthor`, `queryContainerTitle` (journal/book name), and `queryBibliographic` (whole-citation match to resolve a known reference to its DOI) — all combine with each other and with `query`
 - Sort by `relevance`, `is-referenced-by-count`, `published`, `deposited`, or `score`
-- `fields` parameter narrows response payload — useful for large result sets
+- `fields` parameter narrows response payload — useful for large result sets. Names are case-sensitive; `DOI` is always returned whether or not it is listed, so every result stays resolvable by `crossref_get_work`.
 - Offset paging up to ~10K results; deep paging requires `cursor=*` on the first call, then pass the returned `nextCursor` token. Cursor and offset cannot be combined.
 
 ---
@@ -58,6 +59,7 @@ Search across ~155M Crossref-registered works.
 Fetch the outgoing reference list for a DOI.
 
 - Each reference includes its raw citation string and, where Crossref has resolved it, a DOI for follow-up lookup
+- Paged with `offset` and `limit` (default 100, max 500). `referenceCount` is the full deposited total; when more remain, the response carries a `nextOffset` to pass back as `offset`. Most works fit in a single page — bibliography records can carry tens of thousands of references.
 - Coverage varies by publisher — pre-2000 literature and non-participating publishers may have no reference list
 - Single-hop only; agents that need N-hop traversal chain calls explicitly
 

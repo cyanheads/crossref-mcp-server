@@ -64,7 +64,7 @@ const DatePartsSchema = z.object({
 export const getWorkTool = tool('crossref_get_work', {
   title: 'Get Work by DOI',
   description:
-    'Resolves a DOI to its full Crossref metadata record: title, authors, affiliations, abstract (when deposited), journal or container, publication date, type, license, full-text links, funder acknowledgements, and outgoing reference list. The is_referenced_by_count field reports the total incoming citation count from Crossref; the citing works themselves are not available through Crossref — use OpenAlex for citation graphs.',
+    'Resolves a DOI to its full Crossref metadata record: title, authors, affiliations, abstract (when deposited), journal or container, publication date, type, license, full-text links, and funder acknowledgements. Outgoing references are reported as a count in referencesCount; the reference entries themselves come from crossref_get_references. The isReferencedByCount field reports the total incoming citation count from Crossref; the citing works themselves are not available through Crossref — use OpenAlex for citation graphs.',
   annotations: { readOnlyHint: true, idempotentHint: true },
 
   input: z.object({

@@ -278,9 +278,19 @@ export class CrossrefService {
       params.set('filter', filterStr);
     }
 
-    // select= only on /works (search), never on /works/{doi}
+    /**
+     * select= only on /works (search), never on /works/{doi}.
+     *
+     * DOI is force-included in every projection: it is the work summary's only
+     * identifier and the sole key that chains into /works/{doi}, so a projection
+     * that drops it yields records nothing downstream can resolve. Crossref's
+     * select names are case-sensitive ("DOI" is valid, "doi" is rejected as
+     * select-not-available), so the dedupe matches exactly — a caller who
+     * miscases the name still gets the upstream validation error naming it.
+     */
     if (opts.fields && opts.fields.length > 0) {
-      params.set('select', opts.fields.join(','));
+      const fields = opts.fields.includes('DOI') ? opts.fields : ['DOI', ...opts.fields];
+      params.set('select', fields.join(','));
     }
 
     const qs = params.toString();

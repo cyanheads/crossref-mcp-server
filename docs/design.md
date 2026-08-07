@@ -6,9 +6,9 @@
 
 | Name | Description | Key Inputs | Annotations |
 |:-----|:------------|:-----------|:------------|
-| `crossref_get_work` | Resolves a DOI to its full Crossref metadata record: title, authors, affiliations, abstract (when deposited), journal/container, publication date, type, license, full-text links, funder acknowledgements, and outgoing reference list. Incoming citation counts (`is-referenced-by-count`) are included but the citing works themselves are not — use OpenAlex for full citation graphs. | `doi` (required) | `readOnlyHint: true`, `idempotentHint: true` |
+| `crossref_get_work` | Resolves a DOI to its full Crossref metadata record: title, authors, affiliations, abstract (when deposited), journal/container, publication date, type, license, full-text links, funder acknowledgements, and outgoing reference count. The reference entries themselves come from `crossref_get_references`. Incoming citation counts (`is-referenced-by-count`) are included but the citing works themselves are not — use OpenAlex for full citation graphs. | `doi` (required) | `readOnlyHint: true`, `idempotentHint: true` |
 | `crossref_search_works` | Searches the Crossref works index by free text and/or structured filters. Filters use Crossref's hyphen-separated syntax: `from-pub-date`, `until-pub-date`, `type`, `funder`, `issn`, `member`, `has-abstract`, `has-references`, `has-full-text`, `directory` (DOAJ for open-access). Sort options: `relevance`, `is-referenced-by-count`, `published`, `deposited`, `score`. Results beyond ~10K require cursor-based paging. | `query` (free text), `filter` (object with hyphen-key names), `fields` (select, reduces payload), `rows` (default 20, max 100), `cursor` (`*` for first page, then nextCursor token), `sort`, `order` | `readOnlyHint: true`, `openWorldHint: true` |
-| `crossref_get_references` | Returns the outgoing reference list for a DOI — the works cited by this paper. Each reference includes its raw citation string and, where Crossref has resolved it, a DOI for follow-up lookup. Incoming citations (works that cite this paper) are not available through Crossref; use OpenAlex for that. | `doi` (required) | `readOnlyHint: true`, `idempotentHint: true` |
+| `crossref_get_references` | Returns the outgoing reference list for a DOI — the works cited by this paper. Each reference includes its raw citation string and, where Crossref has resolved it, a DOI for follow-up lookup. Paged: `referenceCount` is the full deposited total and `nextOffset` enrichment carries the input for the next page. Incoming citations (works that cite this paper) are not available through Crossref; use OpenAlex for that. | `doi` (required), `offset` (default 0), `limit` (default 100, max 500) | `readOnlyHint: true`, `idempotentHint: true` |
 | `crossref_search_journals` | Finds Crossref journal records by ISSN or title query. Returns journal metadata (title, publisher, ISSN-L, subject areas, total DOI count) plus optionally the journal's most recent works. | `query` (title text) or `issn`, `include_works` (bool, default false), `rows` | `readOnlyHint: true`, `openWorldHint: true` |
 | `crossref_search_funders` | Finds funders registered in the Crossref Funder Registry by name or funder DOI, then optionally retrieves works funded by the matched funder. Returns funder name, DOI, country, alternate names, and (when requested) a paginated list of funded works. | `query` (funder name) or `funder_doi`, `include_works` (bool, default false), `rows` | `readOnlyHint: true`, `openWorldHint: true` |
 | `crossref_get_member` | Resolves a Crossref member ID to its publisher/organization record: primary name, alternate imprint names, owned DOI prefixes, DOI counts (total/current/backfile), per-work-type breakdown, and per-category metadata deposit coverage (references, abstracts, ORCIDs, funders, licenses, etc.) as current/backfile fractions plus the two summary deposit flags. | `member_id` (required, positive integer) | `readOnlyHint: true`, `idempotentHint: true` |
@@ -18,29 +18,40 @@
 
 - **DOI parameter:** validated with a regex pattern (`/^10\.\d{4,9}\/\S+$/`) and described as a string in the format `"10.NNNN/suffix"`. Not a branded type (schema must be JSON-Schema-serializable), but the `.describe()` gives the format with an example.
 - **Filter object:** structured as `z.record(z.string())` with `.describe()` listing the valid hyphen-separated keys from the API (`has-abstract`, `has-references`, `has-full-text`, `from-pub-date`, `until-pub-date`, `type`, `funder`, `issn`, `member`, `directory`). Free `z.record(z.string())` is acceptable here because the valid set is large and the API returns an actionable validation error on unknown keys.
-- **`fields` parameter (search only):** `z.array(z.string()).optional()` — narrows the fields returned by the search endpoint. Full records can be large; selecting `DOI`, `title`, `author`, `published`, `type`, `is-referenced-by-count` covers most agent workflows. Not available on `/works/{doi}` (single-fetch path).
+- **`fields` parameter (search only):** `z.array(z.string()).optional()` — narrows the fields returned by the search endpoint. Full records can be large; selecting `DOI`, `title`, `author`, `published`, `type`, `is-referenced-by-count` covers most agent workflows. Not available on `/works/{doi}` (single-fetch path). `CrossrefService.searchWorks` force-includes `DOI` in the `select=` projection whether or not the caller lists it — DOI is the work summary's only identifier and the sole key that chains into the other tools, so a projection that drops it yields unresolvable records. Crossref's select names are case-sensitive (`DOI` valid, `doi` rejected as `select-not-available`), so the dedupe matches exactly rather than case-insensitively; a miscased name still surfaces the upstream validation error naming it.
+- **`offset` / `limit` parameters (`crossref_get_references`):** page the deposited reference list. Reference lists are heavy-tailed — most works deposit none at all, and among those that do a sampled median is 28 references — but bibliography records reach far higher: `10.1016/b978-0-12-397189-0.00123-3` carries 25,814, a 5 MB `structuredContent` payload if returned whole. Paging bounds both result paths identically rather than bounding only the rendered one.
 - **`cursor` parameter (search only):** `z.string().optional()` — pass `"*"` to start cursor-based deep paging (required past ~10K results); pass the `next-cursor` token from each response to continue. Cannot be combined with `offset`.
 
 ### Error Contracts
 
+Declared `errors: [...]` contract entries, one row per reason a handler can throw via `ctx.fail`:
+
 | Tool | Reason | Code | When | Retryable |
 |:-----|:-------|:-----|:-----|:----------|
 | `crossref_get_work` | `doi_not_found` | `NotFound` | Valid DOI format but no Crossref record | No — verify DOI or try a search |
-| `crossref_get_work` | `invalid_doi` | `InvalidParams` | DOI fails regex validation | No — fix format (`10.NNNN/suffix`) |
-| `crossref_get_references` | `doi_not_found` | `NotFound` | Valid DOI format but no Crossref record | No |
-| `crossref_get_references` | `invalid_doi` | `InvalidParams` | DOI fails regex validation | No |
-| `crossref_get_references` | `no_references` | `NotFound` | Record exists but has no indexed reference list | No — coverage varies by publisher |
-| `crossref_search_works` | `cursor_offset_conflict` | `InvalidParams` | Both `cursor` and `offset` supplied | No — use one or the other |
-| `crossref_search_works` | `offset_too_large` | `InvalidParams` | `offset + rows > ~10K` without cursor | No — switch to `cursor=*` for deep paging |
+| `crossref_get_references` | `doi_not_found` | `NotFound` | Valid DOI format but no Crossref record | No — verify DOI or try a search |
+| `crossref_search_works` | `cursor_offset_conflict` | `ValidationError` | Both `cursor` and `offset` supplied | No — use one or the other |
+| `crossref_search_works` | `offset_too_large` | `ValidationError` | `offset + rows > ~10K` without cursor | No — switch to `cursor=*` for deep paging |
+| `crossref_search_journals` | `issn_not_found` | `NotFound` | ISSN lookup returned 404 — not registered in Crossref | No — verify the ISSN or search by title |
+| `crossref_search_journals` | `ambiguous_journal` | `ValidationError` | `include_works` with a title query matching more than one journal | No — narrow the query or pass the ISSN |
+| `crossref_search_funders` | `funder_not_found` | `NotFound` | Funder DOI not in the Crossref Funder Registry | No — verify the funder DOI or search by name |
 | `crossref_get_member` | `member_not_found` | `NotFound` | No Crossref member for the given ID | No — verify the ID or resolve it via `crossref_get_prefix` |
-| `crossref_get_member` | `invalid_member_id` | `ValidationError` | `member_id` is not a positive integer (Zod schema) | No — pass a positive integer |
 | `crossref_get_prefix` | `prefix_not_found` | `NotFound` | DOI prefix not registered in Crossref | No — verify the prefix or search for the work |
-| `crossref_get_prefix` | `invalid_prefix` | `ValidationError` | `prefix` fails the `10.NNNN` regex (Zod schema) | No — pass the registrant prefix only, no `/suffix` |
-| All | `rate_limited` | `ServiceUnavailable` | 429 or 503 from Crossref | Yes — retry with backoff |
+
+Two failure classes sit outside the contract:
+
+- **Schema rejection.** A malformed `doi`, `prefix`, or `member_id` fails its Zod validator before the handler runs and surfaces as JSON-RPC `InvalidParams` (`-32602`), not a contract reason. The validator's `message` carries the format and an example.
+- **Upstream and transport failures.** A 429, a 503, a timeout, or a Crossref validation rejection (`filter-not-available`, `select-not-available`) is classified by the framework — `ServiceUnavailable` for the first three (retried with backoff before it surfaces), `ValidationError` carrying Crossref's own message for the last.
+
+An empty result is not an error. `crossref_get_references` returns a success with an empty `references` array and a `notice` enrichment in two cases — the work has no indexed reference list, and the requested `offset` is past the end of the list — with a distinct notice for each so a caller reading only `content[]` can tell them apart.
 
 ### `format()` Notes
 
-Both surfaces (`structuredContent` from `output` and `content[]` from `format()`) must carry the same data. `format()` is not a count/title stub — it must render title, authors, DOI, abstract (or "not deposited"), reference count, license, and the full reference list with resolved DOIs where available. Large reference lists should be truncated with a "…and N more" note in `format()` but the full list must be in `structuredContent`.
+Both surfaces (`structuredContent` from `output` and `content[]` from `format()`) must carry the same data. `format()` is not a count/title stub — it must render title, authors, DOI, abstract (or "not deposited"), reference count, license, and the reference list with resolved DOIs where available.
+
+**Parity rule:** `format()` never truncates, caps, slices, or rounds away anything present in `output`. It renders every element of every array and the full text of every string it surfaces. Truncation applied only in `format()` produces client-specific data loss — content-only clients silently lose data that structured-content clients receive, with no retrieval path.
+
+When a payload genuinely needs bounding, bound it **symmetrically in the handler** so both paths carry the identical page, and expose the retrieval input that reaches the rest. `crossref_get_references` is the worked example: `offset`/`limit` inputs page the list, `referenceCount` reports the full deposited total, and `nextOffset` enrichment hands back the input for the following page. Numeric rendering follows the same rule — precision scales to magnitude so a small nonzero value never renders as zero (see `formatCoverage` in `crossref_get_member`).
 
 ### Resources
 
@@ -54,7 +65,7 @@ No prompts defined. This is a data retrieval server; recurring patterns are cove
 
 ## Overview
 
-crossref-mcp-server wraps the Crossref REST API to expose canonical scholarly metadata for ~155 million registered works (journal articles, books, chapters, conference papers, preprints, datasets, components). It is the authoritative source for DOI-registered metadata — titles, authors, affiliations, abstracts (where deposited), licenses, full-text links, funder acknowledgements, and outgoing reference lists. It does not provide incoming citation counts or citation graphs; those belong to OpenAlex.
+crossref-mcp-server wraps the Crossref REST API to expose canonical scholarly metadata for ~155 million registered works (journal articles, books, chapters, conference papers, preprints, datasets, components). It is the authoritative source for DOI-registered metadata — titles, authors, affiliations, abstracts (where deposited), licenses, full-text links, funder acknowledgements, and outgoing reference lists. It reports an incoming citation count (`is-referenced-by-count`) but not the citing works; citation graphs belong to OpenAlex.
 
 **Pairs with:** pubmed-mcp-server (biomedical-specific abstracts/MeSH), openalex-mcp-server (analytics, citation graphs, topics, concepts), arxiv-mcp-server (preprints — their DOIs resolve through Crossref), biorxiv-mcp-server (preprints — same).
 

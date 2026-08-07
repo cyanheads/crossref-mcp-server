@@ -149,8 +149,8 @@ export const getMemberTool = tool('crossref_get_member', {
       lines.push('');
       lines.push('**Metadata coverage (current / backfile):**');
       for (const c of result.coverage) {
-        const cur = c.current !== undefined ? `${Math.round(c.current * 100)}%` : 'n/a';
-        const back = c.backfile !== undefined ? `${Math.round(c.backfile * 100)}%` : 'n/a';
+        const cur = c.current !== undefined ? formatCoverage(c.current) : 'n/a';
+        const back = c.backfile !== undefined ? formatCoverage(c.backfile) : 'n/a';
         lines.push(`- ${c.category}: ${cur} / ${back}`);
       }
     }
@@ -160,6 +160,20 @@ export const getMemberTool = tool('crossref_get_member', {
 });
 
 // --- Helpers ---
+
+/**
+ * Render a 0–1 coverage fraction as a percentage, scaling precision to magnitude so a
+ * small nonzero fraction never renders as a flat `0%`. Crossref coverage values run the
+ * full range — a category can sit at 0.86 or at 0.0000138, and collapsing the latter to
+ * zero would report "this publisher deposits none" when it deposits some.
+ */
+function formatCoverage(fraction: number): string {
+  const pct = fraction * 100;
+  if (pct === 0) return '0%';
+  if (pct >= 10) return `${pct.toFixed(0)}%`;
+  if (pct >= 1) return `${pct.toFixed(1)}%`;
+  return `${pct.toPrecision(2)}%`;
+}
 
 /** Project the raw member record into the curated output shape. */
 function projectMember(raw: RawCrossrefMember, requestedId: number) {

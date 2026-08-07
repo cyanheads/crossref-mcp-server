@@ -200,6 +200,21 @@ describe('getMemberTool', () => {
     expect(text).toContain('Yes');
   });
 
+  it('keeps sub-0.5% coverage fractions distinguishable from a genuine zero', () => {
+    const result = {
+      id: 297,
+      primaryName: 'Springer Science and Business Media LLC',
+      coverage: [
+        { category: 'ror-ids', current: 0.003784271010819736, backfile: 0.00001384254375974146 },
+        { category: 'similarity-checking', current: 0, backfile: 0 },
+      ],
+    };
+    const text = getMemberTool.format!(result)[0]?.text ?? '';
+
+    expect(text).toContain('- ror-ids: 0.38% / 0.0014%');
+    expect(text).toContain('- similarity-checking: 0% / 0%');
+  });
+
   it('security: output does not leak CROSSREF_MAILTO env value', async () => {
     const originalMailto = process.env.CROSSREF_MAILTO;
     process.env.CROSSREF_MAILTO = 'secret@internal.example.com';

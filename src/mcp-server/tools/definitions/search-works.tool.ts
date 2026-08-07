@@ -91,7 +91,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       .array(z.string())
       .optional()
       .describe(
-        'Fields to return (reduces payload). Useful set: DOI, title, author, published, type, is-referenced-by-count, abstract, container-title, publisher, score.',
+        'Fields to return (reduces payload). Names are case-sensitive. Useful set: DOI, title, author, published, type, is-referenced-by-count, abstract, container-title, publisher, score. DOI is always returned whether or not it is listed here, so every result stays resolvable by crossref_get_work.',
       ),
     rows: z
       .number()
@@ -228,7 +228,7 @@ export const searchWorksTool = tool('crossref_search_works', {
         ...(raw.title?.[0] !== undefined && { title: decodeHtmlEntities(raw.title[0]) }),
         ...(raw.type != null && { type: raw.type }),
         ...(raw.author && {
-          authors: raw.author.slice(0, 10).map((a) => ({
+          authors: raw.author.map((a) => ({
             ...(a.given && { given: a.given }),
             ...(a.family && { family: a.family }),
             ...(a.name && { name: a.name }),
@@ -284,7 +284,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       }
       if (w.isReferencedByCount !== undefined) lines.push(`**Cited by:** ${w.isReferencedByCount}`);
       if (w.score !== undefined) lines.push(`**Score:** ${w.score}`);
-      if (w.abstract) lines.push(`**Abstract:** ${w.abstract.slice(0, 300)}…`);
+      if (w.abstract) lines.push(`**Abstract:** ${w.abstract}`);
       lines.push('');
     }
 

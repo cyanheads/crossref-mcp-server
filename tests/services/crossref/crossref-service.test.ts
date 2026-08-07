@@ -192,6 +192,42 @@ describe('CrossrefService', () => {
     expect(calledUrl).toContain('rows=10');
   });
 
+  it('injects DOI into select= when the caller omits it from fields', async () => {
+    mockFetch.mockResolvedValue(makeJsonResponse(makeListEnvelope([])));
+    vi.mocked(withRetry).mockImplementation((fn) => fn());
+
+    const ctx = createMockContext();
+    await service.searchWorks({ query: 'CRISPR', fields: ['title'] }, ctx);
+
+    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
+    const qs = new URLSearchParams(calledUrl.split('?')[1]);
+    expect(qs.get('select')).toBe('DOI,title');
+  });
+
+  it('does not duplicate DOI in select= when the caller already listed it', async () => {
+    mockFetch.mockResolvedValue(makeJsonResponse(makeListEnvelope([])));
+    vi.mocked(withRetry).mockImplementation((fn) => fn());
+
+    const ctx = createMockContext();
+    await service.searchWorks({ query: 'CRISPR', fields: ['title', 'DOI', 'author'] }, ctx);
+
+    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
+    const qs = new URLSearchParams(calledUrl.split('?')[1]);
+    expect(qs.get('select')).toBe('title,DOI,author');
+  });
+
+  it('omits select= entirely when no fields are supplied', async () => {
+    mockFetch.mockResolvedValue(makeJsonResponse(makeListEnvelope([])));
+    vi.mocked(withRetry).mockImplementation((fn) => fn());
+
+    const ctx = createMockContext();
+    await service.searchWorks({ query: 'CRISPR' }, ctx);
+
+    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
+    const qs = new URLSearchParams(calledUrl.split('?')[1]);
+    expect(qs.get('select')).toBeNull();
+  });
+
   it('uses cursor param when provided and omits offset', async () => {
     mockFetch.mockResolvedValue(
       makeJsonResponse({

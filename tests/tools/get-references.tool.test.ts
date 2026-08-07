@@ -143,7 +143,7 @@ describe('getReferencesTool', () => {
     expect(() => getReferencesTool.input.parse({ doi: '10./suffix' })).toThrow();
   });
 
-  it('formats output with truncation notice for >50 references', () => {
+  it('renders every reference on the page — content[] matches structuredContent', () => {
     const refs = Array.from({ length: 60 }, (_, i) => ({
       key: `ref${i}`,
       doi: `10.1000/r${i}`,
@@ -151,22 +151,143 @@ describe('getReferencesTool', () => {
       articleTitle: `Title ${i}`,
       year: '2020',
     }));
+    const result = { doi: '10.1038/nature12373', referenceCount: 60, offset: 0, references: refs };
+    const text = getReferencesTool.format!(result)[0]?.text ?? '';
+
+    expect(text).toContain('10.1038/nature12373');
+    for (const r of refs) {
+      expect(text).toContain(r.doi);
+      expect(text).toContain(r.articleTitle);
+      expect(text).toContain(r.unstructured);
+    }
+    expect(text).not.toContain('more references');
+    expect(text).not.toContain('structuredContent');
+  });
+
+  it('renders long raw citation strings in full', () => {
+    const unstructured = `Author A. 2020. ${'w'.repeat(400)}. Journal of Long Titles.`;
     const result = {
       doi: '10.1038/nature12373',
-      referenceCount: 60,
-      references: refs,
+      referenceCount: 1,
+      offset: 0,
+      references: [{ key: 'r1', unstructured }],
     };
-    const blocks = getReferencesTool.format!(result);
-    const text = blocks[0]?.text ?? '';
-    expect(text).toContain('10.1038/nature12373');
-    expect(text).toContain('60');
-    expect(text).toContain('more references');
+    const text = getReferencesTool.format!(result)[0]?.text ?? '';
+
+    expect(text).toContain(unstructured);
+  });
+
+  it('numbers references by absolute position when rendering a later page', () => {
+    const result = {
+      doi: '10.1038/nature12373',
+      referenceCount: 250,
+      offset: 100,
+      references: [{ key: 'r101', articleTitle: 'Page two opener' }],
+    };
+    const text = getReferencesTool.format!(result)[0]?.text ?? '';
+
+    expect(text).toContain('101. Page two opener');
+    expect(text).toContain('showing 1 of 250');
+  });
+
+  it('pages a long reference list and discloses nextOffset', async () => {
+    const ctx = createMockContext({ errors: getReferencesTool.errors });
+    const reference = Array.from({ length: 250 }, (_, i) => ({
+      key: `ref${i}`,
+      unstructured: `Citation ${i}`,
+    }));
+    mockGetWork.mockResolvedValue({ DOI: '10.1038/big', type: 'journal-article', reference });
+
+    const input = getReferencesTool.input.parse({ doi: '10.1038/big' });
+    const result = await getReferencesTool.handler(input, ctx);
+
+    expect(result.referenceCount).toBe(250);
+    expect(result.offset).toBe(0);
+    expect(result.references).toHaveLength(100);
+    expect(getEnrichment(ctx)).toMatchObject({
+      nextOffset: 100,
+      truncated: true,
+      shown: 100,
+      cap: 100,
+    });
+    expect(getEnrichment(ctx).notice).toMatch(/offset=100/);
+
+    /**
+     * The wire payload is `output.extend(enrichment).parse({ ...result, ...enrichment })` —
+     * a key missing from either schema is stripped there, not at the accumulator getEnrichment
+     * reads. Parsing through the effective schema is what pins offset and the paging disclosure
+     * to what a client actually receives.
+     */
+    const wire = getReferencesTool.output
+      .extend(getReferencesTool.enrichment!)
+      .parse({ ...result, ...getEnrichment(ctx) });
+    expect(wire).toMatchObject({
+      offset: 0,
+      referenceCount: 250,
+      nextOffset: 100,
+      truncated: true,
+      shown: 100,
+      cap: 100,
+    });
+  });
+
+  it('returns the requested page and omits nextOffset on the final page', async () => {
+    const ctx = createMockContext({ errors: getReferencesTool.errors });
+    const reference = Array.from({ length: 250 }, (_, i) => ({
+      key: `ref${i}`,
+      unstructured: `Citation ${i}`,
+    }));
+    mockGetWork.mockResolvedValue({ DOI: '10.1038/big', type: 'journal-article', reference });
+
+    const input = getReferencesTool.input.parse({ doi: '10.1038/big', offset: 200, limit: 100 });
+    const result = await getReferencesTool.handler(input, ctx);
+
+    expect(result.offset).toBe(200);
+    expect(result.references).toHaveLength(50);
+    expect(result.references[0]?.key).toBe('ref200');
+    expect(getEnrichment(ctx).nextOffset).toBeUndefined();
+    expect(getEnrichment(ctx).truncated).toBeUndefined();
+  });
+
+  it('returns every reference in one page when the list fits under the limit', async () => {
+    const ctx = createMockContext({ errors: getReferencesTool.errors });
+    const reference = Array.from({ length: 60 }, (_, i) => ({ key: `ref${i}` }));
+    mockGetWork.mockResolvedValue({ DOI: '10.1038/mid', type: 'journal-article', reference });
+
+    const input = getReferencesTool.input.parse({ doi: '10.1038/mid' });
+    const result = await getReferencesTool.handler(input, ctx);
+
+    expect(result.references).toHaveLength(60);
+    expect(result.referenceCount).toBe(60);
+    expect(getEnrichment(ctx).nextOffset).toBeUndefined();
+  });
+
+  it('explains an offset past the end of the reference list', async () => {
+    const ctx = createMockContext({ errors: getReferencesTool.errors });
+    mockGetWork.mockResolvedValue({
+      DOI: '10.1038/nature12373',
+      type: 'journal-article',
+      reference: REF_LIST,
+    });
+
+    const input = getReferencesTool.input.parse({ doi: '10.1038/nature12373', offset: 500 });
+    const result = await getReferencesTool.handler(input, ctx);
+
+    expect(result.referenceCount).toBe(2);
+    expect(result.references).toHaveLength(0);
+    expect(getEnrichment(ctx).notice).toMatch(/past the end/);
+  });
+
+  it('rejects a limit above the 500 page ceiling', () => {
+    expect(() => getReferencesTool.input.parse({ doi: '10.1038/x1', limit: 501 })).toThrow();
+    expect(() => getReferencesTool.input.parse({ doi: '10.1038/x1', offset: -1 })).toThrow();
   });
 
   it('formats output including doi, key, and raw citation', () => {
     const result = {
       doi: '10.1038/nature12373',
       referenceCount: 2,
+      offset: 0,
       references: [
         {
           doi: '10.1000/ref1',
@@ -192,6 +313,7 @@ describe('getReferencesTool', () => {
     const result = {
       doi: '10.1038/nature12373',
       referenceCount: 1,
+      offset: 0,
       references: [
         {
           key: 'r1',

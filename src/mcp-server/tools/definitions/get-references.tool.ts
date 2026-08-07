@@ -1,6 +1,7 @@
 /**
- * @fileoverview crossref_get_references — returns the outgoing reference list for a DOI.
- * Fetches the full /works/{doi} record and extracts the reference[] array client-side.
+ * @fileoverview crossref_get_references — returns a page of the outgoing reference list for a DOI.
+ * Fetches the full /works/{doi} record and extracts the reference[] array client-side, then slices
+ * it by offset/limit so structuredContent and content[] carry the identical page.
  * Incoming citations are not available through Crossref; use OpenAlex for those.
  * @module mcp-server/tools/definitions/get-references.tool
  */
@@ -30,7 +31,7 @@ const ReferenceSchema = z
 export const getReferencesTool = tool('crossref_get_references', {
   title: 'Get Reference List',
   description:
-    'Returns the outgoing reference list for a DOI — the works cited by this paper. Each reference includes the raw citation string and, where Crossref has resolved it, a DOI you can look up with crossref_get_work. Reference list coverage varies by publisher; many older works and non-participating publishers have no indexed references. Incoming citations — the works that cite this paper — are not available through Crossref; use OpenAlex for that.',
+    'Returns the outgoing reference list for a DOI — the works cited by this paper. Each reference includes the raw citation string and, where Crossref has resolved it, a DOI you can look up with crossref_get_work. Results are paged: referenceCount is the full deposited total, and when more remain the response carries a nextOffset to pass back as offset. Reference list coverage varies by publisher; many older works and non-participating publishers have no indexed references. Incoming citations — the works that cite this paper — are not available through Crossref; use OpenAlex for that.',
   annotations: { readOnlyHint: true, idempotentHint: true },
 
   input: z.object({
@@ -43,20 +44,52 @@ export const getReferencesTool = tool('crossref_get_references', {
       .describe(
         'DOI in the format "10.NNNN/suffix", e.g. "10.1038/nature12373". Must start with "10." followed by 4–9 digits and a slash.',
       ),
+    offset: z
+      .number()
+      .int()
+      .min(0)
+      .default(0)
+      .describe(
+        'Zero-based index of the first reference to return. Pass the nextOffset value from the previous response to continue through a long reference list.',
+      ),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(500)
+      .default(100)
+      .describe(
+        'Maximum number of references to return in one page (1–500, default 100). Most works fit in a single page; bibliography records can carry tens of thousands.',
+      ),
   }),
 
   output: z.object({
     doi: z.string().describe('DOI of the citing work'),
-    referenceCount: z.number().describe('Number of references in the deposited list'),
-    references: z.array(ReferenceSchema).describe('Outgoing reference list'),
+    referenceCount: z.number().describe('Total number of references in the deposited list'),
+    offset: z
+      .number()
+      .describe('Zero-based index of the first returned reference within the deposited list'),
+    references: z.array(ReferenceSchema).describe('Page of the outgoing reference list'),
   }),
 
   enrichment: {
+    nextOffset: z
+      .number()
+      .optional()
+      .describe(
+        'Offset to pass in the next call to retrieve the following page. Absent when this page reaches the end of the reference list.',
+      ),
+    truncated: z
+      .boolean()
+      .optional()
+      .describe('True when references remain beyond this page. Absent when the page is the last.'),
+    shown: z.number().optional().describe('Number of references returned in this page.'),
+    cap: z.number().optional().describe('The limit that was applied to this page.'),
     notice: z
       .string()
       .optional()
       .describe(
-        'Coverage guidance when no references are indexed. Absent when references are present.',
+        'Coverage guidance when no references are indexed, or a range explanation when the requested offset is past the end of the list. Absent on a normal page.',
       ),
   },
 
@@ -88,10 +121,30 @@ export const getReferencesTool = tool('crossref_get_references', {
           'pre-2000 works and non-participating publishers often have no indexed references. ' +
           'Try OpenAlex for alternative reference data.',
       );
-      return { doi: raw.DOI, referenceCount: 0, references: [] };
+      return { doi: raw.DOI, referenceCount: 0, offset: input.offset, references: [] };
     }
 
-    const references = raw.reference.map((r) => ({
+    const total = raw.reference.length;
+    if (input.offset >= total) {
+      ctx.enrich.notice(
+        `Offset ${input.offset} is past the end of this reference list (${total} references). ` +
+          `Request an offset below ${total}.`,
+      );
+      return { doi: raw.DOI, referenceCount: total, offset: input.offset, references: [] };
+    }
+
+    const page = raw.reference.slice(input.offset, input.offset + input.limit);
+    const nextOffset = input.offset + page.length;
+    if (nextOffset < total) {
+      ctx.enrich({ nextOffset });
+      ctx.enrich.truncated({
+        shown: page.length,
+        cap: input.limit,
+        guidance: `Showing references ${input.offset + 1}–${nextOffset} of ${total}. Call again with offset=${nextOffset} for the next page.`,
+      });
+    }
+
+    const references = page.map((r) => ({
       ...(r.key && { key: r.key }),
       ...(r.DOI && { doi: r.DOI }),
       ...(r.unstructured && { unstructured: r.unstructured }),
@@ -106,7 +159,8 @@ export const getReferencesTool = tool('crossref_get_references', {
 
     return {
       doi: raw.DOI,
-      referenceCount: references.length,
+      referenceCount: total,
+      offset: input.offset,
       references,
     };
   },
@@ -114,15 +168,12 @@ export const getReferencesTool = tool('crossref_get_references', {
   format: (result) => {
     const lines: string[] = [
       `**DOI:** ${result.doi}`,
-      `**Reference count:** ${result.referenceCount}`,
+      `**References:** showing ${result.references.length} of ${result.referenceCount}, starting at index ${result.offset}`,
       '',
     ];
 
-    const MAX_INLINE = 50;
-    const shown = result.references.slice(0, MAX_INLINE);
-    const remaining = result.referenceCount - shown.length;
-
-    for (const [i, r] of shown.entries()) {
+    for (const [i, r] of result.references.entries()) {
+      const position = result.offset + i + 1;
       const doi = r.doi ? ` — DOI: ${r.doi}` : '';
       const year = r.year ? ` (${r.year})` : '';
       const journal = r.journalTitle ? ` *${r.journalTitle}*` : '';
@@ -130,17 +181,12 @@ export const getReferencesTool = tool('crossref_get_references', {
       const volPage =
         r.volume || r.firstPage ? ` ${r.volume ?? ''}${r.firstPage ? `:${r.firstPage}` : ''}` : '';
       const issnPart = r.issn ? ` ISSN:${r.issn}` : '';
-      const title = r.articleTitle ?? `[${i + 1}]`;
+      const title = r.articleTitle ?? `[${position}]`;
       const keyPart = r.key ? ` key:${r.key}` : '';
-      const rawPart = r.unstructured ? ` | ${r.unstructured.slice(0, 120)}` : '';
+      const rawPart = r.unstructured ? ` | ${r.unstructured}` : '';
       lines.push(
-        `${i + 1}.${authorPart} ${title}${year}${journal}${volPage}${issnPart}${doi}${keyPart}${rawPart}`,
+        `${position}.${authorPart} ${title}${year}${journal}${volPage}${issnPart}${doi}${keyPart}${rawPart}`,
       );
-    }
-
-    if (remaining > 0) {
-      lines.push('');
-      lines.push(`…and ${remaining} more references in structuredContent.`);
     }
 
     return [{ type: 'text', text: lines.join('\n') }];
