@@ -1,7 +1,7 @@
 # Agent Protocol
 
 **Server:** @cyanheads/crossref-mcp-server
-**Version:** 0.3.1
+**Version:** 0.3.2
 **Framework:** [@cyanheads/mcp-ts-core](https://www.npmjs.com/package/@cyanheads/mcp-ts-core) `^0.11.1`
 **Engines:** Bun ≥1.3.0, Node ≥24.0.0
 **MCP SDK:** `@modelcontextprotocol/sdk` ^1.30.0
@@ -38,11 +38,11 @@ crossref-mcp-server wraps the [Crossref REST API](https://api.crossref.org/) to 
 
 ### Key domain constraints
 
-- **Polite-pool `mailto` is optional but recommended.** Every request includes `User-Agent: crossref-mcp-server/0.3.1 (mailto:<CROSSREF_MAILTO>)` when set. Without it, the server starts but logs a warning and uses the anonymous pool with stricter rate limits. Polite-pool access requires no token — just the email in the header.
+- **Polite-pool `mailto` is optional but recommended.** Every request includes `User-Agent: crossref-mcp-server/0.3.2 (mailto:<CROSSREF_MAILTO>)` when set. Without it, the server starts but logs a warning and uses the anonymous pool with stricter rate limits. Polite-pool access requires no token — just the email in the header.
 - **No incoming citations.** Crossref does not expose which works cite a given DOI. Redirect to OpenAlex for citation counts or citation graphs.
 - **Abstract coverage is incomplete.** Abstracts are deposited voluntarily; many records — especially older works and books — have none.
 - **Reference list coverage varies.** Outgoing references are only present for publisher participants; pre-2000 literature has low coverage.
-- **Offset paging is capped at ~10K.** Deep paging requires `cursor=*` on the first request, then chaining `next-cursor` tokens. Cursor and offset cannot be combined.
+- **Offset paging is capped at ~10K** on `/works` and on both works sub-resources (100K on the `/journals` and `/funders` name searches). Deep paging requires `cursor=*` on the first request, then chaining `next-cursor` tokens; the name-search routes do not accept a cursor. Cursor and offset cannot be combined.
 - **`select=` works on `/works` (search) only.** It is not supported on `/works/{doi}` (single-fetch). `crossref_get_references` fetches the full record and extracts `reference[]` client-side.
 - **Filter keys use hyphens.** e.g. `has-abstract`, `has-references`, `has-full-text`, `from-pub-date`. No `is_open_access` filter exists — use `directory:DOAJ` for open-access content.
 
@@ -353,7 +353,7 @@ import { getCrossrefService } from '@/services/crossref/crossref-service.js';
 - [ ] Filter keys in `crossref_search_works` use hyphens (e.g. `has-abstract`), not underscores
 - [ ] `select=` parameter only passed to `/works` (search), never to `/works/{doi}` (single-fetch)
 - [ ] `crossref_get_references` extracts `reference[]` from the full `/works/{doi}` response body, not via a `select` shortcut
-- [ ] Cursor and offset cannot be combined — throw `cursor_offset_conflict` if both are supplied
+- [ ] Cursor and offset cannot be combined — throw `cursor_offset_conflict` (`crossref_search_works`) or `works_cursor_offset_conflict` (the journal/funder works sub-resources) if both are supplied
 - [ ] Registered in `createApp()` arrays (directly or via barrel exports)
 - [ ] Tests use `createMockContext()` from `@cyanheads/mcp-ts-core/testing`
 - [ ] `.codex-plugin/plugin.json` populated — `name`, `version`, `description`, `repository`, `license` from `package.json`; `interface.displayName` = package name; `interface.shortDescription` from `package.json` description

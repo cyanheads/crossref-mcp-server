@@ -7,7 +7,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/Version-0.3.1-blue.svg?style=flat-square)](./CHANGELOG.md) [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg?style=flat-square)](./LICENSE) [![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/users/cyanheads/packages/container/package/crossref-mcp-server) [![MCP SDK](https://img.shields.io/badge/MCP%20SDK-^1.30.0-green.svg?style=flat-square)](https://modelcontextprotocol.io/) [![npm](https://img.shields.io/npm/v/@cyanheads/crossref-mcp-server?style=flat-square&logo=npm&logoColor=white)](https://www.npmjs.com/package/@cyanheads/crossref-mcp-server) [![TypeScript](https://img.shields.io/badge/TypeScript-^7.0.2-3178C6.svg?style=flat-square)](https://www.typescriptlang.org/) [![Bun](https://img.shields.io/badge/Bun-v1.3.14-blueviolet.svg?style=flat-square)](https://bun.sh/)
+[![Version](https://img.shields.io/badge/Version-0.3.2-blue.svg?style=flat-square)](./CHANGELOG.md) [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg?style=flat-square)](./LICENSE) [![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/users/cyanheads/packages/container/package/crossref-mcp-server) [![MCP SDK](https://img.shields.io/badge/MCP%20SDK-^1.30.0-green.svg?style=flat-square)](https://modelcontextprotocol.io/) [![npm](https://img.shields.io/npm/v/@cyanheads/crossref-mcp-server?style=flat-square&logo=npm&logoColor=white)](https://www.npmjs.com/package/@cyanheads/crossref-mcp-server) [![TypeScript](https://img.shields.io/badge/TypeScript-^7.0.2-3178C6.svg?style=flat-square)](https://www.typescriptlang.org/) [![Bun](https://img.shields.io/badge/Bun-v1.3.14-blueviolet.svg?style=flat-square)](https://bun.sh/)
 
 [![Install in Claude Desktop](https://img.shields.io/badge/Install_in-Claude_Desktop-D97757?style=for-the-badge&logo=anthropic&logoColor=white)](https://github.com/cyanheads/crossref-mcp-server/releases/latest/download/crossref-mcp-server.mcpb) [![Install in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=crossref-mcp-server&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBjeWFuaGVhZHMvY3Jvc3NyZWYtbWNwLXNlcnZlciJdfQ==) [![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Server-0098FF?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect?url=vscode:mcp/install?%7B%22name%22%3A%22crossref-mcp-server%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40cyanheads/crossref-mcp-server%22%5D%7D)
 
@@ -72,7 +72,8 @@ Find journal records by ISSN or title.
 - `include_works: true` also returns a page of the journal's most recent works by publication date
 - Returns journal title, publisher, ISSN-L, subject areas, and total DOI count
 - Title-query results page with `offset`; `journalsTotal` reports the full match count and `nextOffset` carries the input for the following page. The journal works list pages separately with `works_offset` and `nextWorksOffset`.
-- The two lists have different ceilings: title search allows `offset + rows` up to 100,000, the works list only 10,000. A page that stops at either ceiling carries a `notice` saying so — a missing continuation offset would otherwise read as the end of the list. Read a journal's works past the ceiling with `crossref_search_works` using `filter: {"issn": "<issn>"}` and `cursor="*"`.
+- The two lists have different ceilings: title search allows `offset + rows` up to 100,000, the works list only 10,000. A page that stops at either ceiling carries a `notice` saying so — a missing continuation offset would otherwise read as the end of the list.
+- The journal works list also pages by cursor, which has no ceiling: pass `works_cursor="*"` and chain the `nextWorksCursor` token from each response to read the whole list. A cursor walk starts at the newest work and cannot resume from an offset, and the two cannot be combined — `works_cursor` with a nonzero `works_offset` returns `works_cursor_offset_conflict`. Each token runs about 1500 characters on both result surfaces, a cost per page rather than per record, so a long walk is cheaper at a high `rows`.
 - `include_works` needs an unambiguous journal. A title query matching more than one — measured by the upstream match count, not by how many fit on the requested page — returns `ambiguous_journal`, naming the page's candidates and their ISSNs in the message and in `candidates` on the error data, alongside the full match count. Pass one back as `issn`, or narrow the query when the journal you want is not among them.
 
 ---
@@ -85,7 +86,8 @@ Find funders in the Crossref Funder Registry.
 - `include_works: true` also returns a page of works funded by the matched funder
 - Returns funder name, registry ID, country, and alternate names
 - Name-query results page with `offset`; `fundersTotal` reports the full match count and `nextOffset` carries the input for the following page. The funded works list pages separately with `works_offset` and `nextWorksOffset`.
-- The two lists have different ceilings: name search allows `offset + rows` up to 100,000, the works list only 10,000. A page that stops at either ceiling carries a `notice` saying so — a missing continuation offset would otherwise read as the end of the list. Read a funder's works past the ceiling with `crossref_search_works` using `filter: {"funder": "10.13039/<id>"}` and `cursor="*"`.
+- The two lists have different ceilings: name search allows `offset + rows` up to 100,000, the works list only 10,000. A page that stops at either ceiling carries a `notice` saying so — a missing continuation offset would otherwise read as the end of the list.
+- The funded works list also pages by cursor, which has no ceiling: pass `works_cursor="*"` and chain the `nextWorksCursor` token from each response to read the whole list. A cursor walk starts at the newest work and cannot resume from an offset, and the two cannot be combined — `works_cursor` with a nonzero `works_offset` returns `works_cursor_offset_conflict`. Each token runs about 1500 characters on both result surfaces, a cost per page rather than per record, so a long walk is cheaper at a high `rows`. This list counts works funded by the funder's registry descendants, which a `crossref_search_works` filter on `{"funder": "10.13039/<id>"}` does not.
 - `include_works` needs an unambiguous funder. A name query matching more than one — measured by the upstream match count, not by how many fit on the requested page — returns `ambiguous_funder` rather than resolving one silently, naming the page's candidates and their registry IDs in the message and in `candidates` on the error data, alongside the full match count. Pass one back as `funder_doi`, or narrow the query when the funder you want is not among them.
 
 ---
@@ -122,9 +124,9 @@ Built on [`@cyanheads/mcp-ts-core`](https://github.com/cyanheads/mcp-ts-core):
 Crossref-specific:
 
 - Polite-pool `User-Agent` header injected on every request — priority access granted via `CROSSREF_MAILTO` email address, no API token required
-- Retry with exponential backoff on 429 (honoring `Retry-After`), 5xx, timeouts, and network failures. A malformed response body is not retried — an identical request re-serializes it
+- Retry with exponential backoff on 429 (honoring `Retry-After`), 5xx, HTTP 408/504, and network failures. Two failures are not retried: a malformed response body, which an identical request re-serializes, and a request that hits `CROSSREF_TIMEOUT_MS`, where every attempt costs the full deadline
 - Upstream failures arrive classified and with recovery guidance on both result surfaces: rate limit, service unavailable, timeout, and malformed response each say what to do next in `content[]` as well as in `structuredContent`
-- Cursor-based deep paging for result sets beyond the ~10K offset cap
+- Cursor-based deep paging on the works search and on both works sub-resources, for result sets beyond the offset cap
 - Filter key validation: Crossref uses hyphens (`has-abstract`, `has-references`, `from-pub-date`); the server enforces correct syntax and surfaces API validation errors with actionable recovery hints
 
 ## Getting started
@@ -233,7 +235,7 @@ All configuration is validated at startup via Zod schemas in `src/config/server-
 |:---------|:------------|:--------|
 | `CROSSREF_MAILTO` | Email address embedded in the polite-pool `User-Agent` header. Optional — server starts without it but logs a warning and uses the anonymous pool with stricter rate limits. | — |
 | `CROSSREF_BASE_URL` | Crossref API base URL. Override for testing against a local proxy. | `https://api.crossref.org` |
-| `CROSSREF_TIMEOUT_MS` | Per-request timeout in milliseconds. | `10000` |
+| `CROSSREF_TIMEOUT_MS` | Per-request timeout in milliseconds. Also the worst-case wait against an unresponsive upstream — a request that hits the deadline is not retried. | `10000` |
 | `MCP_TRANSPORT_TYPE` | Transport: `stdio` or `http`. | `stdio` |
 | `MCP_HTTP_PORT` | Port for the HTTP server. | `3010` |
 | `MCP_AUTH_MODE` | Auth mode: `none`, `jwt`, or `oauth`. | `none` |

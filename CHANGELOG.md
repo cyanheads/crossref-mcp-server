@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.3.2](changelog/0.3.x/0.3.2.md) — 2026-08-06
+
+Cursor paging on journal/funder works lists, faster failure on a request-timeout deadline
+
 ## [0.3.1](changelog/0.3.x/0.3.1.md) — 2026-08-07
 
 Upstream and transport failures from Crossref now classify by wire code instead of by accident, and every upstream reason carries a recovery hint on content[] as well as structuredContent
