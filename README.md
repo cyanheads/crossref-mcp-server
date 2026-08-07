@@ -7,7 +7,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/Version-0.2.1-blue.svg?style=flat-square)](./CHANGELOG.md) [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg?style=flat-square)](./LICENSE) [![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/users/cyanheads/packages/container/package/crossref-mcp-server) [![MCP SDK](https://img.shields.io/badge/MCP%20SDK-^1.29.0-green.svg?style=flat-square)](https://modelcontextprotocol.io/) [![npm](https://img.shields.io/npm/v/@cyanheads/crossref-mcp-server?style=flat-square&logo=npm&logoColor=white)](https://www.npmjs.com/package/@cyanheads/crossref-mcp-server) [![TypeScript](https://img.shields.io/badge/TypeScript-^6.0.3-3178C6.svg?style=flat-square)](https://www.typescriptlang.org/) [![Bun](https://img.shields.io/badge/Bun-v1.3.14-blueviolet.svg?style=flat-square)](https://bun.sh/)
+[![Version](https://img.shields.io/badge/Version-0.2.1-blue.svg?style=flat-square)](./CHANGELOG.md) [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg?style=flat-square)](./LICENSE) [![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/users/cyanheads/packages/container/package/crossref-mcp-server) [![MCP SDK](https://img.shields.io/badge/MCP%20SDK-^1.30.0-green.svg?style=flat-square)](https://modelcontextprotocol.io/) [![npm](https://img.shields.io/npm/v/@cyanheads/crossref-mcp-server?style=flat-square&logo=npm&logoColor=white)](https://www.npmjs.com/package/@cyanheads/crossref-mcp-server) [![TypeScript](https://img.shields.io/badge/TypeScript-^7.0.2-3178C6.svg?style=flat-square)](https://www.typescriptlang.org/) [![Bun](https://img.shields.io/badge/Bun-v1.3.14-blueviolet.svg?style=flat-square)](https://bun.sh/)
 
 [![Install in Claude Desktop](https://img.shields.io/badge/Install_in-Claude_Desktop-D97757?style=for-the-badge&logo=anthropic&logoColor=white)](https://github.com/cyanheads/crossref-mcp-server/releases/latest/download/crossref-mcp-server.mcpb) [![Install in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=crossref-mcp-server&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBjeWFuaGVhZHMvY3Jvc3NyZWYtbWNwLXNlcnZlciJdfQ==) [![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Server-0098FF?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect?url=vscode:mcp/install?%7B%22name%22%3A%22crossref-mcp-server%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40cyanheads/crossref-mcp-server%22%5D%7D)
 
@@ -26,8 +26,8 @@ Seven tools for working with Crossref data — DOI resolution, full-text search 
 | `crossref_get_work` | Resolve a DOI to its full Crossref metadata record: title, authors, affiliations, abstract (when deposited), journal, publication date, type, license, full-text links, funder acknowledgements, and outgoing reference count |
 | `crossref_search_works` | Search the Crossref works index by free text and/or structured filters. Supports sort, field selection, and cursor-based deep paging. |
 | `crossref_get_references` | Return the outgoing reference list for a DOI — the works cited by this paper, with raw citation strings and resolved DOIs where available |
-| `crossref_search_journals` | Find Crossref journal records by ISSN or title query; optionally retrieve the journal's most recent works by publication date |
-| `crossref_search_funders` | Find funders registered in the Crossref Funder Registry by name or funder DOI; optionally retrieve funded works |
+| `crossref_search_journals` | Find Crossref journal records by ISSN or title query; optionally retrieve a page of the journal's most recent works by publication date. Both lists page by offset. |
+| `crossref_search_funders` | Find funders registered in the Crossref Funder Registry by name, bare registry ID, or funder DOI; optionally retrieve a page of funded works. Both lists page by offset. |
 | `crossref_get_member` | Resolve a Crossref member ID to its publisher record — name, owned DOI prefixes, DOI counts, per-work-type breakdown, and per-category metadata deposit coverage |
 | `crossref_get_prefix` | Resolve a DOI prefix (e.g. `10.1038`) to its owning publisher — name and member ID, chaining into `crossref_get_member` |
 
@@ -69,8 +69,11 @@ Fetch the outgoing reference list for a DOI.
 
 Find journal records by ISSN or title.
 
-- `include_works: true` triggers a second upstream call to fetch the journal's most recent works by publication date
+- `include_works: true` also returns a page of the journal's most recent works by publication date
 - Returns journal title, publisher, ISSN-L, subject areas, and total DOI count
+- Title-query results page with `offset`; `journalsTotal` reports the full match count and `nextOffset` carries the input for the following page. The journal works list pages separately with `works_offset` and `nextWorksOffset`.
+- The two lists have different ceilings: title search allows `offset + rows` up to 100,000, the works list only 10,000. A page that stops at either ceiling carries a `notice` saying so — a missing continuation offset would otherwise read as the end of the list. Read a journal's works past the ceiling with `crossref_search_works` using `filter: {"issn": "<issn>"}` and `cursor="*"`.
+- `include_works` needs an unambiguous journal. A title query matching more than one — measured by the upstream match count, not by how many fit on the requested page — returns `ambiguous_journal`, naming the page's candidates and their ISSNs in the message and in `candidates` on the error data, alongside the full match count. Pass one back as `issn`, or narrow the query when the journal you want is not among them.
 
 ---
 
@@ -78,9 +81,12 @@ Find journal records by ISSN or title.
 
 Find funders in the Crossref Funder Registry.
 
-- Accepts a name query or a direct funder DOI
-- `include_works: true` retrieves funded works for the matched funder
-- Returns funder name, DOI, country, and alternate names
+- Accepts a name query, a bare registry ID (`100000001`), or a full funder DOI (`10.13039/100000001`, optionally behind a `doi:` or `https://doi.org/` prefix)
+- `include_works: true` also returns a page of works funded by the matched funder
+- Returns funder name, registry ID, country, and alternate names
+- Name-query results page with `offset`; `fundersTotal` reports the full match count and `nextOffset` carries the input for the following page. The funded works list pages separately with `works_offset` and `nextWorksOffset`.
+- The two lists have different ceilings: name search allows `offset + rows` up to 100,000, the works list only 10,000. A page that stops at either ceiling carries a `notice` saying so — a missing continuation offset would otherwise read as the end of the list. Read a funder's works past the ceiling with `crossref_search_works` using `filter: {"funder": "10.13039/<id>"}` and `cursor="*"`.
+- `include_works` needs an unambiguous funder. A name query matching more than one — measured by the upstream match count, not by how many fit on the requested page — returns `ambiguous_funder` rather than resolving one silently, naming the page's candidates and their registry IDs in the message and in `candidates` on the error data, alongside the full match count. Pass one back as `funder_doi`, or narrow the query when the funder you want is not among them.
 
 ---
 

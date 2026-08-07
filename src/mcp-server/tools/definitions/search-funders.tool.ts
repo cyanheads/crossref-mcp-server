@@ -1,6 +1,8 @@
 /**
- * @fileoverview crossref_search_funders — finds funders in the Crossref Funder Registry by name or DOI.
- * Optionally retrieves works funded by the matched funder in a second sequential call.
+ * @fileoverview crossref_search_funders — finds funders in the Crossref Funder Registry by name or
+ * DOI, optionally returning a page of works funded by the matched funder. The funder list and the
+ * funded-works list page independently, and their upstream offset ceilings differ by an order of
+ * magnitude. A name query matching more than one funder is rejected rather than silently resolved.
  * @module mcp-server/tools/definitions/search-funders.tool
  */
 
@@ -11,7 +13,12 @@ import {
   type FundersSearchOptions,
   formatDateParts,
   getCrossrefService,
+  type ListSearchResult,
+  NAME_SEARCH_OFFSET_CAP,
+  nextPageOffset,
+  normalizeFunderId,
   parseDateParts,
+  WORKS_OFFSET_CAP,
 } from '@/services/crossref/crossref-service.js';
 import type { RawCrossrefFunder } from '@/services/crossref/types.js';
 
@@ -49,7 +56,7 @@ const WorkSummarySchema = z
 export const searchFundersTool = tool('crossref_search_funders', {
   title: 'Search Funders',
   description:
-    'Finds funders registered in the Crossref Funder Registry by name or funder DOI. Provide funder_doi for an exact single-funder lookup (accepts the full DOI like "10.13039/100000001" or just the registry ID), or query for name-based search. Set include_works to true to fetch a paginated list of works funded by the first matched funder (adds a second upstream call). Returns funder name, DOI, country, and alternate names.',
+    'Finds funders registered in the Crossref Funder Registry by name or funder DOI. Provide funder_doi for an exact single-funder lookup — the full DOI ("10.13039/100000001"), the bare registry ID ("100000001"), or either behind a doi: or https://doi.org/ prefix — or query for name-based search. Name-query results page with offset — the nextOffset enrichment carries the value for the following page, up to offset + rows = 100000. Set include_works to true to also return a page of works funded by the matched funder; that list pages separately with works_offset, capped ten times lower at works_offset + rows = 10000. Read a funder\'s works past that ceiling with crossref_search_works using filter {"funder": "10.13039/<id>"} and cursor="*". Returns funder name, registry ID, country, and alternate names.',
   annotations: { readOnlyHint: true, openWorldHint: true },
 
   errors: [
@@ -57,7 +64,29 @@ export const searchFundersTool = tool('crossref_search_funders', {
       reason: 'funder_not_found',
       code: JsonRpcErrorCode.NotFound,
       when: 'Funder DOI lookup returned 404 — funder is not in the Crossref Funder Registry.',
-      recovery: 'Verify the funder DOI (10.13039/...) is correct, or use a name query instead.',
+      recovery:
+        'Verify the registry ID (100000001) or full funder DOI (10.13039/100000001) is correct, or use a name query instead.',
+    },
+    {
+      reason: 'ambiguous_funder',
+      code: JsonRpcErrorCode.ValidationError,
+      when: 'include_works is true but the name query matched more than one funder, making the target ambiguous.',
+      recovery:
+        'Re-run with funder_doi set to one of the registry IDs listed in the error message and in the candidates field of the error data, or narrow the query when the funder you want is not among them.',
+    },
+    {
+      reason: 'offset_too_large',
+      code: JsonRpcErrorCode.ValidationError,
+      when: 'offset + rows exceeds the 100000-record ceiling Crossref allows on funder name search.',
+      recovery:
+        'Narrow the name query so the funders you want fall within the first 100000 matches.',
+    },
+    {
+      reason: 'works_offset_too_large',
+      code: JsonRpcErrorCode.ValidationError,
+      when: 'works_offset + rows exceeds the 10000-record ceiling Crossref allows on a funded-works list.',
+      recovery:
+        'Page deeper with crossref_search_works using filter {"funder": "10.13039/<id>"} and cursor="*", chaining the nextCursor token from each response.',
     },
   ],
 
@@ -68,19 +97,19 @@ export const searchFundersTool = tool('crossref_search_funders', {
       .describe('Funder name search query, e.g. "National Science Foundation" or "Wellcome Trust"'),
     funder_doi: z
       .string()
-      .regex(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:)?10\.13039\/\d+$/i, {
+      .regex(/^(?:(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:)?10\.13039\/)?\d+$/i, {
         message:
-          'Funder DOI must start with "10.13039/" followed by digits, e.g. "10.13039/100000001".',
+          'Funder DOI must be the bare registry ID ("100000001") or the full DOI "10.13039/" followed by digits ("10.13039/100000001"), optionally behind a doi: or https://doi.org/ prefix.',
       })
       .optional()
       .describe(
-        'Funder DOI for exact lookup, e.g. "10.13039/100000001" (NSF). Supersedes query when provided.',
+        'Funder DOI for exact lookup — the full DOI "10.13039/100000001" (NSF) or the bare registry ID "100000001". Supersedes query when provided.',
       ),
     include_works: z
       .boolean()
       .default(false)
       .describe(
-        'When true, fetch funded works for the first matched funder (adds a second upstream call)',
+        'When true, also return a page of works funded by the matched funder. Requires an unambiguous funder — pass funder_doi when a name query matches more than one.',
       ),
     rows: z
       .number()
@@ -90,6 +119,22 @@ export const searchFundersTool = tool('crossref_search_funders', {
       .describe(
         'Maximum funders to return for name queries, or works when include_works is true (1–100, default 10)',
       ),
+    offset: z
+      .number()
+      .int()
+      .min(0)
+      .default(0)
+      .describe(
+        'Zero-based offset into the name-query funder list. Pass the nextOffset value from the previous response to continue. Ignored when funder_doi is set, which resolves exactly one record.',
+      ),
+    works_offset: z
+      .number()
+      .int()
+      .min(0)
+      .default(0)
+      .describe(
+        'Zero-based offset into the funded-works list when include_works is true. Pass the nextWorksOffset value from the previous response to continue.',
+      ),
   }),
 
   output: z.object({
@@ -98,37 +143,80 @@ export const searchFundersTool = tool('crossref_search_funders', {
       .array(WorkSummarySchema)
       .optional()
       .describe(
-        'Works funded by the first matched funder. Only present when include_works is true.',
+        'Page of works funded by the matched funder, ordered by publication date (newest first). Only present when include_works is true.',
       ),
   }),
 
   enrichment: {
-    funderCount: z.number().describe('Number of funder records returned'),
-    fundedWorksTotal: z
+    funderCount: z.number().describe('Number of funder records returned in this page'),
+    fundersTotal: z.number().describe('Total funder records matching the query in Crossref'),
+    nextOffset: z
       .number()
       .optional()
       .describe(
-        'Total count of funded works for the first matched funder, when include_works is true',
+        'Value to pass as offset on the next call for the following page of funders. Absent when this page ends the matches or the next page would breach the 100000-record offset ceiling.',
+      ),
+    fundedWorksTotal: z
+      .number()
+      .optional()
+      .describe('Total count of funded works for the matched funder, when include_works is true'),
+    nextWorksOffset: z
+      .number()
+      .optional()
+      .describe(
+        'Value to pass as works_offset on the next call for the following page of funded works. Absent when this page ends the works list or the next page would breach the 10000-record offset ceiling.',
       ),
     notice: z
       .string()
       .optional()
-      .describe('Guidance when no funders matched the query. Absent on successful result pages.'),
+      .describe(
+        'Guidance on a page that needs a caveat: a query nothing matched, an offset past the end of a list that did match, or a page that stops at one of the route offset ceilings with records still unretrieved. Absent otherwise.',
+      ),
   },
 
   async handler(input, ctx) {
-    ctx.log.info('Searching funders', { query: input.query, funderDoi: input.funder_doi });
+    if (!input.funder_doi && input.offset + input.rows > NAME_SEARCH_OFFSET_CAP) {
+      throw ctx.fail(
+        'offset_too_large',
+        `offset ${input.offset} + rows ${input.rows} = ${input.offset + input.rows} exceeds the ${NAME_SEARCH_OFFSET_CAP}-record ceiling Crossref allows on funder name search.`,
+        {
+          offset: input.offset,
+          rows: input.rows,
+          cap: NAME_SEARCH_OFFSET_CAP,
+          ...ctx.recoveryFor('offset_too_large'),
+        },
+      );
+    }
+    if (input.include_works && input.works_offset + input.rows > WORKS_OFFSET_CAP) {
+      throw ctx.fail(
+        'works_offset_too_large',
+        `works_offset ${input.works_offset} + rows ${input.rows} = ${input.works_offset + input.rows} exceeds the ${WORKS_OFFSET_CAP}-record ceiling Crossref allows on a funded-works list.`,
+        {
+          worksOffset: input.works_offset,
+          rows: input.rows,
+          cap: WORKS_OFFSET_CAP,
+          ...ctx.recoveryFor('works_offset_too_large'),
+        },
+      );
+    }
+
+    ctx.log.info('Searching funders', {
+      query: input.query,
+      funderDoi: input.funder_doi,
+      offset: input.offset,
+    });
     const svc = getCrossrefService();
 
     const funderOpts: FundersSearchOptions = {
       rows: input.rows,
+      offset: input.offset,
       ...(input.query !== undefined && { query: input.query }),
       ...(input.funder_doi !== undefined && { funderDoi: input.funder_doi }),
     };
 
-    let rawFunders: RawCrossrefFunder[];
+    let fundersResult: ListSearchResult<RawCrossrefFunder>;
     try {
-      rawFunders = await svc.searchFunders(funderOpts, ctx);
+      fundersResult = await svc.searchFunders(funderOpts, ctx);
     } catch (err) {
       if (input.funder_doi && err instanceof McpError && err.code === -32001) {
         throw ctx.fail('funder_not_found', `No funder found for DOI: ${input.funder_doi}`, {
@@ -138,6 +226,16 @@ export const searchFundersTool = tool('crossref_search_funders', {
       }
       throw err;
     }
+
+    const rawFunders = fundersResult.items;
+    const fundersTotal = fundersResult.totalResults;
+    const listContinuation = nextPageOffset({
+      offset: input.offset,
+      returned: rawFunders.length,
+      total: fundersTotal,
+      rows: input.rows,
+      cap: NAME_SEARCH_OFFSET_CAP,
+    });
 
     const funders = rawFunders.map((f) => ({
       ...(f.id !== undefined && { id: f.id }),
@@ -149,24 +247,70 @@ export const searchFundersTool = tool('crossref_search_funders', {
       ...(f['work-count'] !== undefined && { worksCount: f['work-count'] }),
     }));
 
+    const listEnrichment = {
+      funderCount: funders.length,
+      fundersTotal,
+      ...(listContinuation.kind === 'next' && { nextOffset: listContinuation.offset }),
+    };
+
     if (!input.include_works || funders.length === 0) {
-      const notice =
-        funders.length === 0
-          ? 'No funders matched the query. Try a name-based query or verify the funder DOI starts with "10.13039/".'
-          : undefined;
-      ctx.enrich({ funderCount: funders.length });
-      if (notice) ctx.enrich.notice(notice);
+      ctx.enrich(listEnrichment);
+      // An empty page has two causes a caller reading only content[] cannot otherwise tell
+      // apart: nothing matched, or the offset ran off the end of a list that did match.
+      if (funders.length === 0) {
+        ctx.enrich.notice(
+          fundersTotal > 0
+            ? `Offset ${input.offset} is past the end of this result list — ${fundersTotal} funders matched. Request an offset below ${fundersTotal}.`
+            : 'No funders matched the query. Try a name-based query or verify the funder DOI is a registry ID like "100000001" or "10.13039/100000001".',
+        );
+      } else if (listContinuation.kind === 'ceiling') {
+        // A missing nextOffset here would be indistinguishable from the end of the list, and
+        // withholding the offset also means the caller never trips offset_too_large and never
+        // reads its recovery. Say it on the page instead.
+        ctx.enrich.notice(
+          `This is the last funder page reachable by offset — Crossref caps offset + rows at ${NAME_SEARCH_OFFSET_CAP} on funder search and ${fundersTotal} funders matched. Narrow the query to bring the rest into reach.`,
+        );
+      }
       return { funders };
+    }
+
+    // A name query can match several funders. Reject rather than resolve one silently — funded
+    // works carry no funder attribution of their own, so a caller reading the response would
+    // have no way to tell which funder they belong to. The test is the upstream match count,
+    // not this page's length: a page holding one of many matches (rows=1, or the tail of a
+    // list) identifies no funder the caller chose. Each candidate's registry ID is named in
+    // both the message and the error data so re-running needs no probe call.
+    if (!input.funder_doi && fundersTotal > 1) {
+      const candidates = rawFunders.map((f, i) => ({
+        name: funders[i]?.name ?? '(unnamed)',
+        ...(f.id !== undefined && { id: f.id }),
+      }));
+      const listed = candidates.map((c) => `"${c.name}" (${c.id ?? 'no registry ID'})`).join(', ');
+      // The candidate list is one page of the matches; saying "matched N" with N as the page
+      // length would understate the choice and hide that the wanted funder may not be listed.
+      const partial = candidates.length < fundersTotal;
+      throw ctx.fail(
+        'ambiguous_funder',
+        `include_works requires an unambiguous funder. The query matched ${fundersTotal} funders` +
+          `${partial ? `; this page lists ${candidates.length}` : ''}: ${listed}. ` +
+          `Re-run with funder_doi set to one of those registry IDs` +
+          `${partial ? ', or narrow the query if the funder you want is not among them,' : ''} to fetch its funded works.`,
+        { candidates, matchedTotal: fundersTotal, ...ctx.recoveryFor('ambiguous_funder') },
+      );
     }
 
     const firstFunder = rawFunders[0];
     const funderId = firstFunder?.id ?? input.funder_doi;
     if (!funderId) {
-      ctx.enrich({ funderCount: funders.length });
+      ctx.enrich(listEnrichment);
       return { funders };
     }
 
-    const worksResult = await svc.getFunderWorks(funderId, input.rows, ctx);
+    const worksResult = await svc.getFunderWorks(
+      funderId,
+      { rows: input.rows, offset: input.works_offset },
+      ctx,
+    );
     const fundedWorks = worksResult.items.map((raw) => {
       const published =
         parseDateParts(raw.published) ??
@@ -185,7 +329,24 @@ export const searchFundersTool = tool('crossref_search_funders', {
       };
     });
 
-    ctx.enrich({ funderCount: funders.length, fundedWorksTotal: worksResult.totalResults });
+    const worksContinuation = nextPageOffset({
+      offset: input.works_offset,
+      returned: fundedWorks.length,
+      total: worksResult.totalResults,
+      rows: input.rows,
+      cap: WORKS_OFFSET_CAP,
+    });
+
+    ctx.enrich({
+      ...listEnrichment,
+      fundedWorksTotal: worksResult.totalResults,
+      ...(worksContinuation.kind === 'next' && { nextWorksOffset: worksContinuation.offset }),
+    });
+    if (worksContinuation.kind === 'ceiling') {
+      ctx.enrich.notice(
+        `This is the last works page reachable by works_offset — Crossref caps works_offset + rows at ${WORKS_OFFSET_CAP} on a funded-works list and ${worksResult.totalResults} works exist. Read further with crossref_search_works using filter {"funder": "${normalizeFunderId(funderId)}"} and cursor="*".`,
+      );
+    }
 
     return {
       funders,

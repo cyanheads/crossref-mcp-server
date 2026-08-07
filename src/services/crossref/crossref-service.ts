@@ -1,6 +1,8 @@
 /**
  * @fileoverview CrossrefService wraps the Crossref REST API with polite-pool User-Agent injection,
- * per-request timeout, retry with exponential backoff, and pagination helpers.
+ * per-request timeout, retry with exponential backoff, and pagination helpers. Offset paging is
+ * honored on the name-search and works sub-resource routes, whose ceilings differ by an order of
+ * magnitude — see NAME_SEARCH_OFFSET_CAP and WORKS_OFFSET_CAP.
  * @module services/crossref/crossref-service
  */
 
@@ -81,7 +83,7 @@ export function parseDateParts(
 }
 
 /** Strip URL/doi: prefix from a funder DOI, yielding a bare registry ID for the Crossref path. */
-function normalizeFunderId(raw: string): string {
+export function normalizeFunderId(raw: string): string {
   return raw.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').replace(/^doi:/i, '');
 }
 
@@ -101,18 +103,26 @@ export type WorksSearchOptions = {
   order?: string;
 };
 
-/** Crossref journals search options. */
+/** Crossref journals search options. `offset` applies to the title-query path only. */
 export type JournalsSearchOptions = {
   query?: string;
   issn?: string;
   rows?: number;
+  offset?: number;
 };
 
-/** Crossref funders search options. */
+/** Crossref funders search options. `offset` applies to the name-query path only. */
 export type FundersSearchOptions = {
   query?: string;
   funderDoi?: string;
   rows?: number;
+  offset?: number;
+};
+
+/** Paging options for the `/journals/{issn}/works` and `/funders/{id}/works` sub-resources. */
+export type SubResourceWorksOptions = {
+  rows: number;
+  offset?: number;
 };
 
 /** Result of a works search, including pagination metadata. */
@@ -122,6 +132,51 @@ export type WorksSearchResult = {
   nextCursor?: string | undefined;
   items: RawCrossrefWork[];
 };
+
+/** Result of a journal/funder name search, carrying the upstream total so callers can page. */
+export type ListSearchResult<T> = {
+  totalResults: number;
+  items: T[];
+};
+
+/**
+ * Crossref caps offset paging on the `/journals` and `/funders` name-search routes at
+ * `offset + rows <= 100000`; past that it answers HTTP 400 `integer-not-valid`.
+ */
+export const NAME_SEARCH_OFFSET_CAP = 100_000;
+
+/**
+ * The `/journals/{issn}/works` and `/funders/{id}/works` sub-resources cap ten times lower —
+ * `offset + rows <= 10000` — and their rejection body directs callers to cursor paging. This
+ * server does not thread a cursor through those sub-resources, so the deep-paging path it offers
+ * instead is `/works` with an `issn:` / `funder:` filter.
+ */
+export const WORKS_OFFSET_CAP = 10_000;
+
+/**
+ * Where the page after this one lives. `end` means the list is exhausted; `ceiling` means further
+ * records exist upstream but the route's offset ceiling puts them out of reach through this input.
+ * Those are different facts for a caller, so they are separate variants rather than one absent
+ * offset — a page that stops at the ceiling has to say so or it reads as the end of the list.
+ */
+export type PageContinuation =
+  | { kind: 'next'; offset: number }
+  | { kind: 'end' }
+  | { kind: 'ceiling' };
+
+/** Classify the continuation for a page against its route's offset ceiling. */
+export function nextPageOffset(args: {
+  offset: number;
+  returned: number;
+  total: number;
+  rows: number;
+  cap: number;
+}): PageContinuation {
+  const next = args.offset + args.returned;
+  if (next >= args.total) return { kind: 'end' };
+  if (next + args.rows > args.cap) return { kind: 'ceiling' };
+  return { kind: 'next', offset: next };
+}
 
 export class CrossrefService {
   private readonly baseUrl: string;
@@ -301,36 +356,48 @@ export class CrossrefService {
     return toWorksSearchResult(envelope.message);
   }
 
-  /** Search journals by query or fetch one by ISSN. */
-  async searchJournals(opts: JournalsSearchOptions, ctx: Context): Promise<RawCrossrefJournal[]> {
+  /**
+   * Search journals by query, or fetch one by ISSN. The ISSN path is a single-record lookup,
+   * so it reports a total of 1 and ignores `offset`.
+   */
+  async searchJournals(
+    opts: JournalsSearchOptions,
+    ctx: Context,
+  ): Promise<ListSearchResult<RawCrossrefJournal>> {
     if (opts.issn) {
       const envelope = await this.request<CrossrefSingleMessage<RawCrossrefJournal>>(
         `/journals/${encodeURIComponent(opts.issn)}`,
         ctx,
       );
-      return [envelope.message];
+      return { totalResults: 1, items: [envelope.message] };
     }
     const params = new URLSearchParams();
     if (opts.query) params.set('query', opts.query);
     if (opts.rows != null) params.set('rows', String(opts.rows));
+    if (opts.offset != null && opts.offset > 0) params.set('offset', String(opts.offset));
     const qs = params.toString();
     const envelope = await this.request<CrossrefListMessage<RawCrossrefJournal>>(
       `/journals${qs ? `?${qs}` : ''}`,
       ctx,
     );
-    return envelope.message.items;
+    return { totalResults: envelope.message['total-results'], items: envelope.message.items };
   }
 
-  /** Fetch works for a specific journal by ISSN, most recent first. */
-  async getJournalWorks(issn: string, rows: number, ctx: Context): Promise<WorksSearchResult> {
+  /** Fetch a page of works for a specific journal by ISSN, most recent first. */
+  async getJournalWorks(
+    issn: string,
+    opts: SubResourceWorksOptions,
+    ctx: Context,
+  ): Promise<WorksSearchResult> {
     // Sort by publication date descending so "most recent works" is accurate — the
     // /works endpoint's default ordering is not chronological. `published` (chosen)
     // reflects publication date; `deposited` would reflect Crossref registration date.
     const params = new URLSearchParams({
-      rows: String(rows),
+      rows: String(opts.rows),
       sort: 'published',
       order: 'desc',
     });
+    if (opts.offset != null && opts.offset > 0) params.set('offset', String(opts.offset));
     const envelope = await this.request<CrossrefListMessage<RawCrossrefWork>>(
       `/journals/${encodeURIComponent(issn)}/works?${params}`,
       ctx,
@@ -338,37 +405,49 @@ export class CrossrefService {
     return toWorksSearchResult(envelope.message);
   }
 
-  /** Search funders by query or fetch one by funder DOI. */
-  async searchFunders(opts: FundersSearchOptions, ctx: Context): Promise<RawCrossrefFunder[]> {
+  /**
+   * Search funders by query, or fetch one by funder DOI. The DOI path is a single-record
+   * lookup, so it reports a total of 1 and ignores `offset`.
+   */
+  async searchFunders(
+    opts: FundersSearchOptions,
+    ctx: Context,
+  ): Promise<ListSearchResult<RawCrossrefFunder>> {
     if (opts.funderDoi) {
       const envelope = await this.request<CrossrefSingleMessage<RawCrossrefFunder>>(
         `/funders/${encodeURIComponent(normalizeFunderId(opts.funderDoi))}`,
         ctx,
       );
-      return [envelope.message];
+      return { totalResults: 1, items: [envelope.message] };
     }
     const params = new URLSearchParams();
     if (opts.query) params.set('query', opts.query);
     if (opts.rows != null) params.set('rows', String(opts.rows));
+    if (opts.offset != null && opts.offset > 0) params.set('offset', String(opts.offset));
     const qs = params.toString();
     const envelope = await this.request<CrossrefListMessage<RawCrossrefFunder>>(
       `/funders${qs ? `?${qs}` : ''}`,
       ctx,
     );
-    return envelope.message.items;
+    return { totalResults: envelope.message['total-results'], items: envelope.message.items };
   }
 
-  /** Fetch works for a specific funder by funder DOI/ID, most recent first. */
-  async getFunderWorks(funderId: string, rows: number, ctx: Context): Promise<WorksSearchResult> {
+  /** Fetch a page of works for a specific funder by funder DOI/ID, most recent first. */
+  async getFunderWorks(
+    funderId: string,
+    opts: SubResourceWorksOptions,
+    ctx: Context,
+  ): Promise<WorksSearchResult> {
     const id = normalizeFunderId(funderId);
     // Sort by publication date descending for predictable, most-recent-first ordering —
     // the /works endpoint's default ordering is not chronological. Matches
     // getJournalWorks so both funded-works and journal-works surfaces agree.
     const params = new URLSearchParams({
-      rows: String(rows),
+      rows: String(opts.rows),
       sort: 'published',
       order: 'desc',
     });
+    if (opts.offset != null && opts.offset > 0) params.set('offset', String(opts.offset));
     const envelope = await this.request<CrossrefListMessage<RawCrossrefWork>>(
       `/funders/${encodeURIComponent(id)}/works?${params}`,
       ctx,

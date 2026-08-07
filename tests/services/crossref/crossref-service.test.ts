@@ -29,8 +29,11 @@ import {
   decodeHtmlEntities,
   formatDateParts,
   getCrossrefService,
+  NAME_SEARCH_OFFSET_CAP,
+  nextPageOffset,
   parseDateParts,
   stripJats,
+  WORKS_OFFSET_CAP,
 } from '@/services/crossref/crossref-service.js';
 
 const mockFetch = vi.fn();
@@ -316,7 +319,7 @@ describe('CrossrefService', () => {
     vi.mocked(withRetry).mockImplementation((fn) => fn());
 
     const ctx = createMockContext();
-    await service.getJournalWorks('0028-0836', 8, ctx);
+    await service.getJournalWorks('0028-0836', { rows: 8 }, ctx);
 
     const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
     expect(calledUrl).toContain('/journals/');
@@ -324,6 +327,7 @@ describe('CrossrefService', () => {
     expect(calledUrl).toContain('sort=published');
     expect(calledUrl).toContain('order=desc');
     expect(calledUrl).toContain('rows=8');
+    expect(calledUrl).not.toContain('offset=');
   });
 
   it('sorts funder works by publication date descending in getFunderWorks', async () => {
@@ -331,7 +335,7 @@ describe('CrossrefService', () => {
     vi.mocked(withRetry).mockImplementation((fn) => fn());
 
     const ctx = createMockContext();
-    await service.getFunderWorks('10.13039/100000001', 6, ctx);
+    await service.getFunderWorks('10.13039/100000001', { rows: 6 }, ctx);
 
     const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
     expect(calledUrl).toContain('/funders/');
@@ -339,6 +343,31 @@ describe('CrossrefService', () => {
     expect(calledUrl).toContain('sort=published');
     expect(calledUrl).toContain('order=desc');
     expect(calledUrl).toContain('rows=6');
+    expect(calledUrl).not.toContain('offset=');
+  });
+
+  it('sends offset on the journal works sub-resource when a page offset is given', async () => {
+    mockFetch.mockResolvedValue(makeJsonResponse(makeListEnvelope([], 446507)));
+    vi.mocked(withRetry).mockImplementation((fn) => fn());
+
+    const ctx = createMockContext();
+    const result = await service.getJournalWorks('0028-0836', { rows: 10, offset: 20 }, ctx);
+
+    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
+    expect(calledUrl).toContain('offset=20');
+    expect(result.totalResults).toBe(446507);
+  });
+
+  it('sends offset on the funder works sub-resource when a page offset is given', async () => {
+    mockFetch.mockResolvedValue(makeJsonResponse(makeListEnvelope([], 559017)));
+    vi.mocked(withRetry).mockImplementation((fn) => fn());
+
+    const ctx = createMockContext();
+    const result = await service.getFunderWorks('100000001', { rows: 10, offset: 30 }, ctx);
+
+    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
+    expect(calledUrl).toContain('offset=30');
+    expect(result.totalResults).toBe(559017);
   });
 
   it('uses ISSN path for journal lookup when issn provided', async () => {
@@ -352,12 +381,31 @@ describe('CrossrefService', () => {
     vi.mocked(withRetry).mockImplementation((fn) => fn());
 
     const ctx = createMockContext();
-    const result = await service.searchJournals({ issn: '0028-0836' }, ctx);
+    const result = await service.searchJournals({ issn: '0028-0836', offset: 40 }, ctx);
 
     const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
     expect(calledUrl).toContain('/journals/');
     expect(calledUrl).toContain('0028-0836');
-    expect(result[0]).toMatchObject({ title: 'Nature' });
+    // Single-record lookup — offset has no meaning on this route and is never sent
+    expect(calledUrl).not.toContain('offset=');
+    expect(result.totalResults).toBe(1);
+    expect(result.items[0]).toMatchObject({ title: 'Nature' });
+  });
+
+  it('carries total-results and offset through the journal title search', async () => {
+    mockFetch.mockResolvedValue(
+      makeJsonResponse(makeListEnvelope([{ title: 'Naturen' }], 223), 200),
+    );
+    vi.mocked(withRetry).mockImplementation((fn) => fn());
+
+    const ctx = createMockContext();
+    const result = await service.searchJournals({ query: 'nature', rows: 2, offset: 2 }, ctx);
+
+    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
+    expect(calledUrl).toContain('query=nature');
+    expect(calledUrl).toContain('offset=2');
+    expect(result.totalResults).toBe(223);
+    expect(result.items).toHaveLength(1);
   });
 
   it('uses funder DOI path for funder lookup when funderDoi provided', async () => {
@@ -376,7 +424,40 @@ describe('CrossrefService', () => {
     const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
     expect(calledUrl).toContain('/funders/');
     expect(calledUrl).toContain('100000001');
-    expect(result[0]).toMatchObject({ id: '100000001' });
+    expect(result.totalResults).toBe(1);
+    expect(result.items[0]).toMatchObject({ id: '100000001' });
+  });
+
+  it('passes a bare registry ID through unchanged on the funder lookup path', async () => {
+    const funderEnvelope = {
+      status: 'ok',
+      'message-type': 'funder',
+      'message-version': '1.0.0',
+      message: { id: '100000001', name: 'National Science Foundation' },
+    };
+    mockFetch.mockResolvedValue(makeJsonResponse(funderEnvelope));
+    vi.mocked(withRetry).mockImplementation((fn) => fn());
+
+    const ctx = createMockContext();
+    await service.searchFunders({ funderDoi: '100000001' }, ctx);
+
+    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
+    expect(calledUrl).toContain('/funders/100000001');
+  });
+
+  it('carries total-results and offset through the funder name search', async () => {
+    mockFetch.mockResolvedValue(
+      makeJsonResponse(makeListEnvelope([{ id: '501100004795' }], 2252), 200),
+    );
+    vi.mocked(withRetry).mockImplementation((fn) => fn());
+
+    const ctx = createMockContext();
+    const result = await service.searchFunders({ query: 'National', rows: 2, offset: 2 }, ctx);
+
+    const calledUrl = mockFetch.mock.calls[0]?.[0] as string;
+    expect(calledUrl).toContain('query=National');
+    expect(calledUrl).toContain('offset=2');
+    expect(result.totalResults).toBe(2252);
   });
 
   it('strips doi: prefix from funder DOI when building the request URL', async () => {
@@ -442,6 +523,79 @@ describe('getCrossrefService (uninitialized guard)', () => {
     // We only assert the expected signature of the error; service may already be set.
     // This test documents the expected behavior on a fresh import path.
     expect(typeof getCrossrefService).toBe('function');
+  });
+});
+
+describe('nextPageOffset', () => {
+  it('advances by the number of records actually returned', () => {
+    expect(nextPageOffset({ offset: 0, returned: 10, total: 223, rows: 10, cap: 100_000 })).toEqual(
+      {
+        kind: 'next',
+        offset: 10,
+      },
+    );
+    expect(
+      nextPageOffset({ offset: 10, returned: 10, total: 223, rows: 10, cap: 100_000 }),
+    ).toEqual({ kind: 'next', offset: 20 });
+  });
+
+  it('reports end once the page reaches the end of the list', () => {
+    expect(
+      nextPageOffset({ offset: 220, returned: 3, total: 223, rows: 10, cap: 100_000 }),
+    ).toEqual({ kind: 'end' });
+  });
+
+  it('reports end for an empty page past the end of the list', () => {
+    expect(
+      nextPageOffset({ offset: 500, returned: 0, total: 223, rows: 10, cap: 100_000 }),
+    ).toEqual({ kind: 'end' });
+  });
+
+  it('distinguishes the route ceiling from the end of the list', () => {
+    // Records remain (total is far larger) but the next call would breach the ceiling. That is a
+    // different fact from `end` and must not collapse into it — a caller reading only an absent
+    // offset would conclude it had retrieved everything.
+    expect(
+      nextPageOffset({
+        offset: WORKS_OFFSET_CAP - 20,
+        returned: 10,
+        total: 446_507,
+        rows: 10,
+        cap: WORKS_OFFSET_CAP,
+      }),
+    ).toEqual({ kind: 'next', offset: WORKS_OFFSET_CAP - 10 });
+    expect(
+      nextPageOffset({
+        offset: WORKS_OFFSET_CAP - 10,
+        returned: 10,
+        total: 446_507,
+        rows: 10,
+        cap: WORKS_OFFSET_CAP,
+      }),
+    ).toEqual({ kind: 'ceiling' });
+  });
+
+  it('applies the name-search ceiling an order of magnitude above the works ceiling', () => {
+    // The same position that ends paging on a works sub-resource keeps going on a name search.
+    const at = { offset: WORKS_OFFSET_CAP - 10, returned: 10, total: 446_507, rows: 10 };
+    expect(nextPageOffset({ ...at, cap: WORKS_OFFSET_CAP })).toEqual({ kind: 'ceiling' });
+    expect(nextPageOffset({ ...at, cap: NAME_SEARCH_OFFSET_CAP })).toEqual({
+      kind: 'next',
+      offset: WORKS_OFFSET_CAP,
+    });
+  });
+
+  it('reports end, not ceiling, when the ceiling and the end of the list coincide', () => {
+    // Exhausted list at the ceiling: nothing is being withheld, so there is nothing to disclose.
+    expect(
+      nextPageOffset({
+        offset: WORKS_OFFSET_CAP - 10,
+        returned: 10,
+        total: WORKS_OFFSET_CAP,
+        rows: 10,
+        cap: WORKS_OFFSET_CAP,
+      }),
+    ).toEqual({ kind: 'end' });
   });
 });
 
