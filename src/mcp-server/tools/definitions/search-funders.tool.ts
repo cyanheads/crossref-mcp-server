@@ -21,6 +21,7 @@ import {
   WORKS_OFFSET_CAP,
 } from '@/services/crossref/crossref-service.js';
 import type { RawCrossrefFunder } from '@/services/crossref/types.js';
+import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
 
 const FunderSchema = z
   .object({
@@ -60,6 +61,7 @@ export const searchFundersTool = tool('crossref_search_funders', {
   annotations: { readOnlyHint: true, openWorldHint: true },
 
   errors: [
+    ...UPSTREAM_ERROR_CONTRACT,
     {
       reason: 'funder_not_found',
       code: JsonRpcErrorCode.NotFound,

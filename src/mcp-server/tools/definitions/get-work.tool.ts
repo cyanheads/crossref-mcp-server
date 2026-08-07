@@ -13,6 +13,7 @@ import {
   stripJats,
 } from '@/services/crossref/crossref-service.js';
 import type { CrossrefAuthor } from '@/services/crossref/types.js';
+import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
 
 const AuthorSchema = z
   .object({
@@ -116,6 +117,7 @@ export const getWorkTool = tool('crossref_get_work', {
   }),
 
   errors: [
+    ...UPSTREAM_ERROR_CONTRACT,
     {
       reason: 'doi_not_found',
       code: JsonRpcErrorCode.NotFound,

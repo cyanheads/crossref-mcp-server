@@ -9,6 +9,7 @@
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { getCrossrefService } from '@/services/crossref/crossref-service.js';
+import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
 
 const ReferenceSchema = z
   .object({
@@ -94,6 +95,7 @@ export const getReferencesTool = tool('crossref_get_references', {
   },
 
   errors: [
+    ...UPSTREAM_ERROR_CONTRACT,
     {
       reason: 'doi_not_found',
       code: JsonRpcErrorCode.NotFound,

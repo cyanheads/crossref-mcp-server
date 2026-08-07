@@ -7,6 +7,7 @@ import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { getCrossrefService } from '@/services/crossref/crossref-service.js';
 import type { RawCrossrefMember } from '@/services/crossref/types.js';
+import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
 
 const CountsSchema = z
   .object({
@@ -90,6 +91,7 @@ export const getMemberTool = tool('crossref_get_member', {
   }),
 
   errors: [
+    ...UPSTREAM_ERROR_CONTRACT,
     {
       reason: 'member_not_found',
       code: JsonRpcErrorCode.NotFound,

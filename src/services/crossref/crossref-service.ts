@@ -9,7 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { Context } from '@cyanheads/mcp-ts-core';
-import { McpError } from '@cyanheads/mcp-ts-core/errors';
+import { JsonRpcErrorCode, McpError, validationError } from '@cyanheads/mcp-ts-core/errors';
 import { httpErrorFromResponse, withRetry } from '@cyanheads/mcp-ts-core/utils';
 import { getServerConfig } from '@/config/server-config.js';
 import type {
@@ -21,6 +21,14 @@ import type {
   RawCrossrefPrefix,
   RawCrossrefWork,
 } from './types.js';
+import {
+  MALFORMED_RESPONSE,
+  REQUEST_TIMEOUT,
+  rateLimitHint,
+  UPSTREAM_UNAVAILABLE,
+  upstreamEntryForStatus,
+  upstreamError,
+} from './upstream-errors.js';
 
 /** Resolve package version at init time — avoids hardcoding the version string. */
 function readPackageVersion(): string {
@@ -192,65 +200,147 @@ export class CrossrefService {
       : `crossref-mcp-server/${_packageVersion}`;
   }
 
+  /**
+   * Retry boundary for a Crossref call. The default transient predicate is left in
+   * place deliberately — the fix for "retries burned on a failure that can never
+   * succeed" belongs one layer down, in `attempt()`, which returns every failure as an
+   * `McpError` so the predicate classifies by error code. A custom predicate would only
+   * re-sort the same unclassified exceptions by shape at the wrong layer.
+   */
   private request<T>(path: string, ctx: Context): Promise<T> {
     const url = `${this.baseUrl}${path}`;
-    return withRetry(
-      async () => {
-        const deadline = AbortSignal.timeout(this.timeoutMs);
-        const signal = AbortSignal.any([ctx.signal, deadline]);
-        const response = await fetch(url, {
-          signal,
-          headers: { 'User-Agent': this.userAgent },
-        });
-        if (!response.ok) {
-          if (response.status === 400) {
-            // Crossref returns a structured validation-failure body on 400.
-            // Parse it and surface an actionable message instead of leaking the raw body.
-            let detail = '';
-            try {
-              const json = (await response.json()) as {
-                'message-type'?: string;
-                message?: Array<{ type?: string; value?: string; message?: string }>;
-              };
-              if (json['message-type'] === 'validation-failure' && Array.isArray(json.message)) {
-                detail = json.message
-                  .map((m) => {
-                    const badKey = m.value ? `"${m.value}"` : '';
-                    const hint =
-                      m.type === 'filter-not-available'
-                        ? ` — Crossref filter keys use hyphens (e.g. "${(m.value ?? '').replace(/_/g, '-')}")`
-                        : m.message
-                          ? ` — ${m.message}`
-                          : '';
-                    return `${badKey}${hint}`;
-                  })
-                  .filter(Boolean)
-                  .join('; ');
-              }
-            } catch {
-              // fall through to generic message
-            }
-            const { validationError } = await import('@cyanheads/mcp-ts-core/errors');
-            throw validationError(
-              detail
-                ? `Crossref rejected the request: ${detail}`
-                : 'Crossref returned HTTP 400 Bad Request — check filter key names (use hyphens, not underscores) and field names.',
-            );
-          }
-          throw await httpErrorFromResponse(response, { service: 'Crossref', data: { url } });
-        }
-        const text = await response.text();
-        if (/^\s*<(!DOCTYPE\s+html|html[\s>])/i.test(text)) {
-          const { serviceUnavailable } = await import('@cyanheads/mcp-ts-core/errors');
-          throw serviceUnavailable(
-            'Crossref returned HTML instead of JSON — likely rate-limited or under maintenance.',
-            { url },
-          );
-        }
-        return JSON.parse(text) as T;
-      },
-      { operation: 'CrossrefService.request', baseDelayMs: 1_000, signal: ctx.signal },
+    return withRetry(() => this.attempt<T>(url, ctx), {
+      operation: 'CrossrefService.request',
+      baseDelayMs: 1_000,
+      signal: ctx.signal,
+    });
+  }
+
+  /**
+   * One attempt at a Crossref request. Every failure leaves here as an `McpError` with a
+   * classified code and a recovery hint. `withRetry`'s default predicate treats any
+   * non-`McpError` throw as transient and the framework's classifier reads the outer
+   * error's constructor name, so an unwrapped throw is wrong twice over: a `SyntaxError`
+   * from `JSON.parse` is retried to exhaustion and then surfaces as a caller
+   * `ValidationError`, and a `TypeError` from `fetch` surfaces as an `InternalError`
+   * — an upstream outage reported as a bug in this server.
+   */
+  private async attempt<T>(url: string, ctx: Context): Promise<T> {
+    /**
+     * An `AbortController` aborted with a `TimeoutError` DOMException rather than
+     * `AbortSignal.timeout()`: the reason is then recognizable by identity below,
+     * instead of by matching "timed out" in a message the runtime owns.
+     */
+    const controller = new AbortController();
+    const timeoutReason = new DOMException(
+      `Crossref request timed out after ${this.timeoutMs}ms.`,
+      'TimeoutError',
     );
+    const timer = setTimeout(() => controller.abort(timeoutReason), this.timeoutMs);
+    const signal = AbortSignal.any([ctx.signal, controller.signal]);
+
+    try {
+      let response: Response;
+      try {
+        response = await fetch(url, { signal, headers: { 'User-Agent': this.userAgent } });
+      } catch (err) {
+        throw this.transportError(err, url, controller.signal.reason === timeoutReason, ctx);
+      }
+
+      if (!response.ok) throw await this.responseError(response, url);
+
+      let text: string;
+      try {
+        // The timeout still covers the body read — a stalled stream is a timeout too.
+        text = await response.text();
+      } catch (err) {
+        throw this.transportError(err, url, controller.signal.reason === timeoutReason, ctx);
+      }
+
+      if (/^\s*<(!DOCTYPE\s+html|html[\s>])/i.test(text)) {
+        throw upstreamError(
+          UPSTREAM_UNAVAILABLE,
+          'Crossref returned HTML instead of JSON — likely rate-limited or under maintenance.',
+          { data: { url } },
+        );
+      }
+
+      // A 200 with nothing in it is a truncated or dropped response, not a corrupt
+      // serialization: retrying can succeed, and `malformed_response`'s advice to ask
+      // for a smaller record has nothing to act on. Tested with a scan rather than
+      // `trim()`, which copies the whole body on every successful request to answer.
+      if (!/\S/.test(text)) {
+        throw upstreamError(
+          UPSTREAM_UNAVAILABLE,
+          'Crossref returned HTTP 200 with an empty body.',
+          { data: { url } },
+        );
+      }
+
+      try {
+        return JSON.parse(text) as T;
+      } catch (err) {
+        throw upstreamError(
+          MALFORMED_RESPONSE,
+          'Crossref returned HTTP 200 with a body that is not valid JSON.',
+          { data: { url }, cause: err },
+        );
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /**
+   * Classify a raw transport rejection. `timedOut` is decided by which signal fired, not
+   * by the rejection value: `fetch` rejects with the abort *reason*, which may be any
+   * value. The network path rejects with a `TypeError` whose message ("fetch failed")
+   * says nothing — the real reason sits on `.cause`, which the framework's classifier
+   * never reads.
+   */
+  private transportError(err: unknown, url: string, timedOut: boolean, ctx: Context): unknown {
+    if (timedOut) {
+      return upstreamError(
+        REQUEST_TIMEOUT,
+        `Crossref did not respond within ${this.timeoutMs}ms.`,
+        {
+          data: { url, timeoutMs: this.timeoutMs },
+          cause: err,
+        },
+      );
+    }
+    // Caller cancellation, not an upstream failure — withRetry exits on an aborted signal.
+    if (ctx.signal.aborted) return err;
+    return upstreamError(UPSTREAM_UNAVAILABLE, `Crossref could not be reached: ${causeOf(err)}`, {
+      data: { url },
+      cause: err,
+    });
+  }
+
+  /**
+   * Convert a non-2xx response into a classified error carrying recovery. Statuses the
+   * caller owns keep their existing treatment: 400 surfaces Crossref's own
+   * validation-failure detail, and everything else outside the upstream set (404 above
+   * all) passes through as `httpErrorFromResponse` classified it, for the tool handlers
+   * to turn into their own typed reasons.
+   */
+  private async responseError(response: Response, url: string): Promise<McpError> {
+    if (response.status === 400) return crossrefValidationError(response);
+
+    const retryAfter = response.headers.get('retry-after');
+    const error = await httpErrorFromResponse(response, { service: 'Crossref', data: { url } });
+    const entry = upstreamEntryForStatus(response.status);
+    if (!entry) return error;
+
+    return upstreamError(entry, error.message, {
+      data: error.data,
+      // The concrete wait is only reachable from content[] through the hint —
+      // error.data.retryAfter never reaches a content-only client.
+      hint:
+        entry.code === JsonRpcErrorCode.RateLimited && retryAfter
+          ? rateLimitHint(retryAfter)
+          : undefined,
+    });
   }
 
   /**
@@ -265,8 +355,9 @@ export class CrossrefService {
       );
       return envelope.message;
     } catch (err) {
-      // httpErrorFromResponse maps 404 → McpError(NotFound, code = -32001).
-      if (err instanceof McpError && err.code === -32001) return null;
+      // httpErrorFromResponse maps 404 → McpError(NotFound); the upstream contract
+      // deliberately leaves 404 alone so it arrives here unmodified.
+      if (err instanceof McpError && err.code === JsonRpcErrorCode.NotFound) return null;
       throw err;
     }
   }
@@ -283,7 +374,7 @@ export class CrossrefService {
       );
       return envelope.message;
     } catch (err) {
-      if (err instanceof McpError && err.code === -32001) return null;
+      if (err instanceof McpError && err.code === JsonRpcErrorCode.NotFound) return null;
       throw err;
     }
   }
@@ -300,7 +391,7 @@ export class CrossrefService {
       );
       return envelope.message;
     } catch (err) {
-      if (err instanceof McpError && err.code === -32001) return null;
+      if (err instanceof McpError && err.code === JsonRpcErrorCode.NotFound) return null;
       throw err;
     }
   }
@@ -454,6 +545,52 @@ export class CrossrefService {
     );
     return toWorksSearchResult(envelope.message);
   }
+}
+
+/**
+ * The most specific message available for a transport rejection. `fetch` wraps the real
+ * failure — ECONNRESET, ENOTFOUND — in a `TypeError` whose own message is the useless
+ * "fetch failed", so the cause is what a caller can act on.
+ */
+function causeOf(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  return err.cause instanceof Error ? err.cause.message : err.message;
+}
+
+/**
+ * Crossref returns a structured validation-failure body on 400. Parse it and surface an
+ * actionable message instead of leaking the raw body. Consumes the response body.
+ */
+async function crossrefValidationError(response: Response): Promise<McpError> {
+  let detail = '';
+  try {
+    const json = (await response.json()) as {
+      'message-type'?: string;
+      message?: Array<{ type?: string; value?: string; message?: string }>;
+    };
+    if (json['message-type'] === 'validation-failure' && Array.isArray(json.message)) {
+      detail = json.message
+        .map((m) => {
+          const badKey = m.value ? `"${m.value}"` : '';
+          const hint =
+            m.type === 'filter-not-available'
+              ? ` — Crossref filter keys use hyphens (e.g. "${(m.value ?? '').replace(/_/g, '-')}")`
+              : m.message
+                ? ` — ${m.message}`
+                : '';
+          return `${badKey}${hint}`;
+        })
+        .filter(Boolean)
+        .join('; ');
+    }
+  } catch {
+    // Body was not the documented JSON shape — fall through to the generic message.
+  }
+  return validationError(
+    detail
+      ? `Crossref rejected the request: ${detail}`
+      : 'Crossref returned HTTP 400 Bad Request — check filter key names (use hyphens, not underscores) and field names.',
+  );
 }
 
 function toWorksSearchResult(

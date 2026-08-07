@@ -13,6 +13,7 @@ import {
   stripJats,
   type WorksSearchOptions,
 } from '@/services/crossref/crossref-service.js';
+import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
 
 /** Offset ceiling enforced by Crossref before cursor paging is required. */
 const OFFSET_CAP = 10_000;
@@ -151,6 +152,7 @@ export const searchWorksTool = tool('crossref_search_works', {
   },
 
   errors: [
+    ...UPSTREAM_ERROR_CONTRACT,
     {
       reason: 'cursor_offset_conflict',
       code: JsonRpcErrorCode.ValidationError,

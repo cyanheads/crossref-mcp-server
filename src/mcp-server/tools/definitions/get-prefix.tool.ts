@@ -6,6 +6,7 @@
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { getCrossrefService } from '@/services/crossref/crossref-service.js';
+import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
 
 export const getPrefixTool = tool('crossref_get_prefix', {
   title: 'Get Prefix Owner',
@@ -40,6 +41,7 @@ export const getPrefixTool = tool('crossref_get_prefix', {
   }),
 
   errors: [
+    ...UPSTREAM_ERROR_CONTRACT,
     {
       reason: 'prefix_not_found',
       code: JsonRpcErrorCode.NotFound,

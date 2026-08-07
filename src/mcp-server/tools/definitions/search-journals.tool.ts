@@ -19,6 +19,7 @@ import {
   WORKS_OFFSET_CAP,
 } from '@/services/crossref/crossref-service.js';
 import type { RawCrossrefJournal } from '@/services/crossref/types.js';
+import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
 
 const JournalSchema = z
   .object({
@@ -66,6 +67,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
   annotations: { readOnlyHint: true, openWorldHint: true },
 
   errors: [
+    ...UPSTREAM_ERROR_CONTRACT,
     {
       reason: 'issn_not_found',
       code: JsonRpcErrorCode.NotFound,
