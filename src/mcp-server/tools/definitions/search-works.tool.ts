@@ -1,5 +1,9 @@
 /**
- * @fileoverview crossref_search_works — searches the Crossref works index by free text and/or filters.
+ * @fileoverview crossref_search_works — searches the Crossref works index by free text and/or
+ * filters. The result list pages two ways: by offset up to a ~10K ceiling, and by cursor, which
+ * has none. A cursor walk ends on the first empty page — Crossref keeps minting a token past the
+ * end of a list, so the token is withheld there rather than relayed, and every empty page carries
+ * a notice naming which of its three causes applies.
  * @module mcp-server/tools/definitions/search-works.tool
  */
 
@@ -54,7 +58,7 @@ const WorkSummarySchema = z
 export const searchWorksTool = tool('crossref_search_works', {
   title: 'Search Works',
   description:
-    'Searches the Crossref works index (~155M records) by free text and/or structured filters. The generic query matches loosely across all fields; scope precisely with the field-specific parameters queryTitle, queryAuthor, and queryContainerTitle, or resolve a known citation to its DOI with queryBibliographic — all combine with each other and with query. Use the filter parameter for structured filtering (object with hyphen-separated Crossref keys). Sort options: relevance, score, is-referenced-by-count, published, deposited, indexed. Offset-based paging is capped at ~10K results; use cursor="*" to start cursor-based deep paging, then pass the nextCursor value from each response to continue. Cursor and offset cannot be combined.',
+    'Searches the Crossref works index (~155M records) by free text and/or structured filters. The generic query matches loosely across all fields; scope precisely with the field-specific parameters queryTitle, queryAuthor, and queryContainerTitle, or resolve a known citation to its DOI with queryBibliographic — all combine with each other and with query. Use the filter parameter for structured filtering (object with hyphen-separated Crossref keys). Sort options: relevance, score, is-referenced-by-count, published, deposited, indexed. Offset-based paging is capped at ~10K results; use cursor="*" to start cursor-based deep paging, then pass the nextCursor value from each response to continue. The walk ends on the page where nextCursor is absent — that page also carries a notice saying the list is exhausted. Cursor and offset cannot be combined.',
   annotations: { readOnlyHint: true, openWorldHint: true },
 
   input: z.object({
@@ -111,7 +115,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       .string()
       .optional()
       .describe(
-        'Cursor token for deep paging. Pass "*" to start cursor-based paging (required past ~10K results), then pass the nextCursor value from each response. Cannot be combined with offset.',
+        'Cursor token for deep paging. Pass "*" to start cursor-based paging (required past ~10K results), then pass the nextCursor value from each response until a response omits it, which means the list is exhausted. Cannot be combined with offset.',
       ),
     sort: z
       .enum([
@@ -133,11 +137,17 @@ export const searchWorksTool = tool('crossref_search_works', {
   }),
 
   output: z.object({
-    works: z.array(WorkSummarySchema).describe('Matching works'),
+    works: z
+      .array(WorkSummarySchema)
+      .describe(
+        'Matching works. Empty when nothing matched the query, when an offset runs past the end of the results, or on the page that ends a cursor walk — the notice enrichment says which.',
+      ),
     nextCursor: z
       .string()
       .optional()
-      .describe('Cursor token to pass in the next call for cursor-based paging'),
+      .describe(
+        'Cursor token to pass as cursor on the next call to continue a cursor walk. Present only on a page requested with cursor, and absent once the walk reaches the end of the list.',
+      ),
   }),
 
   enrichment: {
@@ -147,7 +157,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       .string()
       .optional()
       .describe(
-        'Guidance when no results matched — suggests broadening the query or adjusting filters. Absent on successful result pages.',
+        'Guidance on an empty page, naming which of its three causes applies: a query nothing matched, an offset past the end of a list that did match, or a cursor walk that has reached the end of the list. Absent on a page carrying records.',
       ),
   },
 
@@ -170,8 +180,18 @@ export const searchWorksTool = tool('crossref_search_works', {
   ],
 
   async handler(input, ctx) {
+    /**
+     * A blank string is not a cursor. Form-based clients send `""` for an optional field
+     * nobody filled in, and the service picks its selector by truthiness — so a blank never
+     * reaches Crossref and the page comes back through the offset path. Normalizing here is
+     * what keeps every guard below reading the value the request will actually carry: the
+     * conflict guard stops refusing an offset that has no cursor to conflict with, and the
+     * empty-page notice stops calling an offset page a cursor walk.
+     */
+    const cursor = input.cursor?.trim() || undefined;
+
     // Validate: cursor and offset cannot coexist
-    if (input.cursor !== undefined && input.offset !== undefined) {
+    if (cursor !== undefined && input.offset !== undefined) {
       throw ctx.fail('cursor_offset_conflict', 'Provide cursor or offset, not both.', {
         ...ctx.recoveryFor('cursor_offset_conflict'),
       });
@@ -179,11 +199,7 @@ export const searchWorksTool = tool('crossref_search_works', {
 
     // Validate: offset cap
     const rows = input.rows;
-    if (
-      input.offset !== undefined &&
-      input.cursor === undefined &&
-      input.offset + rows > OFFSET_CAP
-    ) {
+    if (input.offset !== undefined && cursor === undefined && input.offset + rows > OFFSET_CAP) {
       throw ctx.fail(
         'offset_too_large',
         `Offset ${input.offset} + rows ${rows} = ${input.offset + rows} exceeds the ~${OFFSET_CAP} Crossref offset limit.`,
@@ -195,7 +211,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       query: input.query,
       filter: input.filter,
       rows,
-      cursor: input.cursor,
+      cursor,
       offset: input.offset,
     });
 
@@ -214,7 +230,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       ...(input.filter !== undefined && { filter: input.filter }),
       ...(input.fields !== undefined && { fields: input.fields }),
       ...(input.offset !== undefined && { offset: input.offset }),
-      ...(input.cursor !== undefined && { cursor: input.cursor }),
+      ...(cursor !== undefined && { cursor }),
       ...(input.sort !== undefined && { sort: input.sort }),
       ...(input.order !== undefined && { order: input.order }),
     };
@@ -252,17 +268,47 @@ export const searchWorksTool = tool('crossref_search_works', {
     });
 
     const returned = works.length;
-    const notice =
-      result.totalResults === 0
-        ? 'No results matched the query. Try broadening the search terms or removing filters.'
-        : undefined;
+    /** Whether this page came back through the cursor, on the normalized value the request carried. */
+    const isCursorPage = cursor !== undefined;
+    /**
+     * Crossref keeps returning a `next-cursor` past the end of a list, so a caller chaining
+     * it walks in a circle forever. The token cannot be the guard either: the same value
+     * comes back on every page of a walk, item-bearing and empty alike, so it never signals
+     * progress. `totalResults` cannot serve either — it describes the query and stays at its
+     * full value on an exhausted page. That leaves this page's item count, the one quantity
+     * that says the walk is over. Withholding here keeps "no continuation field means the
+     * list is exhausted" true on every cursor surface this server exposes.
+     */
+    const nextCursor = returned > 0 ? result.nextCursor : undefined;
 
     ctx.enrich({ totalResults: result.totalResults, returned });
-    if (notice) ctx.enrich.notice(notice);
+    /**
+     * Every empty page says why. `returned === 0` is what makes a page empty; `totalResults`
+     * only separates the causes, and keying the notice on it alone left the two commonest
+     * empty pages — a walk past the end of a list, an offset past the end of one — carrying
+     * no explanation on either result surface. This tool's whole payload is `works`, so an
+     * unannotated empty page renders as nothing at all for a client reading content[], where
+     * the journal and funder works lists at least still render their own record.
+     */
+    if (returned === 0) {
+      if (result.totalResults === 0) {
+        ctx.enrich.notice(
+          'No results matched the query. Try broadening the search terms or removing filters.',
+        );
+      } else if (isCursorPage) {
+        ctx.enrich.notice(
+          `This cursor walk is complete — all ${result.totalResults} matching records have been returned. nextCursor is withheld on this page; stop chaining it.`,
+        );
+      } else {
+        ctx.enrich.notice(
+          `Offset ${input.offset ?? 0} is past the end of this result list — ${result.totalResults} records matched. Request an offset below ${result.totalResults}.`,
+        );
+      }
+    }
 
     return {
       works,
-      ...(result.nextCursor && { nextCursor: result.nextCursor }),
+      ...(nextCursor && { nextCursor }),
     };
   },
 

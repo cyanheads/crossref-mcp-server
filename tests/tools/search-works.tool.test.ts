@@ -3,7 +3,7 @@
  * @module tests/tools/search-works.tool.test
  */
 
-import { createMockContext, getEnrichment } from '@cyanheads/mcp-ts-core/testing';
+import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { searchWorksTool } from '@/mcp-server/tools/definitions/search-works.tool.js';
 
@@ -46,6 +46,12 @@ function makeSearchResult(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/**
+ * The schema clients actually receive: domain output merged with enrichment. Parsing through
+ * it proves a field reaches the wire — an undeclared key is stripped here, silently.
+ */
+const wireSchema = searchWorksTool.output.extend(searchWorksTool.enrichment);
+
 describe('searchWorksTool', () => {
   it('returns works for a simple query', async () => {
     const ctx = createMockContext({ errors: searchWorksTool.errors });
@@ -74,10 +80,25 @@ describe('searchWorksTool', () => {
     mockSearchWorks.mockResolvedValue(makeSearchResult({ totalResults: 0, items: [] }));
 
     const input = searchWorksTool.input.parse({ query: 'ZZZNoMatch' });
-    await searchWorksTool.handler(input, ctx);
+    const result = await searchWorksTool.handler(input, ctx);
 
-    const enrichment = getEnrichment(ctx);
-    expect(enrichment.notice).toMatch(/No results/);
+    const wire = wireSchema.parse({ ...result, ...getEnrichment(ctx) });
+    expect(wire.notice).toMatch(/No results/);
+  });
+
+  it('notices an offset that ran past the end of a list that did match', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    mockSearchWorks.mockResolvedValue(makeSearchResult({ totalResults: 100, items: [] }));
+
+    const input = searchWorksTool.input.parse({ query: 'CRISPR', offset: 500, rows: 20 });
+    const result = await searchWorksTool.handler(input, ctx);
+
+    // Empty with matches upstream is a different fact from empty with none, and the advice
+    // differs — "broaden the query" would send a caller away from results that do exist.
+    const wire = wireSchema.parse({ ...result, ...getEnrichment(ctx) });
+    expect(wire.notice).toMatch(/past the end/);
+    expect(wire.notice).toContain('500');
+    expect(wire.notice).not.toMatch(/No results/);
   });
 
   it('throws cursor_offset_conflict when both cursor and offset are supplied', async () => {
@@ -87,6 +108,43 @@ describe('searchWorksTool', () => {
     await expect(searchWorksTool.handler(input, ctx)).rejects.toMatchObject({
       data: { reason: 'cursor_offset_conflict' },
     });
+  });
+
+  it('reads a blank cursor as absent rather than as a cursor', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    mockSearchWorks.mockResolvedValue(makeSearchResult({ totalResults: 49_141 }));
+
+    // Form-based clients send "" for an optional field nobody filled in. The service picks
+    // its selector by truthiness, so a blank never reaches Crossref — the page comes back
+    // through the offset path and must not be labelled a cursor page.
+    const input = searchWorksTool.input.parse({ query: 'CRISPR', cursor: '  ' });
+    await searchWorksTool.handler(input, ctx);
+
+    expect(mockSearchWorks.mock.calls[0]?.[0]).not.toHaveProperty('cursor');
+  });
+
+  it('does not refuse an offset paired with a blank cursor', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    mockSearchWorks.mockResolvedValue(makeSearchResult({ totalResults: 49_141 }));
+
+    // Nothing conflicts: a blank is not a cursor, so the offset is the only selector, and
+    // refusing it strands a caller whose client filled the field in with "".
+    const input = searchWorksTool.input.parse({ query: 'CRISPR', cursor: '', offset: 20 });
+    await searchWorksTool.handler(input, ctx);
+
+    expect(mockSearchWorks.mock.calls[0]?.[0]).toMatchObject({ offset: 20 });
+  });
+
+  it('calls an empty blank-cursor page an offset page, not a completed walk', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    mockSearchWorks.mockResolvedValue(makeSearchResult({ totalResults: 100, items: [] }));
+
+    const input = searchWorksTool.input.parse({ query: 'CRISPR', cursor: '' });
+    const result = await searchWorksTool.handler(input, ctx);
+
+    const wire = wireSchema.parse({ ...result, ...getEnrichment(ctx) });
+    expect(wire.notice).toMatch(/past the end/);
+    expect(wire.notice).not.toMatch(/walk is complete/);
   });
 
   it('throws offset_too_large when offset exceeds ~10K cap', async () => {
@@ -105,7 +163,76 @@ describe('searchWorksTool', () => {
     const input = searchWorksTool.input.parse({ query: 'CRISPR', cursor: '*' });
     const result = await searchWorksTool.handler(input, ctx);
 
-    expect(result.nextCursor).toBe('AoE=');
+    const wire = wireSchema.parse({ ...result, ...getEnrichment(ctx) });
+    expect(wire.nextCursor).toBe('AoE=');
+    expect(wire.notice).toBeUndefined();
+  });
+
+  it('withholds nextCursor once the walk runs off the end of the result list', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    // Crossref keeps minting a token past the end of a list — the empty page is the signal.
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ totalResults: 100, items: [], nextCursor: 'a-token-that-yields-nothing' }),
+    );
+
+    const input = searchWorksTool.input.parse({ query: 'CRISPR', cursor: 'last-token', rows: 100 });
+    const result = await searchWorksTool.handler(input, ctx);
+
+    const wire = wireSchema.parse({ ...result, ...getEnrichment(ctx) });
+    // Absence of a continuation field means "exhausted" on the offset path; handing back a
+    // token here would break that on the cursor path and loop a caller forever.
+    expect(wire.nextCursor).toBeUndefined();
+    expect(wire.works).toHaveLength(0);
+    // Absence alone is a weak signal on a tool whose entire payload is `works` — an empty page
+    // with nothing said about it renders as blank text. The notice is the affirmative half.
+    expect(wire.notice).toMatch(/walk is complete/);
+    expect(wire.notice).toContain('100');
+    // Nothing on either surface invites another call.
+    expect(searchWorksTool.format!(result)[0]?.text).not.toContain('Next cursor');
+  });
+
+  it('terminates a cursor walk instead of looping on the token Crossref re-mints', async () => {
+    // Live upstream behavior: the token that yields an empty page comes back on that page
+    // unchanged, so an unguarded walk re-sends it forever.
+    const recycled = 'DnF1ZXJ5VGhlbkZldGNo-recycled';
+    mockSearchWorks.mockImplementation((opts: { cursor?: string }) =>
+      Promise.resolve(
+        opts.cursor === '*'
+          ? makeSearchResult({ totalResults: 100, nextCursor: recycled })
+          : makeSearchResult({ totalResults: 100, items: [], nextCursor: recycled }),
+      ),
+    );
+
+    let cursor: string | undefined = '*';
+    const pageSizes: number[] = [];
+    for (let i = 0; i < 10 && cursor !== undefined; i++) {
+      const ctx = createMockContext({ errors: searchWorksTool.errors });
+      const input = searchWorksTool.input.parse({ query: 'CRISPR', cursor, rows: 100 });
+      const result = await searchWorksTool.handler(input, ctx);
+      pageSizes.push(result.works.length);
+      cursor = wireSchema.parse({ ...result, ...getEnrichment(ctx) }).nextCursor;
+    }
+
+    // The full page, then the empty one that ends it — the loop bound is never reached.
+    expect(pageSizes).toEqual([1, 0]);
+    expect(cursor).toBeUndefined();
+  });
+
+  it('carries the walk-complete notice onto content[] for a client that reads only text', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ totalResults: 100, items: [], nextCursor: 'recycled-token' }),
+    );
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'CRISPR',
+      cursor: 'last-token',
+      rows: 100,
+    });
+
+    const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+    expect(text).toMatch(/walk is complete/);
+    expect(text).not.toContain('recycled-token');
+    expect(result.structuredContent).not.toHaveProperty('nextCursor');
   });
 
   it('passes sort and order to the service', async () => {
@@ -368,10 +495,12 @@ describe('searchWorksTool', () => {
   });
 
   it('formats output with nextCursor when present', () => {
-    const result = { works: [], nextCursor: 'cursor-abc' };
+    // A token now only ever rides a page that carried records, so that is the shape rendered.
+    const result = { works: [{ doi: '10.1038/nature12373' }], nextCursor: 'cursor-abc' };
     const blocks = searchWorksTool.format!(result);
     const text = blocks[0]?.text ?? '';
     expect(text).toContain('cursor-abc');
+    expect(text).toContain('10.1038/nature12373');
   });
 
   it('security: output does not include CROSSREF_BASE_URL or CROSSREF_MAILTO', async () => {
