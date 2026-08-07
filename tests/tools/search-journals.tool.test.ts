@@ -351,11 +351,14 @@ describe('searchJournalsTool', () => {
       // Records remain, but offset 10000 + rows 10 would be rejected upstream.
       expect(wire.nextWorksOffset).toBeUndefined();
       // A missing offset alone is indistinguishable from the end of the list, so the page names
-      // the ceiling, the true total, and the route that reaches the rest.
+      // the ceiling, the true total, and the input that reaches the rest.
       expect(wire.notice).toContain('10000');
       expect(wire.notice).toContain('446507');
-      expect(wire.notice).toContain('crossref_search_works');
-      expect(wire.notice).toContain('0028-0836');
+      expect(wire.notice).toContain('works_cursor');
+      // The cursor walk restarts at the newest work rather than resuming from this offset,
+      // so a caller who follows the notice must not expect to pick up where it left off.
+      expect(wire.notice).toMatch(/restart/i);
+      expect(wire.nextWorksCursor).toBeUndefined();
     });
 
     it('leaves the notice off when the works list simply ended', async () => {
@@ -377,6 +380,194 @@ describe('searchJournalsTool', () => {
       const wire = wireSchema.parse({ ...result, ...getEnrichment(ctx) });
       expect(wire.nextWorksOffset).toBeUndefined();
       expect(wire.notice).toBeUndefined();
+    });
+
+    it('starts a cursor walk of the works list and hands back nextWorksCursor', async () => {
+      const ctx = createMockContext({ errors: searchJournalsTool.errors });
+      mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
+      mockGetJournalWorks.mockResolvedValue({
+        totalResults: 446507,
+        itemsPerPage: 2,
+        items: [{ DOI: '10.1038/a' }, { DOI: '10.1038/b' }],
+        nextCursor: 'AoJw8P3T3fACPBhodHRwOi8vZHguZG9pLm9yZy8xMC4xMDM4L2E=',
+      });
+
+      const input = searchJournalsTool.input.parse({
+        issn: '0028-0836',
+        include_works: true,
+        rows: 2,
+        works_cursor: '*',
+      });
+      const result = await searchJournalsTool.handler(input, ctx);
+
+      // No offset on the call: the two page selectors are alternatives upstream.
+      expect(mockGetJournalWorks).toHaveBeenCalledWith(
+        '0028-0836',
+        { rows: 2, cursor: '*' },
+        expect.anything(),
+      );
+      const wire = wireSchema.parse({ ...result, ...getEnrichment(ctx) });
+      expect(wire.worksTotal).toBe(446507);
+      expect(wire.nextWorksCursor).toBe('AoJw8P3T3fACPBhodHRwOi8vZHguZG9pLm9yZy8xMC4xMDM4L2E=');
+      // An offset is not a valid continuation of a cursor walk, so none is offered.
+      expect(wire.nextWorksOffset).toBeUndefined();
+      expect(wire.notice).toBeUndefined();
+    });
+
+    it('reads a blank works_cursor as absent and stays on offset paging', async () => {
+      const ctx = createMockContext({ errors: searchJournalsTool.errors });
+      mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
+      mockGetJournalWorks.mockResolvedValue({
+        totalResults: 446507,
+        itemsPerPage: 2,
+        items: [{ DOI: '10.1038/a' }, { DOI: '10.1038/b' }],
+      });
+
+      // A form-based client sends "" for an optional field nobody filled in.
+      const input = searchJournalsTool.input.parse({
+        issn: '0028-0836',
+        include_works: true,
+        rows: 2,
+        works_cursor: '',
+      });
+      const result = await searchJournalsTool.handler(input, ctx);
+
+      // Taking "" as a cursor sends neither selector upstream, so Crossref answers page one
+      // with no next-cursor, and the cursor branch withholds nextWorksOffset as well — a
+      // 446507-work list truncated to its first page with no field saying so.
+      expect(mockGetJournalWorks).toHaveBeenCalledWith(
+        '0028-0836',
+        { rows: 2, offset: 0 },
+        expect.anything(),
+      );
+      const wire = wireSchema.parse({ ...result, ...getEnrichment(ctx) });
+      expect(wire.nextWorksOffset).toBe(2);
+      expect(wire.nextWorksCursor).toBeUndefined();
+    });
+
+    it('ignores works_cursor paired with works_offset when include_works is false', async () => {
+      const ctx = createMockContext({ errors: searchJournalsTool.errors });
+      mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
+
+      // Without a works list neither input selects anything, so the pair is not a conflict.
+      const input = searchJournalsTool.input.parse({
+        issn: '0028-0836',
+        include_works: false,
+        works_cursor: '*',
+        works_offset: 20,
+      });
+      const result = await searchJournalsTool.handler(input, ctx);
+
+      expect(result.recentWorks).toBeUndefined();
+      expect(mockGetJournalWorks).not.toHaveBeenCalled();
+    });
+
+    it('continues a cursor walk from a returned token', async () => {
+      const ctx = createMockContext({ errors: searchJournalsTool.errors });
+      mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
+      mockGetJournalWorks.mockResolvedValue({
+        totalResults: 446507,
+        itemsPerPage: 2,
+        items: [{ DOI: '10.1038/c' }, { DOI: '10.1038/d' }],
+        nextCursor: 'page-three-token',
+      });
+
+      const input = searchJournalsTool.input.parse({
+        issn: '0028-0836',
+        include_works: true,
+        rows: 2,
+        works_cursor: 'page-two-token',
+      });
+      const result = await searchJournalsTool.handler(input, ctx);
+
+      expect(mockGetJournalWorks).toHaveBeenCalledWith(
+        '0028-0836',
+        { rows: 2, cursor: 'page-two-token' },
+        expect.anything(),
+      );
+      const wire = wireSchema.parse({ ...result, ...getEnrichment(ctx) });
+      expect(wire.nextWorksCursor).toBe('page-three-token');
+      expect(result.recentWorks?.map((w) => w.doi)).toEqual(['10.1038/c', '10.1038/d']);
+    });
+
+    it('withholds nextWorksCursor once the walk runs off the end of the works list', async () => {
+      const ctx = createMockContext({ errors: searchJournalsTool.errors });
+      mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
+      // Crossref keeps minting a token past the end of a list — the empty page is the signal.
+      mockGetJournalWorks.mockResolvedValue({
+        totalResults: 446507,
+        itemsPerPage: 2,
+        items: [],
+        nextCursor: 'a-token-that-yields-nothing',
+      });
+
+      const input = searchJournalsTool.input.parse({
+        issn: '0028-0836',
+        include_works: true,
+        rows: 2,
+        works_cursor: 'last-token',
+      });
+      const result = await searchJournalsTool.handler(input, ctx);
+
+      const wire = wireSchema.parse({ ...result, ...getEnrichment(ctx) });
+      // Absence of a continuation field means "exhausted" on the offset path; handing back a
+      // token here would break that on the cursor path and loop a caller forever.
+      expect(wire.nextWorksCursor).toBeUndefined();
+      expect(result.recentWorks).toHaveLength(0);
+    });
+
+    it('throws works_cursor_offset_conflict when a cursor is paired with a spendable offset', async () => {
+      const ctx = createMockContext({ errors: searchJournalsTool.errors });
+
+      const input = searchJournalsTool.input.parse({
+        issn: '0028-0836',
+        include_works: true,
+        works_cursor: '*',
+        works_offset: 20,
+      });
+      await expect(searchJournalsTool.handler(input, ctx)).rejects.toMatchObject({
+        code: JsonRpcErrorCode.ValidationError,
+        data: { reason: 'works_cursor_offset_conflict', worksOffset: 20 },
+      });
+      expect(mockSearchJournals).not.toHaveBeenCalled();
+    });
+
+    it('accepts a cursor alongside the works_offset schema default', async () => {
+      const ctx = createMockContext({ errors: searchJournalsTool.errors });
+      mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
+      mockGetJournalWorks.mockResolvedValue({ totalResults: 5, itemsPerPage: 10, items: [] });
+
+      // works_offset defaults to 0, so every cursor call carries one. Zero is the start of the
+      // list and is never sent upstream — rejecting it would make the cursor input unusable.
+      const input = searchJournalsTool.input.parse({
+        issn: '0028-0836',
+        include_works: true,
+        works_cursor: '*',
+      });
+      expect(input.works_offset).toBe(0);
+      await expect(searchJournalsTool.handler(input, ctx)).resolves.toBeDefined();
+    });
+
+    it('carries nextWorksCursor onto both structuredContent and content[]', async () => {
+      mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
+      mockGetJournalWorks.mockResolvedValue({
+        totalResults: 446507,
+        itemsPerPage: 1,
+        items: [{ DOI: '10.1038/a' }],
+        nextCursor: 'wire-token',
+      });
+
+      const result = await runToolContract(searchJournalsTool, {
+        issn: '0028-0836',
+        include_works: true,
+        rows: 1,
+        works_cursor: '*',
+      });
+
+      expect(result.structuredContent).toMatchObject({ nextWorksCursor: 'wire-token' });
+      const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+      expect(text).toContain('nextWorksCursor');
+      expect(text).toContain('wire-token');
     });
 
     it('discloses the 100000 ceiling on the journal list page', async () => {

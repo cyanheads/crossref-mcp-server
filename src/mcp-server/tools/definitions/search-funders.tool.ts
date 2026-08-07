@@ -2,7 +2,8 @@
  * @fileoverview crossref_search_funders — finds funders in the Crossref Funder Registry by name or
  * DOI, optionally returning a page of works funded by the matched funder. The funder list and the
  * funded-works list page independently, and their upstream offset ceilings differ by an order of
- * magnitude. A name query matching more than one funder is rejected rather than silently resolved.
+ * magnitude; the funded-works list also pages by cursor, which has no ceiling. A name query
+ * matching more than one funder is rejected rather than silently resolved.
  * @module mcp-server/tools/definitions/search-funders.tool
  */
 
@@ -16,7 +17,6 @@ import {
   type ListSearchResult,
   NAME_SEARCH_OFFSET_CAP,
   nextPageOffset,
-  normalizeFunderId,
   parseDateParts,
   WORKS_OFFSET_CAP,
 } from '@/services/crossref/crossref-service.js';
@@ -57,7 +57,7 @@ const WorkSummarySchema = z
 export const searchFundersTool = tool('crossref_search_funders', {
   title: 'Search Funders',
   description:
-    'Finds funders registered in the Crossref Funder Registry by name or funder DOI. Provide funder_doi for an exact single-funder lookup — the full DOI ("10.13039/100000001"), the bare registry ID ("100000001"), or either behind a doi: or https://doi.org/ prefix — or query for name-based search. Name-query results page with offset — the nextOffset enrichment carries the value for the following page, up to offset + rows = 100000. Set include_works to true to also return a page of works funded by the matched funder; that list pages separately with works_offset, capped ten times lower at works_offset + rows = 10000. Read a funder\'s works past that ceiling with crossref_search_works using filter {"funder": "10.13039/<id>"} and cursor="*". Returns funder name, registry ID, country, and alternate names.',
+    'Finds funders registered in the Crossref Funder Registry by name or funder DOI. Provide funder_doi for an exact single-funder lookup — the full DOI ("10.13039/100000001"), the bare registry ID ("100000001"), or either behind a doi: or https://doi.org/ prefix — or query for name-based search. Name-query results page with offset — the nextOffset enrichment carries the value for the following page, up to offset + rows = 100000. Set include_works to true to also return a page of works funded by the matched funder; that list pages two ways. works_offset is the simple one and is capped ten times lower at works_offset + rows = 10000. works_cursor has no ceiling and reaches the whole funded-works list: pass works_cursor="*" on the first call, then chain the nextWorksCursor token from each response. The two cannot be combined, and a cursor walk always starts at the newest work — it cannot resume from an offset. This list also counts works funded by the funder\'s registry descendants, which a crossref_search_works filter on {"funder": "10.13039/<id>"} does not. Returns funder name, registry ID, country, and alternate names.',
   annotations: { readOnlyHint: true, openWorldHint: true },
 
   errors: [
@@ -88,7 +88,14 @@ export const searchFundersTool = tool('crossref_search_funders', {
       code: JsonRpcErrorCode.ValidationError,
       when: 'works_offset + rows exceeds the 10000-record ceiling Crossref allows on a funded-works list.',
       recovery:
-        'Page deeper with crossref_search_works using filter {"funder": "10.13039/<id>"} and cursor="*", chaining the nextCursor token from each response.',
+        'Restart the funded-works list with works_cursor="*" and chain the nextWorksCursor token from each response — cursor paging has no offset ceiling and reaches the whole list.',
+    },
+    {
+      reason: 'works_cursor_offset_conflict',
+      code: JsonRpcErrorCode.ValidationError,
+      when: 'include_works is true and works_cursor was supplied alongside a works_offset above zero.',
+      recovery:
+        'Page the funded-works list one way or the other. Keep works_cursor and drop works_offset to walk the whole list, or drop works_cursor to stay on offset paging.',
     },
   ],
 
@@ -135,7 +142,13 @@ export const searchFundersTool = tool('crossref_search_funders', {
       .min(0)
       .default(0)
       .describe(
-        'Zero-based offset into the funded-works list when include_works is true. Pass the nextWorksOffset value from the previous response to continue.',
+        'Zero-based offset into the funded-works list when include_works is true. Pass the nextWorksOffset value from the previous response to continue. Capped at works_offset + rows = 10000; use works_cursor to read the whole list. Cannot be combined with works_cursor.',
+      ),
+    works_cursor: z
+      .string()
+      .optional()
+      .describe(
+        'Cursor token for deep paging of the funded-works list when include_works is true. Pass "*" to start the walk at the newest work, then pass the nextWorksCursor value from each response. Has no offset ceiling and cannot be combined with works_offset. Each token runs about 1500 characters and is returned on both result surfaces, a fixed cost per page — raise rows to spread it across more works on a long walk.',
       ),
   }),
 
@@ -166,7 +179,13 @@ export const searchFundersTool = tool('crossref_search_funders', {
       .number()
       .optional()
       .describe(
-        'Value to pass as works_offset on the next call for the following page of funded works. Absent when this page ends the works list or the next page would breach the 10000-record offset ceiling.',
+        'Value to pass as works_offset on the next call for the following page of funded works. Absent when this page ends the works list, the next page would breach the 10000-record offset ceiling, or the page was requested with works_cursor.',
+      ),
+    nextWorksCursor: z
+      .string()
+      .optional()
+      .describe(
+        'Value to pass as works_cursor on the next call for the following page of funded works. Present only on a page requested with works_cursor, and absent once the walk reaches the end of the works list.',
       ),
     notice: z
       .string()
@@ -189,6 +208,34 @@ export const searchFundersTool = tool('crossref_search_funders', {
         },
       );
     }
+    /**
+     * A blank string is not a cursor. Form-based clients send `""` for an optional field the
+     * user never filled in, and taking that as a cursor picks the cursor path with nothing to
+     * send upstream: the request carries neither selector, Crossref answers page one with no
+     * `next-cursor`, and the response then withholds every continuation field — which this
+     * tool documents as meaning the list is exhausted. Normalized to absent so a blank falls
+     * back to offset paging instead of truncating the list to its first page.
+     */
+    const worksCursor = input.works_cursor?.trim() || undefined;
+    /**
+     * The guard keys on whether an offset would actually be spent, not on whether the field
+     * arrived: `works_offset` carries a schema default of 0, so an omitted field and an
+     * explicit 0 are the same value here. Zero is the start of the list and is never sent
+     * upstream, so pairing it with a cursor discards nothing — every combination that would
+     * have silently dropped one of the two inputs has a nonzero offset and fails here.
+     */
+    if (input.include_works && worksCursor !== undefined && input.works_offset > 0) {
+      throw ctx.fail(
+        'works_cursor_offset_conflict',
+        `works_cursor and works_offset ${input.works_offset} cannot be combined — Crossref rejects the pair, and the funded-works list pages one way or the other.`,
+        {
+          worksOffset: input.works_offset,
+          ...ctx.recoveryFor('works_cursor_offset_conflict'),
+        },
+      );
+    }
+    // Unconditional: the guard above leaves works_offset at 0 whenever a cursor is present,
+    // and 0 + rows is inside the cap for every rows the schema admits.
     if (input.include_works && input.works_offset + input.rows > WORKS_OFFSET_CAP) {
       throw ctx.fail(
         'works_offset_too_large',
@@ -310,7 +357,9 @@ export const searchFundersTool = tool('crossref_search_funders', {
 
     const worksResult = await svc.getFunderWorks(
       funderId,
-      { rows: input.rows, offset: input.works_offset },
+      worksCursor !== undefined
+        ? { rows: input.rows, cursor: worksCursor }
+        : { rows: input.rows, offset: input.works_offset },
       ctx,
     );
     const fundedWorks = worksResult.items.map((raw) => {
@@ -331,23 +380,36 @@ export const searchFundersTool = tool('crossref_search_funders', {
       };
     });
 
-    const worksContinuation = nextPageOffset({
-      offset: input.works_offset,
-      returned: fundedWorks.length,
-      total: worksResult.totalResults,
-      rows: input.rows,
-      cap: WORKS_OFFSET_CAP,
-    });
+    if (worksCursor !== undefined) {
+      // A cursor walk has no offset ceiling and no offset position, so neither
+      // nextWorksOffset nor the ceiling notice applies. Crossref keeps minting a token past
+      // the end of the list, so the token is withheld on an empty page — that keeps "no
+      // continuation field means the list is exhausted" true for the cursor path too.
+      ctx.enrich({
+        ...listEnrichment,
+        fundedWorksTotal: worksResult.totalResults,
+        ...(fundedWorks.length > 0 &&
+          worksResult.nextCursor !== undefined && { nextWorksCursor: worksResult.nextCursor }),
+      });
+    } else {
+      const worksContinuation = nextPageOffset({
+        offset: input.works_offset,
+        returned: fundedWorks.length,
+        total: worksResult.totalResults,
+        rows: input.rows,
+        cap: WORKS_OFFSET_CAP,
+      });
 
-    ctx.enrich({
-      ...listEnrichment,
-      fundedWorksTotal: worksResult.totalResults,
-      ...(worksContinuation.kind === 'next' && { nextWorksOffset: worksContinuation.offset }),
-    });
-    if (worksContinuation.kind === 'ceiling') {
-      ctx.enrich.notice(
-        `This is the last works page reachable by works_offset — Crossref caps works_offset + rows at ${WORKS_OFFSET_CAP} on a funded-works list and ${worksResult.totalResults} works exist. Read further with crossref_search_works using filter {"funder": "${normalizeFunderId(funderId)}"} and cursor="*".`,
-      );
+      ctx.enrich({
+        ...listEnrichment,
+        fundedWorksTotal: worksResult.totalResults,
+        ...(worksContinuation.kind === 'next' && { nextWorksOffset: worksContinuation.offset }),
+      });
+      if (worksContinuation.kind === 'ceiling') {
+        ctx.enrich.notice(
+          `This is the last works page reachable by works_offset — Crossref caps works_offset + rows at ${WORKS_OFFSET_CAP} on a funded-works list and ${worksResult.totalResults} works exist. Re-run with works_cursor="*" and chain nextWorksCursor to read the whole list; the walk restarts at the newest work.`,
+        );
+      }
     }
 
     return {
