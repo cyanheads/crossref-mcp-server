@@ -1,6 +1,6 @@
 {
   "name": "@cyanheads/crossref-mcp-server",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "mcpName": "io.github.cyanheads/crossref-mcp-server",
   "description": "Resolve DOIs, search ~155M scholarly works, fetch references, and look up publishers via the Crossref REST API. STDIO or Streamable HTTP.",
   "type": "module",
