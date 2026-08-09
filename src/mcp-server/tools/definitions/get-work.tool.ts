@@ -6,11 +6,11 @@
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import {
-  decodeHtmlEntities,
   formatDateParts,
   getCrossrefService,
+  normalizeMarkupText,
+  normalizeText,
   parseDateParts,
-  stripJats,
 } from '@/services/crossref/crossref-service.js';
 import type { CrossrefAuthor } from '@/services/crossref/types.js';
 import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
@@ -138,16 +138,16 @@ export const getWorkTool = tool('crossref_get_work', {
       });
     }
 
-    const title = raw.title?.[0] !== undefined ? decodeHtmlEntities(raw.title[0]) : undefined;
+    const title = raw.title?.[0] !== undefined ? normalizeMarkupText(raw.title[0]) : undefined;
     const subtitle =
       raw.subtitle?.[0] !== undefined
-        ? decodeHtmlEntities(raw.subtitle[0])
+        ? normalizeMarkupText(raw.subtitle[0])
         : raw['short-title']?.[0] !== undefined
-          ? decodeHtmlEntities(raw['short-title'][0])
+          ? normalizeMarkupText(raw['short-title'][0])
           : undefined;
     const containerTitle =
       raw['container-title']?.[0] !== undefined
-        ? decodeHtmlEntities(raw['container-title'][0])
+        ? normalizeMarkupText(raw['container-title'][0])
         : undefined;
 
     const published = parseDateParts(
@@ -160,7 +160,7 @@ export const getWorkTool = tool('crossref_get_work', {
       ...(subtitle !== undefined && { subtitle }),
       ...(raw.type != null && { type: raw.type }),
       ...(raw.author && { authors: raw.author.map(normalizeAuthor) }),
-      ...(raw.abstract !== undefined && { abstract: decodeHtmlEntities(stripJats(raw.abstract)) }),
+      ...(raw.abstract !== undefined && { abstract: normalizeMarkupText(raw.abstract) }),
       ...(raw['is-referenced-by-count'] !== undefined && {
         isReferencedByCount: raw['is-referenced-by-count'],
       }),
@@ -169,11 +169,11 @@ export const getWorkTool = tool('crossref_get_work', {
       }),
       ...(containerTitle !== undefined && { containerTitle }),
       ...(raw.ISSN && raw.ISSN.length > 0 && { issn: raw.ISSN }),
-      ...(raw.publisher !== undefined && { publisher: raw.publisher }),
+      ...(raw.publisher !== undefined && { publisher: normalizeText(raw.publisher) }),
       ...(published !== undefined && { published }),
       ...(raw.funder && {
         funders: raw.funder.map((f) => ({
-          name: f.name,
+          name: normalizeText(f.name),
           ...(f.DOI && { doi: f.DOI }),
           ...(f.award && f.award.length > 0 && { award: f.award }),
         })),
@@ -195,7 +195,7 @@ export const getWorkTool = tool('crossref_get_work', {
         })),
       }),
       ...(raw.URL && { url: raw.URL }),
-      ...(raw.subject && raw.subject.length > 0 && { subject: raw.subject }),
+      ...(raw.subject && raw.subject.length > 0 && { subject: raw.subject.map(normalizeText) }),
       ...(raw.language && { language: raw.language }),
     };
   },
@@ -277,12 +277,12 @@ export const getWorkTool = tool('crossref_get_work', {
 
 function normalizeAuthor(a: CrossrefAuthor) {
   return {
-    ...(a.given && { given: a.given }),
-    ...(a.family && { family: a.family }),
-    ...(a.name && { name: a.name }),
+    ...(a.given && { given: normalizeText(a.given) }),
+    ...(a.family && { family: normalizeText(a.family) }),
+    ...(a.name && { name: normalizeText(a.name) }),
     ...(a.ORCID && { orcid: a.ORCID }),
     ...(a.affiliation?.length && {
-      affiliation: a.affiliation.map((af) => ({ name: af.name })),
+      affiliation: a.affiliation.map((af) => ({ name: normalizeText(af.name) })),
     }),
     ...(a.sequence && { sequence: a.sequence }),
   };

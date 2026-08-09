@@ -31,8 +31,10 @@ beforeEach(() => {
 });
 
 /**
- * Shaped after a live `/funders` record: `country` and `country-code` are omitted rather than
- * nulled, matching both the observed payload and RawCrossrefFunder's non-nullable typing.
+ * Shaped after a live `/funders` record: geography arrives as the free-text `location` key —
+ * there is no `country` on the payload, and the output field of that name is projected from it.
+ * `replaced-by` and `replaces` are present-but-empty on every record, which is how Crossref
+ * reports "no such relationship".
  */
 const RAW_FUNDER = {
   id: '100000001',
@@ -41,6 +43,20 @@ const RAW_FUNDER = {
   location: 'United States',
   uri: 'http://dx.doi.org/10.13039/100000001',
   'work-count': 250000,
+  'replaced-by': [],
+  replaces: [],
+};
+
+/** Live shape of a superseded registry entry (China Sponsorship Council → China Scholarship Council). */
+const RAW_DEPRECATED_FUNDER = {
+  id: '501100002860',
+  name: 'China Sponsorship Council',
+  'alt-names': ['CSC'],
+  location: 'China',
+  uri: 'http://dx.doi.org/10.13039/501100002860',
+  'work-count': 965,
+  'replaced-by': ['501100004543'],
+  replaces: [],
 };
 
 /** Funder-list envelope shape returned by CrossrefService.searchFunders. */
@@ -140,7 +156,7 @@ describe('searchFundersTool', () => {
     });
   });
 
-  it('handles sparse funder record — no alt-names, no country-code', async () => {
+  it('handles sparse funder record — no alt-names, no supersession arrays', async () => {
     const ctx = createMockContext();
     mockSearchFunders.mockResolvedValue(
       funderList([{ id: '999', name: 'Minimal Funder', location: 'Unknown' }]),
@@ -151,7 +167,104 @@ describe('searchFundersTool', () => {
 
     expect(result.funders[0]?.name).toBe('Minimal Funder');
     expect(result.funders[0]?.altNames).toBeUndefined();
-    expect(result.funders[0]?.countryCode).toBeUndefined();
+    expect(result.funders[0]?.replacedBy).toBeUndefined();
+    expect(result.funders[0]?.replaces).toBeUndefined();
+  });
+
+  it('omits replacedBy/replaces when the registry reports them as empty arrays', async () => {
+    const ctx = createMockContext();
+    mockSearchFunders.mockResolvedValue(funderList([RAW_FUNDER]));
+
+    const input = searchFundersTool.input.parse({ query: 'National Science Foundation' });
+    const result = await searchFundersTool.handler(input, ctx);
+
+    expect(result.funders[0]?.replacedBy).toBeUndefined();
+    expect(result.funders[0]?.replaces).toBeUndefined();
+    expect(getEnrichment(ctx).notice).toBeUndefined();
+  });
+
+  it('surfaces the successor on a deprecated funder resolved by query', async () => {
+    const ctx = createMockContext();
+    mockSearchFunders.mockResolvedValue(funderList([RAW_DEPRECATED_FUNDER]));
+    mockGetFunderWorks.mockResolvedValue({ totalResults: 965, itemsPerPage: 10, items: [] });
+
+    const input = searchFundersTool.input.parse({
+      query: 'China Sponsorship Council',
+      include_works: true,
+    });
+    const result = await searchFundersTool.handler(input, ctx);
+
+    expect(result.funders[0]?.replacedBy).toEqual(['501100004543']);
+    const enrichment = getEnrichment(ctx);
+    expect(enrichment.notice).toContain('501100004543');
+    expect(enrichment.notice).toContain('deprecated');
+    // Never redirected — the works list still belongs to the ID the caller resolved.
+    expect(mockGetFunderWorks).toHaveBeenCalledWith(
+      '501100002860',
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(enrichment.fundedWorksTotal).toBe(965);
+  });
+
+  it('surfaces the successor on a deprecated funder resolved by funder_doi', async () => {
+    const ctx = createMockContext();
+    mockSearchFunders.mockResolvedValue(funderList([RAW_DEPRECATED_FUNDER]));
+
+    const input = searchFundersTool.input.parse({ funder_doi: '501100002860' });
+    const result = await searchFundersTool.handler(input, ctx);
+
+    expect(result.funders[0]?.replacedBy).toEqual(['501100004543']);
+    expect(getEnrichment(ctx).notice).toContain('501100004543');
+  });
+
+  it('projects replaces on the entry that superseded a deprecated one', async () => {
+    const ctx = createMockContext();
+    mockSearchFunders.mockResolvedValue(
+      funderList([
+        {
+          id: '501100004543',
+          name: 'China Scholarship Council',
+          location: 'China',
+          'work-count': 101911,
+          'replaced-by': [],
+          replaces: ['501100002860'],
+        },
+      ]),
+    );
+
+    const input = searchFundersTool.input.parse({ funder_doi: '501100004543' });
+    const result = await searchFundersTool.handler(input, ctx);
+
+    expect(result.funders[0]?.replaces).toEqual(['501100002860']);
+    expect(result.funders[0]?.replacedBy).toBeUndefined();
+    // `replaces` alone is not a deprecation — this is the current entry.
+    expect(getEnrichment(ctx).notice).toBeUndefined();
+  });
+
+  it('carries both the deprecation and the offset-ceiling caveat in one notice', async () => {
+    const ctx = createMockContext({ errors: searchFundersTool.errors });
+    mockSearchFunders.mockResolvedValue(funderList([RAW_DEPRECATED_FUNDER], 200_000));
+
+    const input = searchFundersTool.input.parse({ query: 'council', offset: 99_990, rows: 10 });
+    const result = await searchFundersTool.handler(input, ctx);
+
+    expect(result.funders).toHaveLength(1);
+    const notice = getEnrichment(ctx).notice ?? '';
+    expect(notice).toContain('501100004543');
+    expect(notice).toContain('last funder page reachable by offset');
+  });
+
+  it('reaches the wire with replacedBy and replaces', async () => {
+    const ctx = createMockContext();
+    mockSearchFunders.mockResolvedValue(funderList([RAW_DEPRECATED_FUNDER]));
+
+    const input = searchFundersTool.input.parse({ funder_doi: '501100002860' });
+    const result = await searchFundersTool.handler(input, ctx);
+    const wire = wireSchema.parse({ ...result, ...getEnrichment(ctx) });
+
+    expect(wire.funders[0]?.replacedBy).toEqual(['501100004543']);
+    expect(wire.notice).toContain('501100004543');
   });
 
   it('decodes HTML entities in funder name and altNames', async () => {
@@ -172,6 +285,29 @@ describe('searchFundersTool', () => {
 
     expect(result.funders[0]?.name).toBe('Agence Nationale de la Recherche & Innovation');
     expect(result.funders[0]?.altNames?.[0]).toBe('ANR & Innovation');
+  });
+
+  it('strips JATS markup from fundedWorks titles and decodes the funder location', async () => {
+    const ctx = createMockContext();
+    mockSearchFunders.mockResolvedValue(
+      funderList([{ ...RAW_FUNDER, location: 'Trinidad &amp; Tobago' }]),
+    );
+    mockGetFunderWorks.mockResolvedValue({
+      totalResults: 1,
+      itemsPerPage: 10,
+      items: [
+        { DOI: '10.1039/d5cs00921a', type: 'journal-article', title: ['<i>In vivo</i>\n  assay'] },
+      ],
+    });
+
+    const input = searchFundersTool.input.parse({
+      funder_doi: '100000001',
+      include_works: true,
+    });
+    const result = await searchFundersTool.handler(input, ctx);
+
+    expect(result.funders[0]?.country).toBe('Trinidad & Tobago');
+    expect(result.fundedWorks?.[0]?.title).toBe('In vivo assay');
   });
 
   it('uses funder_doi from input as fallback ID when raw funder has no id', async () => {
@@ -206,7 +342,6 @@ describe('searchFundersTool', () => {
           name: 'National Science Foundation',
           altNames: ['NSF'],
           country: 'United States',
-          countryCode: 'US',
           uri: 'http://dx.doi.org/10.13039/100000001',
           worksCount: 250000,
         },
@@ -218,6 +353,30 @@ describe('searchFundersTool', () => {
     expect(text).toContain('United States');
     expect(text).toContain('250000');
     expect(text).toContain('NSF');
+  });
+
+  it('renders the deprecation and successor IDs in content[]', () => {
+    const result = {
+      funders: [
+        {
+          id: '501100002860',
+          name: 'China Sponsorship Council',
+          country: 'China',
+          worksCount: 965,
+          replacedBy: ['501100004543'],
+        },
+        {
+          id: '501100004543',
+          name: 'China Scholarship Council',
+          country: 'China',
+          worksCount: 101911,
+          replaces: ['501100002860'],
+        },
+      ],
+    };
+    const text = searchFundersTool.format!(result)[0]?.text ?? '';
+    expect(text).toContain('**Deprecated — replaced by:** 501100004543');
+    expect(text).toContain('**Replaces:** 501100002860');
   });
 
   it('formats fundedWorks section when present', () => {

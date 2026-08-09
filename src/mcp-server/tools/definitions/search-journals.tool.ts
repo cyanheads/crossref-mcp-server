@@ -2,20 +2,23 @@
  * @fileoverview crossref_search_journals — finds Crossref journal records by ISSN or title query,
  * optionally returning a page of the matched journal's most recent works. The journal list and the
  * works list page independently, and their upstream offset ceilings differ by an order of magnitude.
- * The works list also pages by cursor, which has no ceiling.
+ * The works list also pages by cursor, which has no ceiling. The works list is addressable by ISSN
+ * alone, so a matched journal with none registered has its works lookup skipped and says so rather
+ * than returning an absence that reads as a journal with no works.
  * @module mcp-server/tools/definitions/search-journals.tool
  */
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode, McpError } from '@cyanheads/mcp-ts-core/errors';
 import {
-  decodeHtmlEntities,
   formatDateParts,
   getCrossrefService,
   type JournalsSearchOptions,
   type ListSearchResult,
   NAME_SEARCH_OFFSET_CAP,
   nextPageOffset,
+  normalizeMarkupText,
+  normalizeText,
   parseDateParts,
   WORKS_OFFSET_CAP,
 } from '@/services/crossref/crossref-service.js';
@@ -25,7 +28,12 @@ import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js'
 const JournalSchema = z
   .object({
     title: z.string().optional().describe('Journal title'),
-    issnL: z.string().optional().describe('Linking ISSN (ISSN-L)'),
+    issnL: z
+      .string()
+      .optional()
+      .describe(
+        'Linking ISSN (ISSN-L). Absent when the journal has no linking ISSN registered — Crossref reports that as an explicit null rather than an omitted key.',
+      ),
     issn: z.array(z.string()).optional().describe('All ISSN variants for this journal'),
     publisher: z.string().optional().describe('Publisher name'),
     subjects: z
@@ -126,7 +134,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       .boolean()
       .default(false)
       .describe(
-        "When true, also return a page of the journal's most recent works by publication date. Requires an unambiguous journal — pass issn when a title query matches more than one.",
+        "When true, also return a page of the journal's most recent works by publication date. Requires an unambiguous journal — pass issn when a title query matches more than one. A journal with no ISSN registered has no addressable works list; the works lookup is then skipped and the notice enrichment says so.",
       ),
     rows: z
       .number()
@@ -166,7 +174,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       .array(WorkSummarySchema)
       .optional()
       .describe(
-        'Page of works from the matched journal, ordered by publication date (newest first). Only present when include_works is true.',
+        'Page of works from the matched journal, ordered by publication date (newest first). Requires include_works, and absent even then when the matched journal has no registered ISSN — the works list is addressable by ISSN alone, and the notice enrichment says so.',
       ),
   }),
 
@@ -199,7 +207,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       .string()
       .optional()
       .describe(
-        'Guidance on a page that needs a caveat: a query nothing matched, an offset past the end of a list that did match, or a page that stops at one of the route offset ceilings with records still unretrieved. Absent otherwise.',
+        'Guidance on a page that needs a caveat: a query nothing matched, an offset past the end of a list that did match, a page that stops at one of the route offset ceilings with records still unretrieved, or an include_works request that was skipped because the matched journal has no registered ISSN to address its works list by. Absent otherwise.',
       ),
   },
 
@@ -295,12 +303,12 @@ export const searchJournalsTool = tool('crossref_search_journals', {
     });
 
     const journals = rawJournals.map((j) => ({
-      ...(j.title !== undefined && { title: decodeHtmlEntities(j.title) }),
-      ...(j['ISSN-L'] !== undefined && { issnL: j['ISSN-L'] }),
+      ...(j.title !== undefined && { title: normalizeText(j.title) }),
+      ...(j['ISSN-L'] != null && { issnL: j['ISSN-L'] }),
       ...(j.ISSN?.length && { issn: j.ISSN }),
-      ...(j.publisher !== undefined && { publisher: j.publisher }),
+      ...(j.publisher !== undefined && { publisher: normalizeText(j.publisher) }),
       ...(j.subjects?.length && {
-        subjects: j.subjects.map((s) => ({ name: s.name })),
+        subjects: j.subjects.map((s) => ({ name: normalizeText(s.name) })),
       }),
       ...(j.counts?.['total-dois'] !== undefined && { totalDois: j.counts['total-dois'] }),
     }));
@@ -366,6 +374,14 @@ export const searchJournalsTool = tool('crossref_search_journals', {
     const issnForWorks = journalIssn(rawJournals[0]);
     if (!issnForWorks) {
       ctx.enrich(listEnrichment);
+      // The works list is addressed by ISSN and nothing else, so a journal with none
+      // registered has no works list to request. Saying so is what separates "the lookup
+      // never ran" from "this journal has no works" — an omitted recentWorks reads as the
+      // second, and totalDois is the journal's own DOI count rather than an answer about
+      // the works call. There is no fallback identifier to retry with.
+      ctx.enrich.notice(
+        `include_works was requested but skipped: "${journals[0]?.title ?? '(untitled)'}" has no ISSN registered in Crossref, and the journal works list can only be addressed by ISSN. No works were looked up — this is not a statement that the journal has none. There is no alternative identifier to retry with; use crossref_search_works with queryContainerTitle set to the journal title to find its works instead.`,
+      );
       return { journals };
     }
 
@@ -383,7 +399,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
         parseDateParts(raw['published-online']);
       return {
         doi: raw.DOI,
-        ...(raw.title?.[0] !== undefined && { title: decodeHtmlEntities(raw.title[0]) }),
+        ...(raw.title?.[0] !== undefined && { title: normalizeMarkupText(raw.title[0]) }),
         ...(raw.type != null && { type: raw.type }),
         ...(published !== undefined && {
           published: { year: published.year, month: published.month },

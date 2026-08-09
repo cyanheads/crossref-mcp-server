@@ -5,7 +5,7 @@
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
-import { getCrossrefService } from '@/services/crossref/crossref-service.js';
+import { getCrossrefService, normalizeText } from '@/services/crossref/crossref-service.js';
 import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
 
 export const getPrefixTool = tool('crossref_get_prefix', {
@@ -67,7 +67,7 @@ export const getPrefixTool = tool('crossref_get_prefix', {
 
     return {
       prefix,
-      ...(raw.name !== undefined && { ownerName: raw.name }),
+      ...(raw.name !== undefined && { ownerName: normalizeText(raw.name) }),
       ...(memberId !== undefined && { memberId }),
     };
   },

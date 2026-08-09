@@ -193,6 +193,63 @@ describe('getWorkTool', () => {
     expect(result.abstract).toContain('Gene editing was studied');
   });
 
+  it('strips JATS markup and embedded newlines from title, subtitle, and container title', async () => {
+    const ctx = createMockContext({ errors: getWorkTool.errors });
+    mockGetWork.mockResolvedValue(
+      makeRawWork({
+        title: ['<i>In vivo</i>\n                    CRISPR biosensing'],
+        subtitle: ['a <scp>Review</scp>\nof methods'],
+        'container-title': ['<i>Chem.</i> Soc. Rev.'],
+      }),
+    );
+
+    const input = getWorkTool.input.parse({ doi: '10.1039/d5cs00921a' });
+    const result = await getWorkTool.handler(input, ctx);
+
+    expect(result.title).toBe('In vivo CRISPR biosensing');
+    expect(result.subtitle).toBe('a Review of methods');
+    expect(result.containerTitle).toBe('Chem. Soc. Rev.');
+    // The Markdown heading in content[] has to stay on one line.
+    const text = getWorkTool.format!(result)[0]?.text ?? '';
+    expect(text.split('\n')[0]).toBe('## In vivo CRISPR biosensing');
+  });
+
+  it('collapses a lone newline in a title with no adjacent indentation', async () => {
+    const ctx = createMockContext({ errors: getWorkTool.errors });
+    mockGetWork.mockResolvedValue(makeRawWork({ title: ['<i>In vivo</i>\nCRISPR biosensing'] }));
+
+    const input = getWorkTool.input.parse({ doi: '10.1039/d5cs00921a' });
+    const result = await getWorkTool.handler(input, ctx);
+
+    expect(result.title).toBe('In vivo CRISPR biosensing');
+  });
+
+  it('decodes entities in publisher, funder names, subjects, and affiliations', async () => {
+    const ctx = createMockContext({ errors: getWorkTool.errors });
+    mockGetWork.mockResolvedValue(
+      makeRawWork({
+        publisher: 'Taylor &amp; Francis',
+        funder: [{ name: 'Bill &amp; Melinda Gates Foundation', DOI: '10.13039/100000865' }],
+        subject: ['Ecology, Evolution, Behavior &amp; Systematics'],
+        author: [
+          {
+            given: 'Jane',
+            family: 'Doe',
+            affiliation: [{ name: 'Dept. of Ecology &amp; Evolution' }],
+          },
+        ],
+      }),
+    );
+
+    const input = getWorkTool.input.parse({ doi: '10.1038/nature12373' });
+    const result = await getWorkTool.handler(input, ctx);
+
+    expect(result.publisher).toBe('Taylor & Francis');
+    expect(result.funders?.[0]?.name).toBe('Bill & Melinda Gates Foundation');
+    expect(result.subject?.[0]).toBe('Ecology, Evolution, Behavior & Systematics');
+    expect(result.authors?.[0]?.affiliation?.[0]?.name).toBe('Dept. of Ecology & Evolution');
+  });
+
   it('uses subtitle/short-title as subtitle when present', async () => {
     const ctx = createMockContext({ errors: getWorkTool.errors });
     mockGetWork.mockResolvedValue(makeRawWork({ subtitle: ['A systematic review'] }));

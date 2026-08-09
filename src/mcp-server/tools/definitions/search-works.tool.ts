@@ -10,11 +10,11 @@
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import {
-  decodeHtmlEntities,
   formatDateParts,
   getCrossrefService,
+  normalizeMarkupText,
+  normalizeText,
   parseDateParts,
-  stripJats,
   type WorksSearchOptions,
 } from '@/services/crossref/crossref-service.js';
 import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
@@ -243,26 +243,26 @@ export const searchWorksTool = tool('crossref_search_works', {
         parseDateParts(raw['published-online']);
       return {
         doi: raw.DOI,
-        ...(raw.title?.[0] !== undefined && { title: decodeHtmlEntities(raw.title[0]) }),
+        ...(raw.title?.[0] !== undefined && { title: normalizeMarkupText(raw.title[0]) }),
         ...(raw.type != null && { type: raw.type }),
         ...(raw.author && {
           authors: raw.author.map((a) => ({
-            ...(a.given && { given: a.given }),
-            ...(a.family && { family: a.family }),
-            ...(a.name && { name: a.name }),
+            ...(a.given && { given: normalizeText(a.given) }),
+            ...(a.family && { family: normalizeText(a.family) }),
+            ...(a.name && { name: normalizeText(a.name) }),
           })),
         }),
         ...(published !== undefined && { published }),
         ...(raw['container-title']?.[0] !== undefined && {
-          containerTitle: decodeHtmlEntities(raw['container-title'][0]),
+          containerTitle: normalizeMarkupText(raw['container-title'][0]),
         }),
-        ...(raw.publisher !== undefined && { publisher: raw.publisher }),
+        ...(raw.publisher !== undefined && { publisher: normalizeText(raw.publisher) }),
         ...(raw['is-referenced-by-count'] !== undefined && {
           isReferencedByCount: raw['is-referenced-by-count'],
         }),
         ...(raw.score !== undefined && { score: raw.score }),
         ...(raw.abstract !== undefined && {
-          abstract: decodeHtmlEntities(stripJats(raw.abstract)),
+          abstract: normalizeMarkupText(raw.abstract),
         }),
       };
     });

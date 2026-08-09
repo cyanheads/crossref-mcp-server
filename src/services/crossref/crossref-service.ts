@@ -4,6 +4,9 @@
  * honored on the name-search and works sub-resource routes, whose ceilings differ by an order of
  * magnitude — see NAME_SEARCH_OFFSET_CAP and WORKS_OFFSET_CAP. Cursor paging has no ceiling and
  * is available on `/works` and on both works sub-resources.
+ *
+ * Also home to the text normalization every tool projects free-text values through —
+ * `normalizeText` for the baseline pass and `normalizeMarkupText` for the JATS-deposited fields.
  * @module services/crossref/crossref-service
  */
 
@@ -45,12 +48,32 @@ function readPackageVersion(): string {
 
 const _packageVersion = readPackageVersion();
 
-/** Strip JATS XML tags from an abstract string. Many publishers deposit abstracts as JATS XML. */
+/**
+ * Collapse every run of whitespace to a single space and trim. Any run, not runs of two or
+ * more: a lone newline inside a deposited string is enough to split a Markdown heading in
+ * `content[]` and turn the indented continuation into a code block.
+ */
+function collapseWhitespace(raw: string): string {
+  return raw.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Subscript and superscript tags, with or without a namespace prefix (`<jats:sub>`) or
+ * attributes. `\b` after the name keeps `<subject>` and `<supplementary-material>` out.
+ */
+const TIGHT_TAG = /<\/?(?:[A-Za-z][\w.-]*:)?su[bp]\b[^>]*>/gi;
+
+/**
+ * Strip JATS XML tags from a deposited string, collapsing the whitespace they leave behind.
+ *
+ * A tag is a word boundary and becomes a space — that separator is what keeps adjacent JATS
+ * paragraphs in an abstract from running together. Subscripts and superscripts are the
+ * exception: their content continues the token around them, so `CO<sub>2</sub>` is one
+ * formula and a space there splits it. Those come out with no separator; every other tag
+ * still yields one.
+ */
 export function stripJats(raw: string): string {
-  return raw
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
+  return collapseWhitespace(raw.replace(TIGHT_TAG, '').replace(/<[^>]+>/g, ' '));
 }
 
 /** Decode HTML entities in a string (e.g. &amp; → &, &lt; → <). */
@@ -63,6 +86,38 @@ export function decodeHtmlEntities(raw: string): string {
     .replace(/&apos;/g, "'")
     .replace(/&#(\d+);/g, (_, n: string) => String.fromCharCode(parseInt(n, 10)))
     .replace(/&#x([0-9a-fA-F]+);/g, (_, h: string) => String.fromCharCode(parseInt(h, 16)));
+}
+
+/**
+ * Normalize a human-readable upstream string for output: decode HTML entities, collapse
+ * whitespace, trim.
+ *
+ * This is the baseline every free-text value this server projects from a Crossref record
+ * passes through — work and journal titles, publisher and funder and member names,
+ * affiliations, subjects, reference text. Identifiers and machine-format values (DOIs, URIs,
+ * ISSNs, prefixes, dates, work types, coverage categories) are projected byte-exact and never
+ * come through here.
+ */
+export function normalizeText(raw: string): string {
+  return collapseWhitespace(decodeHtmlEntities(raw));
+}
+
+/**
+ * Normalize a field publishers deposit as JATS/XML markup — work titles, subtitles, container
+ * titles, and abstracts — by stripping inline tags before the baseline pass.
+ *
+ * Order matters: tags come out before entities are decoded, so a deposited `&lt;i&gt;` stays
+ * literal text instead of decoding into a tag the strip pass would then eat.
+ *
+ * Reference entries deliberately stay on the baseline pass. Angle brackets are rare there and
+ * ambiguous when they appear: a 153,827-field sample carried them on 0.21% of entries, split
+ * between real markup and text a strip pass would silently delete — a bracketed URL, a Miller
+ * index (`<100>`), a DOI fragment (`<131::AID-QUA4>`), an acronym (`<IR>`). Losing a URL is a
+ * worse failure than leaving an `<i>` in place, so the ambiguity is resolved toward keeping
+ * the deposited string.
+ */
+export function normalizeMarkupText(raw: string): string {
+  return normalizeText(stripJats(raw));
 }
 
 /** Format a year/month/day object as an ISO-style date string (e.g. "2023-04-15" or "2023"). */

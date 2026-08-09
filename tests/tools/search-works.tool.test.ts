@@ -445,8 +445,41 @@ describe('searchWorksTool', () => {
     const input = searchWorksTool.input.parse({ query: 'test' });
     const result = await searchWorksTool.handler(input, ctx);
 
-    // HTML stripped by decodeHtmlEntities on the title string
-    expect(result.works[0]?.title).toContain('&');
+    /**
+     * Asserted exactly, not with a `toContain('&')` that the escaped input satisfies whatever
+     * the projection does. The escaped tags stay literal text: markup is stripped before
+     * entities are decoded, so nothing here decodes into a tag the strip pass would eat.
+     */
+    expect(result.works[0]?.title).toBe('CO<sub>2</sub> & climate');
+  });
+
+  it('strips JATS markup and embedded newlines from title and container title', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        items: [
+          {
+            DOI: '10.1039/d5cs00921a',
+            type: 'journal-article',
+            title: ['<i>In vivo</i>\n                    CRISPR biosensing'],
+            'container-title': ['<i>Chem.</i> Soc. Rev.'],
+            publisher: 'Royal Society of Chemistry &amp; Partners',
+            author: [{ given: 'Jane', family: 'Doe &amp; Sons' }],
+          },
+        ],
+      }),
+    );
+
+    const input = searchWorksTool.input.parse({ queryTitle: 'In vivo CRISPR biosensing' });
+    const result = await searchWorksTool.handler(input, ctx);
+
+    expect(result.works[0]?.title).toBe('In vivo CRISPR biosensing');
+    expect(result.works[0]?.containerTitle).toBe('Chem. Soc. Rev.');
+    expect(result.works[0]?.publisher).toBe('Royal Society of Chemistry & Partners');
+    expect(result.works[0]?.authors?.[0]?.family).toBe('Doe & Sons');
+
+    const text = searchWorksTool.format!(result)[0]?.text ?? '';
+    expect(text).toContain('### In vivo CRISPR biosensing\n');
   });
 
   it('accepts valid rows range (1–100)', () => {

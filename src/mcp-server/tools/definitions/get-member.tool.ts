@@ -5,7 +5,7 @@
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
-import { getCrossrefService } from '@/services/crossref/crossref-service.js';
+import { getCrossrefService, normalizeText } from '@/services/crossref/crossref-service.js';
 import type { RawCrossrefMember } from '@/services/crossref/types.js';
 import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
 
@@ -179,7 +179,16 @@ function formatCoverage(fraction: number): string {
 
 /** Project the raw member record into the curated output shape. */
 function projectMember(raw: RawCrossrefMember, requestedId: number) {
-  const names = (raw.names ?? []).filter((n) => n && n !== raw['primary-name']);
+  /**
+   * Normalize before the primary-name dedupe, not after. Crossref members carry the same
+   * imprint name twice — once escaped, once not — so comparing raw strings passes the escaped
+   * copy through as an "alternate" name that decodes to exactly the primary name.
+   */
+  const primaryName =
+    raw['primary-name'] !== undefined ? normalizeText(raw['primary-name']) : undefined;
+  const names = [...new Set((raw.names ?? []).filter(Boolean).map(normalizeText))].filter(
+    (n) => n !== primaryName,
+  );
   const prefixes = raw.prefixes ?? [];
 
   const counts = raw.counts
@@ -199,9 +208,9 @@ function projectMember(raw: RawCrossrefMember, requestedId: number) {
 
   return {
     id: raw.id ?? requestedId,
-    ...(raw['primary-name'] !== undefined && { primaryName: raw['primary-name'] }),
+    ...(primaryName !== undefined && { primaryName }),
     ...(names.length > 0 && { names }),
-    ...(raw.location !== undefined && { location: raw.location }),
+    ...(raw.location !== undefined && { location: normalizeText(raw.location) }),
     ...(prefixes.length > 0 && { prefixes }),
     ...(counts && Object.keys(counts).length > 0 && { counts }),
     ...(worksByType && worksByType.length > 0 && { worksByType }),

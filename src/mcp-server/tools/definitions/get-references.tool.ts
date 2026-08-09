@@ -1,14 +1,16 @@
 /**
  * @fileoverview crossref_get_references — returns a page of the outgoing reference list for a DOI.
  * Fetches the full /works/{doi} record and extracts the reference[] array client-side, then slices
- * it by offset/limit so structuredContent and content[] carry the identical page.
+ * it by offset/limit so structuredContent and content[] carry the identical page. The entry's
+ * free-text fields are entity-decoded and whitespace-collapsed on the way out; markup stripping
+ * is deliberately not applied here — see normalizeMarkupText in the service.
  * Incoming citations are not available through Crossref; use OpenAlex for those.
  * @module mcp-server/tools/definitions/get-references.tool
  */
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
-import { getCrossrefService } from '@/services/crossref/crossref-service.js';
+import { getCrossrefService, normalizeText } from '@/services/crossref/crossref-service.js';
 import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
 
 const ReferenceSchema = z
@@ -146,14 +148,22 @@ export const getReferencesTool = tool('crossref_get_references', {
       });
     }
 
+    /**
+     * The free-text fields get the same entity decode and whitespace collapse every other
+     * human-readable value this server returns does; the identifiers and numeric strings stay
+     * byte-exact. Reference text stops short of tag stripping deliberately: angle brackets are
+     * rare here and ambiguous when they appear, carrying a bracketed URL, a Miller index, or a
+     * DOI fragment about as often as real markup, and deleting a cited URL is worse than
+     * leaving an `<i>` in place.
+     */
     const references = page.map((r) => ({
       ...(r.key && { key: r.key }),
       ...(r.DOI && { doi: r.DOI }),
-      ...(r.unstructured && { unstructured: r.unstructured }),
-      ...(r.author && { author: r.author }),
+      ...(r.unstructured && { unstructured: normalizeText(r.unstructured) }),
+      ...(r.author && { author: normalizeText(r.author) }),
       ...(r.year && { year: r.year }),
-      ...(r['journal-title'] && { journalTitle: r['journal-title'] }),
-      ...(r['article-title'] && { articleTitle: r['article-title'] }),
+      ...(r['journal-title'] && { journalTitle: normalizeText(r['journal-title']) }),
+      ...(r['article-title'] && { articleTitle: normalizeText(r['article-title']) }),
       ...(r.volume && { volume: r.volume }),
       ...(r['first-page'] && { firstPage: r['first-page'] }),
       ...(r.issn && { issn: r.issn }),

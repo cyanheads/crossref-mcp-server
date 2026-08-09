@@ -34,6 +34,8 @@ import {
   initCrossrefService,
   NAME_SEARCH_OFFSET_CAP,
   nextPageOffset,
+  normalizeMarkupText,
+  normalizeText,
   parseDateParts,
   stripJats,
   WORKS_OFFSET_CAP,
@@ -674,6 +676,84 @@ describe('stripJats', () => {
 
   it('handles self-closing tags', () => {
     expect(stripJats('<br/>Line two')).toBe('Line two');
+  });
+
+  /**
+   * A lone newline with no adjacent indentation is a single whitespace character, so a
+   * collapse keyed on runs of two or more leaves it in place — enough to split a Markdown
+   * heading in `content[]` on its own.
+   */
+  it('collapses a lone newline, not just runs of two or more', () => {
+    expect(stripJats('In vivo\nCRISPR biosensing')).toBe('In vivo CRISPR biosensing');
+    expect(stripJats('Tab\tseparated')).toBe('Tab separated');
+  });
+});
+
+describe('normalizeText', () => {
+  it('decodes entities and collapses whitespace', () => {
+    expect(normalizeText('  Users&apos; guides   to the\n   literature ')).toBe(
+      "Users' guides to the literature",
+    );
+  });
+
+  it('leaves angle-bracketed content in place', () => {
+    expect(normalizeText('International <IR> Framework')).toBe('International <IR> Framework');
+  });
+
+  it('collapses whitespace an entity decodes into', () => {
+    expect(normalizeText('a&#10;b')).toBe('a b');
+  });
+});
+
+describe('normalizeMarkupText', () => {
+  it('strips JATS tags and collapses the newline-plus-indent they leave behind', () => {
+    expect(normalizeMarkupText('<i>In vivo</i>\n                    CRISPR biosensing')).toBe(
+      'In vivo CRISPR biosensing',
+    );
+  });
+
+  it('collapses a lone newline in a title with no adjacent indentation', () => {
+    expect(normalizeMarkupText('<i>In vivo</i>\nCRISPR biosensing')).toBe(
+      'In vivo CRISPR biosensing',
+    );
+  });
+
+  /**
+   * Tags come out before entities are decoded, so a deposited `&lt;i&gt;` stays literal text
+   * rather than decoding into a tag the strip pass then eats.
+   */
+  it('keeps an escaped tag as literal text', () => {
+    expect(normalizeMarkupText('Use &lt;i&gt; for italics')).toBe('Use <i> for italics');
+  });
+
+  /**
+   * A subscript or superscript continues the token around it, so removing one must leave no
+   * separator behind — a space there splits a chemical formula. Every other tag is a word
+   * boundary and still becomes a space.
+   */
+  it('joins subscripts and superscripts tight while other tags stay word boundaries', () => {
+    expect(normalizeMarkupText('CO<sub>2</sub> uptake in <i>E. coli</i> &amp; yeast')).toBe(
+      'CO2 uptake in E. coli & yeast',
+    );
+    expect(normalizeMarkupText('Adsorption of Co<sup>2+</sup> by Oxides')).toBe(
+      'Adsorption of Co2+ by Oxides',
+    );
+    expect(normalizeMarkupText('Fe<jats:sub>3</jats:sub>O<jats:sub>4</jats:sub> Core')).toBe(
+      'Fe3O4 Core',
+    );
+  });
+
+  /**
+   * The tight join keys on the element name, so it must not catch an unrelated element that
+   * merely starts with the same letters, and it must not disturb the space an abstract's
+   * paragraph boundary depends on.
+   */
+  it('keeps the paragraph separator and leaves sub-prefixed element names as boundaries', () => {
+    expect(normalizeMarkupText('<jats:p>Para one.</jats:p><jats:p>Para two.</jats:p>')).toBe(
+      'Para one. Para two.',
+    );
+    expect(normalizeMarkupText('end<jats:supplementary-material />next')).toBe('end next');
+    expect(normalizeMarkupText('a<subject>b</subject>c')).toBe('a b c');
   });
 });
 

@@ -104,7 +104,8 @@ export type RawCrossrefWork = {
 /** Raw journal record from Crossref /journals endpoint. */
 export type RawCrossrefJournal = {
   ISSN?: string[];
-  'ISSN-L'?: string;
+  /** Explicitly `null` — not absent — on a journal with no registered linking ISSN. */
+  'ISSN-L'?: string | null;
   title?: string;
   publisher?: string;
   subjects?: Array<{ name: string; ASJC?: number }>;
@@ -126,11 +127,12 @@ export type RawCrossrefFunder = {
   name?: string;
   'alt-names'?: string[];
   uri?: string;
-  country?: string;
-  'country-code'?: string;
   tokens?: string[];
+  /** Free-text place, not always a country ("European Union"). Projected as the `country` output. */
   location?: string;
+  /** Registry IDs this funder supersedes. Always present; empty when it supersedes none. */
   replaces?: string[];
+  /** Registry IDs superseding this funder. Always present; empty unless the entry is deprecated. */
   'replaced-by'?: string[];
   'work-count'?: number;
 };

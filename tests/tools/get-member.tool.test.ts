@@ -106,6 +106,53 @@ describe('getMemberTool', () => {
     expect(result.names).toContain('Springer-Verlag');
   });
 
+  it('decodes HTML entities in primaryName, names, and location', async () => {
+    const ctx = createMockContext({ errors: getMemberTool.errors });
+    mockGetMember.mockResolvedValue(
+      makeRawMember({
+        id: 8469,
+        'primary-name': '&quot;Medycyna Praktyczna&quot; Spolka Jawna',
+        names: ['&quot;Medycyna Praktyczna&quot; Spolka Jawna', 'Medycyna Praktyczna &amp; Co'],
+        location: 'Krakow, Malopolskie &amp; Poland',
+      }),
+    );
+
+    const input = getMemberTool.input.parse({ member_id: 8469 });
+    const result = await getMemberTool.handler(input, ctx);
+
+    expect(result.primaryName).toBe('"Medycyna Praktyczna" Spolka Jawna');
+    expect(result.names).toEqual(['Medycyna Praktyczna & Co']);
+    expect(result.location).toBe('Krakow, Malopolskie & Poland');
+
+    const text = getMemberTool.format!(result)[0]?.text ?? '';
+    expect(text).toContain('## "Medycyna Praktyczna" Spolka Jawna');
+    expect(text).not.toContain('&quot;');
+  });
+
+  /**
+   * Crossref carries the same imprint name twice on some members — once escaped, once not.
+   * Deduping on the raw strings passes the escaped copy through as an "alternate" name that
+   * decodes to exactly the primary name, so the dedupe has to run on normalized values.
+   */
+  it('drops an alternate name that only differs from the primary name by escaping', async () => {
+    const ctx = createMockContext({ errors: getMemberTool.errors });
+    mockGetMember.mockResolvedValue(
+      makeRawMember({
+        id: 8469,
+        'primary-name': '&quot;Medycyna Praktyczna&quot; Spolka Jawna',
+        names: [
+          '&quot;Medycyna Praktyczna&quot; Spolka Jawna',
+          '"Medycyna Praktyczna" Spolka Jawna',
+        ],
+      }),
+    );
+
+    const input = getMemberTool.input.parse({ member_id: 8469 });
+    const result = await getMemberTool.handler(input, ctx);
+
+    expect(result.names).toBeUndefined();
+  });
+
   it('normalizes coverage into per-category current/backfile pairs, sorted by category', async () => {
     const ctx = createMockContext({ errors: getMemberTool.errors });
     mockGetMember.mockResolvedValue(makeRawMember());

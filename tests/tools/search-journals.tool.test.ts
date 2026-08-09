@@ -176,6 +176,112 @@ describe('searchJournalsTool', () => {
     expect(result.journals[0]?.totalDois).toBeUndefined();
   });
 
+  /**
+   * Crossref sends `"ISSN-L": null` — not an absent key — on a journal with no linking ISSN,
+   * so an `!== undefined` projection guard would put a null into a string-typed output field.
+   */
+  it('omits issnL when the record carries a null ISSN-L', async () => {
+    const ctx = createMockContext();
+    mockSearchJournals.mockResolvedValue(
+      journalList([
+        {
+          title: 'NatureJobs',
+          'ISSN-L': null,
+          ISSN: [],
+          publisher: 'Springer Science and Business Media LLC',
+          counts: { 'total-dois': 0 },
+        },
+      ]),
+    );
+
+    const input = searchJournalsTool.input.parse({ query: 'NatureJobs' });
+    const result = await searchJournalsTool.handler(input, ctx);
+
+    expect(result.journals[0]).not.toHaveProperty('issnL');
+    expect(
+      searchJournalsTool.output.extend(searchJournalsTool.enrichment).parse({
+        ...result,
+        ...getEnrichment(ctx),
+      }).journals[0]?.issnL,
+    ).toBeUndefined();
+  });
+
+  describe('include_works on a journal with no registered ISSN', () => {
+    const ISSN_LESS = {
+      title: 'NatureJobs',
+      'ISSN-L': null,
+      ISSN: [],
+      publisher: 'Springer Science and Business Media LLC',
+      counts: { 'total-dois': 0 },
+    };
+
+    it('skips the works lookup and says so instead of returning silently', async () => {
+      const ctx = createMockContext();
+      mockSearchJournals.mockResolvedValue(journalList([ISSN_LESS], 1));
+
+      const input = searchJournalsTool.input.parse({
+        query: 'NatureJobs',
+        include_works: true,
+        rows: 5,
+      });
+      const result = await searchJournalsTool.handler(input, ctx);
+
+      expect(mockGetJournalWorks).not.toHaveBeenCalled();
+      expect(result.recentWorks).toBeUndefined();
+
+      const notice = getEnrichment(ctx).notice ?? '';
+      expect(notice).toContain('NatureJobs');
+      expect(notice).toContain('no ISSN registered');
+      // The point of the notice: "skipped" must not read as "the journal has no works".
+      expect(notice).toContain('not a statement that the journal has none');
+      expect(getEnrichment(ctx).worksTotal).toBeUndefined();
+    });
+
+    it('carries the notice into content[] through the full contract', async () => {
+      mockSearchJournals.mockResolvedValue(journalList([ISSN_LESS], 1));
+
+      const result = await runToolContract(searchJournalsTool, {
+        query: 'NatureJobs',
+        include_works: true,
+      });
+
+      expect(result.isError).toBeFalsy();
+      const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+      expect(text).toContain('no ISSN registered');
+    });
+  });
+
+  it('strips JATS markup from recentWorks titles and decodes journal-record names', async () => {
+    const ctx = createMockContext();
+    mockSearchJournals.mockResolvedValue(
+      journalList([
+        {
+          ...RAW_JOURNAL,
+          title: 'Ecology &amp; Evolution',
+          publisher: 'Wiley &amp; Sons',
+          subjects: [{ name: 'Ecology, Evolution, Behavior &amp; Systematics' }],
+        },
+      ]),
+    );
+    mockGetJournalWorks.mockResolvedValue({
+      totalResults: 1,
+      itemsPerPage: 10,
+      items: [
+        { DOI: '10.1002/ece3.1', type: 'journal-article', title: ['<i>In vivo</i>\n  biosensing'] },
+      ],
+    });
+
+    const input = searchJournalsTool.input.parse({ issn: '0028-0836', include_works: true });
+    const result = await searchJournalsTool.handler(input, ctx);
+
+    expect(result.journals[0]?.title).toBe('Ecology & Evolution');
+    expect(result.journals[0]?.publisher).toBe('Wiley & Sons');
+    expect(result.journals[0]?.subjects?.[0]?.name).toBe(
+      'Ecology, Evolution, Behavior & Systematics',
+    );
+    expect(result.recentWorks?.[0]?.title).toBe('In vivo biosensing');
+  });
+
   it('formats output with journal metadata', () => {
     const result = {
       journals: [

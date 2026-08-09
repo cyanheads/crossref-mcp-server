@@ -67,6 +67,21 @@ describe('getPrefixTool', () => {
     expect(result.memberId).toBe(340);
   });
 
+  it('decodes HTML entities in the owner name', async () => {
+    const ctx = createMockContext({ errors: getPrefixTool.errors });
+    mockGetPrefix.mockResolvedValue(
+      makeRawPrefix({ name: '&quot;Medycyna Praktyczna&quot; Spolka Jawna' }),
+    );
+
+    const input = getPrefixTool.input.parse({ prefix: '10.1038' });
+    const result = await getPrefixTool.handler(input, ctx);
+
+    expect(result.ownerName).toBe('"Medycyna Praktyczna" Spolka Jawna');
+    const text = getPrefixTool.format!(result)[0]?.text ?? '';
+    expect(text).toContain('**Owner:** "Medycyna Praktyczna" Spolka Jawna');
+    expect(text).not.toContain('&quot;');
+  });
+
   it('handles a thin payload — member URI absent, falls back to input prefix', async () => {
     const ctx = createMockContext({ errors: getPrefixTool.errors });
     mockGetPrefix.mockResolvedValue({ name: 'Some Publisher' });

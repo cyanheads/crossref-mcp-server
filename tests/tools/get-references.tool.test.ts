@@ -7,9 +7,14 @@ import { createMockContext, getEnrichment } from '@cyanheads/mcp-ts-core/testing
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getReferencesTool } from '@/mcp-server/tools/definitions/get-references.tool.js';
 
-vi.mock('@/services/crossref/crossref-service.js', () => ({
-  getCrossrefService: vi.fn(),
-}));
+// Mock the service module so tests never hit the network
+vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/services/crossref/crossref-service.js')>();
+  return {
+    ...actual,
+    getCrossrefService: vi.fn(),
+  };
+});
 
 import { getCrossrefService } from '@/services/crossref/crossref-service.js';
 
@@ -58,7 +63,7 @@ describe('getReferencesTool', () => {
     expect(result.references[1]?.unstructured).toBe('Jones B. 2015. Another paper.');
   });
 
-  it('normalizes all reference fields — journalTitle, articleTitle, volume, firstPage, issn', async () => {
+  it('projects every reference field — journalTitle, articleTitle, volume, firstPage, issn', async () => {
     const ctx = createMockContext({ errors: getReferencesTool.errors });
     mockGetWork.mockResolvedValue({
       DOI: '10.1038/nature12373',
@@ -76,6 +81,57 @@ describe('getReferencesTool', () => {
     expect(ref?.firstPage).toBe('100');
     expect(ref?.issn).toBe('1234-5678');
     expect(ref?.year).toBe('2010');
+  });
+
+  it('decodes entities and collapses whitespace in reference free text', async () => {
+    const ctx = createMockContext({ errors: getReferencesTool.errors });
+    mockGetWork.mockResolvedValue({
+      DOI: '10.1038/nature12373',
+      type: 'journal-article',
+      reference: [
+        {
+          key: 'r1',
+          unstructured: 'Users&apos; guides to the\n     medical literature',
+          author: 'Guyatt &amp; Rennie',
+          'article-title': 'Protocols &amp; work in progress',
+          'journal-title': 'J. Clin.\nEpidemiol.',
+        },
+      ],
+    });
+
+    const input = getReferencesTool.input.parse({ doi: '10.1038/nature12373' });
+    const result = await getReferencesTool.handler(input, ctx);
+
+    const ref = result.references[0];
+    expect(ref?.unstructured).toBe("Users' guides to the medical literature");
+    expect(ref?.author).toBe('Guyatt & Rennie');
+    expect(ref?.articleTitle).toBe('Protocols & work in progress');
+    expect(ref?.journalTitle).toBe('J. Clin. Epidemiol.');
+  });
+
+  /**
+   * Reference strings are publisher-deposited citations, not a JATS surface. The angle
+   * brackets that appear there are content — a Miller index, a DOI fragment, a bracketed
+   * acronym — so the markup-stripping pass the title fields get must not reach this one.
+   */
+  it('leaves angle-bracketed content in reference text intact', async () => {
+    const ctx = createMockContext({ errors: getReferencesTool.errors });
+    mockGetWork.mockResolvedValue({
+      DOI: '10.1038/nature12373',
+      type: 'journal-article',
+      reference: [
+        { key: 'r1', unstructured: 'International <IR> Framework. Value Reporting Foundation.' },
+        { key: 'r2', unstructured: 'Silicon <100> nanowires. Phys. Rev. Lett. 94, 26805 (2005)' },
+        { key: 'r3', unstructured: '10.1002/(SICI)1097-461X(1998)66:2<131::AID-QUA4>3.0.CO;2-W' },
+      ],
+    });
+
+    const input = getReferencesTool.input.parse({ doi: '10.1038/nature12373' });
+    const result = await getReferencesTool.handler(input, ctx);
+
+    expect(result.references[0]?.unstructured).toContain('<IR>');
+    expect(result.references[1]?.unstructured).toContain('<100>');
+    expect(result.references[2]?.unstructured).toContain('<131::AID-QUA4>');
   });
 
   it('handles reference with only unstructured field', async () => {
@@ -327,8 +383,8 @@ describe('getReferencesTool', () => {
     };
     const blocks = getReferencesTool.format!(result);
     const text = blocks[0]?.text ?? '';
-    expect(text).toContain('12');
-    expect(text).toContain('5');
-    expect(text).toContain('Nature');
+    // Asserted as the composed segment — a bare '5' matches the year on any fixture.
+    expect(text).toContain('12:5');
+    expect(text).toContain('*Nature*');
   });
 });
