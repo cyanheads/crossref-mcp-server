@@ -109,10 +109,78 @@ describe('getReferencesTool', () => {
     expect(ref?.journalTitle).toBe('J. Clin. Epidemiol.');
   });
 
+  it('strips inline formatting markup from every free-text field', async () => {
+    const ctx = createMockContext({ errors: getReferencesTool.errors });
+    mockGetWork.mockResolvedValue({
+      DOI: '10.1038/nature12373',
+      type: 'journal-article',
+      reference: [
+        {
+          key: 'r1',
+          unstructured:
+            'J. T. Beale, <em>Remarks on the breakdown of smooth solutions</em>, Comm. Math. Phys., <strong>94</strong> (1984), 61-66.',
+          author: '<small>DAUVERGNE, D.</small>',
+          'article-title':
+            'Growth of <jats:italic>Escherichia coli</jats:italic> in H<sub>2</sub>O',
+          'journal-title': '<i>Ann. Probab.</i>',
+        },
+      ],
+    });
+
+    const input = getReferencesTool.input.parse({ doi: '10.1038/nature12373' });
+    const result = await getReferencesTool.handler(input, ctx);
+
+    const ref = result.references[0];
+    expect(ref?.unstructured).toBe(
+      'J. T. Beale, Remarks on the breakdown of smooth solutions, Comm. Math. Phys., 94 (1984), 61-66.',
+    );
+    expect(ref?.author).toBe('DAUVERGNE, D.');
+    expect(ref?.articleTitle).toBe('Growth of Escherichia coli in H2O');
+    expect(ref?.journalTitle).toBe('Ann. Probab.');
+  });
+
+  /**
+   * The strip is bounded by an element-name allow-list precisely so these survive. Each is
+   * text a reader needs, written in the syntax a blanket strip would read as a tag — and a
+   * deleted citation URL is a worse failure than an unrecognized tag left in place.
+   */
+  it('leaves a bracketed URL, a link, and a bare-name bracket in place', async () => {
+    const ctx = createMockContext({ errors: getReferencesTool.errors });
+    mockGetWork.mockResolvedValue({
+      DOI: '10.1038/nature12373',
+      type: 'journal-article',
+      reference: [
+        {
+          key: 'r1',
+          unstructured:
+            'FAOSTAT, (verified December 2008). <http://faostat.fao.org/site/291/default.aspx>.',
+        },
+        {
+          key: 'r2',
+          unstructured:
+            'Preprint, <a href="http://arxiv.org/abs/1102.1113v1" target="_blank">arXiv:1102.1113v1</a>.',
+        },
+        { key: 'r3', unstructured: 'EPA standards, <www.ecfr.gov>, as of May 27, 2014.' },
+      ],
+    });
+
+    const input = getReferencesTool.input.parse({ doi: '10.1038/nature12373' });
+    const result = await getReferencesTool.handler(input, ctx);
+
+    expect(result.references[0]?.unstructured).toContain(
+      '<http://faostat.fao.org/site/291/default.aspx>',
+    );
+    expect(result.references[1]?.unstructured).toContain(
+      '<a href="http://arxiv.org/abs/1102.1113v1" target="_blank">',
+    );
+    expect(result.references[2]?.unstructured).toContain('<www.ecfr.gov>');
+  });
+
   /**
    * Reference strings are publisher-deposited citations, not a JATS surface. The angle
    * brackets that appear there are content — a Miller index, a DOI fragment, a bracketed
-   * acronym — so the markup-stripping pass the title fields get must not reach this one.
+   * acronym — so the blanket strip the title fields get must not reach this one; the
+   * element-name allow-list is what keeps all three of these out of its reach.
    */
   it('leaves angle-bracketed content in reference text intact', async () => {
     const ctx = createMockContext({ errors: getReferencesTool.errors });

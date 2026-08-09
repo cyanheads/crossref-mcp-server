@@ -3,7 +3,9 @@
  * filters. The result list pages two ways: by offset up to a ~10K ceiling, and by cursor, which
  * has none. A cursor walk ends on the first empty page — Crossref keeps minting a token past the
  * end of a list, so the token is withheld there rather than relayed, and every empty page carries
- * a notice naming which of its three causes applies.
+ * a notice naming which of its three causes applies. Each work's author list is capped per work
+ * by authorLimit, with authorCount carrying the full deposited total and crossref_get_work as the
+ * route to the authors a cap left out.
  * @module mcp-server/tools/definitions/search-works.tool
  */
 
@@ -38,7 +40,15 @@ const WorkSummarySchema = z
           .describe('Author'),
       )
       .optional()
-      .describe('Author list'),
+      .describe(
+        'Author list for this work, capped at authorLimit. Omitted when the record deposits no author field.',
+      ),
+    authorCount: z
+      .number()
+      .optional()
+      .describe(
+        'Total number of authors deposited for this work, before the authorLimit cap. Greater than the length of authors when the cap cut the list; pass the doi of this work to crossref_get_work to page the whole list.',
+      ),
     published: z
       .object({
         year: z.number().optional().describe('Year'),
@@ -58,7 +68,7 @@ const WorkSummarySchema = z
 export const searchWorksTool = tool('crossref_search_works', {
   title: 'Search Works',
   description:
-    'Searches the Crossref works index (~155M records) by free text and/or structured filters. The generic query matches loosely across all fields; scope precisely with the field-specific parameters queryTitle, queryAuthor, and queryContainerTitle, or resolve a known citation to its DOI with queryBibliographic — all combine with each other and with query. Use the filter parameter for structured filtering (object with hyphen-separated Crossref keys). Sort options: relevance, score, is-referenced-by-count, published, deposited, indexed. Offset-based paging is capped at ~10K results; use cursor="*" to start cursor-based deep paging, then pass the nextCursor value from each response to continue. The walk ends on the page where nextCursor is absent — that page also carries a notice saying the list is exhausted. Cursor and offset cannot be combined.',
+    'Searches the Crossref works index (~155M records) by free text and/or structured filters. The generic query matches loosely across all fields; scope precisely with the field-specific parameters queryTitle, queryAuthor, and queryContainerTitle, or resolve a known citation to its DOI with queryBibliographic — all combine with each other and with query. Use the filter parameter for structured filtering (object with hyphen-separated Crossref keys). Sort options: relevance, score, is-referenced-by-count, published, deposited, indexed. Each work returns at most authorLimit authors (25 by default) with authorCount reporting the full deposited total, since a single page of large-collaboration papers can carry tens of thousands of author entries; crossref_get_work pages the whole author list for any DOI whose list was cut. Offset-based paging is capped at ~10K results; use cursor="*" to start cursor-based deep paging, then pass the nextCursor value from each response to continue. The walk ends on the page where nextCursor is absent — that page also carries a notice saying the list is exhausted. Cursor and offset cannot be combined.',
   annotations: { readOnlyHint: true, openWorldHint: true },
 
   input: z.object({
@@ -104,6 +114,15 @@ export const searchWorksTool = tool('crossref_search_works', {
       .max(100)
       .default(20)
       .describe('Number of results to return per page (1–100, default 20)'),
+    authorLimit: z
+      .number()
+      .int()
+      .min(1)
+      .max(500)
+      .default(25)
+      .describe(
+        'Maximum number of authors to return per work (1–500, default 25). Ordinary records fit under the default; large-collaboration papers deposit thousands, and a page of them is large enough to exhaust a client context. Each work reports its full deposited total as authorCount — call crossref_get_work with that work doi to page the authors this cap left out.',
+      ),
     offset: z
       .number()
       .min(0)
@@ -153,11 +172,21 @@ export const searchWorksTool = tool('crossref_search_works', {
   enrichment: {
     totalResults: z.number().describe('Total matching records in Crossref'),
     returned: z.number().describe('Number of records returned in this response'),
+    truncated: z
+      .boolean()
+      .optional()
+      .describe(
+        'True when at least one work on this page had its author list cut by authorLimit. Absent when every work on the page carries its full deposited author list.',
+      ),
+    cap: z
+      .number()
+      .optional()
+      .describe('The per-work author cap applied to this page. Absent when no list was cut.'),
     notice: z
       .string()
       .optional()
       .describe(
-        'Guidance on an empty page, naming which of its three causes applies: a query nothing matched, an offset past the end of a list that did match, or a cursor walk that has reached the end of the list. Absent on a page carrying records.',
+        'Guidance on an empty page, naming which of its three causes applies: a query nothing matched, an offset past the end of a list that did match, or a cursor walk that has reached the end of the list. On a page carrying records, present only when authorLimit cut at least one work list, naming how many and the route to the rest.',
       ),
   },
 
@@ -245,8 +274,14 @@ export const searchWorksTool = tool('crossref_search_works', {
         doi: raw.DOI,
         ...(raw.title?.[0] !== undefined && { title: normalizeMarkupText(raw.title[0]) }),
         ...(raw.type != null && { type: raw.type }),
+        /**
+         * The cap is applied here, once, so structuredContent and format() are handed the
+         * identical list — the same split get-references uses for its page. authorCount rides
+         * alongside so a cut list is visibly cut rather than passing for the whole deposit.
+         */
         ...(raw.author && {
-          authors: raw.author.map((a) => ({
+          authorCount: raw.author.length,
+          authors: raw.author.slice(0, input.authorLimit).map((a) => ({
             ...(a.given && { given: normalizeText(a.given) }),
             ...(a.family && { family: normalizeText(a.family) }),
             ...(a.name && { name: normalizeText(a.name) }),
@@ -306,6 +341,22 @@ export const searchWorksTool = tool('crossref_search_works', {
       }
     }
 
+    /**
+     * Disclosure of the cap is page-level because the cut is per-work: `authorCount` on each
+     * work says which lists were shortened and by how much, and this pair says a cut happened
+     * at all, on both result surfaces, without enumerating DOIs a caller can already read off
+     * the works array.
+     */
+    const cutWorks = works.filter(
+      (w) => w.authorCount !== undefined && w.authorCount > (w.authors?.length ?? 0),
+    ).length;
+    if (cutWorks > 0) {
+      ctx.enrich({ truncated: true, cap: input.authorLimit });
+      ctx.enrich.notice(
+        `Author lists were capped at ${input.authorLimit} per work — ${cutWorks} of the ${returned} works on this page carry more authors than are shown. Each work reports its full deposited total as authorCount; call crossref_get_work with that work doi to page its whole author list, or raise authorLimit to widen the cap here.`,
+      );
+    }
+
     return {
       works,
       ...(nextCursor && { nextCursor }),
@@ -328,7 +379,12 @@ export const searchWorksTool = tool('crossref_search_works', {
           .map((a) => [a.given, a.family, a.name].filter(Boolean).join(' '))
           .filter(Boolean)
           .join(', ');
-        lines.push(`**Authors:** ${authorStr}`);
+        const total = w.authorCount ?? w.authors.length;
+        const cut =
+          total > w.authors.length
+            ? ` — showing ${w.authors.length} of ${total}; call crossref_get_work with doi ${w.doi} to page the rest`
+            : '';
+        lines.push(`**Authors:** ${authorStr}${cut}`);
       }
       if (w.isReferencedByCount !== undefined) lines.push(`**Cited by:** ${w.isReferencedByCount}`);
       if (w.score !== undefined) lines.push(`**Score:** ${w.score}`);

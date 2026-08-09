@@ -35,9 +35,11 @@ import {
   NAME_SEARCH_OFFSET_CAP,
   nextPageOffset,
   normalizeMarkupText,
+  normalizeReferenceText,
   normalizeText,
   parseDateParts,
   stripJats,
+  stripReferenceMarkup,
   WORKS_OFFSET_CAP,
 } from '@/services/crossref/crossref-service.js';
 
@@ -754,6 +756,125 @@ describe('normalizeMarkupText', () => {
     );
     expect(normalizeMarkupText('end<jats:supplementary-material />next')).toBe('end next');
     expect(normalizeMarkupText('a<subject>b</subject>c')).toBe('a b c');
+  });
+});
+
+describe('stripReferenceMarkup', () => {
+  it('removes inline emphasis in its HTML, JATS, and Springer spellings', () => {
+    expect(stripReferenceMarkup('<em>Remarks on the breakdown</em>')).toBe(
+      'Remarks on the breakdown',
+    );
+    expect(stripReferenceMarkup('<jats:italic>Escherichia coli</jats:italic>')).toBe(
+      'Escherichia coli',
+    );
+    expect(stripReferenceMarkup('<small>DAUVERGNE, D.</small>')).toBe('DAUVERGNE, D.');
+    expect(stripReferenceMarkup('<b>94</b>')).toBe('94');
+  });
+
+  /**
+   * The whole point of the allow-list: every one of these is text a reader needs, written in
+   * the same syntax as a tag. A blanket strip deletes all four.
+   */
+  it('leaves an angle-bracket span whose name is not a formatting element', () => {
+    const cases = [
+      'FAOSTAT. <http://faostat.fao.org/site/291/default.aspx>.',
+      'Silicon <100> nanowires',
+      '10.1002/(SICI)1097-461X(1998)66:2<131::AID-QUA4>3.0.CO;2-W',
+      'International <IR> Framework',
+      'EPA standards, <www.ecfr.gov>, as of May 27, 2014.',
+      'ZnxFe3-xO4 (0.01 < x > 0.8) nanoparticles',
+      'Si1−xGex layers (0.3<x<0.4)',
+      'The subject <subject>Ecology</subject>',
+    ];
+    for (const raw of cases) expect(stripReferenceMarkup(raw)).toBe(raw);
+  });
+
+  /**
+   * A link's URL lives in an attribute, so stripping the tag would delete it. `a` and
+   * `ext-link` stay off the allow-list for that reason, not by oversight.
+   */
+  it('leaves a link tag whole so its href survives', () => {
+    const anchor = 'Preprint, <a href="http://arxiv.org/abs/1102.1113v1">arXiv:1102.1113v1</a>.';
+    expect(stripReferenceMarkup(anchor)).toBe(anchor);
+    const extLink = 'at <ext-link xlink:href="http://x.org/a.pdf">http://x.org/a.pdf</ext-link>.';
+    expect(stripReferenceMarkup(extLink)).toBe(extLink);
+  });
+
+  /**
+   * Inline emphasis is a word boundary, so it leaves a space only where it separates two word
+   * characters. A citation's italic journal title is followed by a comma far more often than
+   * by a word, and a space before that comma is the artifact a blanket space-for-every-tag
+   * rule introduces on nearly every entry it touches.
+   */
+  it('leaves a separator only between two word characters', () => {
+    expect(stripReferenceMarkup('T.Isobe, <i>J. Am. ceram. Soc.</i>, <b>90</b>, 3720')).toBe(
+      'T.Isobe, J. Am. ceram. Soc., 90, 3720',
+    );
+    expect(stripReferenceMarkup('A<i>B</i>C')).toBe('A B C');
+  });
+
+  /**
+   * A publisher packing several citations into one field separates them with a block tag, and
+   * the separator has to survive the word-character test the inline rule applies — the text
+   * before it ends in a period, not a word character.
+   */
+  it('always separates block boundaries', () => {
+    expect(
+      normalizeReferenceText(
+        '<p class="Reference">Barraud, P.J. (1929) A revision.</p><p class="Reference">Smith, J. (1930) Another.</p>',
+      ),
+    ).toBe('Barraud, P.J. (1929) A revision. Smith, J. (1930) Another.');
+  });
+
+  /** Scripts continue the token around them, in every spelling a deposit uses. */
+  it('joins scripts tight', () => {
+    expect(stripReferenceMarkup('H<sub>2</sub>O<sub>2</sub>')).toBe('H2O2');
+    expect(
+      stripReferenceMarkup('O<Stack><Subscript>2</Subscript><Superscript>-</Superscript></Stack>'),
+    ).toBe('O2-');
+  });
+
+  /**
+   * A MathML span is matched end to end and its inner tags come out tight, so the formula
+   * reads as one token. Deleting the span would delete the symbol the sentence is about.
+   */
+  it('renders a MathML formula as its tight-joined content', () => {
+    expect(
+      stripReferenceMarkup(
+        'Fractal geometry of <math xmlns="http://www.w3.org/1998/Math/MathML" id="eq_3"><msub><mrow><mi mathvariant="normal">Airy</mi></mrow><mrow><mn>2</mn></mrow></msub></math> processes',
+      ),
+    ).toBe('Fractal geometry of Airy2 processes');
+  });
+
+  /** An unclosed formula matches nothing, so it is left whole rather than half-stripped. */
+  it('leaves an unclosed MathML span untouched', () => {
+    const raw = 'Unclosed <math xmlns="x"><mi>Z</mi> formula with no end tag';
+    expect(stripReferenceMarkup(raw)).toBe(raw);
+  });
+
+  it('returns plain text unchanged', () => {
+    expect(stripReferenceMarkup('Smith J. 2010. A paper. Nature.')).toBe(
+      'Smith J. 2010. A paper. Nature.',
+    );
+  });
+});
+
+describe('normalizeReferenceText', () => {
+  it('strips markup, decodes entities, and collapses whitespace in one pass', () => {
+    expect(
+      normalizeReferenceText('<i>Users&apos; guides</i>   to the\n     medical literature'),
+    ).toBe("Users' guides to the medical literature");
+  });
+
+  /**
+   * Markup comes out before entities are decoded, so a deposited `&lt;i&gt;` stays literal
+   * text rather than decoding into a tag the strip pass then eats — the same order
+   * `normalizeMarkupText` depends on.
+   */
+  it('keeps an escaped tag as literal text', () => {
+    expect(normalizeReferenceText('Deposited entity &lt;i&gt;stays literal&lt;/i&gt;')).toBe(
+      'Deposited entity <i>stays literal</i>',
+    );
   });
 });
 

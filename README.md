@@ -23,9 +23,9 @@ Seven tools for working with Crossref data — DOI resolution, full-text search 
 
 | Tool | Description |
 |:-----|:------------|
-| `crossref_get_work` | Resolve a DOI to its full Crossref metadata record: title, authors, affiliations, abstract (when deposited), journal, publication date, type, license, full-text links, funder acknowledgements, and outgoing reference count |
-| `crossref_search_works` | Search the Crossref works index by free text and/or structured filters. Supports sort, field selection, and cursor-based deep paging. |
-| `crossref_get_references` | Return the outgoing reference list for a DOI — the works cited by this paper, with raw citation strings and resolved DOIs where available |
+| `crossref_get_work` | Resolve a DOI to its full Crossref metadata record: title, authors, affiliations, abstract (when deposited), journal, publication date, type, license, full-text links, funder acknowledgements, and outgoing reference count. The author list pages by `offset`/`limit`. |
+| `crossref_search_works` | Search the Crossref works index by free text and/or structured filters. Supports sort, field selection, a per-work author cap, and cursor-based deep paging. |
+| `crossref_get_references` | Return the outgoing reference list for a DOI — the works cited by this paper, with deposited citation strings and resolved DOIs where available |
 | `crossref_search_journals` | Find Crossref journal records by ISSN or title query; optionally retrieve a page of the journal's most recent works by publication date. Both lists page by offset. |
 | `crossref_search_funders` | Find funders registered in the Crossref Funder Registry by name, bare registry ID, or funder DOI; optionally retrieve a page of funded works. Both lists page by offset. |
 | `crossref_get_member` | Resolve a Crossref member ID to its publisher record — name, owned DOI prefixes, DOI counts, per-work-type breakdown, and per-category metadata deposit coverage |
@@ -37,6 +37,7 @@ Resolve a DOI to its canonical Crossref record.
 
 - DOI validated against `10.NNNN/suffix` regex before the upstream call
 - Returns title, authors with affiliations, abstract (when deposited), container/journal, publication date, work type, ISSN, license URLs, full-text link URLs, and funder acknowledgements
+- The author list is paged with `offset` and `limit` (default 25, max 500). `authorCount` is the full deposited total; when authors remain, the response carries a `nextOffset` to pass back as `offset`. Ordinary records fit in a single page — large-collaboration papers deposit thousands of authors, enough to fill a client's context from one record. Only the author list is paged; every other field comes back in full on every page.
 - Outgoing references are reported as a count; the entries themselves come from `crossref_get_references`
 - Incoming citation count (`is-referenced-by-count`) is included; citing works are not — Crossref does not expose that data. Use OpenAlex for citation graphs.
 
@@ -50,6 +51,7 @@ Search across ~155M Crossref-registered works.
 - Field-specific query parameters scope matching beyond the generic `query`: `queryTitle`, `queryAuthor`, `queryContainerTitle` (journal/book name), and `queryBibliographic` (whole-citation match to resolve a known reference to its DOI) — all combine with each other and with `query`
 - Sort by `relevance`, `is-referenced-by-count`, `published`, `deposited`, or `score`
 - `fields` parameter narrows response payload — useful for large result sets. Names are case-sensitive; `DOI` is always returned whether or not it is listed, so every result stays resolvable by `crossref_get_work`.
+- Each work returns at most `authorLimit` authors (default 25, max 500), with `authorCount` reporting that work's full deposited total. A single page of large-collaboration papers can carry tens of thousands of author entries; pass a cut work's DOI to `crossref_get_work` to page its whole author list, or raise `authorLimit` to widen the cap here.
 - Offset paging up to ~10K results; deep paging requires `cursor=*` on the first call, then pass the returned `nextCursor` token. Cursor and offset cannot be combined.
 - A cursor walk ends on the page that omits `nextCursor`. Crossref keeps minting a token past the end of a list, so the token is withheld on an empty page rather than relayed — the rule the `works_cursor` walks below follow too. Here that page also carries a `notice` saying the walk is complete, because `works` is this tool's whole payload and an empty page nothing is said about renders as blank text.
 
@@ -59,7 +61,8 @@ Search across ~155M Crossref-registered works.
 
 Fetch the outgoing reference list for a DOI.
 
-- Each reference includes its raw citation string and, where Crossref has resolved it, a DOI for follow-up lookup
+- Each reference includes its deposited citation string and, where Crossref has resolved it, a DOI for follow-up lookup
+- Citation strings come back with inline formatting markup removed (`<i>`, `<em>`, `<small>`, `<sub>`/`<sup>`, `<p>`, MathML). The strip matches a closed list of formatting element names and nothing else, so an angle-bracket span that is not one of them — a cited URL, a Miller index, a DOI fragment, a linked reference whose URL sits in an `href` — is returned exactly as deposited.
 - Paged with `offset` and `limit` (default 100, max 500). `referenceCount` is the full deposited total; when more remain, the response carries a `nextOffset` to pass back as `offset`. Most works fit in a single page — bibliography records can carry tens of thousands of references.
 - Coverage varies by publisher — pre-2000 literature and non-participating publishers may have no reference list
 - Single-hop only; agents that need N-hop traversal chain calls explicitly
@@ -131,7 +134,7 @@ Crossref-specific:
 - Upstream failures arrive classified and with recovery guidance on both result surfaces: rate limit, service unavailable, timeout, and malformed response each say what to do next in `content[]` as well as in `structuredContent`
 - Cursor-based deep paging on the works search and on both works sub-resources, for result sets beyond the offset cap
 - Filter key validation: Crossref uses hyphens (`has-abstract`, `has-references`, `from-pub-date`); the server enforces correct syntax and surfaces API validation errors with actionable recovery hints
-- Text normalization on every human-readable value returned: HTML entities decoded, whitespace collapsed to single spaces. The fields publishers deposit as JATS XML — work titles, subtitles, container titles, and abstracts — additionally have inline markup stripped, so an italicized species name reaches `content[]` as text instead of an `<i>` tag and a newline that splits the Markdown heading. Stripping is tag-aware: a tag is a word boundary and becomes a space, except `<sub>`/`<sup>`, whose content continues the token around it — `CO<sub>2</sub>` reads `CO2`, not `CO 2`. Identifiers and machine-format values (DOIs, URLs, ISSNs, prefixes, dates, work types) are returned byte-exact, and reference-entry citation strings keep their angle brackets, which carry a bracketed URL or a Miller index as often as markup
+- Text normalization on every human-readable value returned: HTML entities decoded, whitespace collapsed to single spaces. The fields publishers deposit as JATS XML — work titles, subtitles, container titles, and abstracts — additionally have inline markup stripped, so an italicized species name reaches `content[]` as text instead of an `<i>` tag and a newline that splits the Markdown heading. Stripping is tag-aware: a tag is a word boundary and becomes a space, except `<sub>`/`<sup>`, whose content continues the token around it — `CO<sub>2</sub>` reads `CO2`, not `CO 2`. Identifiers and machine-format values (DOIs, URLs, ISSNs, prefixes, dates, work types) are returned byte-exact. Reference-entry citation strings take a third pass instead: an angle bracket there carries a bracketed URL or a Miller index as often as markup, so the strip is bounded by a closed list of formatting element names and every other bracketed span comes back as deposited
 
 ## Getting started
 

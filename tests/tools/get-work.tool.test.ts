@@ -3,7 +3,7 @@
  * @module tests/tools/get-work.tool.test
  */
 
-import { createMockContext } from '@cyanheads/mcp-ts-core/testing';
+import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getWorkTool } from '@/mcp-server/tools/definitions/get-work.tool.js';
 
@@ -50,6 +50,17 @@ function makeRawWork(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+/** Distinct, order-checkable author entries — `G0 F0`, `G1 F1`, … */
+function makeAuthors(count: number) {
+  return Array.from({ length: count }, (_, i) => ({ given: `G${i}`, family: `F${i}` }));
+}
+
+/**
+ * The schema clients actually receive: domain output merged with enrichment. A key missing
+ * from either is stripped here rather than at the accumulator getEnrichment reads.
+ */
+const wireSchema = getWorkTool.output.extend(getWorkTool.enrichment!);
 
 describe('getWorkTool', () => {
   it('returns full metadata for a valid DOI', async () => {
@@ -305,6 +316,123 @@ describe('getWorkTool', () => {
     expect(result.published?.year).toBe(2019);
     expect(result.published?.month).toBe(3);
     expect(result.published?.day).toBeUndefined();
+  });
+
+  it('returns an ordinary author list whole, with no paging disclosure', async () => {
+    const ctx = createMockContext({ errors: getWorkTool.errors });
+    mockGetWork.mockResolvedValue(makeRawWork({ author: makeAuthors(11) }));
+
+    // 11 sits under the default limit of 25 — the typical record, returned intact.
+    const input = getWorkTool.input.parse({ doi: '10.1073/pnas.0506580102' });
+    const result = await getWorkTool.handler(input, ctx);
+
+    expect(result.authors).toHaveLength(11);
+    expect(result.authorCount).toBe(11);
+    expect(result.offset).toBe(0);
+
+    const wire = wireSchema.parse({ ...result, ...getEnrichment(ctx) });
+    expect(wire.nextOffset).toBeUndefined();
+    expect(wire.truncated).toBeUndefined();
+    expect(wire.notice).toBeUndefined();
+    expect(getWorkTool.format!(result)[0]?.text ?? '').toContain('showing 11 of 11');
+  });
+
+  it('pages a consortium author list and discloses nextOffset on both surfaces', async () => {
+    const ctx = createMockContext({ errors: getWorkTool.errors });
+    mockGetWork.mockResolvedValue(makeRawWork({ author: makeAuthors(2932) }));
+
+    const input = getWorkTool.input.parse({ doi: '10.1016/j.physletb.2012.08.020' });
+    const result = await getWorkTool.handler(input, ctx);
+
+    expect(result.authors).toHaveLength(25);
+    expect(result.authorCount).toBe(2932);
+    expect(result.authors?.at(-1)).toMatchObject({ given: 'G24', family: 'F24' });
+
+    const wire = wireSchema.parse({ ...result, ...getEnrichment(ctx) });
+    expect(wire).toMatchObject({ nextOffset: 25, truncated: true, shown: 25, cap: 25 });
+    expect(wire.notice).toMatch(/offset=25/);
+    // The omitted authors are absent from the payload, not merely from the render.
+    expect(JSON.stringify(result)).not.toContain('G25');
+
+    const text = getWorkTool.format!(result)[0]?.text ?? '';
+    expect(text).toContain('showing 25 of 2932, starting at index 0');
+    expect(text).not.toContain('G25 F25');
+  });
+
+  it('returns the requested page and omits nextOffset on the last one', async () => {
+    const ctx = createMockContext({ errors: getWorkTool.errors });
+    mockGetWork.mockResolvedValue(makeRawWork({ author: makeAuthors(30) }));
+
+    const input = getWorkTool.input.parse({
+      doi: '10.1038/nature12373',
+      offset: 25,
+      limit: 25,
+    });
+    const result = await getWorkTool.handler(input, ctx);
+
+    expect(result.offset).toBe(25);
+    expect(result.authors).toHaveLength(5);
+    expect(result.authors?.[0]).toMatchObject({ given: 'G25', family: 'F25' });
+    expect(getEnrichment(ctx).nextOffset).toBeUndefined();
+    expect(getEnrichment(ctx).truncated).toBeUndefined();
+    expect(getWorkTool.format!(result)[0]?.text ?? '').toContain(
+      'showing 5 of 30, starting at index 25',
+    );
+  });
+
+  it('explains an offset past the end of the author list', async () => {
+    const ctx = createMockContext({ errors: getWorkTool.errors });
+    mockGetWork.mockResolvedValue(makeRawWork({ author: makeAuthors(11) }));
+
+    const input = getWorkTool.input.parse({ doi: '10.1038/nature12373', offset: 500 });
+    const result = await getWorkTool.handler(input, ctx);
+
+    expect(result.authors).toHaveLength(0);
+    expect(result.authorCount).toBe(11);
+    expect(result.offset).toBe(500);
+    const wire = wireSchema.parse({ ...result, ...getEnrichment(ctx) });
+    expect(wire.notice).toMatch(/past the end/);
+    expect(wire.notice).toContain('11');
+    expect(wire.nextOffset).toBeUndefined();
+    // The rest of the record still comes back — only the author list is paged.
+    expect(result.title).toBe('Cas9 in mammals');
+  });
+
+  it('omits authorCount and offset when the record deposits no author field', async () => {
+    const ctx = createMockContext({ errors: getWorkTool.errors });
+    mockGetWork.mockResolvedValue(makeRawWork({ author: undefined }));
+
+    const input = getWorkTool.input.parse({ doi: '10.1038/nature12373' });
+    const result = await getWorkTool.handler(input, ctx);
+
+    // A record with no deposited authors is a different fact from a page holding none.
+    expect(result.authors).toBeUndefined();
+    expect(result.authorCount).toBeUndefined();
+    expect(result.offset).toBeUndefined();
+    expect(getEnrichment(ctx).truncated).toBeUndefined();
+    expect(getWorkTool.format!(result)[0]?.text ?? '').not.toContain('**Authors:**');
+  });
+
+  it('carries the author paging disclosure onto content[] for a text-only client', async () => {
+    mockGetWork.mockResolvedValue(makeRawWork({ author: makeAuthors(400) }));
+
+    const result = await runToolContract(getWorkTool, {
+      doi: '10.1016/j.physletb.2012.08.020',
+      limit: 10,
+    });
+
+    const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+    expect(text).toContain('showing 10 of 400, starting at index 0');
+    expect(text).toMatch(/offset=10/);
+    expect(text).not.toContain('G10 F10');
+    expect(result.structuredContent).toMatchObject({ authorCount: 400, nextOffset: 10 });
+  });
+
+  it('rejects offset and limit outside their declared ranges', () => {
+    expect(() => getWorkTool.input.parse({ doi: '10.1038/x1', offset: -1 })).toThrow();
+    expect(() => getWorkTool.input.parse({ doi: '10.1038/x1', limit: 0 })).toThrow();
+    expect(() => getWorkTool.input.parse({ doi: '10.1038/x1', limit: 501 })).toThrow();
+    expect(() => getWorkTool.input.parse({ doi: '10.1038/x1', limit: 2.5 })).toThrow();
   });
 
   it('throws doi_not_found when service returns null', async () => {

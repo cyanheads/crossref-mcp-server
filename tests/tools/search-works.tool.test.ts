@@ -46,6 +46,11 @@ function makeSearchResult(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/** Distinct, order-checkable author entries — `G0 F0`, `G1 F1`, … */
+function makeAuthors(count: number) {
+  return Array.from({ length: count }, (_, i) => ({ given: `G${i}`, family: `F${i}` }));
+}
+
 /**
  * The schema clients actually receive: domain output merged with enrichment. Parsing through
  * it proves a field reaches the wire — an undeclared key is stripped here, silently.
@@ -330,38 +335,109 @@ describe('searchWorksTool', () => {
     expect(result.works[0]?.abstract).toBeUndefined();
   });
 
-  it('returns the full author list per work, uncapped', async () => {
+  /**
+   * #32 removed a silent ten-author slice. What it established is not "no cap ever" — the
+   * fix that closed it said a deliberate bound was a separate decision — but that no cap is
+   * applied *silently*: an ordinary list comes back whole with nothing claiming otherwise,
+   * and a bounded one says so on both surfaces and hands back the route to the rest. These
+   * two tests guard the two halves of that.
+   */
+  it('leaves an ordinary author list whole, with nothing claiming it was cut', async () => {
     const ctx = createMockContext({ errors: searchWorksTool.errors });
-    const authors = Array.from({ length: 15 }, (_, i) => ({ given: `G${i}`, family: `F${i}` }));
+    const authors = makeAuthors(15);
     mockSearchWorks.mockResolvedValue(
       makeSearchResult({
         items: [{ DOI: '10.1234/test', type: 'journal-article', author: authors }],
       }),
     );
 
+    // 15 sits under the default authorLimit of 25 — the ordinary record, untouched.
     const input = searchWorksTool.input.parse({ query: 'test' });
     const result = await searchWorksTool.handler(input, ctx);
 
     expect(result.works[0]?.authors?.length).toBe(15);
     expect(result.works[0]?.authors?.at(-1)).toMatchObject({ given: 'G14', family: 'F14' });
+    expect(result.works[0]?.authorCount).toBe(15);
+
+    const wire = wireSchema.parse({ ...result, ...getEnrichment(ctx) });
+    expect(wire.truncated).toBeUndefined();
+    expect(wire.cap).toBeUndefined();
+    expect(wire.notice).toBeUndefined();
+    // A whole list renders as a plain list — no "showing N of M" on a record that lost nothing.
+    expect(searchWorksTool.format!(result)[0]?.text ?? '').not.toContain('showing');
   });
 
-  it('renders every author in format() — no cap between the two result paths', async () => {
+  it('renders exactly the page the handler kept — no cap between the two result paths', async () => {
     const ctx = createMockContext({ errors: searchWorksTool.errors });
-    const authors = Array.from({ length: 15 }, (_, i) => ({ given: `G${i}`, family: `F${i}` }));
     mockSearchWorks.mockResolvedValue(
       makeSearchResult({
-        items: [{ DOI: '10.1234/test', type: 'journal-article', author: authors }],
+        items: [{ DOI: '10.1234/test', type: 'journal-article', author: makeAuthors(40) }],
+      }),
+    );
+
+    const input = searchWorksTool.input.parse({ query: 'test', authorLimit: 10 });
+    const result = await searchWorksTool.handler(input, ctx);
+    const kept = result.works[0]?.authors ?? [];
+    const text = searchWorksTool.format!(result)[0]?.text ?? '';
+
+    // Asserted before the loop: a cap that emptied the array would make the loop vacuous.
+    expect(kept).toHaveLength(10);
+    for (const a of kept) {
+      expect(text).toContain(`${a.given} ${a.family}`);
+    }
+    // And nothing beyond the page leaks into either surface via the render path.
+    expect(text).not.toContain('G10 F10');
+    expect(JSON.stringify(result)).not.toContain('G10');
+  });
+
+  it('caps each work at authorLimit and reports the full deposited total', async () => {
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        items: [
+          { DOI: '10.1234/consortium', type: 'journal-article', author: makeAuthors(2932) },
+          { DOI: '10.1234/small', type: 'journal-article', author: makeAuthors(3) },
+        ],
       }),
     );
 
     const input = searchWorksTool.input.parse({ query: 'test' });
     const result = await searchWorksTool.handler(input, ctx);
-    const text = searchWorksTool.format!(result)[0]?.text ?? '';
 
-    for (const a of result.works[0]?.authors ?? []) {
-      expect(text).toContain(`${a.given} ${a.family}`);
-    }
+    expect(result.works[0]?.authors).toHaveLength(25);
+    expect(result.works[0]?.authorCount).toBe(2932);
+    // The cap is per work, not per page — the small record is untouched beside the big one.
+    expect(result.works[1]?.authors).toHaveLength(3);
+    expect(result.works[1]?.authorCount).toBe(3);
+
+    const wire = wireSchema.parse({ ...result, ...getEnrichment(ctx) });
+    expect(wire).toMatchObject({ truncated: true, cap: 25 });
+    expect(wire.notice).toMatch(/1 of the 2 works/);
+    expect(wire.notice).toMatch(/crossref_get_work/);
+  });
+
+  it('discloses the cut on content[] as well as structuredContent', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        items: [{ DOI: '10.1234/consortium', type: 'journal-article', author: makeAuthors(400) }],
+      }),
+    );
+
+    const result = await runToolContract(searchWorksTool, { query: 'test', authorLimit: 25 });
+
+    const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+    // The per-work line names the count and the retrieval path; the enrichment trailer
+    // repeats the page-level fact. A client reading only text gets both.
+    expect(text).toContain('showing 25 of 400');
+    expect(text).toContain('crossref_get_work with doi 10.1234/consortium');
+    expect(text).toMatch(/capped at 25 per work/);
+    expect(result.structuredContent).toMatchObject({ truncated: true, cap: 25 });
+  });
+
+  it('rejects an authorLimit outside the 1–500 range', () => {
+    expect(() => searchWorksTool.input.parse({ query: 'test', authorLimit: 0 })).toThrow();
+    expect(() => searchWorksTool.input.parse({ query: 'test', authorLimit: 501 })).toThrow();
+    expect(() => searchWorksTool.input.parse({ query: 'test', authorLimit: 2.5 })).toThrow();
   });
 
   it('succeeds end-to-end when fields omits DOI and upstream still returns it', async () => {

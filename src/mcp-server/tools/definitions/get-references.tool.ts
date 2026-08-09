@@ -2,15 +2,19 @@
  * @fileoverview crossref_get_references — returns a page of the outgoing reference list for a DOI.
  * Fetches the full /works/{doi} record and extracts the reference[] array client-side, then slices
  * it by offset/limit so structuredContent and content[] carry the identical page. The entry's
- * free-text fields are entity-decoded and whitespace-collapsed on the way out; markup stripping
- * is deliberately not applied here — see normalizeMarkupText in the service.
+ * free-text fields are entity-decoded, whitespace-collapsed, and stripped of the formatting
+ * markup on a closed element-name allow-list — see normalizeReferenceText in the service, which
+ * is what keeps a bracketed URL or a Miller index from being read as a tag and deleted.
  * Incoming citations are not available through Crossref; use OpenAlex for those.
  * @module mcp-server/tools/definitions/get-references.tool
  */
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
-import { getCrossrefService, normalizeText } from '@/services/crossref/crossref-service.js';
+import {
+  getCrossrefService,
+  normalizeReferenceText,
+} from '@/services/crossref/crossref-service.js';
 import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
 
 const ReferenceSchema = z
@@ -20,11 +24,22 @@ const ReferenceSchema = z
     unstructured: z
       .string()
       .optional()
-      .describe('Raw citation string as deposited by the publisher'),
-    author: z.string().optional().describe('Author field from the reference entry'),
+      .describe(
+        'Citation string as deposited by the publisher, with inline formatting markup removed. Angle-bracketed text that is not a known formatting element — a cited URL, a Miller index, a DOI fragment — is left exactly as deposited.',
+      ),
+    author: z
+      .string()
+      .optional()
+      .describe('Author field from the reference entry, with inline formatting markup removed'),
     year: z.string().optional().describe('Publication year of the referenced work'),
-    journalTitle: z.string().optional().describe('Journal title of the referenced work'),
-    articleTitle: z.string().optional().describe('Article title of the referenced work'),
+    journalTitle: z
+      .string()
+      .optional()
+      .describe('Journal title of the referenced work, with inline formatting markup removed'),
+    articleTitle: z
+      .string()
+      .optional()
+      .describe('Article title of the referenced work, with inline formatting markup removed'),
     volume: z.string().optional().describe('Volume'),
     firstPage: z.string().optional().describe('First page'),
     issn: z.string().optional().describe('ISSN of the referenced journal'),
@@ -34,7 +49,7 @@ const ReferenceSchema = z
 export const getReferencesTool = tool('crossref_get_references', {
   title: 'Get Reference List',
   description:
-    'Returns the outgoing reference list for a DOI — the works cited by this paper. Each reference includes the raw citation string and, where Crossref has resolved it, a DOI you can look up with crossref_get_work. Results are paged: referenceCount is the full deposited total, and when more remain the response carries a nextOffset to pass back as offset. Reference list coverage varies by publisher; many older works and non-participating publishers have no indexed references. Incoming citations — the works that cite this paper — are not available through Crossref; use OpenAlex for that.',
+    'Returns the outgoing reference list for a DOI — the works cited by this paper. Each reference includes the deposited citation string and, where Crossref has resolved it, a DOI you can look up with crossref_get_work. Results are paged: referenceCount is the full deposited total, and when more remain the response carries a nextOffset to pass back as offset. Reference list coverage varies by publisher; many older works and non-participating publishers have no indexed references. Incoming citations — the works that cite this paper — are not available through Crossref; use OpenAlex for that.',
   annotations: { readOnlyHint: true, idempotentHint: true },
 
   input: z.object({
@@ -149,21 +164,22 @@ export const getReferencesTool = tool('crossref_get_references', {
     }
 
     /**
-     * The free-text fields get the same entity decode and whitespace collapse every other
-     * human-readable value this server returns does; the identifiers and numeric strings stay
-     * byte-exact. Reference text stops short of tag stripping deliberately: angle brackets are
-     * rare here and ambiguous when they appear, carrying a bracketed URL, a Miller index, or a
-     * DOI fragment about as often as real markup, and deleting a cited URL is worse than
-     * leaving an `<i>` in place.
+     * The free-text fields get the entity decode and whitespace collapse every other
+     * human-readable value this server returns does, plus a strip of the inline formatting a
+     * publisher deposits into a citation string. The identifiers and numeric strings stay
+     * byte-exact. The strip is bounded by an element-name allow-list rather than matching
+     * every angle bracket, because a bracket here is as often content as markup — a cited
+     * URL, a Miller index, a DOI fragment — and deleting a cited URL is a worse failure than
+     * leaving one unrecognized tag in place.
      */
     const references = page.map((r) => ({
       ...(r.key && { key: r.key }),
       ...(r.DOI && { doi: r.DOI }),
-      ...(r.unstructured && { unstructured: normalizeText(r.unstructured) }),
-      ...(r.author && { author: normalizeText(r.author) }),
+      ...(r.unstructured && { unstructured: normalizeReferenceText(r.unstructured) }),
+      ...(r.author && { author: normalizeReferenceText(r.author) }),
       ...(r.year && { year: r.year }),
-      ...(r['journal-title'] && { journalTitle: normalizeText(r['journal-title']) }),
-      ...(r['article-title'] && { articleTitle: normalizeText(r['article-title']) }),
+      ...(r['journal-title'] && { journalTitle: normalizeReferenceText(r['journal-title']) }),
+      ...(r['article-title'] && { articleTitle: normalizeReferenceText(r['article-title']) }),
       ...(r.volume && { volume: r.volume }),
       ...(r['first-page'] && { firstPage: r['first-page'] }),
       ...(r.issn && { issn: r.issn }),

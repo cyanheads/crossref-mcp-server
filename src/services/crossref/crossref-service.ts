@@ -6,7 +6,9 @@
  * is available on `/works` and on both works sub-resources.
  *
  * Also home to the text normalization every tool projects free-text values through —
- * `normalizeText` for the baseline pass and `normalizeMarkupText` for the JATS-deposited fields.
+ * `normalizeText` for the baseline pass, `normalizeMarkupText` for the JATS-deposited fields,
+ * and `normalizeReferenceText` for the deposited citation strings, where an angle bracket is
+ * as likely to be content as markup and only an element-name allow-list separates the two.
  * @module services/crossref/crossref-service
  */
 
@@ -108,16 +110,90 @@ export function normalizeText(raw: string): string {
  *
  * Order matters: tags come out before entities are decoded, so a deposited `&lt;i&gt;` stays
  * literal text instead of decoding into a tag the strip pass would then eat.
- *
- * Reference entries deliberately stay on the baseline pass. Angle brackets are rare there and
- * ambiguous when they appear: a 153,827-field sample carried them on 0.21% of entries, split
- * between real markup and text a strip pass would silently delete — a bracketed URL, a Miller
- * index (`<100>`), a DOI fragment (`<131::AID-QUA4>`), an acronym (`<IR>`). Losing a URL is a
- * worse failure than leaving an `<i>` in place, so the ambiguity is resolved toward keeping
- * the deposited string.
  */
 export function normalizeMarkupText(raw: string): string {
   return normalizeText(stripJats(raw));
+}
+
+/**
+ * Build a tag matcher over a closed set of element names. Namespace prefixes (`<jats:italic>`)
+ * and attributes (`<p class="Reference">`) are admitted; a space after `<` is not, so an
+ * inequality written `0.01 < x > 0.8` can never read as a tag. `\b` after the name keeps a
+ * longer element out — `<subject>` is not `<sub>`, `<smallcaps>` is not `<small>`.
+ */
+function tagSource(names: readonly string[]): string {
+  return `<\\/?(?:[A-Za-z][\\w.-]*:)?(?:${names.join('|')})\\b(?:\\s[^>]*)?\\/?>`;
+}
+
+/** Inline emphasis, in the HTML, JATS, and Springer spellings all three appear in deposits. */
+const INLINE_MARKUP_TAG = new RegExp(
+  `(?:${tagSource(['italic', 'strong', 'small', 'bold', 'scp', 'em', 'sc', 'i', 'b', 'u'])})+`,
+  'gi',
+);
+
+/** Block boundaries. A publisher packing several citations into one field separates them here. */
+const BLOCK_MARKUP_TAG = new RegExp(tagSource(['br', 'p']), 'gi');
+
+/** Scripts, in every spelling: their content continues the token around them. */
+const TIGHT_MARKUP_TAG = new RegExp(
+  tagSource(['superscript', 'subscript', 'stack', 'sub', 'sup']),
+  'gi',
+);
+
+/** A whole MathML formula, matched end to end so a strip can never half-consume one. */
+const MATHML_SPAN =
+  /<(?:[A-Za-z][\w.-]*:)?math\b[^>]*>([\s\S]*?)<\/(?:[A-Za-z][\w.-]*:)?math\s*>/gi;
+
+/** Letters and digits in any script — Latin, CJK, Greek — not just ASCII `\w`. */
+const WORD_CHAR = /[\p{L}\p{N}]/u;
+
+/**
+ * Strip the formatting markup a reference free-text field carries, and nothing else.
+ *
+ * The element names are a closed allow-list because the syntax is ambiguous here: an angle
+ * bracket in a deposited citation carries a bracketed URL (`<http://faostat.fao.org/…>`), a
+ * Miller index (`Silicon <100> nanowires`), a DOI fragment (`<131::AID-QUA4>`), or an acronym
+ * (`<IR>`) about as often as it carries a tag, and a blanket strip deletes all four. An
+ * element-name allow-list is what separates them — a bracket survives unless its name is one
+ * this function knows. Names deliberately left off it include `a` and `ext-link`, whose URL
+ * lives in an attribute a strip would delete.
+ *
+ * Three classes, by what the element means for the text around it:
+ * - Scripts (`sub`, `sup`, and their long and Springer spellings) leave no separator —
+ *   `O<sub>2</sub>` is one formula and a space there splits it.
+ * - Inline emphasis is a word boundary and leaves a space only between two word characters,
+ *   so `<i>Ann. Probab.</i>, 49` closes up to `Ann. Probab., 49` rather than `Ann. Probab. ,`.
+ * - Block elements always leave a space: `…revision.</p><p>Smith, J.…` is two citations
+ *   packed into one field, and they must not run together.
+ *
+ * A MathML formula is matched as a whole span and its inner tags come out tight, so
+ * `<msub><mi>Airy</mi><mn>2</mn></msub>` reads as `Airy2`. Removing the span outright would
+ * delete the symbol the sentence is about; an unclosed `<math>` matches nothing and is left
+ * whole rather than half-stripped.
+ */
+export function stripReferenceMarkup(raw: string): string {
+  return raw
+    .replace(MATHML_SPAN, (_, inner: string) => inner.replace(/<[^>]*>/g, ''))
+    .replace(TIGHT_MARKUP_TAG, '')
+    .replace(BLOCK_MARKUP_TAG, ' ')
+    .replace(INLINE_MARKUP_TAG, (run: string, offset: number, whole: string) => {
+      const before = whole[offset - 1];
+      const after = whole[offset + run.length];
+      return before && after && WORD_CHAR.test(before) && WORD_CHAR.test(after) ? ' ' : '';
+    });
+}
+
+/**
+ * Normalize a reference entry's free text: strip formatting markup, then the baseline pass.
+ *
+ * Separate from `normalizeMarkupText` because the two fields are not the same surface. A work
+ * title is deposited as JATS and every tag in it is markup, so a blanket strip is right there.
+ * A reference entry is a citation string a publisher typed, and the same syntax carries both
+ * markup and content — hence the allow-list. Order matches: markup comes out before entities
+ * are decoded, so a deposited `&lt;i&gt;` stays literal.
+ */
+export function normalizeReferenceText(raw: string): string {
+  return normalizeText(stripReferenceMarkup(raw));
 }
 
 /** Format a year/month/day object as an ISO-style date string (e.g. "2023-04-15" or "2023"). */

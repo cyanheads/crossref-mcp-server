@@ -1,5 +1,8 @@
 /**
  * @fileoverview crossref_get_work — resolves a DOI to its full Crossref metadata record.
+ * The deposited author list is paged by offset/limit the way crossref_get_references pages
+ * references: the slice happens once in the handler, so structuredContent and content[] carry
+ * the identical page, and authorCount reports the full deposited total.
  * @module mcp-server/tools/definitions/get-work.tool
  */
 
@@ -65,7 +68,7 @@ const DatePartsSchema = z.object({
 export const getWorkTool = tool('crossref_get_work', {
   title: 'Get Work by DOI',
   description:
-    'Resolves a DOI to its full Crossref metadata record: title, authors, affiliations, abstract (when deposited), journal or container, publication date, type, license, full-text links, and funder acknowledgements. Outgoing references are reported as a count in referencesCount; the reference entries themselves come from crossref_get_references. The isReferencedByCount field reports the total incoming citation count from Crossref; the citing works themselves are not available through Crossref — use OpenAlex for citation graphs.',
+    'Resolves a DOI to its full Crossref metadata record: title, authors, affiliations, abstract (when deposited), journal or container, publication date, type, license, full-text links, and funder acknowledgements. The author list is paged: authorCount is the full deposited total, offset and limit select the page (25 authors by default), and when authors remain the response carries a nextOffset to pass back as offset — large-collaboration papers deposit thousands. Outgoing references are reported as a count in referencesCount; the reference entries themselves come from crossref_get_references. The isReferencedByCount field reports the total incoming citation count from Crossref; the citing works themselves are not available through Crossref — use OpenAlex for citation graphs.',
   annotations: { readOnlyHint: true, idempotentHint: true },
 
   input: z.object({
@@ -78,6 +81,23 @@ export const getWorkTool = tool('crossref_get_work', {
       .describe(
         'DOI in the format "10.NNNN/suffix", e.g. "10.1038/nature12373". Must start with "10." followed by 4–9 digits and a slash.',
       ),
+    offset: z
+      .number()
+      .int()
+      .min(0)
+      .default(0)
+      .describe(
+        'Zero-based index of the first author to return. Pass the nextOffset value from the previous response to continue through a long author list. Only the author list is paged; every other field of the record is returned in full on every page.',
+      ),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(500)
+      .default(25)
+      .describe(
+        'Maximum number of authors to return in one page (1–500, default 25). Ordinary records fit in a single page; large-collaboration papers in particle physics and genomics deposit thousands.',
+      ),
   }),
 
   output: z.object({
@@ -88,7 +108,24 @@ export const getWorkTool = tool('crossref_get_work', {
       .string()
       .optional()
       .describe('Work type (e.g. journal-article, book-chapter, posted-content)'),
-    authors: z.array(AuthorSchema).optional().describe('Author and contributor list'),
+    authors: z
+      .array(AuthorSchema)
+      .optional()
+      .describe(
+        'Page of the author and contributor list, bounded by limit. Omitted when the record deposits no author field at all.',
+      ),
+    authorCount: z
+      .number()
+      .optional()
+      .describe(
+        'Total number of authors in the deposited list, before offset and limit were applied. Omitted alongside authors when the record deposits no author field.',
+      ),
+    offset: z
+      .number()
+      .optional()
+      .describe(
+        'Zero-based index of the first returned author within the deposited list. Omitted alongside authors when the record deposits no author field.',
+      ),
     abstract: z
       .string()
       .optional()
@@ -115,6 +152,27 @@ export const getWorkTool = tool('crossref_get_work', {
     subject: z.array(z.string()).optional().describe('Subject classification terms'),
     language: z.string().optional().describe('Language code (ISO 639)'),
   }),
+
+  enrichment: {
+    nextOffset: z
+      .number()
+      .optional()
+      .describe(
+        'Offset to pass in the next call to retrieve the following page of authors. Absent when this page reaches the end of the author list.',
+      ),
+    truncated: z
+      .boolean()
+      .optional()
+      .describe('True when authors remain beyond this page. Absent when the page is the last.'),
+    shown: z.number().optional().describe('Number of authors returned in this page.'),
+    cap: z.number().optional().describe('The limit that was applied to this page of authors.'),
+    notice: z
+      .string()
+      .optional()
+      .describe(
+        'Which authors this page covers and the offset that reaches the next ones, or an explanation when the requested offset is past the end of the author list. Absent when the page holds the whole list.',
+      ),
+  },
 
   errors: [
     ...UPSTREAM_ERROR_CONTRACT,
@@ -154,12 +212,42 @@ export const getWorkTool = tool('crossref_get_work', {
       raw.published ?? raw['published-print'] ?? raw['published-online'] ?? raw.issued,
     );
 
+    /**
+     * The author list is bounded the same way crossref_get_references bounds references:
+     * sliced once here, before mapping, so structuredContent and format() are handed the
+     * identical page and neither surface can drift from the other. Consortium papers deposit
+     * author lists in the thousands — enough to exhaust a client's context on a single
+     * record — and authorCount is what keeps a bounded page visibly bounded.
+     */
+    const authorTotal = raw.author?.length ?? 0;
+    const authorPage = raw.author
+      ?.slice(input.offset, input.offset + input.limit)
+      .map(normalizeAuthor);
+    const authorNextOffset = input.offset + (authorPage?.length ?? 0);
+
+    if (authorTotal > 0 && input.offset >= authorTotal) {
+      ctx.enrich.notice(
+        `Offset ${input.offset} is past the end of this author list (${authorTotal} authors). Request an offset below ${authorTotal}.`,
+      );
+    } else if (authorNextOffset < authorTotal) {
+      ctx.enrich({ nextOffset: authorNextOffset });
+      ctx.enrich.truncated({
+        shown: authorPage?.length ?? 0,
+        cap: input.limit,
+        guidance: `Showing authors ${input.offset + 1}–${authorNextOffset} of ${authorTotal}. Call again with offset=${authorNextOffset} for the next page.`,
+      });
+    }
+
     return {
       doi: raw.DOI,
       ...(title !== undefined && { title }),
       ...(subtitle !== undefined && { subtitle }),
       ...(raw.type != null && { type: raw.type }),
-      ...(raw.author && { authors: raw.author.map(normalizeAuthor) }),
+      ...(authorPage !== undefined && {
+        authors: authorPage,
+        authorCount: authorTotal,
+        offset: input.offset,
+      }),
       ...(raw.abstract !== undefined && { abstract: normalizeMarkupText(raw.abstract) }),
       ...(raw['is-referenced-by-count'] !== undefined && {
         isReferencedByCount: raw['is-referenced-by-count'],
@@ -219,8 +307,12 @@ export const getWorkTool = tool('crossref_get_work', {
     if (result.referencesCount !== undefined)
       lines.push(`**References:** ${result.referencesCount}`);
 
+    if (result.authorCount !== undefined && result.offset !== undefined) {
+      lines.push(
+        `**Authors:** showing ${result.authors?.length ?? 0} of ${result.authorCount}, starting at index ${result.offset}`,
+      );
+    }
     if (result.authors?.length) {
-      lines.push('**Authors:**');
       for (const a of result.authors) {
         const nameParts = [a.given, a.family, a.name].filter(Boolean);
         const displayName = nameParts.join(' ') || '(unknown)';
