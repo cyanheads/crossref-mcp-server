@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.3.6](changelog/0.3.x/0.3.6.md) — 2026-08-09
+
+crossref_get_references markup strip rewritten (tag shape, MathML/JATS citation regions), full HTML5 named entity set
+
 ## [0.3.5](changelog/0.3.x/0.3.5.md) — 2026-08-09
 
 Author list paging/cap on crossref_get_work and crossref_search_works, reference markup stripped via element-name allow-list
