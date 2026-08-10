@@ -229,8 +229,10 @@ describe('getReferencesTool', () => {
       '<a href="http://arxiv.org/abs/1102.1113v1" target="_blank">',
     );
     expect(result.references[2]?.unstructured).toContain('<www.ecfr.gov>');
-    expect(result.references[3]?.unstructured).toContain(
-      '<uri>https://www.pcne.org/upload/417.pdf</uri>',
+    // A `<uri>` with no attribute holds nothing a reader can lose, so its tags come out and
+    // the URL it wraps is left standing on its own.
+    expect(result.references[3]?.unstructured).toBe(
+      'PCNE classification. Available from https://www.pcne.org/upload/417.pdf.',
     );
     expect(result.references[4]?.unstructured).toContain(
       '<The Internet Movie DataBase, http://www.imdb.com/>',

@@ -28,6 +28,7 @@ vi.mock('@/config/server-config.js', () => ({
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import {
   CrossrefService,
+  ELEMENT_VERDICTS,
   formatDateParts,
   getCrossrefService,
   initCrossrefService,
@@ -776,6 +777,122 @@ describe('normalizeMarkupText', () => {
     expect(normalizeMarkupText('end<jats:supplementary-material />next')).toBe('end next');
     expect(normalizeMarkupText('a<subject>b</subject>c')).toBe('a b c');
   });
+
+  /**
+   * The deposit behind the divergence: an abstract whose formulas are presentation MathML
+   * wrapped in `<inline-formula>`. Every tag inside the region comes out with the whitespace
+   * a deposit pretty-prints between them, so the expression reads as one token instead of
+   * being shattered into single characters.
+   */
+  it('renders a MathML formula in an abstract as one expression', () => {
+    const abstract = [
+      '<p>If',
+      '  <inline-formula content-type="math/mathml">',
+      '    <mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" alttext="script upper H">',
+      '      <mml:semantics>',
+      '        <mml:mrow class="MJX-TeXAtom-ORD">',
+      '          <mml:mi mathvariant="script">H</mml:mi>',
+      '        </mml:mrow>',
+      '        <mml:annotation encoding="application/x-tex">\\mathcal {H}</mml:annotation>',
+      '      </mml:semantics>',
+      '    </mml:math>',
+      '  </inline-formula>',
+      '  is a Hilbert space.</p>',
+    ].join('\n');
+    expect(normalizeMarkupText(abstract)).toBe('If H is a Hilbert space.');
+  });
+
+  /**
+   * A formula region stands as its own token in the sentence — a MathML deposit carries the
+   * whole symbol, and publishers deposit it hard against the prose — so its outer edge is a
+   * block boundary even though its inner tags join tight.
+   */
+  it('separates a MathML region from the prose it abuts', () => {
+    const raw =
+      'states of neutron-rich<mml:math xmlns:mml="x"><mml:mmultiscripts><mml:mi>Si</mml:mi><mml:mprescripts /><mml:none /><mml:mn>33</mml:mn></mml:mmultiscripts></mml:math>and thin films';
+    expect(normalizeMarkupText(raw)).toBe('states of neutron-rich Si33 and thin films');
+    expect(normalizeReferenceText(raw)).toBe('states of neutron-rich Si33 and thin films');
+  });
+
+  /**
+   * Whitespace between a region's tags is the deposit's pretty-printing, not part of the
+   * expression — it is insignificant in XML, and keeping it splits one token into two. A formula
+   * that needs a visible space writes it as a character reference, which the strip leaves for
+   * the decode.
+   */
+  it('drops the whitespace a MathML deposit pretty-prints between its tags', () => {
+    expect(normalizeMarkupText('<math>\n  <mi>Airy</mi>\n  <mn>2</mn>\n</math>')).toBe('Airy2');
+    expect(
+      normalizeMarkupText('<math>\n  <mi>a</mi>\n  <mo>&nbsp;</mo>\n  <mi>b</mi>\n</math>'),
+    ).toBe('a b');
+  });
+
+  /**
+   * The alternate encoding a MathML deposit carries beside its presentation markup is the same
+   * expression a second time. Emitting both renders one formula twice.
+   */
+  it('drops the alternate encoding a MathML deposit carries', () => {
+    expect(
+      normalizeMarkupText(
+        '<math><msup><mi>A</mi><mn>2</mn></msup><annotation-xml encoding="MathML-Content"><apply><power/><ci>A</ci><cn>2</cn></apply></annotation-xml></math>',
+      ),
+    ).toBe('A2');
+  });
+
+  /**
+   * The tight class is shared with the reference pass, so the spellings only that pass used to
+   * know join tight here too rather than shattering the token they sit in.
+   */
+  it('joins every script and formula-wrapper spelling tight', () => {
+    expect(normalizeMarkupText('high T<inf>c</inf>-dc-SQUID gradiometers')).toBe(
+      'high Tc-dc-SQUID gradiometers',
+    );
+    expect(normalizeMarkupText('O<Stack><Subscript>2</Subscript></Stack> uptake')).toBe(
+      'O2 uptake',
+    );
+    expect(
+      normalizeMarkupText(
+        'Ni/<inline-formula><tex-math>$\\hbox{HfO}_{2}$</tex-math></inline-formula>/TiN',
+      ),
+    ).toBe('Ni/$\\hbox{HfO}_{2}$/TiN');
+    // A displayed formula is still a block boundary, here as there.
+    expect(normalizeMarkupText('result<disp-formula>E = mc2</disp-formula>follows')).toBe(
+      'result E = mc2 follows',
+    );
+  });
+
+  /**
+   * The link exception holds on this surface too, where it is earned. An `<ext-link>` whose
+   * `xlink:href` addresses a trial record its text does not name keeps its tag, because
+   * removing the tag deletes the address — the same failure the rule exists to prevent,
+   * whichever field it happens in.
+   */
+  it('leaves a link in an abstract whole when its address is only in the href', () => {
+    const raw =
+      '<jats:p>Registered at <jats:ext-link ext-link-type="clintrialgov" xlink:href="https://clinicaltrials.gov/ct2/show/NCT01234567">NCT01234567</jats:ext-link>.</jats:p>';
+    expect(normalizeMarkupText(raw)).toBe(
+      'Registered at <jats:ext-link ext-link-type="clintrialgov" xlink:href="https://clinicaltrials.gov/ct2/show/NCT01234567">NCT01234567</jats:ext-link>.',
+    );
+  });
+
+  /**
+   * And comes out where it is not. A structured abstract deposits its trial registration,
+   * accession, or URL as the element's own text and repeats it in the `href`, so the tag
+   * protects nothing while putting a namespace-bearing XML tag in the middle of an abstract.
+   * The trailing space before the period is the deposit's own line break, not the strip's.
+   */
+  it('removes a link in an abstract whose text already carries the address', () => {
+    expect(
+      normalizeMarkupText(
+        '<jats:sec><jats:title>Trial registration number</jats:title><jats:p>\n  <jats:ext-link xmlns:xlink="http://www.w3.org/1999/xlink" ext-link-type="clintrialgov" xlink:href="NCT06494904">NCT06494904</jats:ext-link>\n  .\n</jats:p></jats:sec>',
+      ),
+    ).toBe('Trial registration number NCT06494904 .');
+    expect(
+      normalizeMarkupText(
+        'Visit <jats:uri xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" xlink:href="http://www.microscopy.com">http://www.microscopy.com</jats:uri> today.',
+      ),
+    ).toBe('Visit http://www.microscopy.com today.');
+  });
 });
 
 describe('stripReferenceMarkup', () => {
@@ -809,17 +926,33 @@ describe('stripReferenceMarkup', () => {
   });
 
   /**
-   * A link's URL lives in an attribute, so stripping the tag would delete it. `a`, `ext-link`,
-   * and `uri` — which takes an `xlink:href` in JATS — stay off the allow-list for that reason,
-   * not by oversight.
+   * A link's URL can live in an attribute, so removing the tag can delete it. `a`, `ext-link`,
+   * and `uri` — which takes an `xlink:href` in JATS — are off the name list for that reason,
+   * and stay whole wherever the text does not already carry what the `href` holds.
    */
   it('leaves a link tag whole so its href survives', () => {
     const anchor = 'Preprint, <a href="http://arxiv.org/abs/1102.1113v1">arXiv:1102.1113v1</a>.';
     expect(stripReferenceMarkup(anchor)).toBe(anchor);
-    const extLink = 'at <ext-link xlink:href="http://x.org/a.pdf">http://x.org/a.pdf</ext-link>.';
-    expect(stripReferenceMarkup(extLink)).toBe(extLink);
-    const uri = 'Available from <uri>https://www.pcne.org/upload/files/417.pdf</uri>. Accessed.';
-    expect(stripReferenceMarkup(uri)).toBe(uri);
+    const doi =
+      'Bagci A.S. <a href="http://dx.doi.org/10.2118/113234-MS">doi: 10.2118/113234-MS.</a>';
+    expect(stripReferenceMarkup(doi)).toBe(doi);
+  });
+
+  /**
+   * And comes out where the deposit put the same address in the element's text — the common
+   * shape in a reference list, where a publisher links a citation to the URL it already prints.
+   */
+  it('removes a link tag whose text already carries the address', () => {
+    expect(
+      stripReferenceMarkup(
+        'WHO. <ext-link xlink:href="http://www.who.int/mediacentre/fs375/en/">http://www.who.int/mediacentre/fs375/en/</ext-link>.',
+      ),
+    ).toBe('WHO. http://www.who.int/mediacentre/fs375/en/.');
+    expect(
+      stripReferenceMarkup(
+        'Available from <uri>https://www.pcne.org/upload/files/417.pdf</uri>. Accessed.',
+      ),
+    ).toBe('Available from https://www.pcne.org/upload/files/417.pdf. Accessed.');
   });
 
   /**
@@ -850,15 +983,77 @@ describe('stripReferenceMarkup', () => {
     expect(stripReferenceMarkup('The <B. subtilis> strain')).toBe('The <B. subtilis> strain');
   });
 
+  /**
+   * A reference separator one publisher appends to each packed citation. It is self-closing,
+   * carries nothing in an attribute, and has no ordinary-word reading, so it is admitted by
+   * name like any other block boundary. Admitting it by *shape* instead — treating a
+   * self-closing tag as markup whatever its name — was the tempting alternative and would
+   * delete `<www.voith.com/>`, a bare-domain URL bracket that parses the same way.
+   */
+  it('separates on the refersplit marker in both its self-closing spellings', () => {
+    expect(
+      normalizeReferenceText(
+        'BASILE F. Modeling and Design for the Attitude Control Phase of the LISA Drag-Free Mission[D]. Torino: Politecnico di Torino, 2019<refersplit />',
+      ),
+    ).toBe(
+      'BASILE F. Modeling and Design for the Attitude Control Phase of the LISA Drag-Free Mission[D]. Torino: Politecnico di Torino, 2019',
+    );
+    expect(normalizeReferenceText('First citation.<refersplit/>Second citation.')).toBe(
+      'First citation. Second citation.',
+    );
+    expect(stripReferenceMarkup('Voith turbo, <www.voith.com/>, accessed 2019.')).toBe(
+      'Voith turbo, <www.voith.com/>, accessed 2019.',
+    );
+  });
+
+  /**
+   * A valueless attribute is prose as far as the shape test can tell — admitting one reopens
+   * `<Bold statement about X>`, which parses as three of them — so `<span hidden>` is not a
+   * tag. Its attribute-free closer matches the shape on its own, which is how the element used
+   * to come apart: opener kept, closer removed. A closer is now removed only if the matching
+   * opener was, so the pair stands or falls together.
+   */
+  it('keeps both halves of an element whose opening tag fails the shape test', () => {
+    expect(stripReferenceMarkup('a <span hidden>b</span> c')).toBe('a <span hidden>b</span> c');
+    expect(stripReferenceMarkup('a <i lang>b</i> c')).toBe('a <i lang>b</i> c');
+    expect(stripJats('a <span hidden>b</span> c')).toBe('a <span hidden>b</span> c');
+    // A closer with no opener at all has the same standing: nothing to close.
+    expect(stripReferenceMarkup('trailing</i> fragment')).toBe('trailing</i> fragment');
+    // Improper nesting still resolves each closer against its own opener.
+    expect(stripReferenceMarkup('<i><b>x</i></b>')).toBe('x');
+    // And a closer resolves against its own name, not against whatever opener is on top:
+    // an enclosing `<i>` is not what `</span>` closes.
+    expect(stripReferenceMarkup('<i>a <span hidden>b</span> c</i>')).toBe(
+      'a <span hidden>b</span> c',
+    );
+  });
+
   /** A deeply nested or bracket-heavy field must not send the matcher exponential. */
   it('returns promptly on adversarial bracket input', () => {
-    const nested = `${'<i><b><sub>'.repeat(400)}x${'</sub></b></i>'.repeat(400)}`;
-    const unterminated = `<p class="a" ${'x = "y" '.repeat(600)}`;
+    const adversarial = [
+      `${'<i><b><sub>'.repeat(400)}x${'</sub></b></i>'.repeat(400)}`,
+      // A tag the deposit never terminated: the attribute tail has to reject it without
+      // exploring a parse per attribute. A budget of seconds hides exactly that blowup, so
+      // the bound is tight enough to fail on it — the shape costs under a millisecond.
+      `<p class="a" ${'x = "y" '.repeat(600)}`,
+      `${'<math><mi>'.repeat(400)}z`,
+      `${'<mixed-citation><surname>A</surname>'.repeat(400)}`,
+      '</i>'.repeat(20_000),
+      // Link elements are the one class that scans forward from a tag for its own closing
+      // tag, so a field packed with openers that never close is what makes that scan
+      // quadratic if it is written carelessly.
+      `${'<ext-link xlink:href="https://example.org/a">'.repeat(2_000)}x`,
+      `${'<a href="https://example.org/a">text</a>'.repeat(2_000)}`,
+      // A link whose href is a long unterminated attribute run: the href matcher has to
+      // reject it without exploring a parse per space.
+      `<ext-link ${'href = "y" '.repeat(600)}`,
+    ];
     const started = Date.now();
-    stripReferenceMarkup(nested);
-    stripReferenceMarkup(unterminated);
-    stripReferenceMarkup(`${'<math><mi>'.repeat(400)}z`);
-    expect(Date.now() - started).toBeLessThan(2_000);
+    for (const raw of adversarial) {
+      stripReferenceMarkup(raw);
+      stripJats(raw);
+    }
+    expect(Date.now() - started).toBeLessThan(500);
   });
 
   /**
@@ -982,22 +1177,21 @@ describe('stripReferenceMarkup', () => {
   });
 
   /**
-   * The link exception holds at any nesting: inside an envelope every other name comes out,
-   * and `uri` and `ext-link` still keep their tags because their address can live in an
-   * attribute. This is the only place the exception does any work — outside an envelope
-   * neither name is on a strip list to begin with.
+   * The link exception holds at any nesting: inside an envelope every other name comes out
+   * unconditionally, while a link is still decided against its own text. An envelope settles
+   * that nothing inside it was typed by hand; it says nothing about where an address lives.
    */
-  it('spares every link spelling inside a citation envelope', () => {
+  it('decides a link inside a citation envelope on its own text', () => {
     expect(
       normalizeReferenceText(
         '<mixed-citation>Available from <uri>https://www.pcne.org/x.pdf</uri>. Accessed.</mixed-citation>',
       ),
-    ).toBe('Available from <uri>https://www.pcne.org/x.pdf</uri>. Accessed.');
+    ).toBe('Available from https://www.pcne.org/x.pdf. Accessed.');
     expect(
       normalizeReferenceText(
-        '<mixed-citation>WHO. <ext-link xlink:href="http://who.int/a">http://who.int/a</ext-link>.</mixed-citation>',
+        '<mixed-citation>WHO. <ext-link xlink:href="http://who.int/a/b">factsheet</ext-link>.</mixed-citation>',
       ),
-    ).toBe('WHO. <ext-link xlink:href="http://who.int/a">http://who.int/a</ext-link>.');
+    ).toBe('WHO. <ext-link xlink:href="http://who.int/a/b">factsheet</ext-link>.');
   });
 
   /** A displayed formula is a block boundary; an inline one and its TeX body join tight. */
@@ -1094,6 +1288,286 @@ describe('stripReferenceMarkup', () => {
     expect(stripReferenceMarkup('Smith J. 2010. A paper. Nature.')).toBe(
       'Smith J. 2010. A paper. Nature.',
     );
+  });
+});
+
+/**
+ * The two markup passes run one implementation over one rule and differ in exactly one thing:
+ * what an unrecognized element name means. Everything else — the shape test, the regions, the
+ * three separator classes, the link exception — is shared, and this file is what keeps it that
+ * way. Each surface drifting from the other has been the defect four times running; a case that
+ * belongs in the agreeing list and is not there is how the fifth one starts.
+ */
+describe('the JATS pass and the reference pass', () => {
+  /**
+   * Everything a recognized element name decides is shared, so both passes answer identically.
+   * Half of these are the content survivors the reference rule exists to protect — they are
+   * listed here rather than only on the reference surface because the shape test now guards
+   * both, and a bracketed URL in a container title is no more disposable than one in a citation.
+   */
+  it('agrees on every input either surface recognizes', () => {
+    const agreeing: Array<[string, string]> = [
+      // Scripts and formula wrappers join tight, in every spelling.
+      ['Uptake of CO<sub>2</sub> and H<sub>2</sub>O', 'Uptake of CO2 and H2O'],
+      ['high T<inf>c</inf>-dc-SQUID gradiometers', 'high Tc-dc-SQUID gradiometers'],
+      ['O<Stack><Subscript>2</Subscript><Superscript>-</Superscript></Stack>', 'O2-'],
+      ['Ni/<inline-formula><tex-math>$x$</tex-math></inline-formula>/TiN', 'Ni/$x$/TiN'],
+      [
+        'Correlation of <ref_formula><tex>$1/f$</tex></ref_formula> noise',
+        'Correlation of $1/f$ noise',
+      ],
+      // A MathML formula is a region on both surfaces, and renders once.
+      [
+        'Fractal geometry of <math xmlns="x"><semantics><msub><mi>Airy</mi><mn>2</mn></msub><annotation encoding="application/x-tex">\\mathrm{Airy}_2</annotation></semantics></math> processes',
+        'Fractal geometry of Airy2 processes',
+      ],
+      // Inline emphasis is a word boundary, not an unconditional space.
+      [
+        'T.Isobe, <i>J. Am. ceram. Soc.</i>, <b>90</b>, 3720',
+        'T.Isobe, J. Am. ceram. Soc., 90, 3720',
+      ],
+      ['A<i>B</i>C', 'A B C'],
+      // A word character is any script's letter or digit, not just ASCII.
+      ['Влияние<i>температуры</i>на', 'Влияние температуры на'],
+      ['<span class="smallcaps">xvii</span><sup>e</sup> siècles', 'xviie siècles'],
+      // A sentence-ending mark counts on the left the way a word character does, so a heading
+      // a publisher marks with `<bold>` instead of `<title>` keeps its space.
+      [
+        'effectiveness of MOC.<bold>Methods</bold>We performed',
+        'effectiveness of MOC. Methods We performed',
+      ],
+      [
+        'Nobility or Utility?<i>Zamindars</i>, businessmen',
+        'Nobility or Utility? Zamindars, businessmen',
+      ],
+      // It counts on the left only, or an italic journal title gains back the stray space
+      // before the comma that the word-boundary rule exists to remove.
+      ['<i>J. Am. Ceram. Soc.</i>, 49', 'J. Am. Ceram. Soc., 49'],
+      // And a comma does not end a sentence: a chemical name that italicizes its locants runs
+      // through one, and a space there splits the compound.
+      [
+        'Sodium Bromide in <i>N</i>,<i>N</i>-Dimethylformamide',
+        'Sodium Bromide in N,N-Dimethylformamide',
+      ],
+      // Block elements always separate.
+      ['<p>One citation.</p><p>Another.</p>', 'One citation. Another.'],
+      ['Torino: Politecnico, 2019<refersplit />', 'Torino: Politecnico, 2019'],
+      // A link keeps its tag, because the address lives in an attribute.
+      [
+        'Preprint, <a href="http://arxiv.org/abs/1102.1113v1">arXiv:1102.1113v1</a>.',
+        'Preprint, <a href="http://arxiv.org/abs/1102.1113v1">arXiv:1102.1113v1</a>.',
+      ],
+      // The content survivors: a bracket that is not shaped like a tag is not markup, anywhere.
+      [
+        'FAOSTAT. <http://faostat.fao.org/site/291/default.aspx>.',
+        'FAOSTAT. <http://faostat.fao.org/site/291/default.aspx>.',
+      ],
+      ['Silicon <100> nanowires', 'Silicon <100> nanowires'],
+      [
+        '10.1002/(SICI)1097-461X(1998)66:2<131::AID-QUA4>3.0.CO;2-W',
+        '10.1002/(SICI)1097-461X(1998)66:2<131::AID-QUA4>3.0.CO;2-W',
+      ],
+      ['ZnxFe3-xO4 (0.01 < x > 0.8) nanoparticles', 'ZnxFe3-xO4 (0.01 < x > 0.8) nanoparticles'],
+      ['The <B. subtilis> strain', 'The <B. subtilis> strain'],
+      [
+        'See <Stack Overflow, https://stackoverflow.com/q/1234>, retrieved 2020.',
+        'See <Stack Overflow, https://stackoverflow.com/q/1234>, retrieved 2020.',
+      ],
+      // A citation envelope closes at its own end tag on both surfaces.
+      [
+        '<citation>Kato T. 1984.</citation> and <citation>Beale J. 1986.</citation>',
+        'Kato T. 1984. and Beale J. 1986.',
+      ],
+      // The ordering both passes depend on: markup out, then entities.
+      ['Use &lt;i&gt; for italics', 'Use <i> for italics'],
+      ['Deposited as &amp;lt;i&amp;gt;', 'Deposited as &lt;i&gt;'],
+      ['Interleukin-1-&beta; and M&uuml;ller', 'Interleukin-1-β and Müller'],
+    ];
+    for (const [raw, expected] of agreeing) {
+      expect(normalizeMarkupText(raw), `JATS pass on ${raw}`).toBe(expected);
+      expect(normalizeReferenceText(raw), `reference pass on ${raw}`).toBe(expected);
+    }
+  });
+
+  /**
+   * The one justified difference, and the whole of it. A title or abstract is deposited as JATS,
+   * so a raw `<` in it came out of an XML document: an unrecognized name is structure and is
+   * removed as a block boundary, which is the only reason `<sec>` and `<list-item>` do not reach
+   * a reader. A reference entry is a citation string a publisher typed, where the same syntax
+   * carries content, so an unrecognized name stays.
+   */
+  it('differs only on an element name neither surface classifies', () => {
+    const differing: Array<[string, string, string]> = [
+      [
+        '<sec><title>Background</title><p>Body.</p></sec>',
+        'Background Body.',
+        '<sec><title>Background</title> Body. </sec>',
+      ],
+      ['a<subject>b</subject>c', 'a b c', 'a<subject>b</subject>c'],
+      ['<list><list-item>One</list-item></list>', 'One', '<list><list-item>One</list-item></list>'],
+      [
+        'Cold Spring Harbor, <volume>876</volume> pp.',
+        'Cold Spring Harbor, 876 pp.',
+        'Cold Spring Harbor, <volume>876</volume> pp.',
+      ],
+      /**
+       * An unclosed region matches nothing on either surface — that part is shared. What is
+       * left behind then falls to the same one difference, because no MathML element name is
+       * on a class list.
+       */
+      [
+        'Unclosed <math xmlns="x"><mi>Z</mi> with no end',
+        'Unclosed Z with no end',
+        'Unclosed <math xmlns="x"><mi>Z</mi> with no end',
+      ],
+    ];
+    for (const [raw, jats, reference] of differing) {
+      expect(normalizeMarkupText(raw), `JATS pass on ${raw}`).toBe(jats);
+      expect(normalizeReferenceText(raw), `reference pass on ${raw}`).toBe(reference);
+    }
+  });
+
+  /**
+   * Every admitted name, pinned by what a caller sees rather than by its presence in a list.
+   * Two probes separate the four verdicts: one where the tag sits between two word characters,
+   * one where it sits between two periods. A name admitted with no case behind it is how the
+   * separator classes drifted the first time. The second probe also separates the two halves of
+   * the word-boundary rule: an inline tag opening after a period starts a new word and takes the
+   * space, while its closer sits before a period and does not.
+   */
+  it('gives every classified element name the behavior its class promises', () => {
+    const joined: Record<string, [string, string]> = {
+      tight: ['aXc', 'a.X.c'],
+      inline: ['a X c', 'a. X.c'],
+      block: ['a X c', 'a. X .c'],
+      keep: ['a<n>X</n>c', 'a.<n>X</n>.c'],
+    };
+    for (const [name, verdict] of ELEMENT_VERDICTS) {
+      const [tight, spaced] = joined[verdict] as [string, string];
+      /**
+       * A `keep` name is a link element, and it keeps its tags only while its `href` holds an
+       * address its text does not. The probe hands it one, so what is measured is the verdict
+       * rather than the absence of an attribute; the conditional half is pinned on its own.
+       */
+      const open =
+        verdict === 'keep' ? `<${name} href="https://example.org/${name}/deep">` : `<${name}>`;
+      const expand = (s: string) => s.replaceAll('<n>', open).replaceAll('</n>', `</${name}>`);
+      for (const pass of [normalizeMarkupText, normalizeReferenceText]) {
+        expect(pass(`a${open}X</${name}>c`), `${name} (${verdict})`).toBe(expand(tight));
+        expect(pass(`a.${open}X</${name}>.c`), `${name} (${verdict})`).toBe(expand(spaced));
+      }
+    }
+  });
+
+  /**
+   * The whole of the link rule, driven on both surfaces because both read it. A link element is
+   * the one class decided per occurrence rather than per name: its tags come out exactly when
+   * removing them cannot cost the reader the address, and stay whenever it can.
+   */
+  it('removes a link element only where its address survives without the tag', () => {
+    /** Cases where nothing is at risk, so the tags come out as a word boundary. */
+    const removed: Array<[string, string]> = [
+      // The text repeats the href verbatim — an accession, a registration, a bare URL.
+      [
+        'number <ext-link ext-link-type="clintrialgov" xlink:href="NCT06494904">NCT06494904</ext-link>.',
+        'number NCT06494904.',
+      ],
+      [
+        'number <ext-link ext-link-type="clintrialgov" xlink:href="NCT02105844">NCT02105844</ext-link>.',
+        'number NCT02105844.',
+      ],
+      [
+        'at <uri xlink:type="simple" xlink:href="http://www.microscopy.com">http://www.microscopy.com</uri>.',
+        'at http://www.microscopy.com.',
+      ],
+      [
+        'Data: <ext-link xlink:href="https://osf.io/t5nes/?view_only=07c7590306624eb7a6510d5c69e26c02" ext-link-type="uri">https://osf.io/t5nes/?view_only=07c7590306624eb7a6510d5c69e26c02</ext-link>',
+        'Data: https://osf.io/t5nes/?view_only=07c7590306624eb7a6510d5c69e26c02',
+      ],
+      // Everything but the scheme is in the text: the reader keeps what identifies the resource.
+      [
+        'See <ext-link xlink:href="http://www.fasebj.org">www.fasebj.org</ext-link>.',
+        'See www.fasebj.org.',
+      ],
+      [
+        'See <ext-link xlink:href="http://www.interscience.wiley.com">www.interscience.wiley.com</ext-link>.',
+        'See www.interscience.wiley.com.',
+      ],
+      // A bare fragment names a place inside the publisher's own XML, which the reader does not
+      // have, so it resolves to nothing and there is nothing to preserve.
+      [
+        'as <ext-link xlink:href="#b1">Turner’s (1995</ext-link>) argued',
+        'as Turner’s (1995) argued',
+      ],
+      ['see <a href="#nph15488-sec-0002">Introduction</a>', 'see Introduction'],
+      // No attribute at all: nothing of the element's value lives anywhere but its text.
+      [
+        'Registered at <ext-link>https://osf.io/cxqrz</ext-link>.',
+        'Registered at https://osf.io/cxqrz.',
+      ],
+      ['<a name="fn1">note</a>', 'note'],
+      ['an empty <a href="">anchor</a>', 'an empty anchor'],
+      // The tags are a word boundary like any other inline element, not an unconditional space.
+      ['A<a href="#x">B</a>C', 'A B C'],
+      ['J. Am. Ceram. Soc.<a href="#x">49</a>, 1', 'J. Am. Ceram. Soc. 49, 1'],
+      ['see<a href="#x">Fig. 1</a>, and', 'see Fig. 1, and'],
+    ];
+
+    /** Cases where the href addresses something the text does not name. */
+    const kept = [
+      // The path behind a bare host is exactly what identifies the record.
+      'URL: <ext-link ext-link-type="uri" xlink:href="https://clinicaltrials.gov/ct2/show/NCT02196038">https://clinicaltrials.gov/</ext-link>;',
+      // A hyperlinked taxon or gene name: the text names the thing, the href addresses it.
+      '<ext-link xlink:href="https://lpsn.dsmz.de/genus/haloactinopolyspora">Haloactinopolyspora</ext-link>',
+      '<ext-link xlink:href="http://www.uniprot.org/uniprot/P12643">BMP-2</ext-link>',
+      // `www.` is a DNS label and a trailing slash is a path, so neither is a difference the
+      // comparison forgives — the text has to carry the host and path it is given.
+      'at <ext-link xlink:href="https://www.example.org/a">example.org/a</ext-link>.',
+      'at <ext-link xlink:href="https://example.org/a/">example.org/a</ext-link>.',
+      // Nor is a resolver host: `doi.org` is part of the address, not a prefix to be assumed.
+      'see <a href="https://doi.org/10.1002/cssc.201600243">10.1002/cssc.201600243</a>.',
+      // A self-closing link wraps no text, so nothing there can carry the address.
+      'Source <ext-link xlink:href="https://example.org/a" />.',
+      // An element the deposit never closes: its text cannot be seen, so it is not judged.
+      'Source <ext-link xlink:href="https://example.org/a">unterminated',
+    ];
+
+    // A link the deposit never closes does not settle the ones before it. Recording the name
+    // as unclosed is what keeps the scan for a closing tag from running once per opener, and
+    // it is sound only because tags are visited left to right.
+    expect(normalizeMarkupText('a <a href="#x">B</a> c <a href="https://e.org/z">d')).toBe(
+      'a B c <a href="https://e.org/z">d',
+    );
+
+    for (const [raw, expected] of removed) {
+      expect(normalizeMarkupText(raw), `JATS pass on ${raw}`).toBe(expected);
+      expect(normalizeReferenceText(raw), `reference pass on ${raw}`).toBe(expected);
+    }
+    for (const raw of kept) {
+      expect(normalizeMarkupText(raw), `JATS pass on ${raw}`).toBe(raw);
+      expect(normalizeReferenceText(raw), `reference pass on ${raw}`).toBe(raw);
+    }
+  });
+
+  /**
+   * What the block default costs on the JATS surface, and the whole of that too: a bracketed
+   * single token that reads as an element name — an acronym, a bare domain, an ordinary word —
+   * is removed as though it were structure. It is the counterpart of the bare single-letter tag
+   * the reference surface strips, accepted for the same kind of reason: the alternative leaves
+   * `<sec>`, `<title>`, and `<list-item>` standing in every structured abstract. Pinned so a
+   * later change to the default cannot move it silently.
+   */
+  it('removes a bracketed single token from a JATS-deposited field', () => {
+    const residual = [
+      'International <IR> Framework',
+      'EPA standards, <www.ecfr.gov>, as of May 27, 2014.',
+      'entre <ruptures> affichées',
+    ];
+    for (const raw of residual) {
+      expect(normalizeMarkupText(raw), `JATS pass on ${raw}`).not.toContain('<');
+      expect(normalizeReferenceText(raw), `reference pass on ${raw}`).toBe(raw);
+    }
+    expect(normalizeMarkupText('International <IR> Framework')).toBe('International Framework');
   });
 });
 

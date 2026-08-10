@@ -129,7 +129,9 @@ export const getWorkTool = tool('crossref_get_work', {
     abstract: z
       .string()
       .optional()
-      .describe('Abstract when deposited by the publisher. Many records lack abstracts.'),
+      .describe(
+        'Abstract when deposited by the publisher. Many records lack abstracts. Publishers deposit it as JATS XML, so this is the text of that deposit with markup removed and character references decoded; a link keeps its tag only where its href holds an address the text it wraps does not already carry.',
+      ),
     isReferencedByCount: z
       .number()
       .optional()

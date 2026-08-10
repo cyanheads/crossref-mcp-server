@@ -61,7 +61,12 @@ const WorkSummarySchema = z
     publisher: z.string().optional().describe('Publisher name'),
     isReferencedByCount: z.number().optional().describe('Incoming citation count'),
     score: z.number().optional().describe('Relevance score assigned by Crossref'),
-    abstract: z.string().optional().describe('Abstract when present in the indexed record'),
+    abstract: z
+      .string()
+      .optional()
+      .describe(
+        'Abstract when present in the indexed record — the text of the publisher’s JATS deposit, with markup removed and character references decoded; a link keeps its tag only where its href holds an address the text it wraps does not already carry',
+      ),
   })
   .describe('Work summary');
 

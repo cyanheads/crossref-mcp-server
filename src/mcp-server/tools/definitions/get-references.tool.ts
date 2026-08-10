@@ -25,7 +25,7 @@ const ReferenceSchema = z
       .string()
       .optional()
       .describe(
-        'Citation string as deposited by the publisher, with formatting markup and structured-citation tags removed. Angle-bracketed text that is not recognizable as markup — a cited URL, a Miller index, a DOI fragment, a link whose address sits in an href — is left exactly as deposited.',
+        'Citation string as deposited by the publisher, with formatting markup and structured-citation tags removed. Angle-bracketed text that is not recognizable as markup — a cited URL, a Miller index, a DOI fragment — is left exactly as deposited, and so is a link whose href holds an address the text it wraps does not already carry.',
       ),
     author: z
       .string()

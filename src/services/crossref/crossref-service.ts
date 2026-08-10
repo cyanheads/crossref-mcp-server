@@ -7,11 +7,14 @@
  *
  * Also home to the text normalization every tool projects free-text values through —
  * `normalizeText` for the baseline pass, `normalizeMarkupText` for the JATS-deposited fields,
- * and `normalizeReferenceText` for the deposited citation strings, where an angle bracket is
- * as likely to be content as markup and a tag is recognized by its shape, by sitting inside a
- * markup region, or by an element-name allow-list — see `stripReferenceMarkup` for the rule.
- * All three end in the same baseline: character references decoded against the HTML5 named
- * set in `html-entities`, then whitespace collapsed.
+ * and `normalizeReferenceText` for the deposited citation strings. The two markup passes are
+ * one rule over one implementation (`stripMarkup`): a bracket is removed only when it is
+ * recognizable as markup, by its shape, by sitting inside a markup region, or by its element
+ * name — and they differ in exactly one thing, what an unrecognized element name means. A link
+ * element is the one class settled per occurrence instead of per name, since its tags may come
+ * out only where its own text already carries the address its `href` holds. All three passes
+ * end in the same baseline: character references decoded against the HTML5 named set in
+ * `html-entities`, then whitespace collapsed.
  * @module services/crossref/crossref-service
  */
 
@@ -64,25 +67,6 @@ function collapseWhitespace(raw: string): string {
 }
 
 /**
- * Subscript and superscript tags, with or without a namespace prefix (`<jats:sub>`) or
- * attributes. `\b` after the name keeps `<subject>` and `<supplementary-material>` out.
- */
-const TIGHT_TAG = /<\/?(?:[A-Za-z][\w.-]*:)?su[bp]\b[^>]*>/gi;
-
-/**
- * Strip JATS XML tags from a deposited string, collapsing the whitespace they leave behind.
- *
- * A tag is a word boundary and becomes a space — that separator is what keeps adjacent JATS
- * paragraphs in an abstract from running together. Subscripts and superscripts are the
- * exception: their content continues the token around them, so `CO<sub>2</sub>` is one
- * formula and a space there splits it. Those come out with no separator; every other tag
- * still yields one.
- */
-export function stripJats(raw: string): string {
-  return collapseWhitespace(raw.replace(TIGHT_TAG, '').replace(/<[^>]+>/g, ' '));
-}
-
-/**
  * Normalize a human-readable upstream string for output: decode character references,
  * collapse whitespace, trim.
  *
@@ -101,36 +85,43 @@ export function normalizeText(raw: string): string {
 }
 
 /**
- * Normalize a field publishers deposit as JATS/XML markup — work titles, subtitles, container
- * titles, and abstracts — by stripping inline tags before the baseline pass.
- *
- * Order matters: tags come out before entities are decoded, so a deposited `&lt;i&gt;` stays
- * literal text instead of decoding into a tag the strip pass would then eat.
- */
-export function normalizeMarkupText(raw: string): string {
-  return normalizeText(stripJats(raw));
-}
-
-/**
  * The attribute tail of a well-formed tag: zero or more `name="value"` pairs, quoted or bare.
  * Requiring the `=` is what separates a tag from a bracketed phrase that merely opens with an
  * element name. `<Stack Overflow, https://…>`, `<Available from: http://…>`, and `<The Internet
  * Movie DataBase, http://…>` are all text a reader needs, and all three read as a tag under a
  * looser `<name\b[^>]*>`.
+ *
+ * The bare-value form excludes quotes so that each value has exactly one parse. Letting it also
+ * match `"y"` gives every attribute two readings and the whole tail 2^n of them, which a tag
+ * left unterminated by its deposit backtracks through: `<p class="a" x = "y" x = "y" …` costs
+ * seconds at fifty pairs and does not improve with fewer. A bare value containing a quote is not
+ * well formed in any case.
  */
-const TAG_ATTRIBUTES = String.raw`(?:\s+[A-Za-z_:][\w.:-]*\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))*\s*`;
+const TAG_ATTRIBUTES = String.raw`(?:\s+[A-Za-z_:][\w.:-]*\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>"']+))*\s*`;
 
 /**
- * Build a tag matcher over a closed set of element names. Namespace prefixes (`<jats:italic>`)
- * and attributes (`<p class="Reference">`) are admitted; a space after `<` is not, so an
- * inequality written `0.01 < x > 0.8` can never read as a tag. `\b` after the name keeps a
- * longer element out — `<subject>` is not `<sub>`, `<smallcaps>` is not `<small>`.
+ * A well-formed tag. The name follows `<` with no space — so an inequality written
+ * `0.01 < x > 0.8` can never read as one — may carry a namespace prefix (`<jats:italic>`),
+ * and is followed by an attribute tail and nothing else. Captures the closing slash, the
+ * local name, and the self-closing slash, which is everything the classifier needs.
  */
-function tagSource(names: readonly string[]): string {
-  return String.raw`<\/?(?:[A-Za-z][\w.-]*:)?(?:${names.join('|')})\b${TAG_ATTRIBUTES}\/?>`;
-}
+const TAG = new RegExp(
+  String.raw`<(\/?)(?:[A-Za-z][\w.-]*:)?([A-Za-z][\w.-]*)${TAG_ATTRIBUTES}(\/?)>`,
+  'g',
+);
 
-/** Elements whose value lives in an attribute. Never stripped — anywhere, at any nesting. */
+/**
+ * What removing an element does to the text around it — or, for `keep`, that the bracket does
+ * not come out on the element name alone. An unrecognized name is `keep` on the reference
+ * surface because it is presumed to be content; a link element is `keep` until its own text is
+ * checked for the address its `href` carries.
+ */
+type Verdict = 'tight' | 'inline' | 'block' | 'keep';
+
+/**
+ * Elements that can carry an address in an attribute. Their tags come out only when the
+ * element's own text already carries that address — see `linkAddressSurvives`.
+ */
 const LINK_ELEMENTS = ['ext-link', 'uri', 'a'];
 
 /**
@@ -159,8 +150,12 @@ const INLINE_ELEMENTS = [
   'u',
 ];
 
-/** Block boundaries. A publisher packing several citations into one field separates them here. */
-const BLOCK_ELEMENTS = ['disp-formula', 'br', 'p'];
+/**
+ * Block boundaries. A publisher packing several citations into one field separates them here —
+ * `refersplit` is the separator one publisher appends to each packed citation, self-closing and
+ * carrying nothing, and the text before it ends in a period rather than a word character.
+ */
+const BLOCK_ELEMENTS = ['disp-formula', 'refersplit', 'br', 'p'];
 
 /**
  * Scripts and inline formula wrappers: their content continues the token around them, and the
@@ -181,17 +176,33 @@ const TIGHT_ELEMENTS = [
   'tex',
 ];
 
-const INLINE_MARKUP_TAG = new RegExp(`(?:${tagSource(INLINE_ELEMENTS)})+`, 'gi');
-const BLOCK_MARKUP_TAG = new RegExp(tagSource(BLOCK_ELEMENTS), 'gi');
-const TIGHT_MARKUP_TAG = new RegExp(tagSource(TIGHT_ELEMENTS), 'gi');
+/**
+ * Every element name this server classifies, and what removing it does to the text around it.
+ * Both markup passes read this one map, which is what keeps them from drifting apart; it is
+ * exported so a test can drive the caller-visible outcome of every name in it, rather than
+ * asserting that a name is present and leaving the behavior unpinned.
+ */
+export const ELEMENT_VERDICTS = new Map<string, Verdict>([
+  ...LINK_ELEMENTS.map((name) => [name, 'keep'] as const),
+  ...TIGHT_ELEMENTS.map((name) => [name, 'tight'] as const),
+  ...INLINE_ELEMENTS.map((name) => [name, 'inline'] as const),
+  ...BLOCK_ELEMENTS.map((name) => [name, 'block'] as const),
+]);
 
 /**
- * A whole MathML formula, matched end to end so a strip can never half-consume one. Its inner
- * tags come out tight, so `<msub><mi>Airy</mi><mn>2</mn></msub>` reads as `Airy2` — removing
+ * A whole MathML formula, matched end to end so a strip can never half-consume one. Removing
  * the region outright would delete the symbol the sentence is about.
  */
 const MATHML_SPAN =
   /<(?:[A-Za-z][\w.-]*:)?math\b[^>]*>([\s\S]*?)<\/(?:[A-Za-z][\w.-]*:)?math\s*>/gi;
+
+/**
+ * The alternate encoding a MathML deposit carries beside its presentation markup — the same
+ * expression a second time, in TeX or in Content MathML. Emitting both renders one formula
+ * twice, so the annotation and its payload come out with the region's tags.
+ */
+const MATHML_ANNOTATION =
+  /<(?:[A-Za-z][\w.-]*:)?annotation(?:-xml)?\b[^>]*>[\s\S]*?<\/(?:[A-Za-z][\w.-]*:)?annotation(?:-xml)?\s*>/gi;
 
 /**
  * A JATS structured citation deposited whole into a free-text field, matched end to end the
@@ -205,90 +216,277 @@ const CITATION_SPAN = new RegExp(
   'gi',
 );
 
-/**
- * Every tag inside a citation envelope that is not a link and not already spoken for by the
- * tight or block class. Runs merge so two abutting tags are one boundary, the same way the
- * inline matcher merges them.
- */
-const CITATION_INNER_TAG = new RegExp(
-  String.raw`(?:<\/?(?!(?:[A-Za-z][\w.-]*:)?(?:${[...LINK_ELEMENTS, ...TIGHT_ELEMENTS, ...BLOCK_ELEMENTS].join('|')})\b)(?:[A-Za-z][\w.-]*:)?[A-Za-z][\w.-]*\b${TAG_ATTRIBUTES}\/?>)+`,
-  'gi',
-);
-
 /** Letters and digits in any script — Latin, CJK, Greek — not just ASCII `\w`. */
 const WORD_CHAR = /[\p{L}\p{N}]/u;
 
 /**
- * A word boundary leaves a space only where it separates two word characters, so an italic
- * journal title followed by a comma closes up instead of gaining a stray space before it.
+ * The marks a sentence ends on. Text resumes after one rather than continuing through it, so a
+ * word that follows one is a new word however tightly the deposit packs it.
+ */
+const SENTENCE_END = /[.:?!]/;
+
+/**
+ * A word boundary leaves a space only where the text would otherwise run together: between two
+ * word characters, or where a sentence ends and the next word begins.
+ *
+ * The first case is why an italic journal title followed by a comma closes up instead of gaining
+ * a stray space before it. The second is why a heading a publisher marks with `<bold>` rather
+ * than `<title>` keeps the space that separates it from the sentence before —
+ * `…effectiveness of MOC.<bold>Methods</bold>` is two sentences, not one word. Only a following
+ * word character earns the space, so a tag between a period and a bracket still closes up.
  */
 function separateWords(run: string, offset: number, whole: string): string {
   const before = whole[offset - 1];
   const after = whole[offset + run.length];
-  return before && after && WORD_CHAR.test(before) && WORD_CHAR.test(after) ? ' ' : '';
-}
-
-/** Empty a citation envelope of its markup, links excepted, on the outer separator classes. */
-function stripCitationMarkup(inner: string): string {
-  return inner
-    .replace(CITATION_INNER_TAG, separateWords)
-    .replace(TIGHT_MARKUP_TAG, '')
-    .replace(BLOCK_MARKUP_TAG, ' ');
+  if (!before || !after || !WORD_CHAR.test(after)) return '';
+  return WORD_CHAR.test(before) || SENTENCE_END.test(before) ? ' ' : '';
 }
 
 /**
- * Strip the formatting markup a reference free-text field carries, and nothing else.
+ * The address a link element carries: `href`, or the `xlink:href` a JATS deposit spells it as.
+ * Any namespace prefix is admitted; a longer attribute name that merely ends in `href` is not,
+ * since the leading `\s` and the optional prefix leave nothing for the rest of it to match.
+ */
+const HREF_ATTRIBUTE = /\s(?:[A-Za-z][\w.-]*:)?href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>"']+))/i;
+
+/**
+ * The transport prefix of an address — `https://`, `ftp://`, `mailto:`, `doi:`. It says how to
+ * fetch the resource; everything after it is what gets fetched.
+ */
+const URI_SCHEME = /^[A-Za-z][A-Za-z0-9+.-]*:(?:\/\/)?/;
+
+/**
+ * The closing tag of each link element, in any namespace spelling. Global rather than plain so
+ * the search can start at the opening tag through `lastIndex` and read the rest of the string
+ * in place — the alternative copies everything after every link element just to find its end.
+ */
+const LINK_CLOSERS = new Map(
+  LINK_ELEMENTS.map(
+    (name) => [name, new RegExp(String.raw`</(?:[A-Za-z][\w.-]*:)?${name}\s*>`, 'gi')] as const,
+  ),
+);
+
+/**
+ * The text a link element wraps, with any markup inside it removed and whitespace collapsed —
+ * what a reader is left holding if the element's own tags come out. Undefined when the deposit
+ * never closes the element, the one case where the text cannot be seen at all.
+ */
+function linkText(whole: string, from: number, name: string): string | undefined {
+  const closer = LINK_CLOSERS.get(name);
+  if (!closer) return;
+  closer.lastIndex = from;
+  const close = closer.exec(whole);
+  if (!close) return;
+  return collapseWhitespace(whole.slice(from, close.index).replace(/<[^>]*>/g, ''));
+}
+
+/**
+ * Whether a link element's tags can come out without costing the reader its address.
  *
- * The rule resolves an ambiguity the other normalization passes do not have. A work title is
- * deposited as JATS and every bracket in it is a tag; a reference entry is a citation string a
- * publisher typed, where a bracket carries a cited URL (`<http://faostat.fao.org/…>`), a Miller
- * index (`Silicon <100> nanowires`), a DOI fragment (`<131::AID-QUA4>`), an acronym (`<IR>`), or
- * a guillemet quotation (`<<ruptures>>`) about as often as it carries a tag. Deleting any of
- * those is a worse failure than leaving one tag in place, so the line falls here:
+ * A link is kept because its address lives in an attribute, where removing the tag deletes it.
+ * That premise has to be checked rather than assumed: a structured abstract deposits a URL, an
+ * accession, or a trial registration as the element's *text* and repeats it in the `href`, and
+ * there the tag protects nothing while putting a namespace-bearing XML tag in the middle of an
+ * abstract. Three ways the address is safe:
  *
- * 1. A bracket is a tag only if it is **well formed** — the name follows `<` with no space, and
- *    the attribute tail is `name="value"` pairs rather than prose.
- * 2. A whole **markup region** — a MathML formula, a JATS structured citation — is matched end
- *    to end and emptied of tags, because inside one there is no typed bracket to protect.
- *    All or nothing: an unclosed region matches nothing and is left whole.
- * 3. Everywhere else a well-formed tag comes out only if its **element name is on the
- *    allow-list**, which admits a name on two tests: nothing of the element's value lives in an
- *    attribute, and the name is a markup-only token rather than an ordinary word. Link elements
- *    fail the first — an `<a href>` stripped of its tag has lost its address. `volume`, `year`,
- *    `source`, `comment`, and the rest of the bare-word JATS vocabulary fail the second, since a
- *    bracketed ordinary word is how a person writes a quotation or a note; they come out inside
- *    a citation envelope, where rule 2 has already settled that nothing there was typed.
+ * 1. **No attribute.** Nothing of the element's value lives in one, so nothing can be lost —
+ *    a `<uri>` deposited around a bare URL, or an `<a>` carrying only a `name`.
+ * 2. **Nothing outside the deposit is addressed.** An empty `href`, or one that is a bare
+ *    fragment (`#b1`), names a place inside the publisher's own XML. That document is not
+ *    something the reader has, so the fragment resolves to nothing and preserves nothing.
+ * 3. **The text already carries it.** The element's own text contains the `href`, either
+ *    verbatim or less its scheme.
  *
- * Three separator classes, by what the element means for the text around it:
- * - Scripts and inline formula wrappers leave nothing — `O<sub>2</sub>` is one formula and a
- *   space there splits it, and `T<inf>c</inf>` is one symbol.
- * - Inline emphasis and the inline citation fields are a word boundary and leave a space only
- *   between two word characters, so `<i>Ann. Probab.</i>, 49` closes up to `Ann. Probab., 49`.
- * - Block elements always leave a space: `…revision.</p><p>Smith, J.…` is two citations packed
- *   into one field, and they must not run together.
+ * The scheme is the only difference the comparison forgives, and the line is deliberate. Losing
+ * `http://` in front of `www.fasebj.org` costs the reader nothing they cannot supply; losing the
+ * `/ct2/show/NCT02196038` behind `https://clinicaltrials.gov/` costs them the thing being
+ * addressed, which is the failure the rule exists to prevent. Every looser comparison — treating
+ * `www.` as optional, ignoring a trailing slash, decoding percent-escapes, resolving a DOI
+ * through its resolver host — asserts that two different strings name the same resource, and
+ * each such assertion is a way for the identifying part of an address to go missing. Every
+ * tighter one (equality rather than containment) keeps the tag whenever the deposit wraps a
+ * sentence around the URL, which protects nothing.
+ */
+function linkAddressSurvives(openTag: string, text: string): boolean {
+  const attribute = HREF_ATTRIBUTE.exec(openTag);
+  const href = (attribute?.[1] ?? attribute?.[2] ?? attribute?.[3] ?? '').trim();
+  if (href === '' || href.startsWith('#')) return true;
+  if (text.includes(href)) return true;
+  const target = href.replace(URI_SCHEME, '');
+  return target !== '' && target !== href && text.includes(target);
+}
+
+/**
+ * Empty a MathML formula of its markup, so the expression reads as one token —
+ * `<msub><mi>Airy</mi><mn>2</mn></msub>` is `Airy2`. Inside a region every bracket is a tag by
+ * construction, so neither the shape test nor the allow-list has anything to protect: the tags
+ * come out with no separator, and the whitespace a deposit pretty-prints between them comes out
+ * with them, since it is insignificant in XML. A formula that needs a visible space writes it as
+ * a character reference, which the strip does not touch and the decode resolves afterwards.
  *
- * Every separator is decided against the string as deposited, which is why the inline pass runs
- * before the tight one: a tag never counts as a word character, and removing a script must not
- * create an adjacency the inline rule then reads as two words —
+ * Outside is the opposite of inside: the region stands as its own token in the sentence and is
+ * never a continuation of the word beside it, so it leaves a block boundary. A MathML deposit
+ * carries the whole token — `<mmultiscripts><mi>Si</mi>…<mn>33</mn>` is all of `³³Si` — and
+ * publishers routinely deposit no space against the prose, so a tight join there would read
+ * `thin films ofSi33and partially filled`.
+ */
+function stripMathml(inner: string): string {
+  const formula = inner
+    .replace(MATHML_ANNOTATION, '')
+    .split(/<[^>]*>/)
+    .map((run) => run.trim())
+    .join('');
+  return ` ${formula} `;
+}
+
+/**
+ * Classify every well-formed tag in a string and remove the ones this surface recognizes as
+ * markup, leaving the separator its class calls for. `unlisted` is the verdict for a name on
+ * none of the class lists, and it is the only thing that varies between surfaces.
+ *
+ * An opening tag is removed on its own evidence; a closing tag is removed only if the matching
+ * opener was itself removed. That asymmetry is what keeps an element from coming apart: a
+ * `<span hidden>` fails the shape test — a valueless attribute is prose as far as the shape
+ * rule can tell, and admitting one would reopen `<Bold statement about X>` — while its
+ * attribute-free `</span>` matches the shape on its own. A lone closer has no claim to being a
+ * tag beyond an opener that this pass already declined to treat as one.
+ *
+ * A link element is the one class decided per occurrence rather than per name: its opening tag
+ * comes out, as a word boundary, only where its own text already carries the address, and its
+ * closing tag follows the opener on the same bookkeeping as every other element. A self-closing
+ * link wraps no text at all, so nothing there can carry the address.
+ */
+function stripTags(text: string, unlisted: Verdict): string {
+  const removed: string[] = [];
+  /**
+   * Link names whose closing tag is already known to be absent from the rest of the string.
+   * The scan for one runs to the end when there is none, and tags are visited left to right,
+   * so a name that failed once cannot succeed later — recording it is what keeps a field
+   * packed with unterminated openers from costing a full scan apiece.
+   */
+  const unclosed = new Set<string>();
+  return text.replace(
+    TAG,
+    (
+      tag: string,
+      close: string,
+      rawName: string,
+      selfClose: string,
+      offset: number,
+      whole: string,
+    ) => {
+      const name = rawName.toLowerCase();
+      let verdict = ELEMENT_VERDICTS.get(name) ?? unlisted;
+      if (verdict === 'keep') {
+        if (close) {
+          if (!removed.includes(name)) return tag;
+        } else if (selfClose || unclosed.has(name)) {
+          return tag;
+        } else {
+          const inner = linkText(whole, offset + tag.length, name);
+          if (inner === undefined) {
+            unclosed.add(name);
+            return tag;
+          }
+          if (!linkAddressSurvives(tag, inner)) return tag;
+        }
+        verdict = 'inline';
+      }
+      if (close) {
+        const opener = removed.lastIndexOf(name);
+        if (opener < 0) return tag;
+        removed.splice(opener, 1);
+      } else if (!selfClose) {
+        removed.push(name);
+      }
+      if (verdict === 'tight') return '';
+      if (verdict === 'block') return ' ';
+      return separateWords(tag, offset, whole);
+    },
+  );
+}
+
+/**
+ * Strip the markup a deposited string carries, and nothing else.
+ *
+ * One rule, two surfaces. A bracket is removed only when it is recognizable as markup, on three
+ * tests applied in order:
+ *
+ * 1. **Shape.** The name follows `<` with no space, and the attribute tail is `name="value"`
+ *    pairs rather than prose. This is what separates `<span class="smallcaps">` from
+ *    `<Stack Overflow, https://…>`, `<Available from: http://…>`, and `<B. subtilis>` — all text
+ *    a reader needs, and all of them read as a tag under a looser `<name\b[^>]*>`.
+ * 2. **Region.** A MathML formula and a JATS structured citation are matched end to end and
+ *    emptied of tags, because inside one there is no typed bracket to protect. All or nothing:
+ *    an unclosed region matches nothing and is left whole rather than half-consumed.
+ * 3. **Name.** Everywhere else the element name decides, on three shared classes plus a
+ *    per-surface default. Scripts and inline formula wrappers leave nothing — `O<sub>2</sub>` is
+ *    one formula and a space there splits it, `T<inf>c</inf>` is one symbol. Inline emphasis and
+ *    the bare JATS citation fields are a word boundary and leave a space only where the text
+ *    would otherwise run together — between two word characters, or where a sentence ends and
+ *    the next word begins — so `<i>Ann. Probab.</i>, 49` closes up while
+ *    `MOC.<bold>Methods</bold>` does not. Block elements always leave a space,
+ *    because the text before one ends in a period rather than a word character and two citations
+ *    packed into one field must not run together. Link elements are the one class decided per
+ *    occurrence rather than per name, because what a removed `<a href>` costs depends on where
+ *    its address is: see `linkAddressSurvives`.
+ *
+ * The surfaces differ in exactly one thing — what an unrecognized element name means — and they
+ * differ there because the two fields are not the same kind of string. A title or abstract is
+ * deposited as JATS, so a raw `<` in it came out of an XML document and is a tag by
+ * construction: an unrecognized name is structure (`<sec>`, `<list-item>`, `<title>`) and is
+ * removed as a block boundary. A reference entry is a citation string a publisher typed, where
+ * the same syntax carries a cited URL (`<http://faostat.fao.org/…>`), a Miller index
+ * (`Silicon <100> nanowires`), a DOI fragment (`<131::AID-QUA4>`), an acronym (`<IR>`), or a
+ * guillemet quotation (`<<ruptures>>`) — so an unrecognized name is presumed content and stays.
+ * Everything else the two surfaces do is the same rule, so they cannot drift apart again.
+ *
+ * Every separator is decided against the string the tags sit in: a tag never counts as a word
+ * character, so removing one class can never create an adjacency another class then misreads.
  * `<span class="smallcaps">xvii</span><sup>e</sup>` is `xviie`, not `xvii e`.
  */
-export function stripReferenceMarkup(raw: string): string {
-  return raw
-    .replace(MATHML_SPAN, (_, inner: string) => inner.replace(/<[^>]*>/g, ''))
-    .replace(CITATION_SPAN, (_, inner: string) => stripCitationMarkup(inner))
-    .replace(INLINE_MARKUP_TAG, separateWords)
-    .replace(TIGHT_MARKUP_TAG, '')
-    .replace(BLOCK_MARKUP_TAG, ' ');
+function stripMarkup(raw: string, unlisted: Verdict): string {
+  return collapseWhitespace(
+    stripTags(
+      raw
+        .replace(MATHML_SPAN, (_, inner: string) => stripMathml(inner))
+        .replace(CITATION_SPAN, (_, inner: string) => stripTags(inner, 'inline')),
+      unlisted,
+    ),
+  );
 }
 
 /**
- * Normalize a reference entry's free text: strip formatting markup, then the baseline pass.
+ * Strip the markup a JATS-deposited field carries — work titles, subtitles, container titles,
+ * and abstracts. An element name on none of the shared classes is structure, and comes out as a
+ * block boundary.
+ */
+export function stripJats(raw: string): string {
+  return stripMarkup(raw, 'block');
+}
+
+/**
+ * Strip the markup a reference free-text field carries. An element name on none of the shared
+ * classes is presumed to be content a publisher typed, and stays.
+ */
+export function stripReferenceMarkup(raw: string): string {
+  return stripMarkup(raw, 'keep');
+}
+
+/**
+ * Normalize a field publishers deposit as JATS/XML markup — work titles, subtitles, container
+ * titles, and abstracts — by stripping markup before the baseline pass.
  *
- * Separate from `normalizeMarkupText` because the two fields are not the same surface. A work
- * title is deposited as JATS and every tag in it is markup, so a blanket strip is right there.
- * A reference entry is a citation string a publisher typed, and the same syntax carries both
- * markup and content — hence the bounded rule above. Order matches: markup comes out before
- * entities are decoded, so a deposited `&lt;i&gt;` stays literal.
+ * Order matters: tags come out before entities are decoded, so a deposited `&lt;i&gt;` stays
+ * literal text instead of decoding into a tag the strip pass would then eat.
+ */
+export function normalizeMarkupText(raw: string): string {
+  return normalizeText(stripJats(raw));
+}
+
+/**
+ * Normalize a reference entry's free text: strip markup, then the baseline pass. Same order,
+ * same reason — a deposited `&lt;i&gt;` stays literal.
  */
 export function normalizeReferenceText(raw: string): string {
   return normalizeText(stripReferenceMarkup(raw));
