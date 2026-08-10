@@ -1,6 +1,6 @@
 # crossref-mcp-server - Directory Structure
 
-Generated on: 2026-08-10 00:38:11
+Generated on: 2026-08-10 04:07:13
 
 ```text
 crossref-mcp-server/
@@ -140,15 +140,16 @@ crossref-mcp-server/
 │   │   ├── resources/
 │   │   │   └── definitions/
 │   │   └── tools/
-│   │       └── definitions/
-│   │           ├── get-member.tool.ts
-│   │           ├── get-prefix.tool.ts
-│   │           ├── get-references.tool.ts
-│   │           ├── get-work.tool.ts
-│   │           ├── index.ts
-│   │           ├── search-funders.tool.ts
-│   │           ├── search-journals.tool.ts
-│   │           └── search-works.tool.ts
+│   │       ├── definitions/
+│   │       │   ├── get-member.tool.ts
+│   │       │   ├── get-prefix.tool.ts
+│   │       │   ├── get-references.tool.ts
+│   │       │   ├── get-work.tool.ts
+│   │       │   ├── index.ts
+│   │       │   ├── search-funders.tool.ts
+│   │       │   ├── search-journals.tool.ts
+│   │       │   └── search-works.tool.ts
+│   │       └── markdown-text.ts
 │   ├── services/
 │   │   └── crossref/
 │   │       ├── crossref-service.ts
@@ -168,6 +169,8 @@ crossref-mcp-server/
 │       ├── get-prefix.tool.test.ts
 │       ├── get-references.tool.test.ts
 │       ├── get-work.tool.test.ts
+│       ├── markdown-surface.test.ts
+│       ├── markdown-text.test.ts
 │       ├── search-funders.tool.test.ts
 │       ├── search-journals.tool.test.ts
 │       └── search-works.tool.test.ts

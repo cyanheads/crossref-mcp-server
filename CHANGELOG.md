@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.3.8](changelog/0.3.x/0.3.8.md) — 2026-08-09
+
+Crash fix for ROR-only funders/affiliations and null date components; content[] now escapes Markdown; JATS <alternatives> formula dedup
+
 ## [0.3.7](changelog/0.3.x/0.3.7.md) — 2026-08-09
 
 Unified JATS/reference markup strip; refersplit, valueless attributes, MathML duplication, and link-tag address loss fixed

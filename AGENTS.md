@@ -1,7 +1,7 @@
 # Agent Protocol
 
 **Server:** @cyanheads/crossref-mcp-server
-**Version:** 0.3.7
+**Version:** 0.3.8
 **Framework:** [@cyanheads/mcp-ts-core](https://www.npmjs.com/package/@cyanheads/mcp-ts-core) `^0.11.1`
 **Engines:** Bun ≥1.3.0, Node ≥24.0.0
 **MCP SDK:** `@modelcontextprotocol/sdk` ^1.30.0
@@ -38,7 +38,7 @@ crossref-mcp-server wraps the [Crossref REST API](https://api.crossref.org/) to 
 
 ### Key domain constraints
 
-- **Polite-pool `mailto` is optional but recommended.** Every request includes `User-Agent: crossref-mcp-server/0.3.7 (mailto:<CROSSREF_MAILTO>)` when set. Without it, the server starts but logs a warning and uses the anonymous pool with stricter rate limits. Polite-pool access requires no token — just the email in the header.
+- **Polite-pool `mailto` is optional but recommended.** Every request includes `User-Agent: crossref-mcp-server/0.3.8 (mailto:<CROSSREF_MAILTO>)` when set. Without it, the server starts but logs a warning and uses the anonymous pool with stricter rate limits. Polite-pool access requires no token — just the email in the header.
 - **No incoming citations.** Crossref does not expose which works cite a given DOI. Redirect to OpenAlex for citation counts or citation graphs.
 - **Abstract coverage is incomplete.** Abstracts are deposited voluntarily; many records — especially older works and books — have none.
 - **Reference list coverage varies.** Outgoing references are only present for publisher participants; pre-2000 literature has low coverage.
@@ -212,9 +212,12 @@ src/
   services/
     crossref/
       crossref-service.ts               # HTTP client, polite-pool User-Agent, retry, pagination
+      html-entities.ts                  # HTML5 named character reference table + single-pass decode
       types.ts                          # Crossref domain types (Work, Reference, Journal, Funder)
       upstream-errors.ts                # Upstream/transport error contract + throw-site factory
   mcp-server/
+    tools/
+      markdown-text.ts                  # mdText / mdTextAtLineStart — the content[] escape
     tools/definitions/
       get-work.tool.ts                  # crossref_get_work
       get-references.tool.ts            # crossref_get_references
