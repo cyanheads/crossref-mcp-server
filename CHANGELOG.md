@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.3.9](changelog/0.3.x/0.3.9.md) — 2026-08-09
+
+crossref_get_work's publication-date fallback now matches the three search tools instead of stopping early on a source naming no date
+
 ## [0.3.8](changelog/0.3.x/0.3.8.md) — 2026-08-09
 
 Crash fix for ROR-only funders/affiliations and null date components; content[] now escapes Markdown; JATS <alternatives> formula dedup
