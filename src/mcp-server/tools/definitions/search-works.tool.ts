@@ -11,6 +11,7 @@
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
+import { mdText } from '@/mcp-server/tools/markdown-text.js';
 import {
   formatDateParts,
   getCrossrefService,
@@ -65,7 +66,7 @@ const WorkSummarySchema = z
       .string()
       .optional()
       .describe(
-        'Abstract when present in the indexed record — the text of the publisher’s JATS deposit, with markup removed and character references decoded; a link keeps its tag only where its href holds an address the text it wraps does not already carry',
+        'Abstract when present in the indexed record — the text of the publisher’s JATS deposit, with markup removed and character references decoded; a link keeps its tag only where its href holds an address the text it wraps does not already carry, and a formula the deposit encodes more than once appears once, in the first notation deposited',
       ),
   })
   .describe('Work summary');
@@ -374,15 +375,16 @@ export const searchWorksTool = tool('crossref_search_works', {
     if (lines.length > 0) lines.push('');
 
     for (const w of result.works) {
-      lines.push(`### ${w.title ?? w.doi}`);
+      lines.push(`### ${w.title ? mdText(w.title) : w.doi}`);
       lines.push(`**DOI:** ${w.doi}${w.type ? ` | **Type:** ${w.type}` : ''}`);
       if (w.published?.year) lines.push(`**Published:** ${formatDateParts(w.published)}`);
-      if (w.containerTitle) lines.push(`**Journal:** ${w.containerTitle}`);
-      if (w.publisher) lines.push(`**Publisher:** ${w.publisher}`);
+      if (w.containerTitle) lines.push(`**Journal:** ${mdText(w.containerTitle)}`);
+      if (w.publisher) lines.push(`**Publisher:** ${mdText(w.publisher)}`);
       if (w.authors?.length) {
         const authorStr = w.authors
           .map((a) => [a.given, a.family, a.name].filter(Boolean).join(' '))
           .filter(Boolean)
+          .map(mdText)
           .join(', ');
         const total = w.authorCount ?? w.authors.length;
         const cut =
@@ -393,7 +395,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       }
       if (w.isReferencedByCount !== undefined) lines.push(`**Cited by:** ${w.isReferencedByCount}`);
       if (w.score !== undefined) lines.push(`**Score:** ${w.score}`);
-      if (w.abstract) lines.push(`**Abstract:** ${w.abstract}`);
+      if (w.abstract) lines.push(`**Abstract:** ${mdText(w.abstract)}`);
       lines.push('');
     }
 

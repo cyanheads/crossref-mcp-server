@@ -1292,6 +1292,132 @@ describe('stripReferenceMarkup', () => {
 });
 
 /**
+ * An `<alternatives>` wrapper holds one object encoded several ways and expects a consumer to
+ * pick one. It is a region rather than a name on a class list, so what it does is settled by
+ * position — the first child carrying text — rather than by ranking one notation above another,
+ * and a child element nobody has classified is covered by the same rule.
+ */
+describe('an <alternatives> wrapper', () => {
+  /** The deposit behind the report: TeX first, the same formula as presentation MathML second. */
+  const REPRODUCTION =
+    'for the anti-<inline-formula><alternatives><tex-math>$$k_{\\bot }$$</tex-math>' +
+    '<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML"><mml:msub><mml:mi>k</mml:mi>' +
+    '<mml:mi>⊥</mml:mi></mml:msub></mml:math></alternatives></inline-formula> algorithm';
+
+  it('emits one encoding of a formula deposited twice', () => {
+    expect(normalizeMarkupText(REPRODUCTION)).toBe('for the anti- $$k_{\\bot }$$ algorithm');
+    expect(normalizeReferenceText(REPRODUCTION)).toBe('for the anti- $$k_{\\bot }$$ algorithm');
+  });
+
+  /**
+   * The wrapper stands as its own token, so consuming it leaves the boundary its tags used to.
+   * Publishers deposit the formula hard against the prose on both sides, and without the
+   * boundary the sentence runs into the notation and out of it again.
+   */
+  it('leaves a word boundary where the deposit packs prose against the formula', () => {
+    expect(
+      normalizeMarkupText(
+        'on a time scale<inline-formula><alternatives><tex-math>$\\mathbb{T}$</tex-math>' +
+          '<mml:math><mml:mi>T</mml:mi></mml:math></alternatives></inline-formula>with two',
+      ),
+    ).toBe('on a time scale $\\mathbb{T}$ with two');
+
+    expect(
+      normalizeMarkupText(
+        'is 43 μV/cm<inline-formula><alternatives><tex-math>$\\sqrt{\\text{Hz}}$</tex-math>' +
+          '<mml:math><mml:msqrt><mml:mtext>Hz</mml:mtext></mml:msqrt></mml:math>' +
+          '</alternatives></inline-formula> in the absence',
+      ),
+    ).toBe('is 43 μV/cm $\\sqrt{\\text{Hz}}$ in the absence');
+  });
+
+  /**
+   * The boundary is the wrapper's own rather than the selected child's, so the same construct
+   * spaces the same way whichever notation a publisher deposited first. Decided by the child it
+   * would not: a MathML region carries a boundary and a `<tex-math>` wrapper joins tight.
+   */
+  it('spaces the same however the encodings are ordered', () => {
+    const texFirst =
+      'scale<alternatives><tex-math>$T$</tex-math><mml:math><mml:mi>T</mml:mi></mml:math>' +
+      '</alternatives>with';
+    const mathmlFirst =
+      'scale<alternatives><mml:math><mml:mi>T</mml:mi></mml:math><tex-math>$T$</tex-math>' +
+      '</alternatives>with';
+    expect(normalizeMarkupText(texFirst)).toBe('scale $T$ with');
+    expect(normalizeMarkupText(mathmlFirst)).toBe('scale T with');
+  });
+
+  /**
+   * The selected child is handed back as deposited, so the pass that follows classifies it like
+   * any other markup — here a MathML region, emptied of tags and read as one token.
+   */
+  it('classifies the child it selects rather than emitting it raw', () => {
+    const graphicFirst =
+      'the <alternatives><inline-graphic xlink:href="eq1.gif" />' +
+      '<mml:math><mml:msub><mml:mi>Airy</mml:mi><mml:mn>2</mml:mn></mml:msub></mml:math>' +
+      '</alternatives> process';
+    expect(normalizeMarkupText(graphicFirst)).toBe('the Airy2 process');
+    expect(normalizeReferenceText(graphicFirst)).toBe('the Airy2 process');
+  });
+
+  /** A child carrying no text is passed over on that basis, not by its element name. */
+  it('passes over a text-free child whatever it is called', () => {
+    expect(
+      normalizeMarkupText(
+        'a <alternatives><novel-encoding data="x" /><tex-math>$y$</tex-math></alternatives> b',
+      ),
+    ).toBe('a $y$ b');
+    /**
+     * A wrapper whose every child is text-free selects nothing and emits nothing. On the JATS
+     * surface that is indistinguishable from emitting the children and letting the block
+     * default remove them; the reference surface, where an unrecognized name is content, is
+     * where the difference between "selected nothing" and "selected the wrapper's contents"
+     * is visible at all.
+     */
+    const allGraphics =
+      'a <alternatives><graphic href="e.png" /><inline-graphic href="f.png" /></alternatives> b';
+    expect(normalizeMarkupText(allGraphics)).toBe('a b');
+    expect(normalizeReferenceText(allGraphics)).toBe('a b');
+  });
+
+  /**
+   * All or nothing, as every region is. An unclosed wrapper matches nothing and falls to the
+   * name rule, which is what keeps the ordinary word `alternatives` from costing a reader a
+   * bracketed phrase on the surface where an unrecognized name is content.
+   */
+  it('is the closed pair, not the word', () => {
+    expect(normalizeReferenceText('see <alternatives> to this approach')).toBe(
+      'see <alternatives> to this approach',
+    );
+    expect(normalizeReferenceText('two <alternatives, both untested> remain')).toBe(
+      'two <alternatives, both untested> remain',
+    );
+  });
+
+  /** A wrapper holding no child element keeps its content: nothing in it can be a duplicate. */
+  it('keeps content it cannot have selected between', () => {
+    expect(normalizeMarkupText('a <alternatives>bare text</alternatives> b')).toBe('a bare text b');
+  });
+
+  /** A child's own nested markup travels with it rather than ending it early. */
+  it('takes a nested child whole', () => {
+    expect(
+      normalizeMarkupText(
+        'x <alternatives><tex-math><i>a</i>+<i>b</i></tex-math><graphic href="g.png" /></alternatives> y',
+      ),
+    ).toBe('x a+b y');
+  });
+
+  /** Deeply nested children cost work proportional to the input, not exponential in its depth. */
+  it('stays linear on an adversarially nested wrapper', () => {
+    const deep = `<alternatives>${'<a-child>'.repeat(4000)}x${'</a-child>'.repeat(4000)}</alternatives>`;
+    const started = performance.now();
+    normalizeReferenceText(deep);
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+});
+
+/**
  * The two markup passes run one implementation over one rule and differ in exactly one thing:
  * what an unrecognized element name means. Everything else — the shape test, the regions, the
  * three separator classes, the link exception — is shared, and this file is what keeps it that
@@ -1320,6 +1446,11 @@ describe('the JATS pass and the reference pass', () => {
       [
         'Fractal geometry of <math xmlns="x"><semantics><msub><mi>Airy</mi><mn>2</mn></msub><annotation encoding="application/x-tex">\\mathrm{Airy}_2</annotation></semantics></math> processes',
         'Fractal geometry of Airy2 processes',
+      ],
+      // An alternatives wrapper is a region too, and renders one of its encodings.
+      [
+        'the <alternatives><tex-math>$x$</tex-math><graphic href="e.png" /></alternatives> case',
+        'the $x$ case',
       ],
       // Inline emphasis is a word boundary, not an unconditional space.
       [
@@ -1800,8 +1931,29 @@ describe('parseDateParts', () => {
   });
 
   it('handles nested empty array', () => {
-    // Crossref occasionally returns [null] in date-parts
     const result = parseDateParts({ 'date-parts': [[] as number[]] });
     expect(result).toBeUndefined();
+  });
+
+  /**
+   * Crossref deposits an unknown component as `null` in the tuple rather than leaving it off, so
+   * a record with no registered year arrives as `[[null]]`. That is the same fact as no date at
+   * all, and each component is declared a number on every output schema that carries one —
+   * passing the null through fails the whole call on a record whose every other field parsed.
+   */
+  it('returns undefined for a year Crossref does not know', () => {
+    expect(parseDateParts({ 'date-parts': [[null]] })).toBeUndefined();
+    expect(parseDateParts({ 'date-parts': [[null, 4, 5]] })).toBeUndefined();
+  });
+
+  /**
+   * The tuple is positional, so the components below an unknown one carry no meaning on their
+   * own: a day belonging to a month nobody named renders through formatDateParts as `2020-15`,
+   * a date the deposit never made.
+   */
+  it('stops at the first component Crossref does not know', () => {
+    expect(parseDateParts({ 'date-parts': [[2020, null]] })).toEqual({ year: 2020 });
+    expect(parseDateParts({ 'date-parts': [[2020, null, 15]] })).toEqual({ year: 2020 });
+    expect(parseDateParts({ 'date-parts': [[2020, 3, null]] })).toEqual({ year: 2020, month: 3 });
   });
 });

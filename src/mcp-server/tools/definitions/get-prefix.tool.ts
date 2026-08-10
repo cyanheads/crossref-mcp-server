@@ -5,6 +5,7 @@
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
+import { mdText } from '@/mcp-server/tools/markdown-text.js';
 import { getCrossrefService, normalizeText } from '@/services/crossref/crossref-service.js';
 import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
 
@@ -75,7 +76,7 @@ export const getPrefixTool = tool('crossref_get_prefix', {
   format: (result) => {
     const lines: string[] = [];
     lines.push(`**Prefix:** ${result.prefix}`);
-    lines.push(`**Owner:** ${result.ownerName ?? 'Unknown'}`);
+    lines.push(`**Owner:** ${result.ownerName ? mdText(result.ownerName) : 'Unknown'}`);
     if (result.memberId !== undefined) lines.push(`**Member ID:** ${result.memberId}`);
     return [{ type: 'text', text: lines.join('\n') }];
   },

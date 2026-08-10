@@ -3,11 +3,15 @@
  * The deposited author list is paged by offset/limit the way crossref_get_references pages
  * references: the slice happens once in the handler, so structuredContent and content[] carry
  * the identical page, and authorCount reports the full deposited total.
+ * A funder and an affiliation are the two organizations a record names, and a publisher may
+ * assert either through the ROR registry instead of by name — so both are projected with the
+ * identifier standing in for the name they lack, on both surfaces, rather than as a blank entry.
  * @module mcp-server/tools/definitions/get-work.tool
  */
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
+import { mdText, mdTextAtLineStart } from '@/mcp-server/tools/markdown-text.js';
 import {
   formatDateParts,
   getCrossrefService,
@@ -15,7 +19,12 @@ import {
   normalizeText,
   parseDateParts,
 } from '@/services/crossref/crossref-service.js';
-import type { CrossrefAuthor } from '@/services/crossref/types.js';
+import type {
+  CrossrefAffiliation,
+  CrossrefAuthor,
+  CrossrefFunder,
+  CrossrefOrganizationId,
+} from '@/services/crossref/types.js';
 import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
 
 const AuthorSchema = z
@@ -25,7 +34,24 @@ const AuthorSchema = z
     name: z.string().optional().describe('Name when no given/family split is available'),
     orcid: z.string().optional().describe('ORCID identifier URI'),
     affiliation: z
-      .array(z.object({ name: z.string().describe('Affiliation name') }).describe('Affiliation'))
+      .array(
+        z
+          .object({
+            name: z
+              .string()
+              .optional()
+              .describe(
+                'Affiliation name as deposited. Absent when the publisher asserted the organization by identifier alone, where ror carries it instead.',
+              ),
+            ror: z
+              .string()
+              .optional()
+              .describe(
+                'ROR identifier for the affiliated organization, when the deposit carries one. It is the whole identity of an affiliation deposited without a name.',
+              ),
+          })
+          .describe('Affiliation'),
+      )
       .optional()
       .describe('Institutional affiliations'),
     sequence: z.string().optional().describe('Author order role (first, additional)'),
@@ -34,8 +60,22 @@ const AuthorSchema = z
 
 const FunderSchema = z
   .object({
-    name: z.string().describe('Funder name'),
-    doi: z.string().optional().describe('Funder DOI'),
+    name: z
+      .string()
+      .optional()
+      .describe(
+        'Funder name as deposited. Absent when the publisher asserted the funder by identifier alone, where ror carries it instead.',
+      ),
+    doi: z
+      .string()
+      .optional()
+      .describe('Funder DOI — the Crossref Funder Registry entry this assertion resolved to'),
+    ror: z
+      .string()
+      .optional()
+      .describe(
+        'ROR identifier for the funding organization, when the deposit carries one. It is the whole identity of an assertion deposited without a name.',
+      ),
     award: z.array(z.string()).optional().describe('Grant or award numbers'),
   })
   .describe('Funding assertion');
@@ -130,7 +170,7 @@ export const getWorkTool = tool('crossref_get_work', {
       .string()
       .optional()
       .describe(
-        'Abstract when deposited by the publisher. Many records lack abstracts. Publishers deposit it as JATS XML, so this is the text of that deposit with markup removed and character references decoded; a link keeps its tag only where its href holds an address the text it wraps does not already carry.',
+        'Abstract when deposited by the publisher. Many records lack abstracts. Publishers deposit it as JATS XML, so this is the text of that deposit with markup removed and character references decoded; a link keeps its tag only where its href holds an address the text it wraps does not already carry, and a formula the deposit encodes more than once — TeX beside MathML — appears once, in the first notation deposited.',
       ),
     isReferencedByCount: z
       .number()
@@ -261,13 +301,7 @@ export const getWorkTool = tool('crossref_get_work', {
       ...(raw.ISSN && raw.ISSN.length > 0 && { issn: raw.ISSN }),
       ...(raw.publisher !== undefined && { publisher: normalizeText(raw.publisher) }),
       ...(published !== undefined && { published }),
-      ...(raw.funder && {
-        funders: raw.funder.map((f) => ({
-          name: normalizeText(f.name),
-          ...(f.DOI && { doi: f.DOI }),
-          ...(f.award && f.award.length > 0 && { award: f.award }),
-        })),
-      }),
+      ...(raw.funder && { funders: raw.funder.map(normalizeFunder) }),
       ...(raw.license && {
         licenses: raw.license.map((l) => ({
           url: l.URL,
@@ -293,13 +327,14 @@ export const getWorkTool = tool('crossref_get_work', {
   format: (result) => {
     const lines: string[] = [];
 
-    lines.push(`## ${result.title ?? result.doi}`);
-    if (result.subtitle) lines.push(`*${result.subtitle}*`);
+    lines.push(`## ${result.title ? mdText(result.title) : result.doi}`);
+    if (result.subtitle) lines.push(`*${mdText(result.subtitle)}*`);
     lines.push('');
 
     lines.push(`**DOI:** ${result.doi}${result.type ? ` | **Type:** ${result.type}` : ''}`);
-    if (result.publisher) lines.push(`**Publisher:** ${result.publisher}`);
-    if (result.containerTitle) lines.push(`**Journal/Container:** ${result.containerTitle}`);
+    if (result.publisher) lines.push(`**Publisher:** ${mdText(result.publisher)}`);
+    if (result.containerTitle)
+      lines.push(`**Journal/Container:** ${mdText(result.containerTitle)}`);
     if (result.issn?.length) lines.push(`**ISSN:** ${result.issn.join(', ')}`);
     if (result.published?.year) lines.push(`**Published:** ${formatDateParts(result.published)}`);
     if (result.language) lines.push(`**Language:** ${result.language}`);
@@ -317,28 +352,42 @@ export const getWorkTool = tool('crossref_get_work', {
     if (result.authors?.length) {
       for (const a of result.authors) {
         const nameParts = [a.given, a.family, a.name].filter(Boolean);
-        const displayName = nameParts.join(' ') || '(unknown)';
+        const displayName = nameParts.length ? mdText(nameParts.join(' ')) : '(unknown)';
         const orcidPart = a.orcid ? ` [ORCID: ${a.orcid}]` : '';
         const seqPart = a.sequence ? ` (${a.sequence})` : '';
         const affPart = a.affiliation?.length
-          ? ` — ${a.affiliation.map((af) => af.name).join(', ')}`
+          ? ` — ${a.affiliation.map(affiliationLabel).join(', ')}`
           : '';
         lines.push(`- ${displayName}${orcidPart}${seqPart}${affPart}`);
       }
     }
 
-    if (result.subject?.length) lines.push(`**Subjects:** ${result.subject.join(', ')}`);
+    if (result.subject?.length)
+      lines.push(`**Subjects:** ${result.subject.map(mdText).join(', ')}`);
 
     lines.push('');
     lines.push('**Abstract:**');
-    lines.push(result.abstract ?? '*Not deposited*');
+    /**
+     * The one line on this server's whole Markdown surface that puts a deposited value at
+     * column zero, where a leading `#`, `>`, `-`, or `19.` opens a block and the marker is
+     * consumed rather than shown.
+     */
+    lines.push(result.abstract ? mdTextAtLineStart(result.abstract) : '*Not deposited*');
 
     if (result.funders?.length) {
       lines.push('');
       lines.push('**Funders:**');
       for (const f of result.funders) {
         const awards = f.award?.length ? ` (${f.award.join(', ')})` : '';
-        lines.push(`- ${f.name}${f.doi ? ` — ${f.doi}` : ''}${awards}`);
+        /**
+         * An assertion deposited without a name leads with the identifier that stands in for
+         * one, and whatever identifiers remain trail it exactly as they trail a name. Every
+         * identifier the record carries reaches this surface either way — a name that hid one
+         * would leave a `content[]` reader unable to resolve what `structuredContent` names.
+         */
+        const ids = [f.doi, f.ror].filter((id) => id !== undefined);
+        const label = f.name ? mdText(f.name) : (ids.shift() ?? UNNAMED);
+        lines.push(`- ${label}${ids.length > 0 ? ` — ${ids.join(' ')}` : ''}${awards}`);
       }
     }
 
@@ -369,6 +418,61 @@ export const getWorkTool = tool('crossref_get_work', {
 
 // --- Helpers ---
 
+/**
+ * What an organization is called on the Markdown surface when the deposit named none. Shared by
+ * the two renders so a funder and an affiliation say the same thing about the same absence.
+ */
+const UNNAMED = '(no name deposited)';
+
+/**
+ * The ROR identifier on an organization Crossref carries by identifier rather than by name.
+ *
+ * A funder or an affiliation deposited without a name is not an empty entry — it is an
+ * organization the publisher asserted through the registry instead of spelling out, and its `id`
+ * array is where that assertion lives. Crossref puts several identifier schemes in that one
+ * array, so the type decides which is read: ROR is the one every nameless funder and affiliation
+ * in a sampled draw carried, and the only one ever seen alone. An ISNI appears beside a ROR and
+ * never in place of one, so reading ROR loses nothing an entry depends on for its identity.
+ */
+function rorId(ids: CrossrefOrganizationId[] | undefined): string | undefined {
+  return ids?.find((entry) => entry['id-type']?.toUpperCase() === 'ROR')?.id;
+}
+
+/**
+ * Project a funding assertion. Every field is conditional because Crossref guarantees none of
+ * them: an assertion made by identifier carries a ROR, an award number, and nothing else.
+ */
+function normalizeFunder(f: CrossrefFunder) {
+  const ror = rorId(f.id);
+  return {
+    ...(f.name !== undefined && { name: normalizeText(f.name) }),
+    ...(f.DOI && { doi: f.DOI }),
+    ...(ror !== undefined && { ror }),
+    ...(f.award && f.award.length > 0 && { award: f.award }),
+  };
+}
+
+/**
+ * How an affiliation reads inside an author's line. A ROR stands in for a name the deposit does
+ * not carry and trails one it does — the same rule the funder line follows, spelled with
+ * parentheses because these are joined into a comma-separated run rather than given a line each.
+ * The identifier reaches `content[]` either way: a name that hid it would leave a reader of that
+ * surface unable to resolve an organization `structuredContent` identifies.
+ */
+function affiliationLabel(af: { name?: string | undefined; ror?: string | undefined }): string {
+  if (af.name === undefined) return af.ror ?? UNNAMED;
+  return af.ror ? `${mdText(af.name)} (${af.ror})` : mdText(af.name);
+}
+
+/** Project an affiliation. Same shape of absence as a funder, and the same identifier behind it. */
+function normalizeAffiliation(af: CrossrefAffiliation) {
+  const ror = rorId(af.id);
+  return {
+    ...(af.name !== undefined && { name: normalizeText(af.name) }),
+    ...(ror !== undefined && { ror }),
+  };
+}
+
 function normalizeAuthor(a: CrossrefAuthor) {
   return {
     ...(a.given && { given: normalizeText(a.given) }),
@@ -376,7 +480,7 @@ function normalizeAuthor(a: CrossrefAuthor) {
     ...(a.name && { name: normalizeText(a.name) }),
     ...(a.ORCID && { orcid: a.ORCID }),
     ...(a.affiliation?.length && {
-      affiliation: a.affiliation.map((af) => ({ name: normalizeText(af.name) })),
+      affiliation: a.affiliation.map(normalizeAffiliation),
     }),
     ...(a.sequence && { sequence: a.sequence }),
   };

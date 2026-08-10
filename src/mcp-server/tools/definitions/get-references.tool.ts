@@ -4,13 +4,16 @@
  * it by offset/limit so structuredContent and content[] carry the identical page. The entry's
  * free-text fields are entity-decoded, whitespace-collapsed, and stripped of the markup a
  * publisher deposits into a citation string — see normalizeReferenceText in the service, whose
- * bounded rule is what keeps a bracketed URL or a Miller index from being read as a tag.
+ * bounded rule is what keeps a bracketed URL or a Miller index from being read as a tag. What
+ * that rule keeps is escaped again by mdText on its way into content[], or the client's
+ * Markdown renderer consumes the bracket the strip just protected.
  * Incoming citations are not available through Crossref; use OpenAlex for those.
  * @module mcp-server/tools/definitions/get-references.tool
  */
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
+import { mdText } from '@/mcp-server/tools/markdown-text.js';
 import {
   getCrossrefService,
   normalizeReferenceText,
@@ -204,14 +207,14 @@ export const getReferencesTool = tool('crossref_get_references', {
       const position = result.offset + i + 1;
       const doi = r.doi ? ` — DOI: ${r.doi}` : '';
       const year = r.year ? ` (${r.year})` : '';
-      const journal = r.journalTitle ? ` *${r.journalTitle}*` : '';
-      const authorPart = r.author ? ` ${r.author}` : '';
+      const journal = r.journalTitle ? ` *${mdText(r.journalTitle)}*` : '';
+      const authorPart = r.author ? ` ${mdText(r.author)}` : '';
       const volPage =
         r.volume || r.firstPage ? ` ${r.volume ?? ''}${r.firstPage ? `:${r.firstPage}` : ''}` : '';
       const issnPart = r.issn ? ` ISSN:${r.issn}` : '';
-      const title = r.articleTitle ?? `[${position}]`;
+      const title = r.articleTitle ? mdText(r.articleTitle) : `[${position}]`;
       const keyPart = r.key ? ` key:${r.key}` : '';
-      const rawPart = r.unstructured ? ` | ${r.unstructured}` : '';
+      const rawPart = r.unstructured ? ` | ${mdText(r.unstructured)}` : '';
       lines.push(
         `${position}.${authorPart} ${title}${year}${journal}${volPage}${issnPart}${doi}${keyPart}${rawPart}`,
       );

@@ -10,6 +10,7 @@
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode, McpError } from '@cyanheads/mcp-ts-core/errors';
+import { mdText } from '@/mcp-server/tools/markdown-text.js';
 import {
   formatDateParts,
   getCrossrefService,
@@ -452,12 +453,12 @@ export const searchJournalsTool = tool('crossref_search_journals', {
     const lines: string[] = [];
 
     for (const j of result.journals) {
-      lines.push(`## ${j.title ?? '(untitled)'}`);
-      if (j.publisher) lines.push(`**Publisher:** ${j.publisher}`);
+      lines.push(`## ${j.title ? mdText(j.title) : '(untitled)'}`);
+      if (j.publisher) lines.push(`**Publisher:** ${mdText(j.publisher)}`);
       if (j.issnL) lines.push(`**ISSN-L:** ${j.issnL}`);
       if (j.issn?.length) lines.push(`**ISSN:** ${j.issn.join(', ')}`);
       if (j.subjects?.length)
-        lines.push(`**Subjects:** ${j.subjects.map((s) => s.name).join(', ')}`);
+        lines.push(`**Subjects:** ${j.subjects.map((s) => mdText(s.name)).join(', ')}`);
       if (j.totalDois !== undefined) lines.push(`**Total DOIs:** ${j.totalDois}`);
       lines.push('');
     }
@@ -468,7 +469,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
         const date = w.published?.year !== undefined ? ` (${formatDateParts(w.published)})` : '';
         const cited =
           w.isReferencedByCount !== undefined ? ` | Cited: ${w.isReferencedByCount}` : '';
-        lines.push(`- **${w.title ?? w.doi}**${date}${cited}`);
+        lines.push(`- **${w.title ? mdText(w.title) : w.doi}**${date}${cited}`);
         lines.push(`  DOI: ${w.doi}${w.type ? ` | Type: ${w.type}` : ''}`);
       }
     }

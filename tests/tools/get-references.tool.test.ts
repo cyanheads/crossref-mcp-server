@@ -308,6 +308,78 @@ describe('getReferencesTool', () => {
     expect(result.references[0]?.unstructured).toContain('<IR>');
     expect(result.references[1]?.unstructured).toContain('<100>');
     expect(result.references[2]?.unstructured).toContain('<131::AID-QUA4>');
+
+    /**
+     * Those three survive the strip and then meet a renderer. `<IR>` is an element name and
+     * would be consumed as an unknown tag, so it is escaped; the other two are no more
+     * tag-shaped to a renderer than they were to the strip, so they reach `content[]`
+     * byte-exact.
+     */
+    const text = getReferencesTool.format!(result)[0]?.text ?? '';
+    expect(text).toContain('International \\<IR> Framework');
+    expect(text).toContain('Silicon <100> nanowires');
+    expect(text).toContain('66:2<131::AID-QUA4>3.0.CO;2-W');
+  });
+
+  /**
+   * What a deliberately-kept bracket looks like to a Markdown reader: the whole tag, address
+   * included. Left raw, a renderer consumes `<a …>` and shows `arXiv:1102.1113v1` alone — the
+   * address the keep exists to protect, lost on exactly the occurrences the rule works hardest
+   * to preserve.
+   */
+  it('carries a kept link and a bracketed URL onto content[] whole', async () => {
+    const ctx = createMockContext({ errors: getReferencesTool.errors });
+    mockGetWork.mockResolvedValue({
+      DOI: '10.3934/dcds.2013.33.2211',
+      reference: [
+        {
+          key: 'r1',
+          unstructured:
+            'Preprint, <a href="http://arxiv.org/abs/1102.1113v1">arXiv:1102.1113v1</a>.',
+        },
+        { key: 'r2', unstructured: 'FAOSTAT. <http://faostat.fao.org/site/291/default.aspx>.' },
+      ],
+    });
+
+    const input = getReferencesTool.input.parse({ doi: '10.3934/dcds.2013.33.2211' });
+    const result = await getReferencesTool.handler(input, ctx);
+    const text = getReferencesTool.format!(result)[0]?.text ?? '';
+
+    expect(result.references[0]?.unstructured).toContain(
+      '<a href="http://arxiv.org/abs/1102.1113v1">',
+    );
+    expect(text).toContain('\\<a href="http://arxiv.org/abs/1102.1113v1">arXiv:1102.1113v1\\</a>');
+    expect(text).toContain('\\<http://faostat.fao.org/site/291/default.aspx>');
+  });
+
+  /**
+   * The other half of the same boundary: `format()` wraps a journal title in `*…*`, so a title
+   * carrying an asterisk of its own used to close the emphasis early and take the marker with
+   * it. Every deposited field on the line is escaped, so the server's own markup is the only
+   * markup on it.
+   */
+  it('keeps a metacharacter in a rendered field from closing the markup around it', async () => {
+    const ctx = createMockContext({ errors: getReferencesTool.errors });
+    mockGetWork.mockResolvedValue({
+      DOI: '10.1000/probe',
+      reference: [
+        {
+          key: 'r1',
+          'journal-title': 'Proc. SPIE 9*',
+          'article-title': 'Imaging `at` scale',
+          author: 'A*STAR consortium',
+        },
+      ],
+    });
+
+    const input = getReferencesTool.input.parse({ doi: '10.1000/probe' });
+    const result = await getReferencesTool.handler(input, ctx);
+    const text = getReferencesTool.format!(result)[0]?.text ?? '';
+
+    expect(result.references[0]?.journalTitle).toBe('Proc. SPIE 9*');
+    expect(text).toContain('*Proc. SPIE 9\\**');
+    expect(text).toContain('Imaging \\`at\\` scale');
+    expect(text).toContain('A\\*STAR consortium');
   });
 
   it('handles reference with only unstructured field', async () => {

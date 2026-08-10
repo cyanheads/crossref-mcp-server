@@ -5,6 +5,7 @@
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
+import { mdText } from '@/mcp-server/tools/markdown-text.js';
 import { getCrossrefService, normalizeText } from '@/services/crossref/crossref-service.js';
 import type { RawCrossrefMember } from '@/services/crossref/types.js';
 import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
@@ -116,9 +117,9 @@ export const getMemberTool = tool('crossref_get_member', {
 
   format: (result) => {
     const lines: string[] = [];
-    lines.push(`## ${result.primaryName ?? `Member ${result.id}`}`);
+    lines.push(`## ${result.primaryName ? mdText(result.primaryName) : `Member ${result.id}`}`);
     lines.push(`**Member ID:** ${result.id}`);
-    if (result.location) lines.push(`**Location:** ${result.location}`);
+    if (result.location) lines.push(`**Location:** ${mdText(result.location)}`);
 
     if (result.counts) {
       const c = result.counts;
@@ -137,7 +138,7 @@ export const getMemberTool = tool('crossref_get_member', {
     }
 
     if (result.prefixes?.length) lines.push(`**Prefixes:** ${result.prefixes.join(', ')}`);
-    if (result.names?.length) lines.push(`**Other names:** ${result.names.join('; ')}`);
+    if (result.names?.length) lines.push(`**Other names:** ${result.names.map(mdText).join('; ')}`);
 
     if (result.worksByType?.length) {
       lines.push('');

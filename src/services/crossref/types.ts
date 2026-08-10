@@ -4,20 +4,45 @@
  * @module services/crossref/types
  */
 
+/**
+ * An identifier Crossref carries for an organization, beside a name or instead of one.
+ * `id-type` is `ROR` on an organization the publisher asserted by identifier, `DOI` on a funder
+ * matched to a Funder Registry entry, and `ISNI` on the registry's other identifier scheme.
+ */
+export type CrossrefOrganizationId = {
+  id: string;
+  'id-type'?: string;
+  'asserted-by'?: string;
+};
+
+/**
+ * An institutional affiliation on an author. Crossref guarantees no field on one: an
+ * organization the publisher asserted by ROR carries `id` and no `name`.
+ */
+export type CrossrefAffiliation = {
+  name?: string;
+  id?: CrossrefOrganizationId[];
+};
+
 /** A single author or contributor on a Crossref work. */
 export type CrossrefAuthor = {
   given?: string;
   family?: string;
   name?: string;
   ORCID?: string;
-  affiliation?: Array<{ name: string }>;
+  affiliation?: CrossrefAffiliation[];
   sequence?: string;
 };
 
-/** A funding assertion on a Crossref work. */
+/**
+ * A funding assertion on a Crossref work. `name` is absent on an assertion the publisher made by
+ * identifier rather than by name, where the `id` array carries the organization's ROR and is the
+ * only identity the assertion has.
+ */
 export type CrossrefFunder = {
-  name: string;
+  name?: string;
   DOI?: string;
+  id?: CrossrefOrganizationId[];
   award?: string[];
   'doi-asserted-by'?: string;
 };
@@ -38,9 +63,13 @@ export type CrossrefLink = {
   'intended-application'?: string;
 };
 
-/** A date part array from Crossref (year, optional month, optional day). */
+/**
+ * A date part array from Crossref (year, optional month, optional day). A component Crossref does
+ * not know is deposited as `null` in place of the number, so the tuple is `Array<number | null>`
+ * rather than `Array<number>` — a record with no registered year arrives as `[[null]]`.
+ */
 export type CrossrefDateParts = {
-  'date-parts'?: Array<Array<number>>;
+  'date-parts'?: Array<Array<number | null>>;
   'date-time'?: string;
   timestamp?: number;
 };
@@ -98,7 +127,7 @@ export type RawCrossrefWork = {
   score?: number;
   language?: string;
   'content-domain'?: { domain?: string[]; 'crossmark-restriction'?: boolean };
-  institution?: Array<{ name: string }>;
+  institution?: CrossrefAffiliation[];
 };
 
 /** Raw journal record from Crossref /journals endpoint. */

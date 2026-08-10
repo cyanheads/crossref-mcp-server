@@ -12,9 +12,16 @@
  * recognizable as markup, by its shape, by sitting inside a markup region, or by its element
  * name — and they differ in exactly one thing, what an unrecognized element name means. A link
  * element is the one class settled per occurrence instead of per name, since its tags may come
- * out only where its own text already carries the address its `href` holds. All three passes
- * end in the same baseline: character references decoded against the HTML5 named set in
- * `html-entities`, then whitespace collapsed.
+ * out only where its own text already carries the address its `href` holds; an `<alternatives>`
+ * wrapper is the one region that selects rather than strips, keeping the first of the encodings
+ * it holds so one expression does not reach the reader twice and leaving the block boundary a
+ * formula leaves, whichever encoding it kept. All three passes end in the same
+ * baseline: character references decoded against the HTML5 named set in `html-entities`, then
+ * whitespace collapsed.
+ *
+ * What these passes produce is what `structuredContent` carries. The same values are escaped
+ * again on their way into the Markdown of `content[]` — see `mdText` in `mcp-server/tools` —
+ * so a bracket kept here is not consumed by the client's renderer instead.
  * @module services/crossref/crossref-service
  */
 
@@ -205,6 +212,22 @@ const MATHML_ANNOTATION =
   /<(?:[A-Za-z][\w.-]*:)?annotation(?:-xml)?\b[^>]*>[\s\S]*?<\/(?:[A-Za-z][\w.-]*:)?annotation(?:-xml)?\s*>/gi;
 
 /**
+ * A JATS `<alternatives>` wrapper, matched end to end. It holds several encodings of one
+ * object and expects a consumer to pick one — a formula's TeX beside the same formula's
+ * presentation MathML, or a graphic beside the TeX that reproduces it. Emitting every child
+ * that carries text renders one expression twice.
+ *
+ * `alternatives` is an ordinary English word, which on the reference surface would ordinarily
+ * keep its brackets. Matching it as a region is what settles that: a reader who writes the
+ * word in angle brackets does not also write a closing tag for it, so the pair is what
+ * identifies the construct, and an unclosed one matches nothing and is left whole.
+ */
+const ALTERNATIVES_SPAN = new RegExp(
+  String.raw`<(?:[A-Za-z][\w.-]*:)?alternatives\b${TAG_ATTRIBUTES}>([\s\S]*?)<\/(?:[A-Za-z][\w.-]*:)?alternatives\s*>`,
+  'gi',
+);
+
+/**
  * A JATS structured citation deposited whole into a free-text field, matched end to end the
  * way a MathML formula is. Inside one, every bracket is a tag by construction — nobody types
  * a Miller index inside `<mixed-citation>` — so the name-by-name allow-list does not apply
@@ -317,6 +340,62 @@ function linkAddressSurvives(openTag: string, text: string): boolean {
 }
 
 /**
+ * The elements a region holds directly, in deposit order. Depth is counted off the same
+ * well-formed-tag match the strip uses, so a child's own nested markup travels with it and a
+ * closing tag with no opener inside the region is ignored rather than closing the region's
+ * first child early.
+ */
+function* topLevelElements(inner: string): Generator<string> {
+  let depth = 0;
+  let start = -1;
+  for (const match of inner.matchAll(TAG)) {
+    const [tag, close, , selfClose] = match as unknown as [string, string, string, string];
+    if (close) {
+      if (depth === 0) continue;
+      depth -= 1;
+      if (depth === 0 && start >= 0) {
+        yield inner.slice(start, match.index + tag.length);
+        start = -1;
+      }
+    } else if (selfClose) {
+      if (depth === 0) yield tag;
+    } else {
+      if (depth === 0) start = match.index;
+      depth += 1;
+    }
+  }
+}
+
+/**
+ * Pick the one encoding an `<alternatives>` wrapper's consumer is meant to read: its first
+ * child that carries any text at all.
+ *
+ * Position rather than notation is what decides. The children are siblings with no marked
+ * primary — unlike a MathML `<annotation>`, which the vocabulary itself defines as the second
+ * copy — so preferring TeX over presentation MathML or the reverse would be this server
+ * ranking notations it has no standing to rank, and would need extending every time the
+ * vocabulary admits another encoding. Taking the first text-bearing child needs no such list:
+ * an `<inline-graphic>` carries no text and is passed over on that basis, and a child element
+ * nobody has seen before is handled by the same rule. What is selected is returned as it was
+ * deposited, so the pass that follows classifies it like any other markup.
+ *
+ * A wrapper holding no child elements at all keeps its content whole. Nothing in it can be a
+ * duplicate encoding, and dropping it would cost the reader text.
+ *
+ * What is selected is returned without a separator of its own; the wrapper's boundary is applied
+ * around it by the caller, so the same construct spaces the same way whichever encoding a
+ * publisher happened to deposit first.
+ */
+function firstAlternative(inner: string): string {
+  let sawChild = false;
+  for (const child of topLevelElements(inner)) {
+    sawChild = true;
+    if (/\S/.test(child.replace(/<[^>]*>/g, ''))) return child;
+  }
+  return sawChild ? '' : inner;
+}
+
+/**
  * Empty a MathML formula of its markup, so the expression reads as one token —
  * `<msub><mi>Airy</mi><mn>2</mn></msub>` is `Airy2`. Inside a region every bracket is a tag by
  * construction, so neither the shape test nor the allow-list has anything to protect: the tags
@@ -416,9 +495,13 @@ function stripTags(text: string, unlisted: Verdict): string {
  *    pairs rather than prose. This is what separates `<span class="smallcaps">` from
  *    `<Stack Overflow, https://…>`, `<Available from: http://…>`, and `<B. subtilis>` — all text
  *    a reader needs, and all of them read as a tag under a looser `<name\b[^>]*>`.
- * 2. **Region.** A MathML formula and a JATS structured citation are matched end to end and
- *    emptied of tags, because inside one there is no typed bracket to protect. All or nothing:
- *    an unclosed region matches nothing and is left whole rather than half-consumed.
+ * 2. **Region.** A MathML formula, a JATS structured citation, and an `<alternatives>` wrapper
+ *    are matched end to end, because inside one there is no typed bracket to protect. The first
+ *    two are emptied of tags; the third holds one object encoded several ways and is reduced to
+ *    its first text-bearing child, or the same expression reaches the reader twice. All or
+ *    nothing: an unclosed region matches nothing and is left whole rather than half-consumed.
+ *    The two formula-bearing regions leave a block boundary on their outer edge, because a
+ *    formula stands as its own token in the sentence rather than continuing the word beside it.
  * 3. **Name.** Everywhere else the element name decides, on three shared classes plus a
  *    per-surface default. Scripts and inline formula wrappers leave nothing — `O<sub>2</sub>` is
  *    one formula and a space there splits it, `T<inf>c</inf>` is one symbol. Inline emphasis and
@@ -449,6 +532,19 @@ function stripMarkup(raw: string, unlisted: Verdict): string {
   return collapseWhitespace(
     stripTags(
       raw
+        /**
+         * The `<alternatives>` selection runs before the others: it hands back one of its
+         * children as deposited, and that child is a MathML formula as often as not.
+         *
+         * The block boundary is the wrapper's own, not the selected child's. A wrapper holds a
+         * formula, and a formula stands as its own token in the sentence rather than continuing
+         * the word beside it — the same reading that gives a MathML region its outer edge. It
+         * has to be the wrapper's, because publishers deposit the encodings in either order:
+         * decided by the child, the same construct would separate where the MathML came first
+         * and close up where the TeX did, and `time scale<inline-formula>…` would read
+         * `time scale$\mathbb{T}$with`.
+         */
+        .replace(ALTERNATIVES_SPAN, (_, inner: string) => ` ${firstAlternative(inner)} `)
         .replace(MATHML_SPAN, (_, inner: string) => stripMathml(inner))
         .replace(CITATION_SPAN, (_, inner: string) => stripTags(inner, 'inline')),
       unlisted,
@@ -505,17 +601,28 @@ export function formatDateParts(d: {
   return parts.join('-');
 }
 
-/** Extract year/month/day from a Crossref date-parts array. Returns undefined when no parts exist. */
+/**
+ * Extract year/month/day from a Crossref date-parts array.
+ *
+ * A component Crossref does not know is deposited as `null` in the tuple rather than left off it:
+ * a dissertation with no registered year arrives as `[[null]]`, and 8% of a random works draw
+ * carries one somewhere in `issued`. Absent and null are the same fact for a caller — the
+ * component is unknown — so both come back as an omitted field, which is what the output schemas
+ * declare each of the three to be.
+ *
+ * The read stops at the first unknown component rather than skipping past it, because the tuple
+ * is positional and the parts below one carry no meaning without it. `[[2020, null, 15]]` is a
+ * year and a day-of-a-month nobody named, and rendering it through `formatDateParts` as `2020-15`
+ * would state a date the deposit does not.
+ */
 export function parseDateParts(
-  raw: { 'date-parts'?: Array<Array<number>> } | undefined,
+  raw: { 'date-parts'?: Array<Array<number | null>> } | undefined,
 ): { year?: number; month?: number; day?: number } | undefined {
-  const parts = raw?.['date-parts']?.[0];
-  if (!parts?.length) return;
-  return {
-    ...(parts[0] !== undefined && { year: parts[0] }),
-    ...(parts[1] !== undefined && { month: parts[1] }),
-    ...(parts[2] !== undefined && { day: parts[2] }),
-  };
+  const [year, month, day] = raw?.['date-parts']?.[0] ?? [];
+  if (typeof year !== 'number') return;
+  if (typeof month !== 'number') return { year };
+  if (typeof day !== 'number') return { year, month };
+  return { year, month, day };
 }
 
 /** Strip URL/doi: prefix from a funder DOI, yielding a bare registry ID for the Crossref path. */

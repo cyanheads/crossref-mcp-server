@@ -10,6 +10,7 @@
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode, McpError } from '@cyanheads/mcp-ts-core/errors';
+import { mdText } from '@/mcp-server/tools/markdown-text.js';
 import {
   type FundersSearchOptions,
   formatDateParts,
@@ -463,11 +464,11 @@ export const searchFundersTool = tool('crossref_search_funders', {
     const lines: string[] = [];
 
     for (const f of result.funders) {
-      lines.push(`## ${f.name ?? f.id ?? '(unknown)'}`);
+      lines.push(`## ${f.name ? mdText(f.name) : (f.id ?? '(unknown)')}`);
       if (f.id) lines.push(`**ID:** ${f.id}`);
       if (f.uri) lines.push(`**URI:** ${f.uri}`);
-      if (f.country) lines.push(`**Country:** ${f.country}`);
-      if (f.altNames?.length) lines.push(`**Also known as:** ${f.altNames.join(', ')}`);
+      if (f.country) lines.push(`**Country:** ${mdText(f.country)}`);
+      if (f.altNames?.length) lines.push(`**Also known as:** ${f.altNames.map(mdText).join(', ')}`);
       if (f.worksCount !== undefined) lines.push(`**Works in Crossref:** ${f.worksCount}`);
       if (f.replacedBy?.length)
         lines.push(`**Deprecated — replaced by:** ${f.replacedBy.join(', ')}`);
@@ -481,7 +482,7 @@ export const searchFundersTool = tool('crossref_search_funders', {
         const date = w.published?.year !== undefined ? ` (${formatDateParts(w.published)})` : '';
         const cited =
           w.isReferencedByCount !== undefined ? ` | Cited: ${w.isReferencedByCount}` : '';
-        lines.push(`- **${w.title ?? w.doi}**${date}${cited}`);
+        lines.push(`- **${w.title ? mdText(w.title) : w.doi}**${date}${cited}`);
         lines.push(`  DOI: ${w.doi}${w.type ? ` | Type: ${w.type}` : ''}`);
       }
     }
