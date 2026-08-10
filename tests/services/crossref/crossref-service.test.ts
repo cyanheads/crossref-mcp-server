@@ -38,6 +38,8 @@ import {
   normalizeReferenceText,
   normalizeText,
   parseDateParts,
+  resolveWorkDate,
+  resolveWorkSummaryDate,
   stripJats,
   stripReferenceMarkup,
   WORKS_OFFSET_CAP,
@@ -1955,5 +1957,72 @@ describe('parseDateParts', () => {
     expect(parseDateParts({ 'date-parts': [[2020, null]] })).toEqual({ year: 2020 });
     expect(parseDateParts({ 'date-parts': [[2020, null, 15]] })).toEqual({ year: 2020 });
     expect(parseDateParts({ 'date-parts': [[2020, 3, null]] })).toEqual({ year: 2020, month: 3 });
+  });
+});
+
+describe('resolveWorkDate / resolveWorkSummaryDate', () => {
+  it('answers with the preferred source when it names a date', () => {
+    const raw = {
+      published: { 'date-parts': [[2021, 6, 2]] },
+      'published-print': { 'date-parts': [[2021, 7]] },
+      issued: { 'date-parts': [[2021, 6, 2]] },
+    };
+    expect(resolveWorkDate(raw)).toEqual({ year: 2021, month: 6, day: 2 });
+    expect(resolveWorkSummaryDate(raw)).toEqual({ year: 2021, month: 6, day: 2 });
+  });
+
+  /**
+   * The whole point of the chain, and the one shape the two possible orders disagree on.
+   * Crossref writes a component it does not know as `null` inside the tuple, so a source
+   * deposited holding only unknowns states no date — the same fact an absent field states.
+   * Selecting the source object first and parsing once would read its presence as an answer
+   * and report no publication date for a record that names one two fields along.
+   */
+  it('falls through a source deposited with only unknown components', () => {
+    const raw = {
+      published: { 'date-parts': [[null]] },
+      'published-print': { 'date-parts': [[2020, 5]] },
+    };
+    expect(resolveWorkDate(raw)).toEqual({ year: 2020, month: 5 });
+    expect(resolveWorkSummaryDate(raw)).toEqual({ year: 2020, month: 5 });
+  });
+
+  it('falls through every unknown source in turn', () => {
+    const raw = {
+      published: { 'date-parts': [[null]] },
+      'published-print': { 'date-parts': [[null, 4]] },
+      'published-online': { 'date-parts': [[2018, 11, 30]] },
+    };
+    expect(resolveWorkDate(raw)).toEqual({ year: 2018, month: 11, day: 30 });
+    expect(resolveWorkSummaryDate(raw)).toEqual({ year: 2018, month: 11, day: 30 });
+  });
+
+  /**
+   * It advances on nothing, never on less. `published` is the earliest of the two publication
+   * events and `published-online` is one particular event, so completing a coarse `published`
+   * from a precise `published-online` would answer with the online date instead of the
+   * publication date — on the ~10% of works whose sources differ in precision.
+   */
+  it('keeps a coarse date rather than refining it from a later source', () => {
+    const raw = {
+      published: { 'date-parts': [[2024]] },
+      'published-print': { 'date-parts': [[2024]] },
+      'published-online': { 'date-parts': [[2024, 1, 5]] },
+    };
+    expect(resolveWorkDate(raw)).toEqual({ year: 2024 });
+    expect(resolveWorkSummaryDate(raw)).toEqual({ year: 2024 });
+  });
+
+  /** `issued` is the full record's last resort, and a work summary reads none of it. */
+  it('reads issued for a record and never for a summary', () => {
+    const raw = { issued: { 'date-parts': [[1997, 2]] } };
+    expect(resolveWorkDate(raw)).toEqual({ year: 1997, month: 2 });
+    expect(resolveWorkSummaryDate(raw)).toBeUndefined();
+  });
+
+  it('answers with nothing when no source names a date', () => {
+    expect(resolveWorkDate({})).toBeUndefined();
+    expect(resolveWorkDate({ issued: { 'date-parts': [[null]] } })).toBeUndefined();
+    expect(resolveWorkSummaryDate({ published: { 'date-parts': [[null]] } })).toBeUndefined();
   });
 });

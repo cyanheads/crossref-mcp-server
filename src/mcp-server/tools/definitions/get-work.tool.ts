@@ -17,7 +17,7 @@ import {
   getCrossrefService,
   normalizeMarkupText,
   normalizeText,
-  parseDateParts,
+  resolveWorkDate,
 } from '@/services/crossref/crossref-service.js';
 import type {
   CrossrefAffiliation,
@@ -186,7 +186,9 @@ export const getWorkTool = tool('crossref_get_work', {
       .describe('Journal, book, or proceedings name containing this work'),
     issn: z.array(z.string()).optional().describe('ISSN(s) of the containing journal'),
     publisher: z.string().optional().describe('Publisher name'),
-    published: DatePartsSchema.optional().describe('Primary publication date'),
+    published: DatePartsSchema.optional().describe(
+      'Publication date — the first of published, published-print, published-online, and issued that names one. A component Crossref records as unknown is omitted, and so is every component below it.',
+    ),
     funders: z.array(FunderSchema).optional().describe('Funding acknowledgements'),
     licenses: z.array(LicenseSchema).optional().describe('License terms'),
     links: z.array(LinkSchema).optional().describe('Registered full-text links'),
@@ -250,9 +252,7 @@ export const getWorkTool = tool('crossref_get_work', {
         ? normalizeMarkupText(raw['container-title'][0])
         : undefined;
 
-    const published = parseDateParts(
-      raw.published ?? raw['published-print'] ?? raw['published-online'] ?? raw.issued,
-    );
+    const published = resolveWorkDate(raw);
 
     /**
      * The author list is bounded the same way crossref_get_references bounds references:

@@ -20,7 +20,7 @@ import {
   nextPageOffset,
   normalizeMarkupText,
   normalizeText,
-  parseDateParts,
+  resolveWorkSummaryDate,
   WORKS_OFFSET_CAP,
 } from '@/services/crossref/crossref-service.js';
 import type { RawCrossrefJournal } from '@/services/crossref/types.js';
@@ -65,7 +65,9 @@ const WorkSummarySchema = z
         month: z.number().optional().describe('Month'),
       })
       .optional()
-      .describe('Publication date'),
+      .describe(
+        'Publication date — the first of published, published-print, and published-online that names one. A component Crossref records as unknown is omitted, and so is every component below it.',
+      ),
     isReferencedByCount: z.number().optional().describe('Incoming citation count'),
   })
   .describe('Work summary');
@@ -394,10 +396,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       ctx,
     );
     const recentWorks = worksResult.items.map((raw) => {
-      const published =
-        parseDateParts(raw.published) ??
-        parseDateParts(raw['published-print']) ??
-        parseDateParts(raw['published-online']);
+      const published = resolveWorkSummaryDate(raw);
       return {
         doi: raw.DOI,
         ...(raw.title?.[0] !== undefined && { title: normalizeMarkupText(raw.title[0]) }),

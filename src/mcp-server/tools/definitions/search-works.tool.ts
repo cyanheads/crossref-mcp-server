@@ -17,7 +17,7 @@ import {
   getCrossrefService,
   normalizeMarkupText,
   normalizeText,
-  parseDateParts,
+  resolveWorkSummaryDate,
   type WorksSearchOptions,
 } from '@/services/crossref/crossref-service.js';
 import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
@@ -57,7 +57,9 @@ const WorkSummarySchema = z
         day: z.number().optional().describe('Day'),
       })
       .optional()
-      .describe('Publication date'),
+      .describe(
+        'Publication date — the first of published, published-print, and published-online that names one. A component Crossref records as unknown is omitted, and so is every component below it.',
+      ),
     containerTitle: z.string().optional().describe('Journal or container name'),
     publisher: z.string().optional().describe('Publisher name'),
     isReferencedByCount: z.number().optional().describe('Incoming citation count'),
@@ -272,10 +274,7 @@ export const searchWorksTool = tool('crossref_search_works', {
     const result = await svc.searchWorks(searchOpts, ctx);
 
     const works = result.items.map((raw) => {
-      const published =
-        parseDateParts(raw.published) ??
-        parseDateParts(raw['published-print']) ??
-        parseDateParts(raw['published-online']);
+      const published = resolveWorkSummaryDate(raw);
       return {
         doi: raw.DOI,
         ...(raw.title?.[0] !== undefined && { title: normalizeMarkupText(raw.title[0]) }),
