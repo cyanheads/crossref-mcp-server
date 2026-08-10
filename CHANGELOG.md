@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.3.7](changelog/0.3.x/0.3.7.md) — 2026-08-09
+
+Unified JATS/reference markup strip; refersplit, valueless attributes, MathML duplication, and link-tag address loss fixed
+
 ## [0.3.6](changelog/0.3.x/0.3.6.md) — 2026-08-09
 
 crossref_get_references markup strip rewritten (tag shape, MathML/JATS citation regions), full HTML5 named entity set
