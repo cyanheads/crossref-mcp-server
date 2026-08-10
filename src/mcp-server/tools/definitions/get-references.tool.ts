@@ -2,9 +2,9 @@
  * @fileoverview crossref_get_references — returns a page of the outgoing reference list for a DOI.
  * Fetches the full /works/{doi} record and extracts the reference[] array client-side, then slices
  * it by offset/limit so structuredContent and content[] carry the identical page. The entry's
- * free-text fields are entity-decoded, whitespace-collapsed, and stripped of the formatting
- * markup on a closed element-name allow-list — see normalizeReferenceText in the service, which
- * is what keeps a bracketed URL or a Miller index from being read as a tag and deleted.
+ * free-text fields are entity-decoded, whitespace-collapsed, and stripped of the markup a
+ * publisher deposits into a citation string — see normalizeReferenceText in the service, whose
+ * bounded rule is what keeps a bracketed URL or a Miller index from being read as a tag.
  * Incoming citations are not available through Crossref; use OpenAlex for those.
  * @module mcp-server/tools/definitions/get-references.tool
  */
@@ -25,7 +25,7 @@ const ReferenceSchema = z
       .string()
       .optional()
       .describe(
-        'Citation string as deposited by the publisher, with inline formatting markup removed. Angle-bracketed text that is not a known formatting element — a cited URL, a Miller index, a DOI fragment — is left exactly as deposited.',
+        'Citation string as deposited by the publisher, with formatting markup and structured-citation tags removed. Angle-bracketed text that is not recognizable as markup — a cited URL, a Miller index, a DOI fragment, a link whose address sits in an href — is left exactly as deposited.',
       ),
     author: z
       .string()
@@ -165,12 +165,12 @@ export const getReferencesTool = tool('crossref_get_references', {
 
     /**
      * The free-text fields get the entity decode and whitespace collapse every other
-     * human-readable value this server returns does, plus a strip of the inline formatting a
-     * publisher deposits into a citation string. The identifiers and numeric strings stay
-     * byte-exact. The strip is bounded by an element-name allow-list rather than matching
-     * every angle bracket, because a bracket here is as often content as markup — a cited
-     * URL, a Miller index, a DOI fragment — and deleting a cited URL is a worse failure than
-     * leaving one unrecognized tag in place.
+     * human-readable value this server returns does, plus a strip of the markup a publisher
+     * deposits into a citation string. The identifiers and numeric strings stay byte-exact.
+     * The strip is bounded — by tag shape, by markup region, and by an element-name
+     * allow-list — rather than matching every angle bracket, because a bracket here is as
+     * often content as markup, and deleting a cited URL is a worse failure than leaving one
+     * unrecognized tag in place.
      */
     const references = page.map((r) => ({
       ...(r.key && { key: r.key }),

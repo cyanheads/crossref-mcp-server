@@ -109,6 +109,52 @@ describe('getReferencesTool', () => {
     expect(ref?.journalTitle).toBe('J. Clin. Epidemiol.');
   });
 
+  /**
+   * The deposits behind #51: guillemets around a cited title, Greek letters in a cytokine
+   * name, an umlaut in an author name. All three reach `content[]` as well as
+   * `structuredContent`, since the decode happens in the handler rather than in `format()`.
+   */
+  it('decodes the named references a publisher deposits, on both surfaces', async () => {
+    const ctx = createMockContext({ errors: getReferencesTool.errors });
+    mockGetWork.mockResolvedValue({
+      DOI: '10.2118/198370-ru',
+      type: 'journal-article',
+      reference: [
+        {
+          key: 'r1',
+          unstructured:
+            'Fan Li, Whitson C. H. (2006) &laquo;Understanding Gas Condensate Reservoir&raquo;, Oilfieald Review',
+        },
+        {
+          key: 'r2',
+          'article-title': 'Interleukin-1-&beta; (IL-1&beta;) and tumor necrosis factor',
+          author: 'M&uuml;ller KH',
+          'journal-title': 'Br J Cancer 8, 21&ndash;28',
+        },
+      ],
+    });
+
+    const input = getReferencesTool.input.parse({ doi: '10.2118/198370-ru' });
+    const result = await getReferencesTool.handler(input, ctx);
+
+    expect(result.references[0]?.unstructured).toBe(
+      'Fan Li, Whitson C. H. (2006) «Understanding Gas Condensate Reservoir», Oilfieald Review',
+    );
+    expect(result.references[1]?.articleTitle).toBe(
+      'Interleukin-1-β (IL-1β) and tumor necrosis factor',
+    );
+    expect(result.references[1]?.author).toBe('Müller KH');
+    expect(result.references[1]?.journalTitle).toBe('Br J Cancer 8, 21–28');
+
+    const block = getReferencesTool.format?.(result)[0];
+    const rendered = block?.type === 'text' ? block.text : '';
+    expect(rendered).toContain('«Understanding Gas Condensate Reservoir»');
+    expect(rendered).toContain('Interleukin-1-β (IL-1β)');
+    expect(rendered).toContain('Müller KH');
+    expect(rendered).not.toContain('&laquo;');
+    expect(rendered).not.toContain('&beta;');
+  });
+
   it('strips inline formatting markup from every free-text field', async () => {
     const ctx = createMockContext({ errors: getReferencesTool.errors });
     mockGetWork.mockResolvedValue({
@@ -161,6 +207,15 @@ describe('getReferencesTool', () => {
             'Preprint, <a href="http://arxiv.org/abs/1102.1113v1" target="_blank">arXiv:1102.1113v1</a>.',
         },
         { key: 'r3', unstructured: 'EPA standards, <www.ecfr.gov>, as of May 27, 2014.' },
+        {
+          key: 'r4',
+          unstructured:
+            'PCNE classification. Available from <uri>https://www.pcne.org/upload/417.pdf</uri>.',
+        },
+        {
+          key: 'r5',
+          unstructured: 'Website <The Internet Movie DataBase, http://www.imdb.com/>, Nov 2012.',
+        },
       ],
     });
 
@@ -174,6 +229,57 @@ describe('getReferencesTool', () => {
       '<a href="http://arxiv.org/abs/1102.1113v1" target="_blank">',
     );
     expect(result.references[2]?.unstructured).toContain('<www.ecfr.gov>');
+    expect(result.references[3]?.unstructured).toContain(
+      '<uri>https://www.pcne.org/upload/417.pdf</uri>',
+    );
+    expect(result.references[4]?.unstructured).toContain(
+      '<The Internet Movie DataBase, http://www.imdb.com/>',
+    );
+  });
+
+  /**
+   * Three deposits the allow-list did not name at first: a styling span, the Elsevier and IEEE
+   * spelling of a subscript, and a whole JATS citation deposited into a free-text field. None
+   * carries anything in an attribute, so the constraint that keeps a link's tag in place does
+   * not argue for keeping these. Values as deposited on 10.1016/j.crvi.2009.11.007 ref[8],
+   * 10.1109/77.621808 ref[3], and 10.2118/198370-ru ref[0].
+   */
+  it('strips styling spans, the inf subscript, and a structured citation envelope', async () => {
+    const ctx = createMockContext({ errors: getReferencesTool.errors });
+    mockGetWork.mockResolvedValue({
+      DOI: '10.1038/nature12373',
+      type: 'journal-article',
+      reference: [
+        {
+          key: 'r1',
+          'journal-title':
+            'Les sciences de la vie au <span class="smallcaps">xvii</span><sup>e</sup> et <span class="smallcaps">xviii</span><sup>e</sup> siècles',
+        },
+        {
+          key: 'r2',
+          'article-title':
+            'development of a heart monitoring system with high T<inf>c</inf>-dc-SQUID gradiometers',
+        },
+        {
+          key: 'r3',
+          unstructured:
+            '<mixed-citation publication-type="journal"><person-group person-group-type="author"><string-name><surname>Fan</surname> <given-names>Li</given-names></string-name>., <string-name><surname>Whitson</surname> <given-names>C. H.</given-names></string-name></person-group> (<year>2006</year>) <article-title>Understanding Gas Condensate Reservoir</article-title>, <source />Oilfield Review, <comment>Winter, 2005/2006</comment>;</mixed-citation>',
+        },
+      ],
+    });
+
+    const input = getReferencesTool.input.parse({ doi: '10.1038/nature12373' });
+    const result = await getReferencesTool.handler(input, ctx);
+
+    expect(result.references[0]?.journalTitle).toBe(
+      'Les sciences de la vie au xviie et xviiie siècles',
+    );
+    expect(result.references[1]?.articleTitle).toBe(
+      'development of a heart monitoring system with high Tc-dc-SQUID gradiometers',
+    );
+    expect(result.references[2]?.unstructured).toBe(
+      'Fan Li., Whitson C. H. (2006) Understanding Gas Condensate Reservoir, Oilfield Review, Winter, 2005/2006;',
+    );
   });
 
   /**

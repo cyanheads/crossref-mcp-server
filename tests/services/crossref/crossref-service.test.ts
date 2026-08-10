@@ -28,7 +28,6 @@ vi.mock('@/config/server-config.js', () => ({
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import {
   CrossrefService,
-  decodeHtmlEntities,
   formatDateParts,
   getCrossrefService,
   initCrossrefService,
@@ -42,6 +41,7 @@ import {
   stripReferenceMarkup,
   WORKS_OFFSET_CAP,
 } from '@/services/crossref/crossref-service.js';
+import { decodeHtmlEntities } from '@/services/crossref/html-entities.js';
 
 /** Every route this service calls lives under the configured base URL. */
 const CROSSREF = /^https:\/\/api\.crossref\.test\//;
@@ -705,6 +705,15 @@ describe('normalizeText', () => {
   it('collapses whitespace an entity decodes into', () => {
     expect(normalizeText('a&#10;b')).toBe('a b');
   });
+
+  /**
+   * The named whitespace references fold the same way the numeric ones do, because the decode
+   * runs before the collapse. A non-breaking space reaching `content[]` intact renders as an
+   * ordinary space a reader cannot select or search for.
+   */
+  it('collapses whitespace a named reference decodes into', () => {
+    expect(normalizeText('Vol.&nbsp;12,&Tab;p.&NewLine;44')).toBe('Vol. 12, p. 44');
+  });
 });
 
 describe('normalizeMarkupText', () => {
@@ -726,6 +735,16 @@ describe('normalizeMarkupText', () => {
    */
   it('keeps an escaped tag as literal text', () => {
     expect(normalizeMarkupText('Use &lt;i&gt; for italics')).toBe('Use <i> for italics');
+    // Same protection through the numeric spelling, and through a double escape.
+    expect(normalizeMarkupText('Use &#60;i&#62; for italics')).toBe('Use <i> for italics');
+    expect(normalizeMarkupText('Deposited as &amp;lt;i&amp;gt;')).toBe('Deposited as &lt;i&gt;');
+  });
+
+  /** A title carries the same named references a citation does. */
+  it('decodes a named reference in a title', () => {
+    expect(normalizeMarkupText('Kinase isoforms p38&alpha; and p38&beta;')).toBe(
+      'Kinase isoforms p38α and p38β',
+    );
   });
 
   /**
@@ -790,14 +809,233 @@ describe('stripReferenceMarkup', () => {
   });
 
   /**
-   * A link's URL lives in an attribute, so stripping the tag would delete it. `a` and
-   * `ext-link` stay off the allow-list for that reason, not by oversight.
+   * A link's URL lives in an attribute, so stripping the tag would delete it. `a`, `ext-link`,
+   * and `uri` — which takes an `xlink:href` in JATS — stay off the allow-list for that reason,
+   * not by oversight.
    */
   it('leaves a link tag whole so its href survives', () => {
     const anchor = 'Preprint, <a href="http://arxiv.org/abs/1102.1113v1">arXiv:1102.1113v1</a>.';
     expect(stripReferenceMarkup(anchor)).toBe(anchor);
     const extLink = 'at <ext-link xlink:href="http://x.org/a.pdf">http://x.org/a.pdf</ext-link>.';
     expect(stripReferenceMarkup(extLink)).toBe(extLink);
+    const uri = 'Available from <uri>https://www.pcne.org/upload/files/417.pdf</uri>. Accessed.';
+    expect(stripReferenceMarkup(uri)).toBe(uri);
+  });
+
+  /**
+   * A bracketed phrase that opens with an allow-listed name is a citation a reader needs, not
+   * a tag. Requiring the attribute tail to be `name="value"` pairs is what tells them apart —
+   * every one of these reads as a tag under a looser `<name\b[^>]*>` and loses its whole span.
+   */
+  it('leaves a bracketed phrase that merely opens with an element name', () => {
+    const cases = [
+      'See <Stack Overflow, https://stackoverflow.com/q/1234>, retrieved 2020.',
+      'SCOGS opinion. <Available from: http://www.fda.gov/Food/GRAS/ucm261485.htm>.',
+      'Website <The Internet Movie DataBase, http://www.imdb.com/>, November 2012.',
+      'La Sécurité Sociale, entre <<ruptures>> affichées',
+      'Miller JH (1992) A Short Course, <Small et al. 1990> reprinted.',
+    ];
+    for (const raw of cases) expect(stripReferenceMarkup(raw)).toBe(raw);
+  });
+
+  /**
+   * Where the boundary actually falls: a bare single-letter tag is stripped, because the
+   * measured cost of leaving `<i>` and `<b>` in place across the corpus far outweighs the
+   * bracketed-letter-as-content case, which the sampled corpus does not contain. The
+   * multi-word form above is closed by construction; this one is the residual, pinned so a
+   * later change to the shape rule cannot move it silently.
+   */
+  it('strips a bare single-letter tag even where the letter reads as content', () => {
+    expect(normalizeReferenceText('variant <b> allele')).toBe('variant allele');
+    expect(stripReferenceMarkup('The <B. subtilis> strain')).toBe('The <B. subtilis> strain');
+  });
+
+  /** A deeply nested or bracket-heavy field must not send the matcher exponential. */
+  it('returns promptly on adversarial bracket input', () => {
+    const nested = `${'<i><b><sub>'.repeat(400)}x${'</sub></b></i>'.repeat(400)}`;
+    const unterminated = `<p class="a" ${'x = "y" '.repeat(600)}`;
+    const started = Date.now();
+    stripReferenceMarkup(nested);
+    stripReferenceMarkup(unterminated);
+    stripReferenceMarkup(`${'<math><mi>'.repeat(400)}z`);
+    expect(Date.now() - started).toBeLessThan(2_000);
+  });
+
+  /**
+   * `<span>` is styling with nothing in an attribute to lose, and the smallcaps role it
+   * carries is already admitted as `scp`. The ordinal beside it is the reason the separator
+   * is decided against the string as deposited: removing the `<sup>` first would leave
+   * `xvii` abutting `e` and the word-boundary rule would split what is one word.
+   */
+  it('strips a styling span and keeps the ordinal that follows it tight', () => {
+    expect(
+      stripReferenceMarkup(
+        'Les sciences de la vie au <span class="smallcaps">xvii</span><sup>e</sup> et <span class="smallcaps">xviii</span><sup>e</sup> siècles',
+      ),
+    ).toBe('Les sciences de la vie au xviie et xviiie siècles');
+  });
+
+  /** `inf` is the Elsevier and IEEE spelling of a subscript, so it joins tight like `sub`. */
+  it('joins the inf spelling of a subscript tight', () => {
+    expect(
+      stripReferenceMarkup('development of a heart monitoring system with high T<inf>c</inf>-dc'),
+    ).toBe('development of a heart monitoring system with high Tc-dc');
+  });
+
+  /**
+   * A TeX formula wrapper carries nothing its content does not — stripping it leaves the
+   * formula in a notation a reader can follow, where leaving it wraps that same formula in
+   * XML. The wrapper joins tight for the same reason a script does.
+   */
+  it('unwraps a TeX formula to the notation it wraps', () => {
+    expect(
+      stripReferenceMarkup(
+        'Correlation of <ref_formula><tex Notation="TeX">$\\hbox{1}/f$</tex></ref_formula> noise',
+      ),
+    ).toBe('Correlation of $\\hbox{1}/f$ noise');
+    expect(
+      stripReferenceMarkup(
+        'Ni-Silicide/<formula formulatype="inline"><tex Notation="TeX">$\\hbox{HfO}_{2}$</tex></formula>/TiN cells',
+      ),
+    ).toBe('Ni-Silicide/$\\hbox{HfO}_{2}$/TiN cells');
+  });
+
+  /** The JATS citation fields publishers deposit bare into an otherwise typed citation. */
+  it('strips bare JATS citation fields', () => {
+    expect(
+      stripReferenceMarkup('Cartwright EJ, Jackson KA, Silk BJ, <etal>et al</etal>.. (2013)'),
+    ).toBe('Cartwright EJ, Jackson KA, Silk BJ, et al.. (2013)');
+    expect(stripReferenceMarkup('(<fname lang = "en">Knobil, E., eds</fname>.), pp. 1177')).toBe(
+      '(Knobil, E., eds.), pp. 1177',
+    );
+  });
+
+  /**
+   * A name that is also an ordinary word stays off the list even when JATS defines it: a
+   * bracketed word is how a person writes a quotation or a note, so admitting `volume` would
+   * delete a bracketed phrase opening with it. It comes out inside a citation envelope
+   * instead, where nothing was typed by hand.
+   */
+  it('leaves a bare ordinary-word JATS element alone', () => {
+    const raw = 'Cold Spring Harbor, N.Y., <volume>876</volume> pp.';
+    expect(stripReferenceMarkup(raw)).toBe(raw);
+    const wikipedia = "'I Updated the <ref> ': The Evolution of References";
+    expect(stripReferenceMarkup(wikipedia)).toBe(wikipedia);
+  });
+
+  /**
+   * A structured citation deposited whole into a free-text field is XML end to end, so the
+   * name-by-name allow-list has nothing to protect there and the envelope is emptied of tags
+   * — ordinary-word names included. A link inside it still keeps its address.
+   */
+  it('renders a JATS structured citation as the citation it encodes', () => {
+    expect(
+      normalizeReferenceText(
+        '<mixed-citation publication-type="journal"><person-group person-group-type="author"><string-name><surname>Fan</surname> <given-names>Li</given-names></string-name>., <string-name><surname>Whitson</surname> <given-names>C. H.</given-names></string-name></person-group> (<year>2006</year>) <article-title>Understanding Gas Condensate Reservoir</article-title>, <source />Oilfield Review, <comment>Winter, 2005/2006</comment>;</mixed-citation>',
+      ),
+    ).toBe(
+      'Fan Li., Whitson C. H. (2006) Understanding Gas Condensate Reservoir, Oilfield Review, Winter, 2005/2006;',
+    );
+    expect(
+      normalizeReferenceText(
+        '<p><mixed-citation publication-type="journal"><h3>References</h3><p>Bagci, A.S. 2008. SAGD. <a href="http://dx.doi.org/10.2118/113234-MS">doi: 10.2118/113234-MS.</a></p><p>Kisman, K.E. 1993. Steam Injection.</p></mixed-citation>',
+      ),
+    ).toBe(
+      'References Bagci, A.S. 2008. SAGD. <a href="http://dx.doi.org/10.2118/113234-MS">doi: 10.2118/113234-MS.</a> Kisman, K.E. 1993. Steam Injection.',
+    );
+  });
+
+  /** All or nothing, the same way an unclosed MathML span is left whole. */
+  it('leaves an unclosed citation envelope untouched', () => {
+    const raw = '<mixed-citation publication-type="journal"><surname>Fan</surname> with no end';
+    expect(stripReferenceMarkup(raw)).toBe(
+      '<mixed-citation publication-type="journal">Fan with no end',
+    );
+  });
+
+  /** The envelope is recognized under every spelling JATS and NLM define for it. */
+  it('empties a citation envelope in each of its spellings', () => {
+    expect(
+      normalizeReferenceText(
+        '<element-citation publication-type="journal"><surname>Fan</surname> <given-names>Li</given-names>. <article-title>A title</article-title>. <year>2006</year>.</element-citation>',
+      ),
+    ).toBe('Fan Li. A title. 2006.');
+    expect(
+      normalizeReferenceText(
+        '<nlm-citation citation-type="journal"><collab>WHO</collab>. <source>Bulletin</source>. <year>2011</year>.</nlm-citation>',
+      ),
+    ).toBe('WHO. Bulletin. 2011.');
+    expect(
+      normalizeReferenceText(
+        '<citation><surname>Kato</surname> <given-names>T.</given-names>, <source>Comm. Math. Phys.</source> <volume>94</volume>.</citation>',
+      ),
+    ).toBe('Kato T., Comm. Math. Phys. 94.');
+  });
+
+  /** Each envelope closes at its own end tag, so two in one field stay two citations. */
+  it('closes each envelope at its own end tag', () => {
+    expect(
+      normalizeReferenceText(
+        '<citation>Kato T. 1984.</citation> and <citation>Beale J. 1986.</citation>',
+      ),
+    ).toBe('Kato T. 1984. and Beale J. 1986.');
+  });
+
+  /**
+   * The link exception holds at any nesting: inside an envelope every other name comes out,
+   * and `uri` and `ext-link` still keep their tags because their address can live in an
+   * attribute. This is the only place the exception does any work — outside an envelope
+   * neither name is on a strip list to begin with.
+   */
+  it('spares every link spelling inside a citation envelope', () => {
+    expect(
+      normalizeReferenceText(
+        '<mixed-citation>Available from <uri>https://www.pcne.org/x.pdf</uri>. Accessed.</mixed-citation>',
+      ),
+    ).toBe('Available from <uri>https://www.pcne.org/x.pdf</uri>. Accessed.');
+    expect(
+      normalizeReferenceText(
+        '<mixed-citation>WHO. <ext-link xlink:href="http://who.int/a">http://who.int/a</ext-link>.</mixed-citation>',
+      ),
+    ).toBe('WHO. <ext-link xlink:href="http://who.int/a">http://who.int/a</ext-link>.');
+  });
+
+  /** A displayed formula is a block boundary; an inline one and its TeX body join tight. */
+  it('separates a displayed formula and joins an inline one tight', () => {
+    expect(
+      normalizeReferenceText('the result<disp-formula id="e1">E = mc2</disp-formula>follows'),
+    ).toBe('the result E = mc2 follows');
+    expect(
+      normalizeReferenceText(
+        'Ni/<inline-formula><tex-math>$\\hbox{HfO}_{2}$</tex-math></inline-formula>/TiN',
+      ),
+    ).toBe('Ni/$\\hbox{HfO}_{2}$/TiN');
+  });
+
+  /**
+   * The name fields a publisher deposits bare, outside any envelope. Each is a markup-only
+   * token with no ordinary-word reading, so it is on the allow-list and comes out as a word
+   * boundary — the same treatment inline emphasis gets.
+   */
+  it('strips bare JATS name fields outside an envelope', () => {
+    expect(
+      normalizeReferenceText('Published by <collab>World Health Organization</collab>, 2011.'),
+    ).toBe('Published by World Health Organization, 2011.');
+    expect(
+      normalizeReferenceText(
+        'Cited: <string-name><surname>Fan</surname> <given-names>Li</given-names></string-name>, 2006.',
+      ),
+    ).toBe('Cited: Fan Li, 2006.');
+    expect(
+      normalizeReferenceText(
+        'Kato T., <article-title>Remarks on the breakdown</article-title>, Comm. Math. Phys.',
+      ),
+    ).toBe('Kato T., Remarks on the breakdown, Comm. Math. Phys.');
+    expect(
+      normalizeReferenceText(
+        '<person-group person-group-type="author">Kato T., Majda A.</person-group> (1984)',
+      ),
+    ).toBe('Kato T., Majda A. (1984)');
   });
 
   /**
@@ -875,6 +1113,38 @@ describe('normalizeReferenceText', () => {
     expect(normalizeReferenceText('Deposited entity &lt;i&gt;stays literal&lt;/i&gt;')).toBe(
       'Deposited entity <i>stays literal</i>',
     );
+    expect(normalizeReferenceText('Double-escaped &amp;lt;i&amp;gt; stays escaped')).toBe(
+      'Double-escaped &lt;i&gt; stays escaped',
+    );
+  });
+
+  /**
+   * The deposits behind #51, through the whole pass: a guillemet quotation inside a structured
+   * citation, and the Greek and accented Latin a reference list carries.
+   */
+  it('decodes the named references a citation string carries', () => {
+    expect(
+      normalizeReferenceText(
+        '<mixed-citation publication-type="journal">(<year>2006</year>) <article-title>&laquo;Understanding Gas Condensate Reservoir&raquo;</article-title>, <source />Oilfieald Review</mixed-citation>',
+      ),
+    ).toBe('(2006) «Understanding Gas Condensate Reservoir», Oilfieald Review');
+    expect(
+      normalizeReferenceText(
+        'Interleukin-1-&beta; (IL-1&beta;), interleukin 6 (IL-6) and tumor necrosis factor',
+      ),
+    ).toBe('Interleukin-1-β (IL-1β), interleukin 6 (IL-6) and tumor necrosis factor');
+    expect(
+      normalizeReferenceText('McLaren J, Millican SA, M&uuml;ller KH, et al.: 8, 21&ndash;28'),
+    ).toBe('McLaren J, Millican SA, Müller KH, et al.: 8, 21–28');
+  });
+
+  /**
+   * The bracket rule and the entity table have to stay independent. A cited URL carrying a
+   * query string is the case where they meet: `&` there is punctuation the address needs.
+   */
+  it('leaves a cited URL and its query string byte-exact', () => {
+    const raw = 'FAOSTAT. <http://faostat.fao.org/site/291/default.aspx?id=1&lang=en>.';
+    expect(normalizeReferenceText(raw)).toBe(raw);
   });
 });
 
@@ -896,12 +1166,112 @@ describe('decodeHtmlEntities', () => {
     expect(decodeHtmlEntities('&#xA9;')).toBe('©');
   });
 
+  /**
+   * The names a scientific citation actually carries: Greek letters, accented Latin,
+   * guillemets, dashes, typographic quotes. None is XML-reserved, so none was reachable
+   * through the five-name table the decode started with.
+   */
+  it('decodes the named references deposits carry beyond the five XML names', () => {
+    expect(decodeHtmlEntities('&laquo;Understanding Gas Condensate&raquo;')).toBe(
+      '«Understanding Gas Condensate»',
+    );
+    expect(decodeHtmlEntities('Interleukin-1-&beta; (IL-1&beta;)')).toBe('Interleukin-1-β (IL-1β)');
+    expect(decodeHtmlEntities('M&uuml;ller KH, S&aacute;rk&ouml;zy A')).toBe(
+      'Müller KH, Sárközy A',
+    );
+    expect(decodeHtmlEntities('8, 21&ndash;28, 1991')).toBe('8, 21–28, 1991');
+    expect(decodeHtmlEntities('&ldquo;High-Temperature Properties&rdquo;')).toBe(
+      '“High-Temperature Properties”',
+    );
+    expect(decodeHtmlEntities('KUD&Ocirc; A, Wei&szlig;e P, O&prime;Neill M, &middot;')).toBe(
+      'KUDÔ A, Weiße P, O′Neill M, ·',
+    );
+  });
+
+  /** A few names resolve to more than one code point; the table carries the whole value. */
+  it('decodes a reference whose value is more than one code point', () => {
+    expect(decodeHtmlEntities('e&fjlig;ord')).toBe('efjord');
+  });
+
+  /**
+   * Names are case-sensitive and the table is closed, so a name the spec does not define
+   * stays as deposited. `&Amp;` and `&Eng;` are both real deposits — the second is the
+   * journal abbreviation "Nuclear Science & Engineering", not a reference at all.
+   */
+  it('decodes only the exact names the spec defines', () => {
+    expect(decodeHtmlEntities('Civil &AMP; Structural')).toBe('Civil & Structural');
+    expect(decodeHtmlEntities('Civil &Amp; Structural')).toBe('Civil &Amp; Structural');
+    expect(decodeHtmlEntities('Nuc. Sci. &Eng; 2013')).toBe('Nuc. Sci. &Eng; 2013');
+  });
+
+  /**
+   * One pass, so a reference is resolved exactly once. `&amp;lt;` is the escaped text
+   * `&lt;` and must stay that — a chained per-name replace resolves it twice and
+   * manufactures a tag out of text a publisher escaped so it would not be one.
+   */
+  it('decodes each reference once, never the result of a previous decode', () => {
+    expect(decodeHtmlEntities('&amp;lt;')).toBe('&lt;');
+    expect(decodeHtmlEntities('&amp;amp;')).toBe('&amp;');
+    expect(decodeHtmlEntities('&amp;#65;')).toBe('&#65;');
+    expect(decodeHtmlEntities('&amp;beta;')).toBe('&beta;');
+  });
+
+  /**
+   * A bare `&` is an ampersand somebody typed. Requiring the terminating semicolon is what
+   * keeps it one — the legacy no-semicolon forms HTML still parses (`&copy`, `&times`) are
+   * deliberately outside the table.
+   */
+  it('leaves a bare ampersand and a malformed reference exactly as deposited', () => {
+    const cases = [
+      'R&D and AT&T',
+      'Guyatt & Rennie',
+      '&notarealentity;',
+      '&#;',
+      '&#xZZ;',
+      '&#x;',
+      '&;',
+      '& copy;',
+      '&copy 2020, all rights reserved',
+      'query?a=1&b=2',
+    ];
+    for (const raw of cases) expect(decodeHtmlEntities(raw)).toBe(raw);
+  });
+
+  /**
+   * A numeric reference that names no scalar value — zero, past the last code point, or half
+   * of a surrogate pair — is left as source text rather than emitting a character that would
+   * be a hazard on the wire. Astral references resolve whole rather than being truncated to
+   * sixteen bits.
+   */
+  it('resolves astral numeric references and passes over the ones naming no scalar', () => {
+    expect(decodeHtmlEntities('&#128169;')).toBe('💩');
+    expect(decodeHtmlEntities('&#x1F600;')).toBe('😀');
+    expect(decodeHtmlEntities('&#0;')).toBe('&#0;');
+    expect(decodeHtmlEntities('&#1114112;')).toBe('&#1114112;');
+    expect(decodeHtmlEntities('&#55296;')).toBe('&#55296;');
+  });
+
   it('returns plain strings unchanged', () => {
     expect(decodeHtmlEntities('plain text')).toBe('plain text');
   });
 
   it('handles a string with no entities', () => {
     expect(decodeHtmlEntities('')).toBe('');
+  });
+
+  /**
+   * An abstract packed with references, and a long run of ampersands that start a name and
+   * never terminate it, are both linear for this matcher — no nested quantifier to send it
+   * exponential.
+   */
+  it('returns promptly on entity-dense and unterminated-reference input', () => {
+    const unit = '&alpha;&beta;&#160;&amp;&notaname;&#x1F600;';
+    const dense = unit.repeat(20_000);
+    const unterminated = `${'&amp'.repeat(20_000)}&${'a'.repeat(50_000)}`;
+    const started = Date.now();
+    expect(decodeHtmlEntities(dense)).toBe(decodeHtmlEntities(unit).repeat(20_000));
+    expect(decodeHtmlEntities(unterminated)).toBe(unterminated);
+    expect(Date.now() - started).toBeLessThan(2_000);
   });
 });
 
