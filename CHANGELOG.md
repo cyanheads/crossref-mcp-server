@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.3.11](changelog/0.3.x/0.3.11.md) — 2026-08-25
+
+GHCR image now builds — Docker build stage runs on the native builder platform instead of under QEMU emulation
+
 ## [0.3.10](changelog/0.3.x/0.3.10.md) — 2026-08-25
 
 Framework adoption to mcp-ts-core 0.12.3 (MCP SDK v2) — strict tool inputs, JSON Schema 2020-12, protocol revision 2026-07-28
