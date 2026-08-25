@@ -8,6 +8,7 @@
 
 import { runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { blockText } from '../helpers/content.js';
 
 vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/services/crossref/crossref-service.js')>();
@@ -88,12 +89,15 @@ function probeWork() {
 
 const worksPage = { totalResults: 1, itemsPerPage: 1, items: [probeWork()] };
 
+/** The `CallToolResult` every surface's `run()` resolves to — both wire surfaces in one object. */
+type ToolRunResult = Awaited<ReturnType<typeof runToolContract>>;
+
 /**
  * Every tool, with whatever upstream shape it reads, and the input that makes it render its
  * free-text fields. The journal and funder searches resolve a single record by identifier so
  * the works list is reachable without tripping the ambiguity guard.
  */
-const SURFACES: Array<{ name: string; arrange: () => void; run: () => Promise<unknown> }> = [
+const SURFACES: Array<{ name: string; arrange: () => void; run: () => Promise<ToolRunResult> }> = [
   {
     name: 'crossref_get_work',
     arrange: () => service.getWork.mockResolvedValue(probeWork()),
@@ -182,11 +186,8 @@ describe('the Markdown surface of every tool', () => {
   for (const surface of SURFACES) {
     it(`${surface.name} escapes every deposited value it renders`, async () => {
       surface.arrange();
-      const result = (await surface.run()) as {
-        content: Array<{ text?: string }>;
-        structuredContent: unknown;
-      };
-      const text = result.content.map((block) => block.text ?? '').join('\n');
+      const result = await surface.run();
+      const text = result.content.map(blockText).join('\n');
 
       expect(JSON.stringify(result.structuredContent)).toContain(NORMALIZED);
       expect(text).toContain(ESCAPED);
@@ -203,8 +204,8 @@ describe('the Markdown surface of every tool', () => {
   it('never puts a deposited value at column zero without the block escape', async () => {
     for (const surface of SURFACES) {
       surface.arrange();
-      const result = (await surface.run()) as { content: Array<{ text?: string }> };
-      const lines = result.content.flatMap((block) => (block.text ?? '').split('\n'));
+      const result = await surface.run();
+      const lines = result.content.flatMap((block) => blockText(block).split('\n'));
       expect(
         lines.filter((line) => line.startsWith(ESCAPED)),
         surface.name,
@@ -215,10 +216,8 @@ describe('the Markdown surface of every tool', () => {
   /** The one line that does place one there renders it with the marker made inert. */
   it('escapes the block marker on the abstract crossref_get_work renders at column zero', async () => {
     service.getWork.mockResolvedValue(probeWork());
-    const result = (await runToolContract(getWorkTool, { doi: '10.1000/probe' })) as {
-      content: Array<{ text?: string }>;
-    };
-    const lines = result.content.flatMap((block) => (block.text ?? '').split('\n'));
+    const result = await runToolContract(getWorkTool, { doi: '10.1000/probe' });
+    const lines = result.content.flatMap((block) => blockText(block).split('\n'));
 
     expect(lines).toContain(ESCAPED_AT_LINE_START);
   });
@@ -230,8 +229,8 @@ describe('the Markdown surface of every tool', () => {
   it('adds nothing to content[] but the escapes', async () => {
     for (const surface of SURFACES) {
       surface.arrange();
-      const result = (await surface.run()) as { content: Array<{ text?: string }> };
-      const text = result.content.map((block) => block.text ?? '').join('\n');
+      const result = await surface.run();
+      const text = result.content.map(blockText).join('\n');
       expect(text.replaceAll('\\', ''), surface.name).toContain(NORMALIZED);
     }
   });

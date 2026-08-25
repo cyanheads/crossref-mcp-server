@@ -6,6 +6,7 @@
 import { createMockContext } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getPrefixTool } from '@/mcp-server/tools/definitions/get-prefix.tool.js';
+import { blockText } from '../helpers/content.js';
 
 // Mock the service module so tests never hit the network
 vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
@@ -21,9 +22,9 @@ import { getCrossrefService } from '@/services/crossref/crossref-service.js';
 const mockGetPrefix = vi.fn();
 
 beforeEach(() => {
-  vi.mocked(getCrossrefService).mockReturnValue({ getPrefix: mockGetPrefix } as ReturnType<
-    typeof getCrossrefService
-  >);
+  vi.mocked(getCrossrefService).mockReturnValue({
+    getPrefix: mockGetPrefix,
+  } as unknown as ReturnType<typeof getCrossrefService>);
   mockGetPrefix.mockReset();
 });
 
@@ -77,7 +78,7 @@ describe('getPrefixTool', () => {
     const result = await getPrefixTool.handler(input, ctx);
 
     expect(result.ownerName).toBe('"Medycyna Praktyczna" Spolka Jawna');
-    const text = getPrefixTool.format!(result)[0]?.text ?? '';
+    const text = blockText(getPrefixTool.format!(result)[0]);
     expect(text).toContain('**Owner:** "Medycyna Praktyczna" Spolka Jawna');
     expect(text).not.toContain('&quot;');
   });
@@ -117,7 +118,7 @@ describe('getPrefixTool', () => {
       memberId: 297,
     };
     const blocks = getPrefixTool.format!(result);
-    const text = blocks[0]?.text ?? '';
+    const text = blockText(blocks[0]);
     expect(text).toContain('10.1038');
     expect(text).toContain('Springer Science and Business Media LLC');
     expect(text).toContain('297');

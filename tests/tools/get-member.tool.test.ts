@@ -6,6 +6,7 @@
 import { createMockContext } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getMemberTool } from '@/mcp-server/tools/definitions/get-member.tool.js';
+import { blockText } from '../helpers/content.js';
 
 // Mock the service module so tests never hit the network
 vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
@@ -21,9 +22,9 @@ import { getCrossrefService } from '@/services/crossref/crossref-service.js';
 const mockGetMember = vi.fn();
 
 beforeEach(() => {
-  vi.mocked(getCrossrefService).mockReturnValue({ getMember: mockGetMember } as ReturnType<
-    typeof getCrossrefService
-  >);
+  vi.mocked(getCrossrefService).mockReturnValue({
+    getMember: mockGetMember,
+  } as unknown as ReturnType<typeof getCrossrefService>);
   mockGetMember.mockReset();
 });
 
@@ -124,7 +125,7 @@ describe('getMemberTool', () => {
     expect(result.names).toEqual(['Medycyna Praktyczna & Co']);
     expect(result.location).toBe('Krakow, Malopolskie & Poland');
 
-    const text = getMemberTool.format!(result)[0]?.text ?? '';
+    const text = blockText(getMemberTool.format!(result)[0]);
     expect(text).toContain('## "Medycyna Praktyczna" Spolka Jawna');
     expect(text).not.toContain('&quot;');
   });
@@ -203,7 +204,7 @@ describe('getMemberTool', () => {
     expect(result.location).toBeUndefined();
     // format must still render without fabricating values
     const blocks = getMemberTool.format!(result);
-    expect(blocks[0]?.text).toContain('Springer Science and Business Media LLC');
+    expect(blockText(blocks[0])).toContain('Springer Science and Business Media LLC');
   });
 
   it('throws member_not_found when the service returns null', async () => {
@@ -236,7 +237,7 @@ describe('getMemberTool', () => {
       depositsArticles: true,
     };
     const blocks = getMemberTool.format!(result);
-    const text = blocks[0]?.text ?? '';
+    const text = blockText(blocks[0]);
     expect(text).toContain('Springer Science and Business Media LLC');
     expect(text).toContain('297');
     expect(text).toContain('10.1038');
@@ -256,7 +257,7 @@ describe('getMemberTool', () => {
         { category: 'similarity-checking', current: 0, backfile: 0 },
       ],
     };
-    const text = getMemberTool.format!(result)[0]?.text ?? '';
+    const text = blockText(getMemberTool.format!(result)[0]);
 
     expect(text).toContain('- ror-ids: 0.38% / 0.0014%');
     expect(text).toContain('- similarity-checking: 0% / 0%');
@@ -272,7 +273,7 @@ describe('getMemberTool', () => {
       const input = getMemberTool.input.parse({ member_id: 297 });
       const result = await getMemberTool.handler(input, ctx);
       const blocks = getMemberTool.format!(result);
-      const outputText = JSON.stringify(result) + (blocks[0]?.text ?? '');
+      const outputText = JSON.stringify(result) + blockText(blocks[0]);
 
       expect(outputText).not.toContain('secret@internal.example.com');
     } finally {

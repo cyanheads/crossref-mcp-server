@@ -6,6 +6,7 @@
 import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { searchWorksTool } from '@/mcp-server/tools/definitions/search-works.tool.js';
+import { blockText } from '../helpers/content.js';
 
 vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/services/crossref/crossref-service.js')>();
@@ -20,9 +21,9 @@ import { getCrossrefService } from '@/services/crossref/crossref-service.js';
 const mockSearchWorks = vi.fn();
 
 beforeEach(() => {
-  vi.mocked(getCrossrefService).mockReturnValue({ searchWorks: mockSearchWorks } as ReturnType<
-    typeof getCrossrefService
-  >);
+  vi.mocked(getCrossrefService).mockReturnValue({
+    searchWorks: mockSearchWorks,
+  } as unknown as ReturnType<typeof getCrossrefService>);
   mockSearchWorks.mockReset();
 });
 
@@ -55,7 +56,7 @@ function makeAuthors(count: number) {
  * The schema clients actually receive: domain output merged with enrichment. Parsing through
  * it proves a field reaches the wire — an undeclared key is stripped here, silently.
  */
-const wireSchema = searchWorksTool.output.extend(searchWorksTool.enrichment);
+const wireSchema = searchWorksTool.output.extend(searchWorksTool.enrichment!);
 
 describe('searchWorksTool', () => {
   it('returns works for a simple query', async () => {
@@ -193,7 +194,7 @@ describe('searchWorksTool', () => {
     expect(wire.notice).toMatch(/walk is complete/);
     expect(wire.notice).toContain('100');
     // Nothing on either surface invites another call.
-    expect(searchWorksTool.format!(result)[0]?.text).not.toContain('Next cursor');
+    expect(blockText(searchWorksTool.format!(result)[0])).not.toContain('Next cursor');
   });
 
   it('terminates a cursor walk instead of looping on the token Crossref re-mints', async () => {
@@ -234,7 +235,7 @@ describe('searchWorksTool', () => {
       rows: 100,
     });
 
-    const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+    const text = result.content.map(blockText).join('\n');
     expect(text).toMatch(/walk is complete/);
     expect(text).not.toContain('recycled-token');
     expect(result.structuredContent).not.toHaveProperty('nextCursor');
@@ -364,7 +365,7 @@ describe('searchWorksTool', () => {
     expect(wire.cap).toBeUndefined();
     expect(wire.notice).toBeUndefined();
     // A whole list renders as a plain list — no "showing N of M" on a record that lost nothing.
-    expect(searchWorksTool.format!(result)[0]?.text ?? '').not.toContain('showing');
+    expect(blockText(searchWorksTool.format!(result)[0])).not.toContain('showing');
   });
 
   it('renders exactly the page the handler kept — no cap between the two result paths', async () => {
@@ -378,7 +379,7 @@ describe('searchWorksTool', () => {
     const input = searchWorksTool.input.parse({ query: 'test', authorLimit: 10 });
     const result = await searchWorksTool.handler(input, ctx);
     const kept = result.works[0]?.authors ?? [];
-    const text = searchWorksTool.format!(result)[0]?.text ?? '';
+    const text = blockText(searchWorksTool.format!(result)[0]);
 
     // Asserted before the loop: a cap that emptied the array would make the loop vacuous.
     expect(kept).toHaveLength(10);
@@ -425,7 +426,7 @@ describe('searchWorksTool', () => {
 
     const result = await runToolContract(searchWorksTool, { query: 'test', authorLimit: 25 });
 
-    const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+    const text = result.content.map(blockText).join('\n');
     // The per-work line names the count and the retrieval path; the enrichment trailer
     // repeats the page-level fact. A client reading only text gets both.
     expect(text).toContain('showing 25 of 400');
@@ -471,7 +472,7 @@ describe('searchWorksTool', () => {
 
     const input = searchWorksTool.input.parse({ query: 'test' });
     const result = await searchWorksTool.handler(input, ctx);
-    const text = searchWorksTool.format!(result)[0]?.text ?? '';
+    const text = blockText(searchWorksTool.format!(result)[0]);
 
     expect(result.works[0]?.abstract).toBe(abstract);
     expect(text).toContain(abstract);
@@ -479,10 +480,11 @@ describe('searchWorksTool', () => {
   });
 
   it('renders a short abstract without a false truncation marker', () => {
-    const text =
+    const text = blockText(
       searchWorksTool.format!({
         works: [{ doi: '10.1234/short', abstract: 'A very short abstract.' }],
-      })[0]?.text ?? '';
+      })[0],
+    );
 
     expect(text).toContain('A very short abstract.');
     expect(text).not.toContain('…');
@@ -554,7 +556,7 @@ describe('searchWorksTool', () => {
     expect(result.works[0]?.publisher).toBe('Royal Society of Chemistry & Partners');
     expect(result.works[0]?.authors?.[0]?.family).toBe('Doe & Sons');
 
-    const text = searchWorksTool.format!(result)[0]?.text ?? '';
+    const text = blockText(searchWorksTool.format!(result)[0]);
     expect(text).toContain('### In vivo CRISPR biosensing\n');
   });
 
@@ -596,7 +598,7 @@ describe('searchWorksTool', () => {
       ],
     };
     const blocks = searchWorksTool.format!(result);
-    const text = blocks[0]?.text ?? '';
+    const text = blockText(blocks[0]);
     expect(text).toContain('10.1038/nature12373');
     expect(text).toContain('Le');
     expect(text).toContain('Cong');
@@ -607,7 +609,7 @@ describe('searchWorksTool', () => {
     // A token now only ever rides a page that carried records, so that is the shape rendered.
     const result = { works: [{ doi: '10.1038/nature12373' }], nextCursor: 'cursor-abc' };
     const blocks = searchWorksTool.format!(result);
-    const text = blocks[0]?.text ?? '';
+    const text = blockText(blocks[0]);
     expect(text).toContain('cursor-abc');
     expect(text).toContain('10.1038/nature12373');
   });
@@ -624,7 +626,7 @@ describe('searchWorksTool', () => {
       const input = searchWorksTool.input.parse({ query: 'test' });
       const result = await searchWorksTool.handler(input, ctx);
       const blocks = searchWorksTool.format!(result);
-      const outputText = JSON.stringify(result) + (blocks[0]?.text ?? '');
+      const outputText = JSON.stringify(result) + blockText(blocks[0]);
 
       expect(outputText).not.toContain('private@example.com');
       expect(outputText).not.toContain('private.api.example.com');

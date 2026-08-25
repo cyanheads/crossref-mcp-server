@@ -6,6 +6,7 @@
 import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { searchJournalsTool } from '@/mcp-server/tools/definitions/search-journals.tool.js';
+import { blockText } from '../helpers/content.js';
 
 vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/services/crossref/crossref-service.js')>();
@@ -25,7 +26,7 @@ beforeEach(() => {
   vi.mocked(getCrossrefService).mockReturnValue({
     searchJournals: mockSearchJournals,
     getJournalWorks: mockGetJournalWorks,
-  } as ReturnType<typeof getCrossrefService>);
+  } as unknown as ReturnType<typeof getCrossrefService>);
   mockSearchJournals.mockReset();
   mockGetJournalWorks.mockReset();
 });
@@ -48,11 +49,11 @@ function journalList(items: unknown[], totalResults = items.length) {
  * The schema clients actually receive: domain output merged with enrichment. Parsing through
  * it proves a field reaches the wire — an undeclared key is stripped here, silently.
  */
-const wireSchema = searchJournalsTool.output.extend(searchJournalsTool.enrichment);
+const wireSchema = searchJournalsTool.output.extend(searchJournalsTool.enrichment!);
 
 describe('searchJournalsTool', () => {
   it('returns journal records for a title query', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchJournalsTool.errors });
     mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL]));
 
     const input = searchJournalsTool.input.parse({ query: 'Nature' });
@@ -68,7 +69,7 @@ describe('searchJournalsTool', () => {
   });
 
   it('fetches recent works when include_works is true and enriches worksTotal', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchJournalsTool.errors });
     mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL]));
     mockGetJournalWorks.mockResolvedValue({
       totalResults: 5000,
@@ -87,7 +88,7 @@ describe('searchJournalsTool', () => {
   });
 
   it('returns empty journals and sets notice when none match', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchJournalsTool.errors });
     mockSearchJournals.mockResolvedValue(journalList([]));
 
     const input = searchJournalsTool.input.parse({ query: 'ZZZUnknownJournal' });
@@ -100,7 +101,7 @@ describe('searchJournalsTool', () => {
   });
 
   it('performs direct ISSN lookup when issn param is provided', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchJournalsTool.errors });
     mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL]));
 
     const input = searchJournalsTool.input.parse({ issn: '0028-0836' });
@@ -163,7 +164,7 @@ describe('searchJournalsTool', () => {
   });
 
   it('handles sparse journal record — no subjects, no counts', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchJournalsTool.errors });
     mockSearchJournals.mockResolvedValue(
       journalList([{ title: 'Sparse Journal', 'ISSN-L': '1234-5678' }]),
     );
@@ -181,7 +182,7 @@ describe('searchJournalsTool', () => {
    * so an `!== undefined` projection guard would put a null into a string-typed output field.
    */
   it('omits issnL when the record carries a null ISSN-L', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchJournalsTool.errors });
     mockSearchJournals.mockResolvedValue(
       journalList([
         {
@@ -199,7 +200,7 @@ describe('searchJournalsTool', () => {
 
     expect(result.journals[0]).not.toHaveProperty('issnL');
     expect(
-      searchJournalsTool.output.extend(searchJournalsTool.enrichment).parse({
+      searchJournalsTool.output.extend(searchJournalsTool.enrichment!).parse({
         ...result,
         ...getEnrichment(ctx),
       }).journals[0]?.issnL,
@@ -216,7 +217,7 @@ describe('searchJournalsTool', () => {
     };
 
     it('skips the works lookup and says so instead of returning silently', async () => {
-      const ctx = createMockContext();
+      const ctx = createMockContext({ errors: searchJournalsTool.errors });
       mockSearchJournals.mockResolvedValue(journalList([ISSN_LESS], 1));
 
       const input = searchJournalsTool.input.parse({
@@ -246,13 +247,13 @@ describe('searchJournalsTool', () => {
       });
 
       expect(result.isError).toBeFalsy();
-      const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+      const text = result.content.map(blockText).join('\n');
       expect(text).toContain('no ISSN registered');
     });
   });
 
   it('strips JATS markup from recentWorks titles and decodes journal-record names', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchJournalsTool.errors });
     mockSearchJournals.mockResolvedValue(
       journalList([
         {
@@ -296,7 +297,7 @@ describe('searchJournalsTool', () => {
       ],
     };
     const blocks = searchJournalsTool.format!(result);
-    const text = blocks[0]?.text ?? '';
+    const text = blockText(blocks[0]);
     expect(text).toContain('Nature');
     expect(text).toContain('0028-0836');
     expect(text).toContain('Springer Nature');
@@ -317,7 +318,7 @@ describe('searchJournalsTool', () => {
       ],
     };
     const blocks = searchJournalsTool.format!(result);
-    const text = blocks[0]?.text ?? '';
+    const text = blockText(blocks[0]);
     expect(text).toContain('Groundbreaking Discovery');
     expect(text).toContain('10.1038/s41586-024-0001-1');
     expect(text).toContain('2024');
@@ -350,7 +351,7 @@ describe('searchJournalsTool', () => {
 
   describe('paging', () => {
     it('threads offset to the journal search and hands back the next page offset', async () => {
-      const ctx = createMockContext();
+      const ctx = createMockContext({ errors: searchJournalsTool.errors });
       mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL, RAW_JOURNAL], 223));
 
       const input = searchJournalsTool.input.parse({ query: 'Nature', rows: 2, offset: 2 });
@@ -367,7 +368,7 @@ describe('searchJournalsTool', () => {
     });
 
     it('omits nextOffset on the last page of journals', async () => {
-      const ctx = createMockContext();
+      const ctx = createMockContext({ errors: searchJournalsTool.errors });
       mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL, RAW_JOURNAL], 4));
 
       const input = searchJournalsTool.input.parse({ query: 'Nature', rows: 2, offset: 2 });
@@ -379,7 +380,7 @@ describe('searchJournalsTool', () => {
     });
 
     it('returns a well-formed empty page past the end of the journal list', async () => {
-      const ctx = createMockContext();
+      const ctx = createMockContext({ errors: searchJournalsTool.errors });
       mockSearchJournals.mockResolvedValue(journalList([], 223));
 
       const input = searchJournalsTool.input.parse({ query: 'Nature', rows: 2, offset: 500 });
@@ -397,7 +398,7 @@ describe('searchJournalsTool', () => {
     });
 
     it('keeps the no-match notice distinct from the past-the-end notice', async () => {
-      const ctx = createMockContext();
+      const ctx = createMockContext({ errors: searchJournalsTool.errors });
       mockSearchJournals.mockResolvedValue(journalList([], 0));
 
       const input = searchJournalsTool.input.parse({ query: 'ZZZUnknownJournal', offset: 0 });
@@ -409,7 +410,7 @@ describe('searchJournalsTool', () => {
     });
 
     it('threads works_offset to the works sub-resource and hands back nextWorksOffset', async () => {
-      const ctx = createMockContext();
+      const ctx = createMockContext({ errors: searchJournalsTool.errors });
       mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
       mockGetJournalWorks.mockResolvedValue({
         totalResults: 446507,
@@ -436,7 +437,7 @@ describe('searchJournalsTool', () => {
     });
 
     it('omits nextWorksOffset at the 10000 ceiling but says why on the page', async () => {
-      const ctx = createMockContext();
+      const ctx = createMockContext({ errors: searchJournalsTool.errors });
       mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
       mockGetJournalWorks.mockResolvedValue({
         totalResults: 446507,
@@ -468,7 +469,7 @@ describe('searchJournalsTool', () => {
     });
 
     it('leaves the notice off when the works list simply ended', async () => {
-      const ctx = createMockContext();
+      const ctx = createMockContext({ errors: searchJournalsTool.errors });
       mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
       mockGetJournalWorks.mockResolvedValue({
         totalResults: 2,
@@ -671,13 +672,13 @@ describe('searchJournalsTool', () => {
       });
 
       expect(result.structuredContent).toMatchObject({ nextWorksCursor: 'wire-token' });
-      const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+      const text = result.content.map(blockText).join('\n');
       expect(text).toContain('nextWorksCursor');
       expect(text).toContain('wire-token');
     });
 
     it('discloses the 100000 ceiling on the journal list page', async () => {
-      const ctx = createMockContext();
+      const ctx = createMockContext({ errors: searchJournalsTool.errors });
       mockSearchJournals.mockResolvedValue(
         journalList(
           Array.from({ length: 10 }, () => RAW_JOURNAL),
@@ -756,7 +757,7 @@ describe('searchJournalsTool', () => {
         journalCount: 2,
         nextOffset: 4,
       });
-      const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+      const text = result.content.map(blockText).join('\n');
       expect(text).toContain('223');
       expect(text).toContain('nextOffset');
       expect(text).toContain('4');
@@ -772,7 +773,9 @@ describe('searchJournalsTool', () => {
       mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL, second, THIRD_JOURNAL], 3));
 
       const input = searchJournalsTool.input.parse({ query: 'Nature', include_works: true });
-      const err = await searchJournalsTool.handler(input, ctx).catch((e: unknown) => e);
+      const err = await Promise.resolve(searchJournalsTool.handler(input, ctx)).catch(
+        (e: unknown) => e,
+      );
 
       const message = (err as { message: string }).message;
       expect(message).toContain('0028-0836');
@@ -793,7 +796,9 @@ describe('searchJournalsTool', () => {
         include_works: true,
         rows: 2,
       });
-      const err = await searchJournalsTool.handler(input, ctx).catch((e: unknown) => e);
+      const err = await Promise.resolve(searchJournalsTool.handler(input, ctx)).catch(
+        (e: unknown) => e,
+      );
 
       const message = (err as { message: string }).message;
       // 223 journals matched; two are listed. Saying "matched 2" would hide both the size of the
@@ -830,7 +835,9 @@ describe('searchJournalsTool', () => {
       );
 
       const input = searchJournalsTool.input.parse({ query: 'Nature', include_works: true });
-      const err = await searchJournalsTool.handler(input, ctx).catch((e: unknown) => e);
+      const err = await Promise.resolve(searchJournalsTool.handler(input, ctx)).catch(
+        (e: unknown) => e,
+      );
 
       // The works call resolves the target the same way, so a candidate reachable by ISSN must
       // not be advertised as having none.
@@ -865,7 +872,9 @@ describe('searchJournalsTool', () => {
       );
 
       const input = searchJournalsTool.input.parse({ query: 'Nature', include_works: true });
-      const err = await searchJournalsTool.handler(input, ctx).catch((e: unknown) => e);
+      const err = await Promise.resolve(searchJournalsTool.handler(input, ctx)).catch(
+        (e: unknown) => e,
+      );
 
       expect((err as { message: string }).message).toContain('no ISSN registered');
       expect((err as { data: { candidates: unknown[] } }).data.candidates).toHaveLength(2);
@@ -881,7 +890,7 @@ describe('searchJournalsTool', () => {
       });
 
       expect(result.isError).toBe(true);
-      const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+      const text = result.content.map(blockText).join('\n');
       expect(text).toContain('0028-0836');
       expect(text).toContain('2041-1723');
       expect(result.structuredContent).toMatchObject({

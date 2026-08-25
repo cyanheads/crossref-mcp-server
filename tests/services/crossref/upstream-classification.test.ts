@@ -15,6 +15,7 @@
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { createFetchMock, runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { blockText } from '../../helpers/content.js';
 
 /** The SDK's `CallToolResult`, reached through the runner so the SDK stays a transitive dep. */
 type ToolResult = Awaited<ReturnType<typeof runToolContract>>;
@@ -77,7 +78,7 @@ function errorOf(result: ToolResult) {
 
 /** The rendered text a `content[]`-only client reads — the surface `error.data` never reaches. */
 function textOf(result: ToolResult): string {
-  return result.content.map((block) => (block.type === 'text' ? block.text : '')).join('\n');
+  return result.content.map(blockText).join('\n');
 }
 
 /** Run `crossref_get_work` through the full definition pipeline against the fetch fake. */
@@ -352,7 +353,7 @@ describe('timeout timer lifecycle', () => {
 describe('upstream error contract', () => {
   it('is declared on every tool, since every tool reaches Crossref through the service', () => {
     for (const definition of allToolDefinitions) {
-      const declared = definition.errors.map((entry) => entry.reason);
+      const declared = (definition.errors ?? []).map((entry) => entry.reason);
       for (const entry of UPSTREAM_ERROR_CONTRACT) {
         expect(declared).toContain(entry.reason);
       }

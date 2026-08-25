@@ -6,6 +6,7 @@
 import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getWorkTool } from '@/mcp-server/tools/definitions/get-work.tool.js';
+import { blockText } from '../helpers/content.js';
 
 // Mock the service module so tests never hit the network
 vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
@@ -21,7 +22,7 @@ import { getCrossrefService } from '@/services/crossref/crossref-service.js';
 const mockGetWork = vi.fn();
 
 beforeEach(() => {
-  vi.mocked(getCrossrefService).mockReturnValue({ getWork: mockGetWork } as ReturnType<
+  vi.mocked(getCrossrefService).mockReturnValue({ getWork: mockGetWork } as unknown as ReturnType<
     typeof getCrossrefService
   >);
   mockGetWork.mockReset();
@@ -94,7 +95,7 @@ describe('getWorkTool', () => {
     expect(result.authors).toBeUndefined();
     // format should still work without fabricating values
     const blocks = getWorkTool.format!(result);
-    expect(blocks[0]?.text).toContain('*Not deposited*');
+    expect(blockText(blocks[0])).toContain('*Not deposited*');
   });
 
   it('handles sparse record — no container title, no publisher, no date', async () => {
@@ -177,7 +178,7 @@ describe('getWorkTool', () => {
     );
 
     const result = await runToolContract(getWorkTool, { doi: '10.21468/scipostphys.19.6.157' });
-    const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+    const text = result.content.map(blockText).join('\n');
 
     expect(result.isError).toBeFalsy();
     expect(result.structuredContent).toMatchObject({
@@ -220,7 +221,7 @@ describe('getWorkTool', () => {
     );
 
     const result = await runToolContract(getWorkTool, { doi: '10.3390/rs18091431' });
-    const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+    const text = result.content.map(blockText).join('\n');
 
     expect(result.structuredContent).toMatchObject({
       funders: [
@@ -264,7 +265,7 @@ describe('getWorkTool', () => {
     );
 
     const result = await runToolContract(getWorkTool, { doi: '10.1364/oe.503620' });
-    const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+    const text = result.content.map(blockText).join('\n');
 
     expect(result.isError).toBeFalsy();
     expect(result.structuredContent).toMatchObject({
@@ -321,7 +322,7 @@ describe('getWorkTool', () => {
     );
 
     const result = await runToolContract(getWorkTool, { doi: '10.20868/upm.thesis.83874' });
-    const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+    const text = result.content.map(blockText).join('\n');
 
     expect(result.structuredContent).toMatchObject({
       authors: [
@@ -362,7 +363,7 @@ describe('getWorkTool', () => {
     );
 
     const result = await runToolContract(getWorkTool, { doi: '10.1000/unnamed' });
-    const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+    const text = result.content.map(blockText).join('\n');
 
     expect(result.isError).toBeFalsy();
     expect(text).toContain('- Jane Doe — (no name deposited)');
@@ -386,7 +387,7 @@ describe('getWorkTool', () => {
     );
 
     const result = await runToolContract(getWorkTool, { doi: '10.20868/upm.thesis.83874' });
-    const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+    const text = result.content.map(blockText).join('\n');
 
     expect(result.isError).toBeFalsy();
     expect(result.structuredContent).toMatchObject({
@@ -406,7 +407,7 @@ describe('getWorkTool', () => {
     const result = await getWorkTool.handler(input, ctx);
 
     expect(result.published).toEqual({ year: 2020 });
-    expect(getWorkTool.format!(result)[0]?.text ?? '').toContain('**Published:** 2020');
+    expect(blockText(getWorkTool.format!(result)[0])).toContain('**Published:** 2020');
   });
 
   it('returns subject and language fields', async () => {
@@ -476,7 +477,7 @@ describe('getWorkTool', () => {
     expect(result.subtitle).toBe('a Review of methods');
     expect(result.containerTitle).toBe('Chem. Soc. Rev.');
     // The Markdown heading in content[] has to stay on one line.
-    const text = getWorkTool.format!(result)[0]?.text ?? '';
+    const text = blockText(getWorkTool.format!(result)[0]);
     expect(text.split('\n')[0]).toBe('## In vivo CRISPR biosensing');
   });
 
@@ -496,7 +497,7 @@ describe('getWorkTool', () => {
     );
 
     const result = await runToolContract(getWorkTool, { doi: '10.1140/epjc/s10052-020-8172-7' });
-    const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+    const text = result.content.map(blockText).join('\n');
 
     expect(result.structuredContent).toMatchObject({
       abstract: 'values for the anti- $$k_{\\bot }$$ algorithm',
@@ -521,7 +522,7 @@ describe('getWorkTool', () => {
     );
 
     const result = await runToolContract(getWorkTool, { doi: '10.1186/s13660-020-02475-w' });
-    const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+    const text = result.content.map(blockText).join('\n');
 
     expect(result.structuredContent).toMatchObject({
       abstract: 'partially linear on a time scale $\\mathbb{T}$ with two independent variables.',
@@ -542,7 +543,7 @@ describe('getWorkTool', () => {
     );
 
     const result = await runToolContract(getWorkTool, { doi: '10.1140/epjqt/s40507-023-00179-w' });
-    const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+    const text = result.content.map(blockText).join('\n');
 
     expect(result.structuredContent).toMatchObject({
       abstract: 'the sensitivity is 43 μV/cm $\\sqrt{\\text{Hz}}$ in the absence of the resonator.',
@@ -571,7 +572,7 @@ describe('getWorkTool', () => {
     );
 
     const result = await runToolContract(getWorkTool, { doi: '10.1007/s40065-020-00303-z' });
-    const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+    const text = result.content.map(blockText).join('\n');
     const rendered = `Optimal $$[n,2]_4$$ codes are constructed. P \${\\bar 3}$ m 1`;
 
     expect(result.structuredContent).toMatchObject({ abstract: rendered });
@@ -593,7 +594,7 @@ describe('getWorkTool', () => {
     );
 
     const result = await runToolContract(getWorkTool, { doi: '10.18603/sanatvetasarim.1707711' });
-    const lines = result.content.flatMap((b) => ('text' in b ? b.text.split('\n') : []));
+    const lines = result.content.flatMap((b) => blockText(b).split('\n'));
 
     expect(result.structuredContent).toMatchObject({
       abstract: '19. yüzyılın ikinci yarısından itibaren büyük savaşlar',
@@ -609,7 +610,7 @@ describe('getWorkTool', () => {
     );
 
     const result = await runToolContract(getWorkTool, { doi: '10.5455/nnj.2020.9.1.7-10' });
-    const lines = result.content.flatMap((b) => ('text' in b ? b.text.split('\n') : []));
+    const lines = result.content.flatMap((b) => blockText(b).split('\n'));
 
     expect(result.structuredContent).toMatchObject({
       abstract: '- Abstract: Lung cancer is a major health problem',
@@ -629,7 +630,7 @@ describe('getWorkTool', () => {
     );
 
     const result = await runToolContract(getWorkTool, { doi: '10.18686/esta.v7i4.163' });
-    const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+    const text = result.content.map(blockText).join('\n');
 
     expect(result.structuredContent).toMatchObject({
       abstract: '<p>wafers of 1μs &lt;τ&lt;1.2μs',
@@ -650,7 +651,7 @@ describe('getWorkTool', () => {
     );
 
     const result = await runToolContract(getWorkTool, { doi: '10.1161/jaha.121.024246' });
-    const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+    const text = result.content.map(blockText).join('\n');
 
     expect(text).toContain(
       '\\<jats:ext-link xlink:href="https://clinicaltrials.gov/ct2/show/NCT02196038">',
@@ -767,7 +768,7 @@ describe('getWorkTool', () => {
     expect(wire.nextOffset).toBeUndefined();
     expect(wire.truncated).toBeUndefined();
     expect(wire.notice).toBeUndefined();
-    expect(getWorkTool.format!(result)[0]?.text ?? '').toContain('showing 11 of 11');
+    expect(blockText(getWorkTool.format!(result)[0])).toContain('showing 11 of 11');
   });
 
   it('pages a consortium author list and discloses nextOffset on both surfaces', async () => {
@@ -787,7 +788,7 @@ describe('getWorkTool', () => {
     // The omitted authors are absent from the payload, not merely from the render.
     expect(JSON.stringify(result)).not.toContain('G25');
 
-    const text = getWorkTool.format!(result)[0]?.text ?? '';
+    const text = blockText(getWorkTool.format!(result)[0]);
     expect(text).toContain('showing 25 of 2932, starting at index 0');
     expect(text).not.toContain('G25 F25');
   });
@@ -808,7 +809,7 @@ describe('getWorkTool', () => {
     expect(result.authors?.[0]).toMatchObject({ given: 'G25', family: 'F25' });
     expect(getEnrichment(ctx).nextOffset).toBeUndefined();
     expect(getEnrichment(ctx).truncated).toBeUndefined();
-    expect(getWorkTool.format!(result)[0]?.text ?? '').toContain(
+    expect(blockText(getWorkTool.format!(result)[0])).toContain(
       'showing 5 of 30, starting at index 25',
     );
   });
@@ -843,7 +844,7 @@ describe('getWorkTool', () => {
     expect(result.authorCount).toBeUndefined();
     expect(result.offset).toBeUndefined();
     expect(getEnrichment(ctx).truncated).toBeUndefined();
-    expect(getWorkTool.format!(result)[0]?.text ?? '').not.toContain('**Authors:**');
+    expect(blockText(getWorkTool.format!(result)[0])).not.toContain('**Authors:**');
   });
 
   it('carries the author paging disclosure onto content[] for a text-only client', async () => {
@@ -854,7 +855,7 @@ describe('getWorkTool', () => {
       limit: 10,
     });
 
-    const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+    const text = result.content.map(blockText).join('\n');
     expect(text).toContain('showing 10 of 400, starting at index 0');
     expect(text).toMatch(/offset=10/);
     expect(text).not.toContain('G10 F10');
@@ -900,7 +901,7 @@ describe('getWorkTool', () => {
     };
     const blocks = getWorkTool.format!(result);
     expect(blocks[0]?.type).toBe('text');
-    const text = blocks[0]?.text ?? '';
+    const text = blockText(blocks[0]);
     expect(text).toContain('10.1038/nature12373');
     expect(text).toContain('Le');
     expect(text).toContain('Cong');
@@ -930,7 +931,7 @@ describe('getWorkTool', () => {
       ],
     };
     const blocks = getWorkTool.format!(result);
-    const text = blocks[0]?.text ?? '';
+    const text = blockText(blocks[0]);
     expect(text).toContain('NIH');
     expect(text).toContain('R01-GM123');
     expect(text).toContain('creativecommons.org');
@@ -949,7 +950,7 @@ describe('getWorkTool', () => {
       const input = getWorkTool.input.parse({ doi: '10.1038/nature12373' });
       const result = await getWorkTool.handler(input, ctx);
       const blocks = getWorkTool.format!(result);
-      const outputText = JSON.stringify(result) + (blocks[0]?.text ?? '');
+      const outputText = JSON.stringify(result) + blockText(blocks[0]);
 
       expect(outputText).not.toContain('secret@internal.example.com');
     } finally {

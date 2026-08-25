@@ -78,7 +78,7 @@ function serve(body: unknown, init?: ResponseInit): void {
 }
 
 /** Answer every Crossref route with a raw body — for non-JSON and error payloads. */
-function serveRaw(body: BodyInit, init?: ResponseInit): void {
+function serveRaw(body: string, init?: ResponseInit): void {
   http.route({ match: CROSSREF, respond: () => new Response(body, init) });
 }
 

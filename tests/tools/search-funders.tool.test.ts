@@ -6,6 +6,7 @@
 import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { searchFundersTool } from '@/mcp-server/tools/definitions/search-funders.tool.js';
+import { blockText } from '../helpers/content.js';
 
 vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/services/crossref/crossref-service.js')>();
@@ -25,7 +26,7 @@ beforeEach(() => {
   vi.mocked(getCrossrefService).mockReturnValue({
     searchFunders: mockSearchFunders,
     getFunderWorks: mockGetFunderWorks,
-  } as ReturnType<typeof getCrossrefService>);
+  } as unknown as ReturnType<typeof getCrossrefService>);
   mockSearchFunders.mockReset();
   mockGetFunderWorks.mockReset();
 });
@@ -68,11 +69,11 @@ function funderList(items: unknown[], totalResults = items.length) {
  * The schema clients actually receive: domain output merged with enrichment. Parsing through
  * it proves a field reaches the wire — an undeclared key is stripped here, silently.
  */
-const wireSchema = searchFundersTool.output.extend(searchFundersTool.enrichment);
+const wireSchema = searchFundersTool.output.extend(searchFundersTool.enrichment!);
 
 describe('searchFundersTool', () => {
   it('returns funder records for a name query', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchFundersTool.errors });
     mockSearchFunders.mockResolvedValue(funderList([RAW_FUNDER]));
 
     const input = searchFundersTool.input.parse({ query: 'National Science Foundation' });
@@ -88,7 +89,7 @@ describe('searchFundersTool', () => {
   });
 
   it('fetches funded works when include_works is true and enriches fundedWorksTotal', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchFundersTool.errors });
     mockSearchFunders.mockResolvedValue(funderList([RAW_FUNDER]));
     mockGetFunderWorks.mockResolvedValue({
       totalResults: 250000,
@@ -110,7 +111,7 @@ describe('searchFundersTool', () => {
   });
 
   it('returns empty funders and sets notice when none match', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchFundersTool.errors });
     mockSearchFunders.mockResolvedValue(funderList([]));
 
     const input = searchFundersTool.input.parse({ query: 'ZZZUnknownFunder' });
@@ -123,7 +124,7 @@ describe('searchFundersTool', () => {
   });
 
   it('performs direct funder DOI lookup when funder_doi is provided', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchFundersTool.errors });
     mockSearchFunders.mockResolvedValue(funderList([RAW_FUNDER]));
 
     const input = searchFundersTool.input.parse({ funder_doi: '10.13039/100000001' });
@@ -157,7 +158,7 @@ describe('searchFundersTool', () => {
   });
 
   it('handles sparse funder record — no alt-names, no supersession arrays', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchFundersTool.errors });
     mockSearchFunders.mockResolvedValue(
       funderList([{ id: '999', name: 'Minimal Funder', location: 'Unknown' }]),
     );
@@ -172,7 +173,7 @@ describe('searchFundersTool', () => {
   });
 
   it('omits replacedBy/replaces when the registry reports them as empty arrays', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchFundersTool.errors });
     mockSearchFunders.mockResolvedValue(funderList([RAW_FUNDER]));
 
     const input = searchFundersTool.input.parse({ query: 'National Science Foundation' });
@@ -184,7 +185,7 @@ describe('searchFundersTool', () => {
   });
 
   it('surfaces the successor on a deprecated funder resolved by query', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchFundersTool.errors });
     mockSearchFunders.mockResolvedValue(funderList([RAW_DEPRECATED_FUNDER]));
     mockGetFunderWorks.mockResolvedValue({ totalResults: 965, itemsPerPage: 10, items: [] });
 
@@ -208,7 +209,7 @@ describe('searchFundersTool', () => {
   });
 
   it('surfaces the successor on a deprecated funder resolved by funder_doi', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchFundersTool.errors });
     mockSearchFunders.mockResolvedValue(funderList([RAW_DEPRECATED_FUNDER]));
 
     const input = searchFundersTool.input.parse({ funder_doi: '501100002860' });
@@ -219,7 +220,7 @@ describe('searchFundersTool', () => {
   });
 
   it('projects replaces on the entry that superseded a deprecated one', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchFundersTool.errors });
     mockSearchFunders.mockResolvedValue(
       funderList([
         {
@@ -256,7 +257,7 @@ describe('searchFundersTool', () => {
   });
 
   it('reaches the wire with replacedBy and replaces', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchFundersTool.errors });
     mockSearchFunders.mockResolvedValue(funderList([RAW_DEPRECATED_FUNDER]));
 
     const input = searchFundersTool.input.parse({ funder_doi: '501100002860' });
@@ -268,7 +269,7 @@ describe('searchFundersTool', () => {
   });
 
   it('decodes HTML entities in funder name and altNames', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchFundersTool.errors });
     mockSearchFunders.mockResolvedValue(
       funderList([
         {
@@ -288,7 +289,7 @@ describe('searchFundersTool', () => {
   });
 
   it('strips JATS markup from fundedWorks titles and decodes the funder location', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchFundersTool.errors });
     mockSearchFunders.mockResolvedValue(
       funderList([{ ...RAW_FUNDER, location: 'Trinidad &amp; Tobago' }]),
     );
@@ -311,7 +312,7 @@ describe('searchFundersTool', () => {
   });
 
   it('uses funder_doi from input as fallback ID when raw funder has no id', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchFundersTool.errors });
     // Funder record missing `id` field
     mockSearchFunders.mockResolvedValue(funderList([{ name: 'Some Funder', location: 'Country' }]));
     mockGetFunderWorks.mockResolvedValue({
@@ -348,7 +349,7 @@ describe('searchFundersTool', () => {
       ],
     };
     const blocks = searchFundersTool.format!(result);
-    const text = blocks[0]?.text ?? '';
+    const text = blockText(blocks[0]);
     expect(text).toContain('National Science Foundation');
     expect(text).toContain('United States');
     expect(text).toContain('250000');
@@ -374,7 +375,7 @@ describe('searchFundersTool', () => {
         },
       ],
     };
-    const text = searchFundersTool.format!(result)[0]?.text ?? '';
+    const text = blockText(searchFundersTool.format!(result)[0]);
     expect(text).toContain('**Deprecated — replaced by:** 501100004543');
     expect(text).toContain('**Replaces:** 501100002860');
   });
@@ -393,7 +394,7 @@ describe('searchFundersTool', () => {
       ],
     };
     const blocks = searchFundersTool.format!(result);
-    const text = blocks[0]?.text ?? '';
+    const text = blockText(blocks[0]);
     expect(text).toContain('NSF-funded Discovery');
     expect(text).toContain('10.1038/s41586-024-0001-1');
     expect(text).toContain('2024');
@@ -429,7 +430,7 @@ describe('searchFundersTool', () => {
   });
 
   it('passes a bare registry ID straight through to the funder lookup', async () => {
-    const ctx = createMockContext();
+    const ctx = createMockContext({ errors: searchFundersTool.errors });
     mockSearchFunders.mockResolvedValue(funderList([RAW_FUNDER]));
 
     const input = searchFundersTool.input.parse({ funder_doi: '100000001' });
@@ -455,7 +456,7 @@ describe('searchFundersTool', () => {
 
   describe('paging', () => {
     it('threads offset to the funder search and hands back the next page offset', async () => {
-      const ctx = createMockContext();
+      const ctx = createMockContext({ errors: searchFundersTool.errors });
       mockSearchFunders.mockResolvedValue(funderList([RAW_FUNDER, RAW_FUNDER], 2252));
 
       const input = searchFundersTool.input.parse({ query: 'National', rows: 2, offset: 2 });
@@ -472,7 +473,7 @@ describe('searchFundersTool', () => {
     });
 
     it('omits nextOffset on the last page of funders', async () => {
-      const ctx = createMockContext();
+      const ctx = createMockContext({ errors: searchFundersTool.errors });
       mockSearchFunders.mockResolvedValue(funderList([RAW_FUNDER, RAW_FUNDER], 4));
 
       const input = searchFundersTool.input.parse({ query: 'National', rows: 2, offset: 2 });
@@ -484,7 +485,7 @@ describe('searchFundersTool', () => {
     });
 
     it('returns a well-formed empty page past the end of the funder list', async () => {
-      const ctx = createMockContext();
+      const ctx = createMockContext({ errors: searchFundersTool.errors });
       mockSearchFunders.mockResolvedValue(funderList([], 2252));
 
       const input = searchFundersTool.input.parse({ query: 'National', rows: 2, offset: 5000 });
@@ -502,7 +503,7 @@ describe('searchFundersTool', () => {
     });
 
     it('keeps the no-match notice distinct from the past-the-end notice', async () => {
-      const ctx = createMockContext();
+      const ctx = createMockContext({ errors: searchFundersTool.errors });
       mockSearchFunders.mockResolvedValue(funderList([], 0));
 
       const input = searchFundersTool.input.parse({ query: 'ZZZUnknownFunder', offset: 0 });
@@ -514,7 +515,7 @@ describe('searchFundersTool', () => {
     });
 
     it('threads works_offset to the works sub-resource and hands back nextWorksOffset', async () => {
-      const ctx = createMockContext();
+      const ctx = createMockContext({ errors: searchFundersTool.errors });
       mockSearchFunders.mockResolvedValue(funderList([RAW_FUNDER], 1));
       mockGetFunderWorks.mockResolvedValue({
         totalResults: 559017,
@@ -541,7 +542,7 @@ describe('searchFundersTool', () => {
     });
 
     it('omits nextWorksOffset at the 10000 ceiling but says why on the page', async () => {
-      const ctx = createMockContext();
+      const ctx = createMockContext({ errors: searchFundersTool.errors });
       mockSearchFunders.mockResolvedValue(funderList([RAW_FUNDER], 1));
       mockGetFunderWorks.mockResolvedValue({
         totalResults: 559017,
@@ -571,7 +572,7 @@ describe('searchFundersTool', () => {
     });
 
     it('leaves the notice off when the works list simply ended', async () => {
-      const ctx = createMockContext();
+      const ctx = createMockContext({ errors: searchFundersTool.errors });
       mockSearchFunders.mockResolvedValue(funderList([RAW_FUNDER], 1));
       mockGetFunderWorks.mockResolvedValue({
         totalResults: 2,
@@ -774,13 +775,13 @@ describe('searchFundersTool', () => {
       });
 
       expect(result.structuredContent).toMatchObject({ nextWorksCursor: 'wire-token' });
-      const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+      const text = result.content.map(blockText).join('\n');
       expect(text).toContain('nextWorksCursor');
       expect(text).toContain('wire-token');
     });
 
     it('discloses the 100000 ceiling on the funder list page', async () => {
-      const ctx = createMockContext();
+      const ctx = createMockContext({ errors: searchFundersTool.errors });
       mockSearchFunders.mockResolvedValue(
         funderList(
           Array.from({ length: 10 }, () => RAW_FUNDER),
@@ -842,7 +843,7 @@ describe('searchFundersTool', () => {
         funderCount: 2,
         nextOffset: 4,
       });
-      const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+      const text = result.content.map(blockText).join('\n');
       expect(text).toContain('2252');
       expect(text).toContain('nextOffset');
       expect(text).toContain('4');
@@ -883,7 +884,9 @@ describe('searchFundersTool', () => {
         include_works: true,
         rows: 3,
       });
-      const err = await searchFundersTool.handler(input, ctx).catch((e: unknown) => e);
+      const err = await Promise.resolve(searchFundersTool.handler(input, ctx)).catch(
+        (e: unknown) => e,
+      );
 
       const message = (err as { message: string }).message;
       expect(message).toContain('matched 3 funders');
@@ -902,7 +905,9 @@ describe('searchFundersTool', () => {
         include_works: true,
         rows: 3,
       });
-      const err = await searchFundersTool.handler(input, ctx).catch((e: unknown) => e);
+      const err = await Promise.resolve(searchFundersTool.handler(input, ctx)).catch(
+        (e: unknown) => e,
+      );
 
       const message = (err as { message: string }).message;
       // 2252 funders matched; three are listed. Saying "matched 3" would hide from the caller
@@ -937,7 +942,9 @@ describe('searchFundersTool', () => {
       mockSearchFunders.mockResolvedValue(funderList([BNB, { name: 'Funder With No ID' }], 2));
 
       const input = searchFundersTool.input.parse({ query: 'National', include_works: true });
-      const err = await searchFundersTool.handler(input, ctx).catch((e: unknown) => e);
+      const err = await Promise.resolve(searchFundersTool.handler(input, ctx)).catch(
+        (e: unknown) => e,
+      );
 
       expect((err as { message: string }).message).toContain('no registry ID');
       expect((err as { data: { candidates: unknown[] } }).data.candidates).toHaveLength(2);
@@ -994,7 +1001,7 @@ describe('searchFundersTool', () => {
       });
 
       expect(result.isError).toBe(true);
-      const text = result.content.map((b) => ('text' in b ? b.text : '')).join('\n');
+      const text = result.content.map(blockText).join('\n');
       expect(text).toContain('100031012');
       expect(text).toContain('501100004061');
       expect(result.structuredContent).toMatchObject({

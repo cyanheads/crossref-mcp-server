@@ -13,6 +13,7 @@
 import { z } from '@cyanheads/mcp-ts-core';
 import { runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { blockText } from '../helpers/content.js';
 
 vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/services/crossref/crossref-service.js')>();
@@ -69,8 +70,11 @@ beforeEach(() => {
 
 const worksPage = { totalResults: 1, itemsPerPage: 1, items: [divergentWork()] };
 
+/** The `CallToolResult` every surface's `run()` resolves to — both wire surfaces in one object. */
+type ToolRunResult = Awaited<ReturnType<typeof runToolContract>>;
+
 /** Every tool that resolves a publication date, with the upstream shape each one reads. */
-const SURFACES: Array<{ name: string; arrange: () => void; run: () => Promise<unknown> }> = [
+const SURFACES: Array<{ name: string; arrange: () => void; run: () => Promise<ToolRunResult> }> = [
   {
     name: 'crossref_get_work',
     arrange: () => service.getWork.mockResolvedValue(divergentWork()),
@@ -133,11 +137,8 @@ describe('the publication date every tool resolves', () => {
      */
     it(`${surface.name} falls through a source with only unknown components`, async () => {
       surface.arrange();
-      const result = (await surface.run()) as {
-        content: Array<{ text?: string }>;
-        structuredContent: unknown;
-      };
-      const text = result.content.map((block) => block.text ?? '').join('\n');
+      const result = await surface.run();
+      const text = result.content.map(blockText).join('\n');
       const dates = publishedValues(result.structuredContent);
 
       expect(dates.length).toBeGreaterThan(0);
@@ -151,11 +152,8 @@ describe('the publication date every tool resolves', () => {
      */
     it(`${surface.name} stops at the first source that names a date`, async () => {
       surface.arrange();
-      const result = (await surface.run()) as {
-        content: Array<{ text?: string }>;
-        structuredContent: unknown;
-      };
-      const text = result.content.map((block) => block.text ?? '').join('\n');
+      const result = await surface.run();
+      const text = result.content.map(blockText).join('\n');
 
       for (const wrong of WRONG) expect(text, surface.name).not.toContain(wrong);
       for (const date of publishedValues(result.structuredContent)) {

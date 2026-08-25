@@ -6,6 +6,7 @@
 import { createMockContext, getEnrichment } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getReferencesTool } from '@/mcp-server/tools/definitions/get-references.tool.js';
+import { blockText } from '../helpers/content.js';
 
 // Mock the service module so tests never hit the network
 vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
@@ -21,7 +22,7 @@ import { getCrossrefService } from '@/services/crossref/crossref-service.js';
 const mockGetWork = vi.fn();
 
 beforeEach(() => {
-  vi.mocked(getCrossrefService).mockReturnValue({ getWork: mockGetWork } as ReturnType<
+  vi.mocked(getCrossrefService).mockReturnValue({ getWork: mockGetWork } as unknown as ReturnType<
     typeof getCrossrefService
   >);
   mockGetWork.mockReset();
@@ -146,8 +147,7 @@ describe('getReferencesTool', () => {
     expect(result.references[1]?.author).toBe('Müller KH');
     expect(result.references[1]?.journalTitle).toBe('Br J Cancer 8, 21–28');
 
-    const block = getReferencesTool.format?.(result)[0];
-    const rendered = block?.type === 'text' ? block.text : '';
+    const rendered = blockText(getReferencesTool.format?.(result)[0]);
     expect(rendered).toContain('«Understanding Gas Condensate Reservoir»');
     expect(rendered).toContain('Interleukin-1-β (IL-1β)');
     expect(rendered).toContain('Müller KH');
@@ -315,7 +315,7 @@ describe('getReferencesTool', () => {
      * tag-shaped to a renderer than they were to the strip, so they reach `content[]`
      * byte-exact.
      */
-    const text = getReferencesTool.format!(result)[0]?.text ?? '';
+    const text = blockText(getReferencesTool.format!(result)[0]);
     expect(text).toContain('International \\<IR> Framework');
     expect(text).toContain('Silicon <100> nanowires');
     expect(text).toContain('66:2<131::AID-QUA4>3.0.CO;2-W');
@@ -343,7 +343,7 @@ describe('getReferencesTool', () => {
 
     const input = getReferencesTool.input.parse({ doi: '10.3934/dcds.2013.33.2211' });
     const result = await getReferencesTool.handler(input, ctx);
-    const text = getReferencesTool.format!(result)[0]?.text ?? '';
+    const text = blockText(getReferencesTool.format!(result)[0]);
 
     expect(result.references[0]?.unstructured).toContain(
       '<a href="http://arxiv.org/abs/1102.1113v1">',
@@ -374,7 +374,7 @@ describe('getReferencesTool', () => {
 
     const input = getReferencesTool.input.parse({ doi: '10.1000/probe' });
     const result = await getReferencesTool.handler(input, ctx);
-    const text = getReferencesTool.format!(result)[0]?.text ?? '';
+    const text = blockText(getReferencesTool.format!(result)[0]);
 
     expect(result.references[0]?.journalTitle).toBe('Proc. SPIE 9*');
     expect(text).toContain('*Proc. SPIE 9\\**');
@@ -456,7 +456,7 @@ describe('getReferencesTool', () => {
       year: '2020',
     }));
     const result = { doi: '10.1038/nature12373', referenceCount: 60, offset: 0, references: refs };
-    const text = getReferencesTool.format!(result)[0]?.text ?? '';
+    const text = blockText(getReferencesTool.format!(result)[0]);
 
     expect(text).toContain('10.1038/nature12373');
     for (const r of refs) {
@@ -476,7 +476,7 @@ describe('getReferencesTool', () => {
       offset: 0,
       references: [{ key: 'r1', unstructured }],
     };
-    const text = getReferencesTool.format!(result)[0]?.text ?? '';
+    const text = blockText(getReferencesTool.format!(result)[0]);
 
     expect(text).toContain(unstructured);
   });
@@ -488,7 +488,7 @@ describe('getReferencesTool', () => {
       offset: 100,
       references: [{ key: 'r101', articleTitle: 'Page two opener' }],
     };
-    const text = getReferencesTool.format!(result)[0]?.text ?? '';
+    const text = blockText(getReferencesTool.format!(result)[0]);
 
     expect(text).toContain('101. Page two opener');
     expect(text).toContain('showing 1 of 250');
@@ -605,7 +605,7 @@ describe('getReferencesTool', () => {
     };
     const blocks = getReferencesTool.format!(result);
     expect(blocks[0]?.type).toBe('text');
-    const text = blocks[0]?.text ?? '';
+    const text = blockText(blocks[0]);
     expect(text).toContain('10.1038/nature12373');
     expect(text).toContain('10.1000/ref1');
     expect(text).toContain('ref1');
@@ -630,7 +630,7 @@ describe('getReferencesTool', () => {
       ],
     };
     const blocks = getReferencesTool.format!(result);
-    const text = blocks[0]?.text ?? '';
+    const text = blockText(blocks[0]);
     // Asserted as the composed segment — a bare '5' matches the year on any fixture.
     expect(text).toContain('12:5');
     expect(text).toContain('*Nature*');
