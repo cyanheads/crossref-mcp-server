@@ -1,7 +1,7 @@
 {
   "manifest_version": "0.3",
   "name": "crossref-mcp-server",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "description": "Resolve DOIs, search ~155M scholarly works, fetch references, and look up publishers via the Crossref REST API. STDIO or Streamable HTTP.",
   "author": {
     "name": "cyanheads"

@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.3.10](changelog/0.3.x/0.3.10.md) — 2026-08-25
+
+Framework adoption to mcp-ts-core 0.12.3 (MCP SDK v2) — strict tool inputs, JSON Schema 2020-12, protocol revision 2026-07-28
+
 ## [0.3.9](changelog/0.3.x/0.3.9.md) — 2026-08-09
 
 crossref_get_work's publication-date fallback now matches the three search tools instead of stopping early on a source naming no date

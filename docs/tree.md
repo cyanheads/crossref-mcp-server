@@ -1,11 +1,9 @@
 # crossref-mcp-server - Directory Structure
 
-Generated on: 2026-08-10 06:06:57
+Generated on: 2026-08-25 07:12:39
 
 ```text
 crossref-mcp-server/
-├── .agents/
-├── .claude/
 ├── .claude-plugin/
 │   └── plugin.json
 ├── .codex-plugin/
@@ -16,6 +14,8 @@ crossref-mcp-server/
 │   │   ├── bug_report.yml
 │   │   ├── config.yml
 │   │   └── feature_request.yml
+│   ├── CODE_OF_CONDUCT.md
+│   ├── CONTRIBUTING.md
 │   ├── FUNDING.yml
 │   └── SECURITY.md
 ├── .vscode/
@@ -158,6 +158,8 @@ crossref-mcp-server/
 │   │       └── upstream-errors.ts
 │   └── index.ts
 ├── tests/
+│   ├── helpers/
+│   │   └── content.ts
 │   ├── prompts/
 │   ├── resources/
 │   ├── services/
@@ -170,6 +172,7 @@ crossref-mcp-server/
 │       ├── get-prefix.tool.test.ts
 │       ├── get-references.tool.test.ts
 │       ├── get-work.tool.test.ts
+│       ├── input-strictness.test.ts
 │       ├── markdown-surface.test.ts
 │       ├── markdown-text.test.ts
 │       ├── search-funders.tool.test.ts
