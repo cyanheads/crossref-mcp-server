@@ -1,20 +1,41 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "crossref-mcp-server",
   "version": "0.3.11",
   "description": "Resolve DOIs, search ~155M scholarly works, fetch references, and look up publishers via the Crossref REST API. STDIO or Streamable HTTP.",
   "author": {
-    "name": "cyanheads"
+    "name": "Casey Hand",
+    "email": "casey@caseyjhand.com",
+    "url": "https://caseyjhand.com"
   },
   "homepage": "https://github.com/cyanheads/crossref-mcp-server#readme",
   "repository": "https://github.com/cyanheads/crossref-mcp-server",
   "license": "Apache-2.0",
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "crossref",
+    "doi",
+    "scholarly",
+    "research",
+    "citations"
+  ],
+  "userConfig": {
+    "CROSSREF_MAILTO": {
+      "type": "string",
+      "title": "Crossref polite-pool email",
+      "description": "Optional. Sent in the User-Agent header for Crossref's polite pool; without it requests use the anonymous pool with stricter rate limits.",
+      "default": ""
+    }
+  },
   "mcpServers": {
     "crossref-mcp-server": {
       "command": "npx",
       "args": ["-y", "@cyanheads/crossref-mcp-server"],
       "env": {
         "MCP_TRANSPORT_TYPE": "stdio",
-        "CROSSREF_MAILTO": ""
+        "CROSSREF_MAILTO": "${user_config.CROSSREF_MAILTO}"
       }
     }
   }

@@ -3,8 +3,8 @@
     "command": "npx",
     "args": ["-y", "@cyanheads/crossref-mcp-server"],
     "env": {
-      "MCP_TRANSPORT_TYPE": "stdio",
-      "CROSSREF_MAILTO": ""
-    }
+      "MCP_TRANSPORT_TYPE": "stdio"
+    },
+    "env_vars": ["CROSSREF_MAILTO"]
   }
 }
