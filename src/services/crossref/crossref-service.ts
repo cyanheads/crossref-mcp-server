@@ -33,8 +33,13 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { Context } from '@cyanheads/mcp-ts-core';
-import { JsonRpcErrorCode, McpError, validationError } from '@cyanheads/mcp-ts-core/errors';
-import { httpErrorFromResponse, withRetry } from '@cyanheads/mcp-ts-core/utils';
+import {
+  JsonRpcErrorCode,
+  McpError,
+  requestCancelled,
+  validationError,
+} from '@cyanheads/mcp-ts-core/errors';
+import { httpErrorFromResponse, logger, withRetry } from '@cyanheads/mcp-ts-core/utils';
 import { getServerConfig } from '@/config/server-config.js';
 import { decodeHtmlEntities } from './html-entities.js';
 import type {
@@ -932,7 +937,8 @@ export class CrossrefService {
       );
     }
     // Caller cancellation, not an upstream failure — withRetry exits on an aborted signal.
-    if (ctx.signal.aborted) return err;
+    if (ctx.signal.aborted)
+      return requestCancelled('Crossref request cancelled by caller.', { url }, { cause: err });
     return upstreamError(UPSTREAM_UNAVAILABLE, `Crossref could not be reached: ${causeOf(err)}`, {
       data: { url },
       cause: err,
@@ -1247,8 +1253,7 @@ export function initCrossrefService(): void {
   _service = new CrossrefService();
   const cfg = getServerConfig();
   if (!cfg.mailto) {
-    // Logger is not yet initialized when setup() runs, so use console.warn directly.
-    console.warn(
+    logger.warning(
       '[crossref-mcp-server] CROSSREF_MAILTO is not set — using the anonymous Crossref pool with stricter rate limits. ' +
         'Set CROSSREF_MAILTO to your contact email to enable polite-pool priority access.',
     );
