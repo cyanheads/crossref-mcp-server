@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.3.12](changelog/0.3.x/0.3.12.md) — 2026-09-13
+
+mcp-ts-core ^0.13.0 adoption: a cancelled request returns RequestCancelled (-32011) instead of the raw abort error, and the development skill tree moves to framework-skills/ so a plugin install no longer receives it.
+
 ## [0.3.11](changelog/0.3.x/0.3.11.md) — 2026-08-25
 
 GHCR image now builds — Docker build stage runs on the native builder platform instead of under QEMU emulation
