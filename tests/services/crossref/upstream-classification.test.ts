@@ -87,6 +87,17 @@ function getWork(): Promise<ToolResult> {
 }
 
 describe('upstream failure classification', () => {
+  it('preserves the non-retryable 501 classification', async () => {
+    http.route({ match: WORKS_ROUTE, respond: () => new Response('unsupported', { status: 501 }) });
+    const result = await getWork();
+    expect(errorOf(result)).toMatchObject({
+      code: JsonRpcErrorCode.ServiceUnavailable,
+      data: { retryable: false, reason: 'upstream_unavailable' },
+    });
+    expect(textOf(result)).toContain('501');
+    expect(http.calls).toHaveLength(1);
+  });
+
   it('classifies a malformed 200 body as SerializationError and spends one attempt', async () => {
     http.route({
       match: WORKS_ROUTE,

@@ -72,6 +72,7 @@ describe('the argument contract every tool advertises', () => {
       // an upstream or internal fault, and naming the key it refused.
       const error = (result.structuredContent as { error?: { code?: number; message?: string } })
         .error;
+      // runToolContract validates directly; the transport maps argument rejection to InvalidParams.
       expect(error?.code).toBe(JsonRpcErrorCode.ValidationError);
       expect(error?.message).toContain(UNDECLARED_KEY);
 

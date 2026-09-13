@@ -151,7 +151,7 @@ describe('CrossrefService', () => {
     await vi.advanceTimersByTimeAsync(0);
     controller.abort(new Error('caller cancelled'));
 
-    await expect(pending).rejects.toThrow('caller cancelled');
+    await expect(pending).rejects.toMatchObject({ code: JsonRpcErrorCode.RequestCancelled });
     // A cancelled call is not an upstream failure — withRetry exits on the aborted signal
     // rather than spending the budget on a request nobody is waiting for.
     expect(http.calls).toHaveLength(1);
