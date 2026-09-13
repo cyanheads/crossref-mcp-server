@@ -29,7 +29,7 @@
 
 ## Overview
 
-An MCP server over the Crossref REST API. Resolve DOIs to full metadata records, search across ~155 million scholarly works by free text or structured filters, fetch outgoing reference lists, and look up journals, funders, and publishers. Runs as a stdio process, a local Streamable HTTP server, or the public hosted endpoint above.
+Scholarly metadata from the Crossref REST API. Resolve DOIs to full metadata records, search across ~155 million scholarly works by free text or structured filters, fetch outgoing reference lists, and look up journals, funders, and publishers. Runs as a stdio process, a local Streamable HTTP server, or the public hosted endpoint above.
 
 ### Tools
 
@@ -295,7 +295,7 @@ See [`.env.example`](./.env.example) for the full list of optional overrides.
 |:----------|:--------|
 | `src/index.ts` | `createApp()` entry point — registers tools and inits services. |
 | `src/config` | Server-specific environment variable parsing and validation with Zod. |
-| `src/mcp-server/tools` | Tool definitions (`*.tool.ts`). Seven tools for Crossref data access. |
+| `src/mcp-server/tools` | Tool definitions (`*.tool.ts`). |
 | `src/services/crossref` | CrossrefService — HTTP client, polite-pool header, retry, pagination helpers. |
 | `tests/` | Unit and integration tests mirroring `src/`. |
 
