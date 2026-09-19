@@ -70,14 +70,31 @@ describe('the argument contract every tool advertises', () => {
 
       // structuredContent: the failure envelope, classified as caller input rather than
       // an upstream or internal fault, and naming the key it refused.
-      const error = (result.structuredContent as { error?: { code?: number; message?: string } })
-        .error;
-      // runToolContract validates directly; the transport maps argument rejection to InvalidParams.
-      expect(error?.code).toBe(JsonRpcErrorCode.ValidationError);
+      const error = (
+        result.structuredContent as {
+          error?: { code?: number; message?: string; data?: { reason?: string } };
+        }
+      ).error;
+      /**
+       * `InvalidParams` rather than `ValidationError`: an argument rejection goes through
+       * `parseToolArguments`, the same call the production handler factory makes, so this is
+       * the code, message, and text a client actually receives. `reason` is what a client
+       * branches on — it separates a malformed call from every upstream failure this server
+       * declares, which share the envelope but not the caller's next move.
+       */
+      expect(error?.code).toBe(JsonRpcErrorCode.InvalidParams);
+      expect(error?.data?.reason).toBe('invalid_arguments');
       expect(error?.message).toContain(UNDECLARED_KEY);
 
-      // content[]: a text-only client reads the same refusal, naming the same key.
-      expect(blockText(result.content?.[0])).toContain(UNDECLARED_KEY);
+      /**
+       * content[]: a text-only client reads the same refusal, naming the same key. Asserted
+       * by containment — the framework appends a synthesized `Recovery:` line and closes the
+       * block with the reason and retryability, so the text is a superset of the refusal
+       * rather than a fixed string.
+       */
+      const text = blockText(result.content?.[0]);
+      expect(text).toContain(UNDECLARED_KEY);
+      expect(text).toContain('invalid_arguments');
     });
   }
 
