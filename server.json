@@ -7,6 +7,12 @@
     "source": "github"
   },
   "version": "0.3.12",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://crossref.caseyjhand.com/mcp"
+    }
+  ],
   "packages": [
     {
       "registryType": "npm",
