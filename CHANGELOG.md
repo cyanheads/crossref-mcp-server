@@ -2,7 +2,7 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
-## [0.3.13](changelog/0.3.x/0.3.13.md) — 2026-09-19 · ⚠️ Breaking · 🛡️ Security
+## [0.3.13](changelog/0.3.x/0.3.13.md) — 2026-09-19 · 🛡️ Security
 
 crossref_get_work and crossref_get_references accept a resolver-wrapped DOI, sessions declare themselves stateless in src/, and the Crossref request URL no longer reaches callers in error.data.
 
