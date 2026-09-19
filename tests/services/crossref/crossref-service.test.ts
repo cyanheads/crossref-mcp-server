@@ -34,6 +34,7 @@ import {
   initCrossrefService,
   NAME_SEARCH_OFFSET_CAP,
   nextPageOffset,
+  normalizeDoi,
   normalizeMarkupText,
   normalizeReferenceText,
   normalizeText,
@@ -585,6 +586,40 @@ describe('service singleton', () => {
   it('hands back the initialized instance', () => {
     initCrossrefService();
     expect(getCrossrefService()).toBeInstanceOf(CrossrefService);
+  });
+});
+
+describe('normalizeDoi', () => {
+  /**
+   * The wrappers a DOI picks up on its way through a browser, a citation manager, or a
+   * reference list. Each names the same DOI, so unwrapping is a rewrite with one possible
+   * reading rather than a guess at what the caller meant.
+   */
+  it.each([
+    ['https://doi.org/10.1038/nature12373', '10.1038/nature12373'],
+    ['http://doi.org/10.1038/nature12373', '10.1038/nature12373'],
+    ['https://dx.doi.org/10.1038/nature12373', '10.1038/nature12373'],
+    ['http://dx.doi.org/10.1038/nature12373', '10.1038/nature12373'],
+    ['HTTPS://DOI.ORG/10.1038/nature12373', '10.1038/nature12373'],
+    ['doi:10.1038/nature12373', '10.1038/nature12373'],
+    ['DOI:10.1038/nature12373', '10.1038/nature12373'],
+    ['doi:10.13039/100000001', '10.13039/100000001'],
+  ])('unwraps %s', (raw, expected) => {
+    expect(normalizeDoi(raw)).toBe(expected);
+  });
+
+  it('leaves anything that is not one of those wrappers alone', () => {
+    // A bare DOI, a bare funder registry ID, and a host this server does not recognize as the
+    // DOI resolver all pass through byte-exact — the rewrite removes a known prefix and never
+    // searches the argument for a DOI.
+    for (const raw of [
+      '10.1038/nature12373',
+      '100000001',
+      'https://www.doi.org/10.1038/nature12373',
+      'https://doi.org.example.com/10.1038/nature12373',
+    ]) {
+      expect(normalizeDoi(raw), raw).toBe(raw);
+    }
   });
 });
 

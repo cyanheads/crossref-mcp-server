@@ -14,6 +14,7 @@
 
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { createFetchMock, runToolContract } from '@cyanheads/mcp-ts-core/testing';
+import { logger } from '@cyanheads/mcp-ts-core/utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { blockText } from '../../helpers/content.js';
 
@@ -44,6 +45,9 @@ import {
 
 const DOI = '10.1038/nature12373';
 const WORKS_ROUTE = /\/works/;
+
+/** The configured `CROSSREF_BASE_URL` the mocked config above serves. */
+const BASE_URL = 'https://api.crossref.test';
 
 /** `withRetry`'s default budget: one attempt plus three retries. */
 const TOTAL_ATTEMPTS = 4;
@@ -335,6 +339,132 @@ describe('recovery on both result surfaces', () => {
     expect(errorOf(result).message).toContain('HTML');
     expect(textOf(result)).toContain(UPSTREAM_UNAVAILABLE.recovery);
     expect(http.calls).toHaveLength(TOTAL_ATTEMPTS);
+  });
+});
+
+describe('upstream request URL', () => {
+  /**
+   * Every failure shape the service classifies, as the upstream behavior that produces it.
+   * Each one built its error on a different path — `httpErrorFromResponse`, `upstreamError`,
+   * the tool handler's own typed reason — so the surface has to be checked on all of them
+   * rather than on whichever one a single case happens to exercise.
+   */
+  const FAILURES: ReadonlyArray<readonly [string, (request: Request) => Promise<Response>]> = [
+    ['a network-level rejection', () => Promise.reject(new TypeError('fetch failed'))],
+    ['an upstream 500', async () => new Response('boom', { status: 500 })],
+    [
+      'an exhausted 429',
+      async () => new Response('slow down', { status: 429, headers: { 'retry-after': '2' } }),
+    ],
+    ['a 501 the retry budget skips', async () => new Response('unsupported', { status: 501 })],
+    [
+      'an HTML error page served as 200',
+      async () => new Response('<!DOCTYPE html><html><body>nope</body></html>', { status: 200 }),
+    ],
+    ['an empty 200 body', async () => new Response('', { status: 200 })],
+    ['a malformed 200 body', async () => new Response('{"message":{', { status: 200 })],
+    ['a 404 the handler owns', async () => new Response('Resource not found.', { status: 404 })],
+    [
+      'a deadline expiry',
+      (request) =>
+        new Promise<Response>((_, reject) => {
+          request.signal.addEventListener('abort', () => reject(request.signal.reason), {
+            once: true,
+          });
+        }),
+    ],
+  ];
+
+  /**
+   * `error.data` is forwarded to the client as `structuredContent.error.data`, and
+   * `CROSSREF_BASE_URL` is operator-configurable — a deployment pointed at a private mirror
+   * would otherwise hand that hostname, plus every query string this server builds, to every
+   * caller on every failure. The whole result is scanned rather than `data.url` alone: the
+   * URL reaching `content[]`, the message, or a nested field costs the same as reaching the
+   * key it used to sit on.
+   */
+  it.each(FAILURES)('is absent from the client-facing envelope on %s', async (_label, respond) => {
+    http.route({ match: WORKS_ROUTE, respond });
+
+    const result = await getWork();
+
+    expect(errorOf(result).data ?? {}).not.toHaveProperty('url');
+    expect(JSON.stringify(result)).not.toContain(BASE_URL);
+  });
+
+  /**
+   * Where the line actually sits. A socket rejection's own message embeds the address it
+   * dialled (`connect ECONNREFUSED host:port`), and `causeOf` puts that message on the wire
+   * because it is the only thing that says what went wrong — the framework draws the same
+   * line, keeping the host in an upstream error's message while dropping the URL from
+   * `error.data`. What must never travel is the rest of the URL: the route, the DOI, the
+   * query string this server built. An HTTP-status failure carries neither, since
+   * `httpErrorFromResponse` is given `service: 'Crossref'` and names that instead of a host.
+   */
+  it('keeps the route and query out of a transport rejection that names its address', async () => {
+    http.route({
+      match: WORKS_ROUTE,
+      respond: () =>
+        Promise.reject(
+          new TypeError('fetch failed', {
+            cause: new Error('connect ECONNREFUSED 10.0.0.4:8080'),
+          }),
+        ),
+    });
+
+    const result = await getWork();
+    const wire = JSON.stringify(result);
+
+    expect(errorOf(result).data ?? {}).not.toHaveProperty('url');
+    expect(wire).not.toContain('/works');
+    expect(wire).not.toContain(encodeURIComponent(DOI));
+    expect(wire).not.toContain(BASE_URL);
+  });
+
+  it('reaches the operator through the Pino-only sink instead', async () => {
+    const warning = vi.spyOn(logger, 'warning').mockImplementation(() => {});
+    http.route({ match: WORKS_ROUTE, respond: () => new Response('down', { status: 503 }) });
+
+    await getWork();
+
+    // `ctx.log` is dual-sink — a line written there ships to the client as
+    // `notifications/message`, which is the surface this whole block exists to keep clear.
+    expect(warning).toHaveBeenCalledWith(
+      expect.stringContaining('Crossref request failed'),
+      expect.objectContaining({
+        extra: expect.objectContaining({
+          url: `${BASE_URL}/works/${encodeURIComponent(DOI)}`,
+        }),
+      }),
+    );
+    warning.mockRestore();
+  });
+
+  it('is not logged as a failure when the caller cancelled', async () => {
+    const warning = vi.spyOn(logger, 'warning').mockImplementation(() => {});
+    const controller = new AbortController();
+    http.route({
+      match: WORKS_ROUTE,
+      respond: (request) =>
+        new Promise<Response>((_, reject) => {
+          request.signal.addEventListener('abort', () => reject(request.signal.reason), {
+            once: true,
+          });
+        }),
+    });
+
+    const pending = runToolContract(
+      getWorkTool,
+      { doi: DOI },
+      { context: { signal: controller.signal } },
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    controller.abort(new Error('caller cancelled'));
+    await pending;
+
+    // A cancellation is the caller hanging up, not an upstream fault an operator has to chase.
+    expect(warning).not.toHaveBeenCalled();
+    warning.mockRestore();
   });
 });
 

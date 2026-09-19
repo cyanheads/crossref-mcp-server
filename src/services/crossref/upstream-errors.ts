@@ -21,6 +21,7 @@ import { JsonRpcErrorCode, McpError } from '@cyanheads/mcp-ts-core/errors';
 export const RATE_LIMITED = {
   reason: 'rate_limited',
   code: JsonRpcErrorCode.RateLimited,
+  thrownBy: 'service',
   when: 'Crossref answered HTTP 429 and the limit did not clear inside the retry budget.',
   recovery:
     'Crossref named no wait interval, so back off at least a minute before reissuing the same call, and lower the request rate. Setting CROSSREF_MAILTO on the server moves requests into the polite pool, which has higher limits.',
@@ -34,6 +35,7 @@ export const RATE_LIMITED = {
 export const UPSTREAM_UNAVAILABLE = {
   reason: 'upstream_unavailable',
   code: JsonRpcErrorCode.ServiceUnavailable,
+  thrownBy: 'service',
   when: 'Crossref was unreachable, returned a 5xx status, or served an HTML error page instead of JSON.',
   recovery:
     'The request was accepted as well-formed and Crossref failed to serve it — retry the same call in a minute rather than rewriting the query, and check https://status.crossref.org if it keeps failing.',
@@ -49,6 +51,7 @@ export const UPSTREAM_UNAVAILABLE = {
 export const MALFORMED_RESPONSE = {
   reason: 'malformed_response',
   code: JsonRpcErrorCode.SerializationError,
+  thrownBy: 'service',
   retryable: false,
   when: 'Crossref returned HTTP 200 with a body that is not valid JSON.',
   recovery:
@@ -65,6 +68,7 @@ export const MALFORMED_RESPONSE = {
 export const REQUEST_TIMEOUT = {
   reason: 'request_timeout',
   code: JsonRpcErrorCode.Timeout,
+  thrownBy: 'service',
   when: 'Crossref did not respond within CROSSREF_TIMEOUT_MS, or answered HTTP 408/504.',
   recovery:
     'Ask for less work per call — lower rows, drop select fields, or split a broad query — or raise CROSSREF_TIMEOUT_MS on the server, then retry.',
@@ -74,6 +78,13 @@ export const REQUEST_TIMEOUT = {
  * Spread into every tool's `errors[]`. Each tool reaches Crossref through the shared
  * service, so each can raise all four; a contract listing only the tool's own
  * input-shape failures under-reports what a caller has to handle.
+ *
+ * Every entry carries `thrownBy: 'service'`, which is simply where these are raised — no
+ * handler names one in a `ctx.fail`, because the service throws them before any handler
+ * sees a result. The marker is read by `error-contract-unthrown`, which scans a handler
+ * body for the literal throw; without it the rule reports all four against all seven tools.
+ * It is lint-only metadata: each entry stays advertised, typed, and thrown exactly as it
+ * was, and stays in the `ctx.fail` / `ctx.recoveryFor` reason union.
  */
 export const UPSTREAM_ERROR_CONTRACT = [
   RATE_LIMITED,

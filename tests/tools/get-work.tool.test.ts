@@ -882,7 +882,10 @@ describe('getWorkTool', () => {
   it('rejects DOI with invalid format via Zod schema', () => {
     expect(() => getWorkTool.input.parse({ doi: 'not-a-doi' })).toThrow();
     expect(() => getWorkTool.input.parse({ doi: '10.x/suffix' })).toThrow();
-    expect(() => getWorkTool.input.parse({ doi: 'https://doi.org/10.1038/nature' })).toThrow();
+    // A resolver wrapper is accepted around a DOI and never in place of one: the suffix still
+    // has to be there, so the schema rejects the same non-DOI whichever URL it arrives inside.
+    expect(() => getWorkTool.input.parse({ doi: 'https://doi.org/not-a-doi' })).toThrow();
+    expect(() => getWorkTool.input.parse({ doi: 'https://doi.org/10.1038' })).toThrow();
   });
 
   it('accepts minimum-length DOI registrant (4 digits)', () => {
@@ -938,6 +941,57 @@ describe('getWorkTool', () => {
     expect(text).toContain('vor');
     expect(text).toContain('example.com/full.pdf');
     expect(text).toContain('text-mining');
+  });
+
+  /**
+   * A DOI copied out of a browser, a citation, or a reference list arrives wrapped in its
+   * resolver — `https://doi.org/…`, the older `dx.doi.org` host, or the `doi:` URI scheme.
+   * Every one of those unwraps to exactly one DOI, so the call is answerable as sent; the
+   * tool that reads funder DOIs has always unwrapped them, and these two rejected the same
+   * forms and told the caller to strip the prefix by hand.
+   */
+  describe('DOI input forms', () => {
+    const WRAPPED = [
+      'https://doi.org/10.1038/nature12373',
+      'http://doi.org/10.1038/nature12373',
+      'https://dx.doi.org/10.1038/nature12373',
+      'doi:10.1038/nature12373',
+      'DOI:10.1038/nature12373',
+    ];
+
+    it.each(WRAPPED)('resolves %s to the bare DOI upstream', async (wrapped) => {
+      const ctx = createMockContext({ errors: getWorkTool.errors });
+      mockGetWork.mockResolvedValue(makeRawWork());
+
+      const input = getWorkTool.input.parse({ doi: wrapped });
+      const result = await getWorkTool.handler(input, ctx);
+
+      expect(mockGetWork).toHaveBeenCalledWith('10.1038/nature12373', ctx);
+      expect(result.doi).toBe('10.1038/nature12373');
+    });
+
+    it('carries the unwrapped DOI into the not-found failure on both surfaces', async () => {
+      mockGetWork.mockResolvedValue(null);
+
+      const result = await runToolContract(getWorkTool, {
+        doi: 'https://doi.org/10.9999/missing',
+      });
+
+      const error = (
+        result.structuredContent as { error?: { message?: string; data?: { doi?: string } } }
+      ).error;
+      expect(error?.data?.doi).toBe('10.9999/missing');
+      expect(error?.message).toContain('10.9999/missing');
+      expect(error?.message).not.toContain('https://doi.org/');
+      expect(blockText(result.content?.[0])).toContain('10.9999/missing');
+    });
+
+    it('still rejects a string that is not a DOI in any of those forms', () => {
+      // The unwrapping is one-to-one, not a search for a DOI anywhere in the argument.
+      for (const bad of ['nature12373', 'https://doi.org/nature12373', '10.1038', 'doi:']) {
+        expect(getWorkTool.input.safeParse({ doi: bad }).success, bad).toBe(false);
+      }
+    });
   });
 
   it('security: output does not leak CROSSREF_MAILTO env value', async () => {

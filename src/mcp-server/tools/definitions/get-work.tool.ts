@@ -15,6 +15,7 @@ import { mdText, mdTextAtLineStart } from '@/mcp-server/tools/markdown-text.js';
 import {
   formatDateParts,
   getCrossrefService,
+  normalizeDoi,
   normalizeMarkupText,
   normalizeText,
   resolveWorkDate,
@@ -114,12 +115,12 @@ export const getWorkTool = tool('crossref_get_work', {
   input: z.object({
     doi: z
       .string()
-      .regex(/^10\.\d{4,9}\/\S+$/, {
+      .regex(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:)?10\.\d{4,9}\/\S+$/i, {
         message:
-          'DOI must start with "10." followed by 4–9 digits and a slash, e.g. "10.1038/nature12373". Strip any https://doi.org/ prefix before passing.',
+          'DOI must be "10." followed by 4–9 digits and a slash, e.g. "10.1038/nature12373", optionally wrapped in its resolver ("https://doi.org/…", "doi:…").',
       })
       .describe(
-        'DOI in the format "10.NNNN/suffix", e.g. "10.1038/nature12373". Must start with "10." followed by 4–9 digits and a slash.',
+        'DOI in the format "10.NNNN/suffix", e.g. "10.1038/nature12373". A resolver-wrapped form — "https://doi.org/10.1038/nature12373", "https://dx.doi.org/…", "doi:10.1038/nature12373" — is accepted and unwrapped.',
       ),
     offset: z
       .number()
@@ -230,12 +231,17 @@ export const getWorkTool = tool('crossref_get_work', {
   ],
 
   async handler(input, ctx) {
-    ctx.log.info('Resolving DOI', { doi: input.doi });
+    /**
+     * The schema admits the resolver-wrapped forms; the request path, the log, and the
+     * not-found message all read the bare DOI, so the unwrap happens once, here.
+     */
+    const doi = normalizeDoi(input.doi);
+    ctx.log.info('Resolving DOI', { doi });
     const svc = getCrossrefService();
-    const raw = await svc.getWork(input.doi, ctx);
+    const raw = await svc.getWork(doi, ctx);
     if (!raw) {
-      throw ctx.fail('doi_not_found', `No Crossref record for DOI: ${input.doi}`, {
-        doi: input.doi,
+      throw ctx.fail('doi_not_found', `No Crossref record for DOI: ${doi}`, {
+        doi,
         ...ctx.recoveryFor('doi_not_found'),
       });
     }

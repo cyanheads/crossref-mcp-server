@@ -613,6 +613,26 @@ describe('getReferencesTool', () => {
     expect(text).toContain('Jones 2015');
   });
 
+  /**
+   * The same unwrapping `crossref_get_work` applies, checked here because each tool declares
+   * its own `doi` field: a resolver-wrapped DOI is one DOI, so the argument is answerable as
+   * sent rather than something to hand back for the caller to edit.
+   */
+  it('accepts a resolver-wrapped DOI and fetches the bare one', async () => {
+    const ctx = createMockContext({ errors: getReferencesTool.errors });
+    mockGetWork.mockResolvedValue({
+      DOI: '10.1038/nature12373',
+      type: 'journal-article',
+      reference: REF_LIST,
+    });
+
+    const input = getReferencesTool.input.parse({ doi: 'https://doi.org/10.1038/nature12373' });
+    const result = await getReferencesTool.handler(input, ctx);
+
+    expect(mockGetWork).toHaveBeenCalledWith('10.1038/nature12373', ctx);
+    expect(result.doi).toBe('10.1038/nature12373');
+  });
+
   it('formats volume and firstPage in output', () => {
     const result = {
       doi: '10.1038/nature12373',

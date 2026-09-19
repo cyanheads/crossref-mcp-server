@@ -39,7 +39,7 @@ import {
   requestCancelled,
   validationError,
 } from '@cyanheads/mcp-ts-core/errors';
-import { httpErrorFromResponse, logger, withRetry } from '@cyanheads/mcp-ts-core/utils';
+import { httpErrorFromResponse, logger, withExtra, withRetry } from '@cyanheads/mcp-ts-core/utils';
 import { getServerConfig } from '@/config/server-config.js';
 import { decodeHtmlEntities } from './html-entities.js';
 import type {
@@ -699,8 +699,20 @@ export function resolveWorkSummaryDate(raw: WorkDateSources) {
   return resolveDate(raw, WORK_SUMMARY_DATE_SOURCES);
 }
 
-/** Strip URL/doi: prefix from a funder DOI, yielding a bare registry ID for the Crossref path. */
-export function normalizeFunderId(raw: string): string {
+/**
+ * Unwrap a DOI from the resolver it was copied with — `https://doi.org/…`, the older
+ * `dx.doi.org` host, or the `doi:` URI scheme — leaving the bare DOI Crossref's paths take.
+ *
+ * Every one of those forms names exactly one DOI, so the rewrite has a single reading and
+ * costs the caller nothing: the argument is answerable as sent instead of being handed back
+ * for the caller to edit. It is prefix removal and nothing more — a host that merely contains
+ * `doi.org`, and any string that carries no recognized wrapper, comes back byte-exact, so the
+ * tool schemas still reject what is not a DOI rather than hunting for one inside the argument.
+ *
+ * Shared by the DOI tools and the funder path, where the same wrappers arrive around a Funder
+ * Registry DOI (`10.13039/100000001`) and a bare registry ID passes straight through.
+ */
+export function normalizeDoi(raw: string): string {
   return raw.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').replace(/^doi:/i, '');
 }
 
@@ -822,14 +834,34 @@ export class CrossrefService {
    * re-sort the same unclassified exceptions by shape at the wrong layer. The same holds
    * for retry *cost*: the deadline-expiry opt-out sets `retryable: false` at its throw
    * site, which the stock predicate honors, so no budget arithmetic lives here.
+   *
+   * It is also where the request URL is recorded, which is why the whole retried call is
+   * wrapped rather than returned straight through. The URL is both the field a Crossref
+   * failure cannot be debugged without and the field that must not reach the caller:
+   * `error.data` is forwarded as `structuredContent.error.data`, and `CROSSREF_BASE_URL`
+   * is operator-configurable, so a deployment pointed at a private mirror would hand that
+   * hostname — plus every query string this server builds — to every caller on every
+   * failure. `ctx.log` is no refuge either, being dual-sink: a line written there ships to
+   * the client as `notifications/message`. Only the Pino-only `logger` keeps the URL where
+   * an operator can read it and a caller cannot.
+   *
+   * One line per failed call, after the retries rather than inside them, and none at all
+   * for a caller cancellation — the caller hung up, which is nobody's upstream fault.
    */
-  private request<T>(path: string, ctx: Context): Promise<T> {
+  private async request<T>(path: string, ctx: Context): Promise<T> {
     const url = `${this.baseUrl}${path}`;
-    return withRetry(() => this.attempt<T>(url, ctx), {
-      operation: 'CrossrefService.request',
-      baseDelayMs: 1_000,
-      signal: ctx.signal,
-    });
+    try {
+      return await withRetry(() => this.attempt<T>(url, ctx), {
+        operation: 'CrossrefService.request',
+        baseDelayMs: 1_000,
+        signal: ctx.signal,
+      });
+    } catch (err) {
+      if (!(err instanceof McpError && err.code === JsonRpcErrorCode.RequestCancelled)) {
+        logger.warning('Crossref request failed', withExtra(ctx, { url, cause: causeOf(err) }));
+      }
+      throw err;
+    }
   }
 
   /**
@@ -860,24 +892,23 @@ export class CrossrefService {
       try {
         response = await fetch(url, { signal, headers: { 'User-Agent': this.userAgent } });
       } catch (err) {
-        throw this.transportError(err, url, controller.signal.reason === timeoutReason, ctx);
+        throw this.transportError(err, controller.signal.reason === timeoutReason, ctx);
       }
 
-      if (!response.ok) throw await this.responseError(response, url);
+      if (!response.ok) throw await this.responseError(response);
 
       let text: string;
       try {
         // The timeout still covers the body read — a stalled stream is a timeout too.
         text = await response.text();
       } catch (err) {
-        throw this.transportError(err, url, controller.signal.reason === timeoutReason, ctx);
+        throw this.transportError(err, controller.signal.reason === timeoutReason, ctx);
       }
 
       if (/^\s*<(!DOCTYPE\s+html|html[\s>])/i.test(text)) {
         throw upstreamError(
           UPSTREAM_UNAVAILABLE,
           'Crossref returned HTML instead of JSON — likely rate-limited or under maintenance.',
-          { data: { url } },
         );
       }
 
@@ -886,11 +917,7 @@ export class CrossrefService {
       // for a smaller record has nothing to act on. Tested with a scan rather than
       // `trim()`, which copies the whole body on every successful request to answer.
       if (!/\S/.test(text)) {
-        throw upstreamError(
-          UPSTREAM_UNAVAILABLE,
-          'Crossref returned HTTP 200 with an empty body.',
-          { data: { url } },
-        );
+        throw upstreamError(UPSTREAM_UNAVAILABLE, 'Crossref returned HTTP 200 with an empty body.');
       }
 
       try {
@@ -899,7 +926,7 @@ export class CrossrefService {
         throw upstreamError(
           MALFORMED_RESPONSE,
           'Crossref returned HTTP 200 with a body that is not valid JSON.',
-          { data: { url }, cause: err },
+          { cause: err },
         );
       }
     } finally {
@@ -914,7 +941,7 @@ export class CrossrefService {
    * says nothing — the real reason sits on `.cause`, which the framework's classifier
    * never reads.
    */
-  private transportError(err: unknown, url: string, timedOut: boolean, ctx: Context): unknown {
+  private transportError(err: unknown, timedOut: boolean, ctx: Context): unknown {
     if (timedOut) {
       /**
        * Opted out of retry at the throw site rather than on the contract entry. A deadline
@@ -930,7 +957,7 @@ export class CrossrefService {
         REQUEST_TIMEOUT,
         `Crossref did not respond within ${this.timeoutMs}ms.`,
         {
-          data: { url, timeoutMs: this.timeoutMs },
+          data: { timeoutMs: this.timeoutMs },
           retryable: false,
           cause: err,
         },
@@ -938,9 +965,8 @@ export class CrossrefService {
     }
     // Caller cancellation, not an upstream failure — withRetry exits on an aborted signal.
     if (ctx.signal.aborted)
-      return requestCancelled('Crossref request cancelled by caller.', { url }, { cause: err });
+      return requestCancelled('Crossref request cancelled by caller.', undefined, { cause: err });
     return upstreamError(UPSTREAM_UNAVAILABLE, `Crossref could not be reached: ${causeOf(err)}`, {
-      data: { url },
       cause: err,
     });
   }
@@ -952,11 +978,17 @@ export class CrossrefService {
    * all) passes through as `httpErrorFromResponse` classified it, for the tool handlers
    * to turn into their own typed reasons.
    */
-  private async responseError(response: Response, url: string): Promise<McpError> {
+  private async responseError(response: Response): Promise<McpError> {
     if (response.status === 400) return crossrefValidationError(response);
 
     const retryAfter = response.headers.get('retry-after');
-    const error = await httpErrorFromResponse(response, { service: 'Crossref', data: { url } });
+    /**
+     * `includeUrl` is left at its default. The framework stopped putting `response.url` on
+     * `error.data` in 0.13.4 for the reason that applies here in full — `error.data` reaches
+     * the caller, and this server's base URL is operator-set. The message still names the
+     * service, and `request()` logs the URL on the sink an operator reads.
+     */
+    const error = await httpErrorFromResponse(response, { service: 'Crossref' });
     const entry = upstreamEntryForStatus(response.status);
     if (!entry) return error;
 
@@ -1134,7 +1166,7 @@ export class CrossrefService {
   ): Promise<ListSearchResult<RawCrossrefFunder>> {
     if (opts.funderDoi) {
       const envelope = await this.request<CrossrefSingleMessage<RawCrossrefFunder>>(
-        `/funders/${encodeURIComponent(normalizeFunderId(opts.funderDoi))}`,
+        `/funders/${encodeURIComponent(normalizeDoi(opts.funderDoi))}`,
         ctx,
       );
       return { totalResults: 1, items: [envelope.message] };
@@ -1157,7 +1189,7 @@ export class CrossrefService {
     opts: SubResourceWorksOptions,
     ctx: Context,
   ): Promise<WorksSearchResult> {
-    const id = normalizeFunderId(funderId);
+    const id = normalizeDoi(funderId);
     // Sort by publication date descending for predictable, most-recent-first ordering —
     // the /works endpoint's default ordering is not chronological. Matches
     // getJournalWorks so both funded-works and journal-works surfaces agree.
