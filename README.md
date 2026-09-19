@@ -47,7 +47,7 @@ Scholarly metadata from the Crossref REST API. Resolve DOIs to full metadata rec
 
 ### `crossref_get_work` <sub>tool</sub>
 
-- DOI validated against the `10.NNNN/suffix` regex before the upstream call
+- DOI validated against the `10.NNNN/suffix` regex before the upstream call, accepted either bare or wrapped in its resolver (`https://doi.org/…`, `https://dx.doi.org/…`, `doi:…`) and unwrapped before the lookup
 - Returns title, authors with affiliations, abstract (when deposited), container/journal, publication date, work type, ISSN, license URLs, full-text link URLs, and funder acknowledgements
 - Author list paged by `offset`/`limit` (default 25, max 500); `authorCount` reports the full deposited total and a `nextOffset` continues when authors remain — every other field is returned in full on every page
 - A funder or affiliation asserted only through the ROR registry (no name deposited) carries `ror` in place of `name`, never as a blank entry
@@ -69,6 +69,7 @@ Scholarly metadata from the Crossref REST API. Resolve DOIs to full metadata rec
 
 ### `crossref_get_references` <sub>tool</sub>
 
+- Takes the citing work's DOI bare or resolver-wrapped, the same forms `crossref_get_work` accepts
 - Each reference carries its deposited citation string and, when Crossref has resolved it, a DOI for `crossref_get_work`
 - Citation strings have formatting markup stripped and character references decoded; a bracketed span that isn't a recognized tag (a cited URL, a Miller index, a DOI fragment) is left exactly as deposited
 - Paged by `offset`/`limit` (default 100, max 500); `referenceCount` is the full deposited total and `nextOffset` continues when more remain
@@ -256,7 +257,7 @@ All configuration is validated at startup via Zod schemas in `src/config/server-
 | `CROSSREF_BASE_URL` | Crossref API base URL. Override for testing against a local proxy. | `https://api.crossref.org` |
 | `CROSSREF_TIMEOUT_MS` | Per-request timeout in milliseconds. Also the worst-case wait against an unresponsive upstream — a request that hits the deadline is not retried. | `10000` |
 | `MCP_TRANSPORT_TYPE` | Transport: `stdio` or `http`. | `stdio` |
-| `MCP_SESSION_MODE` | HTTP session mode: `auto`, `stateful`, or `stateless`. This server needs no multi-round input; Docker and `.env.example` pin `stateless`. The framework schema defaults to `auto`, which resolves to `stateful`. | `stateless` (deployment pin) |
+| `MCP_SESSION_MODE` | HTTP session mode: `auto`, `stateful`, or `stateless`. This server needs no multi-round input, so `src/index.ts` declares `stateless`; Docker and `.env.example` pin the same value, and setting this variable overrides the declaration. | `stateless` (declared in `src/`) |
 | `MCP_HTTP_PORT` | Port for the HTTP server. | `3010` |
 | `MCP_AUTH_MODE` | Auth mode: `none`, `jwt`, or `oauth`. | `none` |
 | `MCP_LOG_LEVEL` | Log level (RFC 5424). | `info` |
