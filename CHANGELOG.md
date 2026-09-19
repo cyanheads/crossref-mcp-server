@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.3.13](changelog/0.3.x/0.3.13.md) — 2026-09-19 · ⚠️ Breaking · 🛡️ Security
+
+crossref_get_work and crossref_get_references accept a resolver-wrapped DOI, sessions declare themselves stateless in src/, and the Crossref request URL no longer reaches callers in error.data.
+
 ## [0.3.12](changelog/0.3.x/0.3.12.md) — 2026-09-13
 
 mcp-ts-core ^0.13.0 adoption: a cancelled request returns RequestCancelled (-32011) instead of the raw abort error, and the development skill tree moves to framework-skills/ so a plugin install no longer receives it.

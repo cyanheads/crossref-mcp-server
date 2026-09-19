@@ -6,7 +6,7 @@
     "url": "https://github.com/cyanheads/crossref-mcp-server",
     "source": "github"
   },
-  "version": "0.3.12",
+  "version": "0.3.13",
   "remotes": [
     {
       "type": "streamable-http",
@@ -19,7 +19,7 @@
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@cyanheads/crossref-mcp-server",
       "runtimeHint": "bun",
-      "version": "0.3.12",
+      "version": "0.3.13",
       "packageArguments": [
         {
           "type": "positional",
@@ -68,7 +68,7 @@
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@cyanheads/crossref-mcp-server",
       "runtimeHint": "bun",
-      "version": "0.3.12",
+      "version": "0.3.13",
       "packageArguments": [
         {
           "type": "positional",
