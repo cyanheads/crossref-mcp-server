@@ -11,6 +11,15 @@ import { initCrossrefService } from './services/crossref/crossref-service.js';
 await createApp({
   name: 'crossref-mcp-server',
   title: 'crossref-mcp-server',
+  /**
+   * Every tool here is a single-round read of the Crossref REST API — nothing calls
+   * `ctx.requestInput`, so no handler needs a session to come back to. Declared in `src/`
+   * rather than left to `MCP_SESSION_MODE` alone so the posture travels with the code to
+   * any deployment that does not set the variable; where it is set (Dockerfile,
+   * `.env.example`) it still wins, and the schema default of `auto` — which resolves to
+   * `stateful` — is no longer what an unconfigured host falls back to.
+   */
+  sessionMode: 'stateless',
   instructions:
     'Use the `crossref_*` tools for scholarly metadata from the Crossref REST API. Set `CROSSREF_MAILTO` (an email, no token) for faster polite-pool access. Works are keyed by DOI (`10.NNNN/suffix`), journals by ISSN, funders by a Funder Registry ID (`100000001`) or its full DOI (`10.13039/100000001`). Typical flow: `crossref_search_works` finds a DOI, then `crossref_get_work` for the full record or `crossref_get_references` for outgoing citations; `crossref_search_journals` and `crossref_search_funders` cover venues and funders. No incoming citations (use OpenAlex). `crossref_search_works` pages past ~10K with `cursor="*"`, and the works lists on `crossref_search_journals` / `crossref_search_funders` page the same way with `works_cursor="*"`; the journal and funder name searches themselves take `offset` only. Each response names its own ceiling and continuation, and a cursor walk ends on the page that omits its continuation token: Crossref keeps minting one past the end of a list, so the token is withheld on an empty page rather than relayed.',
   tools: [...allToolDefinitions],
