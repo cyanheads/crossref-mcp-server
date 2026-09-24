@@ -2,14 +2,18 @@
  * @fileoverview crossref_search_journals — finds Crossref journal records by ISSN or title query,
  * optionally returning a page of the matched journal's most recent works. The journal list and the
  * works list page independently, and their upstream offset ceilings differ by an order of magnitude.
- * The works list also pages by cursor, which has no ceiling. The works list is addressable by ISSN
- * alone, so a matched journal with none registered has its works lookup skipped and says so rather
- * than returning an absence that reads as a journal with no works.
+ * The works list also pages by cursor, which has no ceiling and runs newest-registered first
+ * rather than newest-published first, since Crossref will not walk a publication-date sort by
+ * cursor. The works list is addressable by ISSN alone, so a matched journal with none registered
+ * has its works lookup skipped and says so rather than returning an absence that reads as a
+ * journal with no works. A blank `query` or `issn` is read as omitted, and a page with no journal
+ * renders nothing of its own, so the notice naming why leads `content[]`.
  * @module mcp-server/tools/definitions/search-journals.tool
  */
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode, McpError } from '@cyanheads/mcp-ts-core/errors';
+import { isBlank, nonBlank } from '@/mcp-server/tools/blank-input.js';
 import { mdText } from '@/mcp-server/tools/markdown-text.js';
 import {
   formatDateParts,
@@ -24,7 +28,11 @@ import {
   WORKS_OFFSET_CAP,
 } from '@/services/crossref/crossref-service.js';
 import type { RawCrossrefJournal } from '@/services/crossref/types.js';
-import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
+import {
+  INVALID_CURSOR,
+  INVALID_PARAMETER,
+  UPSTREAM_ERROR_CONTRACT,
+} from '@/services/crossref/upstream-errors.js';
 
 const JournalSchema = z
   .object({
@@ -54,6 +62,21 @@ function journalIssn(j: RawCrossrefJournal | undefined): string | undefined {
   return j?.['ISSN-L'] ?? j?.ISSN?.[0];
 }
 
+/**
+ * Notice text for an empty works page that a `works_offset` ran off the end of, or undefined when
+ * the offset did not cause the empty page. The journal record still renders on such a page, so
+ * without this an overshoot reads as a journal with no works; `worksTotal` alone does not say
+ * the offset was the problem.
+ */
+function worksOffsetOvershoot(offset: number, returned: number, total: number): string | undefined {
+  if (returned > 0 || offset === 0 || offset < total) return;
+  const registered =
+    total === 0
+      ? 'it has no works registered in Crossref'
+      : `${total} ${total === 1 ? 'work is' : 'works are'} registered to it. Request a works_offset below ${total}`;
+  return `works_offset ${offset} is past the end of this journal's works list — ${registered}.`;
+}
+
 const WorkSummarySchema = z
   .object({
     doi: z.string().describe('Work DOI'),
@@ -75,11 +98,13 @@ const WorkSummarySchema = z
 export const searchJournalsTool = tool('crossref_search_journals', {
   title: 'Search Journals',
   description:
-    'Finds Crossref journal records by ISSN or title query. Provide issn for an exact single-journal lookup, or query for title-based search returning up to rows results. Title-query results page with offset — the nextOffset enrichment carries the value for the following page, up to offset + rows = 100000. Set include_works to true to also return a page of the matched journal\'s most recent works by publication date; that list pages two ways. works_offset is the simple one and is capped ten times lower at works_offset + rows = 10000. works_cursor has no ceiling and reaches the whole works list: pass works_cursor="*" on the first call, then chain the nextWorksCursor token from each response. The two cannot be combined, and a cursor walk always starts at the newest work — it cannot resume from an offset. Returns journal metadata: title, publisher, ISSN-L, subject areas, and total DOI count.',
+    'Finds Crossref journal records by ISSN or title query. Provide issn for an exact single-journal lookup, or query for title-based search returning up to rows results. Title-query results page with offset — the nextOffset enrichment carries the value for the following page, up to offset + rows = 100000. Set include_works to true to also return a page of the matched journal\'s most recent works; that list pages two ways, in two orders. works_offset is the simple one: newest published first, capped ten times lower at works_offset + rows = 10000. works_cursor has no ceiling and reaches the whole works list, newest registered first — ordered by the date each DOI was registered with Crossref, since Crossref does not walk a publication-date sort by cursor: pass works_cursor="*" on the first call, then chain the nextWorksCursor token from each response. The two cannot be combined, and a cursor walk always starts at the most recently registered work — it cannot resume from an offset. Returns journal metadata: title, publisher, ISSN-L, subject areas, and total DOI count.',
   annotations: { readOnlyHint: true, openWorldHint: true },
 
   errors: [
     ...UPSTREAM_ERROR_CONTRACT,
+    INVALID_CURSOR,
+    INVALID_PARAMETER,
     {
       reason: 'issn_not_found',
       code: JsonRpcErrorCode.NotFound,
@@ -125,10 +150,15 @@ export const searchJournalsTool = tool('crossref_search_journals', {
         'Journal title search query, e.g. "Nature" or "Journal of Machine Learning Research"',
       ),
     issn: z
-      .string()
-      .regex(/^\d{4}-?\d{3}[\dX]$/i, {
-        message: 'ISSN must be 8 digits in the format xxxx-xxxx or xxxxxxxx, e.g. "1234-5678".',
-      })
+      .union([
+        z.literal(''),
+        z
+          .string()
+          .regex(/^\d{4}-?\d{3}[\dX]$/i, {
+            message: 'ISSN must be 8 digits in the format xxxx-xxxx or xxxxxxxx, e.g. "1234-5678".',
+          })
+          .describe('ISSN, e.g. "1234-5678"'),
+      ])
       .optional()
       .describe(
         'ISSN for exact single-journal lookup (print or electronic, with or without hyphen). Example: "1234-5678".',
@@ -137,10 +167,11 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       .boolean()
       .default(false)
       .describe(
-        "When true, also return a page of the journal's most recent works by publication date. Requires an unambiguous journal — pass issn when a title query matches more than one. A journal with no ISSN registered has no addressable works list; the works lookup is then skipped and the notice enrichment says so.",
+        "When true, also return a page of the journal's most recent works — newest published first on an offset page, newest registered first on a works_cursor walk. Requires an unambiguous journal — pass issn when a title query matches more than one. A journal with no ISSN registered has no addressable works list; the works lookup is then skipped and the notice enrichment says so.",
       ),
     rows: z
       .number()
+      .int()
       .min(1)
       .max(100)
       .default(10)
@@ -167,7 +198,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       .string()
       .optional()
       .describe(
-        'Cursor token for deep paging of the journal works list when include_works is true. Pass "*" to start the walk at the newest work, then pass the nextWorksCursor value from each response. Has no offset ceiling and cannot be combined with works_offset. Each token runs about 1500 characters and is returned on both result surfaces, a fixed cost per page — raise rows to spread it across more works on a long walk.',
+        'Cursor token for deep paging of the journal works list when include_works is true. Pass "*" to start the walk at the most recently registered work, then pass the nextWorksCursor value from each response. A walk runs by the date each DOI was registered with Crossref, newest first, not by publication date — Crossref does not walk a publication-date sort by cursor. Has no offset ceiling and cannot be combined with works_offset.',
       ),
   }),
 
@@ -177,7 +208,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       .array(WorkSummarySchema)
       .optional()
       .describe(
-        'Page of works from the matched journal, ordered by publication date (newest first). Requires include_works, and absent even then when the matched journal has no registered ISSN — the works list is addressable by ISSN alone, and the notice enrichment says so.',
+        'Page of works from the matched journal, newest first — by publication date on an offset page, by Crossref registration date on a works_cursor page. Requires include_works, and absent even then when the matched journal has no registered ISSN — the works list is addressable by ISSN alone, and the notice enrichment says so.',
       ),
   }),
 
@@ -210,12 +241,23 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       .string()
       .optional()
       .describe(
-        'Guidance on a page that needs a caveat: a query nothing matched, an offset past the end of a list that did match, a page that stops at one of the route offset ceilings with records still unretrieved, or an include_works request that was skipped because the matched journal has no registered ISSN to address its works list by. Absent otherwise.',
+        'Guidance on a page that needs a caveat: a query nothing matched, an offset or works_offset past the end of a list that did match, a page that stops at one of the route offset ceilings with records still unretrieved, an include_works request that was skipped because the matched journal has no registered ISSN to address its works list by, or a query or issn supplied blank with nothing else to search by, so the page lists every journal unfiltered. Absent otherwise. A page needing more than one caveat carries them all in this one string.',
       ),
   },
 
   async handler(input, ctx) {
-    if (!input.issn && input.offset + input.rows > NAME_SEARCH_OFFSET_CAP) {
+    /**
+     * A blank `query` or `issn` is read as omitted — form-based clients send `""` for a field
+     * nobody filled in. Normalized once, here, so every guard below reads the value the
+     * request will carry: a blank `issn` must not skip the title-search offset ceiling, and a
+     * blank `query` beside a real `issn` must not read as a second criterion.
+     */
+    const query = nonBlank(input.query);
+    const issn = nonBlank(input.issn);
+    const onlyBlankTerms =
+      query === undefined && issn === undefined && (isBlank(input.query) || isBlank(input.issn));
+
+    if (!issn && input.offset + input.rows > NAME_SEARCH_OFFSET_CAP) {
       throw ctx.fail(
         'offset_too_large',
         `offset ${input.offset} + rows ${input.rows} = ${input.offset + input.rows} exceeds the ${NAME_SEARCH_OFFSET_CAP}-record ceiling Crossref allows on journal title search.`,
@@ -268,27 +310,23 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       );
     }
 
-    ctx.log.info('Searching journals', {
-      query: input.query,
-      issn: input.issn,
-      offset: input.offset,
-    });
+    ctx.log.info('Searching journals', { query, issn, offset: input.offset });
     const svc = getCrossrefService();
 
     const journalOpts: JournalsSearchOptions = {
       rows: input.rows,
       offset: input.offset,
-      ...(input.query !== undefined && { query: input.query }),
-      ...(input.issn !== undefined && { issn: input.issn }),
+      ...(query !== undefined && { query }),
+      ...(issn !== undefined && { issn }),
     };
 
     let journalsResult: ListSearchResult<RawCrossrefJournal>;
     try {
       journalsResult = await svc.searchJournals(journalOpts, ctx);
     } catch (err) {
-      if (input.issn && err instanceof McpError && err.code === -32001) {
-        throw ctx.fail('issn_not_found', `No journal found for ISSN: ${input.issn}`, {
-          issn: input.issn,
+      if (issn && err instanceof McpError && err.code === -32001) {
+        throw ctx.fail('issn_not_found', `No journal found for ISSN: ${issn}`, {
+          issn,
           ...ctx.recoveryFor('issn_not_found'),
         });
       }
@@ -322,24 +360,40 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       ...(listContinuation.kind === 'next' && { nextOffset: listContinuation.offset }),
     };
 
+    /**
+     * `notice` is last-wins, and a page can need more than one caveat at once — an unfiltered
+     * listing that also stops at the offset ceiling. Collected and emitted as a single string
+     * so neither silently overwrites the other.
+     */
+    const notices: string[] = [];
+    const flushNotices = () => {
+      if (notices.length > 0) ctx.enrich.notice(notices.join(' '));
+    };
+    if (onlyBlankTerms) {
+      notices.push(
+        `Every search term supplied was blank, so none was sent — this page is an unfiltered listing of every journal in Crossref (${journalsTotal} records), not a match. Supply a non-blank query or issn to search.`,
+      );
+    }
+
     if (!input.include_works || journals.length === 0) {
       ctx.enrich(listEnrichment);
       // An empty page has two causes a caller reading only content[] cannot otherwise tell
       // apart: nothing matched, or the offset ran off the end of a list that did match.
       if (journals.length === 0) {
-        ctx.enrich.notice(
+        notices.push(
           journalsTotal > 0
-            ? `Offset ${input.offset} is past the end of this result list — ${journalsTotal} journals matched. Request an offset below ${journalsTotal}.`
+            ? `Offset ${input.offset} is past the end of this result list — ${journalsTotal} ${journalsTotal === 1 ? 'journal' : 'journals'} matched. Request an offset below ${journalsTotal}.`
             : 'No journals matched the query. Try a shorter title or check the ISSN format (xxxx-xxxx).',
         );
       } else if (listContinuation.kind === 'ceiling') {
         // A missing nextOffset here would be indistinguishable from the end of the list, and
         // withholding the offset also means the caller never trips offset_too_large and never
         // reads its recovery. Say it on the page instead.
-        ctx.enrich.notice(
+        notices.push(
           `This is the last journal page reachable by offset — Crossref caps offset + rows at ${NAME_SEARCH_OFFSET_CAP} on journal search and ${journalsTotal} journals matched. Narrow the query to bring the rest into reach.`,
         );
       }
+      flushNotices();
       return { journals };
     }
 
@@ -349,7 +403,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
     // matches (rows=1, or the tail of a list) identifies no journal the caller chose.
     // Each candidate's ISSN is named in both the message and the error data, so a client
     // reading only content[] has the identifier it needs to re-run without a probe call.
-    if (!input.issn && journalsTotal > 1) {
+    if (!issn && journalsTotal > 1) {
       const candidates = rawJournals.map((j, i) => {
         const issn = journalIssn(j);
         return {
@@ -382,9 +436,10 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       // never ran" from "this journal has no works" — an omitted recentWorks reads as the
       // second, and totalDois is the journal's own DOI count rather than an answer about
       // the works call. There is no fallback identifier to retry with.
-      ctx.enrich.notice(
+      notices.push(
         `include_works was requested but skipped: "${journals[0]?.title ?? '(untitled)'}" has no ISSN registered in Crossref, and the journal works list can only be addressed by ISSN. No works were looked up — this is not a statement that the journal has none. There is no alternative identifier to retry with; use crossref_search_works with queryContainerTitle set to the journal title to find its works instead.`,
       );
+      flushNotices();
       return { journals };
     }
 
@@ -412,9 +467,10 @@ export const searchJournalsTool = tool('crossref_search_journals', {
 
     if (worksCursor !== undefined) {
       // A cursor walk has no offset ceiling and no offset position, so neither
-      // nextWorksOffset nor the ceiling notice applies. Crossref keeps minting a token past
-      // the end of the list, so the token is withheld on an empty page — that keeps "no
-      // continuation field means the list is exhausted" true for the cursor path too.
+      // nextWorksOffset nor the ceiling notice applies. Any token an empty page carries is
+      // withheld — Crossref's last partial page still carries one, and a token has come back
+      // on the empty page past it before — so "no continuation field means the list is
+      // exhausted" holds on the cursor path whatever upstream sends there.
       ctx.enrich({
         ...listEnrichment,
         worksTotal: worksResult.totalResults,
@@ -435,12 +491,20 @@ export const searchJournalsTool = tool('crossref_search_journals', {
         worksTotal: worksResult.totalResults,
         ...(worksContinuation.kind === 'next' && { nextWorksOffset: worksContinuation.offset }),
       });
-      if (worksContinuation.kind === 'ceiling') {
-        ctx.enrich.notice(
-          `This is the last works page reachable by works_offset — Crossref caps works_offset + rows at ${WORKS_OFFSET_CAP} on a journal works list and ${worksResult.totalResults} works exist. Re-run with works_cursor="*" and chain nextWorksCursor to read the whole list; the walk restarts at the newest work.`,
+      const overshoot = worksOffsetOvershoot(
+        input.works_offset,
+        recentWorks.length,
+        worksResult.totalResults,
+      );
+      if (overshoot) {
+        notices.push(overshoot);
+      } else if (worksContinuation.kind === 'ceiling') {
+        notices.push(
+          `This is the last works page reachable by works_offset — Crossref caps works_offset + rows at ${WORKS_OFFSET_CAP} on a journal works list and ${worksResult.totalResults} works exist. Re-run with works_cursor="*" and chain nextWorksCursor to read the whole list; the walk restarts at the most recently registered work and runs by registration date, not publication date.`,
         );
       }
     }
+    flushNotices();
 
     return {
       journals,
@@ -449,6 +513,13 @@ export const searchJournalsTool = tool('crossref_search_journals', {
   },
 
   format: (result) => {
+    /**
+     * A page with no journal renders nothing of its own: the counts and the notice naming why
+     * ride the enrichment trailer appended after this, which then leads `content[]` instead of
+     * following an empty block. recentWorks is never set without a journal.
+     */
+    if (result.journals.length === 0) return [];
+
     const lines: string[] = [];
 
     for (const j of result.journals) {

@@ -176,7 +176,7 @@ describe('searchWorksTool', () => {
 
   it('withholds nextCursor once the walk runs off the end of the result list', async () => {
     const ctx = createMockContext({ errors: searchWorksTool.errors });
-    // Crossref keeps minting a token past the end of a list — the empty page is the signal.
+    // Crossref has handed a token back on the empty page past the end — the empty page is the signal.
     mockSearchWorks.mockResolvedValue(
       makeSearchResult({ totalResults: 100, items: [], nextCursor: 'a-token-that-yields-nothing' }),
     );

@@ -1,16 +1,19 @@
 /**
  * @fileoverview crossref_search_works — searches the Crossref works index by free text and/or
  * filters. The result list pages two ways: by offset up to a ~10K ceiling, and by cursor, which
- * has none. A cursor walk ends on the first empty page — Crossref keeps minting a token past the
- * end of a list, so the token is withheld there rather than relayed, and every empty page carries
- * a notice naming which of its three causes applies. Each work's author list is capped per work
- * by authorLimit, with authorCount carrying the full deposited total and crossref_get_work as the
- * route to the authors a cap left out.
+ * has none. A cursor walk ends on the first empty page — any token that page carries is withheld
+ * rather than relayed, and every empty page carries a notice naming which of its three causes
+ * applies; `format()` renders nothing for such a page, so that notice leads `content[]`. Each
+ * work's author list is capped per work by authorLimit, with authorCount carrying the full
+ * deposited total and crossref_get_work as the route to the authors a cap left out. `fields`
+ * accepts only the select names the summary projects, and a blank optional input is read as
+ * omitted.
  * @module mcp-server/tools/definitions/search-works.tool
  */
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
+import { isBlank, nonBlank } from '@/mcp-server/tools/blank-input.js';
 import { mdText } from '@/mcp-server/tools/markdown-text.js';
 import {
   formatDateParts,
@@ -20,10 +23,41 @@ import {
   resolveWorkSummaryDate,
   type WorksSearchOptions,
 } from '@/services/crossref/crossref-service.js';
-import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
+import {
+  INVALID_CURSOR,
+  INVALID_PARAMETER,
+  SORT_CURSOR_CONFLICT,
+  UNKNOWN_FILTER,
+  UPSTREAM_ERROR_CONTRACT,
+} from '@/services/crossref/upstream-errors.js';
 
 /** Offset ceiling enforced by Crossref before cursor paging is required. */
 const OFFSET_CAP = 10_000;
+
+/**
+ * The `select=` names the work summary projects, and so the only names `fields` accepts. Crossref
+ * lists 59 select names on `/works`; a name outside this set would be fetched and then dropped by
+ * the projection, which no response surface could report.
+ */
+const SELECTABLE_FIELDS = [
+  'DOI',
+  'title',
+  'type',
+  'author',
+  'published',
+  'published-print',
+  'published-online',
+  'container-title',
+  'publisher',
+  'is-referenced-by-count',
+  'score',
+  'abstract',
+  'volume',
+  'issue',
+  'page',
+  'article-number',
+  'ISSN',
+] as const;
 
 const WorkSummarySchema = z
   .object({
@@ -61,6 +95,16 @@ const WorkSummarySchema = z
         'Publication date — the first of published, published-print, and published-online that names one. A component Crossref records as unknown is omitted, and so is every component below it.',
       ),
     containerTitle: z.string().optional().describe('Journal or container name'),
+    volume: z.string().optional().describe('Volume of the container the work appears in'),
+    issue: z.string().optional().describe('Issue of the container the work appears in'),
+    page: z.string().optional().describe('Page range as deposited, e.g. "357-362"'),
+    articleNumber: z
+      .string()
+      .optional()
+      .describe(
+        'Article number, deposited by journals that number articles instead of paging them',
+      ),
+    issn: z.array(z.string()).optional().describe('ISSN(s) of the containing journal'),
     publisher: z.string().optional().describe('Publisher name'),
     isReferencedByCount: z.number().optional().describe('Incoming citation count'),
     score: z.number().optional().describe('Relevance score assigned by Crossref'),
@@ -108,16 +152,17 @@ export const searchWorksTool = tool('crossref_search_works', {
       .record(z.string(), z.string())
       .optional()
       .describe(
-        'Structured filter object using Crossref hyphen-separated keys. All values must be strings. Boolean flag keys (has-abstract, has-references, has-full-text) require string values "true" or "false". Example: {"type":"journal-article","has-abstract":"true","from-pub-date":"2023-01-01","directory":"DOAJ"}',
+        'Structured filter object using Crossref hyphen-separated keys. All values must be strings. Boolean flag keys (has-abstract, has-references, has-full-text) require string values "true" or "false". Example: {"type":"journal-article","has-abstract":"true","from-pub-date":"2023-01-01"}',
       ),
     fields: z
-      .array(z.string())
+      .array(z.enum(SELECTABLE_FIELDS).describe('Crossref select name'))
       .optional()
       .describe(
-        'Fields to return (reduces payload). Names are case-sensitive. Useful set: DOI, title, author, published, type, is-referenced-by-count, abstract, container-title, publisher, score. DOI is always returned whether or not it is listed here, so every result stays resolvable by crossref_get_work.',
+        'Fields to return (reduces payload). Names are case-sensitive, and each fills one output field: DOI → doi, title → title, type → type, author → authors and authorCount, published / published-print / published-online → published, container-title → containerTitle, publisher → publisher, is-referenced-by-count → isReferencedByCount, score → score, abstract → abstract, volume → volume, issue → issue, page → page, article-number → articleNumber, ISSN → issn. A selected field absent from a work means the record does not deposit it. DOI is always returned whether or not it is listed here, so every result stays resolvable by crossref_get_work, which also returns the fields this list does not cover (license, funder, references, and the rest of the record).',
       ),
     rows: z
       .number()
+      .int()
       .min(1)
       .max(100)
       .default(20)
@@ -133,6 +178,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       ),
     offset: z
       .number()
+      .int()
       .min(0)
       .optional()
       .describe(
@@ -142,25 +188,35 @@ export const searchWorksTool = tool('crossref_search_works', {
       .string()
       .optional()
       .describe(
-        'Cursor token for deep paging. Pass "*" to start cursor-based paging (required past ~10K results), then pass the nextCursor value from each response until a response omits it, which means the list is exhausted. Cannot be combined with offset.',
+        'Cursor token for deep paging. Pass "*" to start cursor-based paging (required past ~10K results), then pass the nextCursor value from each response until a response omits it, which means the list is exhausted. Cannot be combined with offset, or with a publication-date sort (published, published-print, published-online), which Crossref does not walk by cursor.',
       ),
     sort: z
-      .enum([
-        'relevance',
-        'score',
-        'is-referenced-by-count',
-        'published',
-        'published-print',
-        'published-online',
-        'deposited',
-        'indexed',
-        'created',
-        'updated',
-        'references-count',
+      .union([
+        z.literal(''),
+        z
+          .enum([
+            'relevance',
+            'score',
+            'is-referenced-by-count',
+            'published',
+            'published-print',
+            'published-online',
+            'deposited',
+            'indexed',
+            'created',
+            'updated',
+            'references-count',
+          ])
+          .describe('Crossref sort field'),
       ])
       .optional()
-      .describe('Sort field'),
-    order: z.enum(['asc', 'desc']).optional().describe('Sort direction (asc or desc)'),
+      .describe(
+        'Sort field. The publication-date sorts (published, published-print, published-online) work with offset paging only — Crossref refuses them alongside cursor; every other sort works with either.',
+      ),
+    order: z
+      .union([z.literal(''), z.enum(['asc', 'desc']).describe('Sort direction')])
+      .optional()
+      .describe('Sort direction (asc or desc)'),
   }),
 
   output: z.object({
@@ -194,12 +250,16 @@ export const searchWorksTool = tool('crossref_search_works', {
       .string()
       .optional()
       .describe(
-        'Guidance on an empty page, naming which of its three causes applies: a query nothing matched, an offset past the end of a list that did match, or a cursor walk that has reached the end of the list. On a page carrying records, present only when authorLimit cut at least one work list, naming how many and the route to the rest.',
+        'Guidance on an empty page, naming which of its three causes applies: a query nothing matched, an offset past the end of a list that did match, or a cursor walk that has reached the end of the list. On a page carrying records, present when authorLimit cut at least one work list, naming how many and the route to the rest, or when every query term and filter value was supplied blank, so the page lists the whole index unfiltered. A page needing more than one caveat carries them all in this one string.',
       ),
   },
 
   errors: [
     ...UPSTREAM_ERROR_CONTRACT,
+    UNKNOWN_FILTER,
+    SORT_CURSOR_CONFLICT,
+    INVALID_CURSOR,
+    INVALID_PARAMETER,
     {
       reason: 'cursor_offset_conflict',
       code: JsonRpcErrorCode.ValidationError,
@@ -226,6 +286,40 @@ export const searchWorksTool = tool('crossref_search_works', {
      * empty-page notice stops calling an offset page a cursor walk.
      */
     const cursor = input.cursor?.trim() || undefined;
+    /**
+     * The same reading for every other optional string: a blank query term, filter value,
+     * `sort`, or `order` is omitted rather than sent. Sent, a blank `query` is ignored upstream
+     * but a blank field query matches nothing, and a blank filter value is rejected on a
+     * type-checked key and applied as a match on a free-text one — three different answers to
+     * a field nobody filled in. A non-blank value goes through exactly as supplied.
+     */
+    const terms = {
+      query: nonBlank(input.query),
+      queryBibliographic: nonBlank(input.queryBibliographic),
+      queryTitle: nonBlank(input.queryTitle),
+      queryAuthor: nonBlank(input.queryAuthor),
+      queryContainerTitle: nonBlank(input.queryContainerTitle),
+    };
+    const filterEntries = Object.entries(input.filter ?? {}).filter(([, value]) => !isBlank(value));
+    const filter = filterEntries.length > 0 ? Object.fromEntries(filterEntries) : undefined;
+    const sort = nonBlank(input.sort);
+    const order = nonBlank(input.order);
+    /**
+     * Dropping blanks can leave a request that searches nothing — `{"queryTitle": ""}` becomes
+     * a listing of the whole index. That is only worth saying when a blank was dropped: a call
+     * that names no term at all asked for the listing.
+     */
+    const onlyBlankTerms =
+      filter === undefined &&
+      Object.values(terms).every((term) => term === undefined) &&
+      [
+        input.query,
+        input.queryBibliographic,
+        input.queryTitle,
+        input.queryAuthor,
+        input.queryContainerTitle,
+        ...Object.values(input.filter ?? {}),
+      ].some(isBlank);
 
     // Validate: cursor and offset cannot coexist
     if (cursor !== undefined && input.offset !== undefined) {
@@ -245,8 +339,8 @@ export const searchWorksTool = tool('crossref_search_works', {
     }
 
     ctx.log.info('Searching works', {
-      query: input.query,
-      filter: input.filter,
+      query: terms.query,
+      filter,
       rows,
       cursor,
       offset: input.offset,
@@ -255,21 +349,21 @@ export const searchWorksTool = tool('crossref_search_works', {
     const svc = getCrossrefService();
     const searchOpts: WorksSearchOptions = {
       rows,
-      ...(input.query !== undefined && { query: input.query }),
-      ...(input.queryBibliographic !== undefined && {
-        queryBibliographic: input.queryBibliographic,
+      ...(terms.query !== undefined && { query: terms.query }),
+      ...(terms.queryBibliographic !== undefined && {
+        queryBibliographic: terms.queryBibliographic,
       }),
-      ...(input.queryTitle !== undefined && { queryTitle: input.queryTitle }),
-      ...(input.queryAuthor !== undefined && { queryAuthor: input.queryAuthor }),
-      ...(input.queryContainerTitle !== undefined && {
-        queryContainerTitle: input.queryContainerTitle,
+      ...(terms.queryTitle !== undefined && { queryTitle: terms.queryTitle }),
+      ...(terms.queryAuthor !== undefined && { queryAuthor: terms.queryAuthor }),
+      ...(terms.queryContainerTitle !== undefined && {
+        queryContainerTitle: terms.queryContainerTitle,
       }),
-      ...(input.filter !== undefined && { filter: input.filter }),
+      ...(filter !== undefined && { filter }),
       ...(input.fields !== undefined && { fields: input.fields }),
       ...(input.offset !== undefined && { offset: input.offset }),
       ...(cursor !== undefined && { cursor }),
-      ...(input.sort !== undefined && { sort: input.sort }),
-      ...(input.order !== undefined && { order: input.order }),
+      ...(sort !== undefined && { sort }),
+      ...(order !== undefined && { order }),
     };
     const result = await svc.searchWorks(searchOpts, ctx);
 
@@ -296,6 +390,11 @@ export const searchWorksTool = tool('crossref_search_works', {
         ...(raw['container-title']?.[0] !== undefined && {
           containerTitle: normalizeMarkupText(raw['container-title'][0]),
         }),
+        ...(raw.volume !== undefined && { volume: raw.volume }),
+        ...(raw.issue !== undefined && { issue: raw.issue }),
+        ...(raw.page !== undefined && { page: raw.page }),
+        ...(raw['article-number'] !== undefined && { articleNumber: raw['article-number'] }),
+        ...(raw.ISSN?.length && { issn: raw.ISSN }),
         ...(raw.publisher !== undefined && { publisher: normalizeText(raw.publisher) }),
         ...(raw['is-referenced-by-count'] !== undefined && {
           isReferencedByCount: raw['is-referenced-by-count'],
@@ -311,17 +410,31 @@ export const searchWorksTool = tool('crossref_search_works', {
     /** Whether this page came back through the cursor, on the normalized value the request carried. */
     const isCursorPage = cursor !== undefined;
     /**
-     * Crossref keeps returning a `next-cursor` past the end of a list, so a caller chaining
-     * it walks in a circle forever. The token cannot be the guard either: the same value
-     * comes back on every page of a walk, item-bearing and empty alike, so it never signals
-     * progress. `totalResults` cannot serve either — it describes the query and stays at its
-     * full value on an exhausted page. That leaves this page's item count, the one quantity
-     * that says the walk is over. Withholding here keeps "no continuation field means the
-     * list is exhausted" true on every cursor surface this server exposes.
+     * The walk is over when a page comes back empty, and this page's item count is the one
+     * quantity that says so. Crossref's `next-cursor` is a search-after key — it decodes to
+     * `<sort-value>,<DOI>` and changes on every page — and the last partial page of a list
+     * still carries one, so a token's presence does not mean more records remain. Crossref
+     * has at times also handed a token back on the empty page past the end, which a caller
+     * chaining it would re-send forever; today that page carries none, and withholding any it
+     * does carry keeps "no continuation field means the list is exhausted" true on every
+     * cursor surface this server exposes whichever way upstream answers. `totalResults`
+     * cannot serve as the guard: it describes the query and stays at its full value on an
+     * exhausted page.
      */
     const nextCursor = returned > 0 ? result.nextCursor : undefined;
 
     ctx.enrich({ totalResults: result.totalResults, returned });
+    /**
+     * `notice` is last-wins, and a page can need more than one caveat — an unfiltered listing
+     * whose author lists were also capped. Collected and emitted as one string so none
+     * silently overwrites another.
+     */
+    const notices: string[] = [];
+    if (onlyBlankTerms) {
+      notices.push(
+        `Every search term supplied was blank, so none was sent — this page is an unfiltered listing of the whole Crossref works index (${result.totalResults} records), not a match. Supply a non-blank query term or filter value to search.`,
+      );
+    }
     /**
      * Every empty page says why. `returned === 0` is what makes a page empty; `totalResults`
      * only separates the causes, and keying the notice on it alone left the two commonest
@@ -331,17 +444,18 @@ export const searchWorksTool = tool('crossref_search_works', {
      * the journal and funder works lists at least still render their own record.
      */
     if (returned === 0) {
-      if (result.totalResults === 0) {
-        ctx.enrich.notice(
+      const total = result.totalResults;
+      if (total === 0) {
+        notices.push(
           'No results matched the query. Try broadening the search terms or removing filters.',
         );
       } else if (isCursorPage) {
-        ctx.enrich.notice(
-          `This cursor walk is complete — all ${result.totalResults} matching records have been returned. nextCursor is withheld on this page; stop chaining it.`,
+        notices.push(
+          `This cursor walk is complete — ${total === 1 ? 'the 1 matching record has' : `all ${total} matching records have`} been returned. nextCursor is withheld on this page; stop chaining it.`,
         );
       } else {
-        ctx.enrich.notice(
-          `Offset ${input.offset ?? 0} is past the end of this result list — ${result.totalResults} records matched. Request an offset below ${result.totalResults}.`,
+        notices.push(
+          `Offset ${input.offset ?? 0} is past the end of this result list — ${total} ${total === 1 ? 'record' : 'records'} matched. Request an offset below ${total}.`,
         );
       }
     }
@@ -357,10 +471,11 @@ export const searchWorksTool = tool('crossref_search_works', {
     ).length;
     if (cutWorks > 0) {
       ctx.enrich({ truncated: true, cap: input.authorLimit });
-      ctx.enrich.notice(
-        `Author lists were capped at ${input.authorLimit} per work — ${cutWorks} of the ${returned} works on this page carry more authors than are shown. Each work reports its full deposited total as authorCount; call crossref_get_work with that work doi to page its whole author list, or raise authorLimit to widen the cap here.`,
+      notices.push(
+        `Author lists were capped at ${input.authorLimit} per work — ${cutWorks} of the ${returned} ${returned === 1 ? 'work' : 'works'} on this page ${cutWorks === 1 ? 'carries' : 'carry'} more authors than are shown. Each work reports its full deposited total as authorCount; call crossref_get_work with that work doi to page its whole author list, or raise authorLimit to widen the cap here.`,
       );
     }
+    if (notices.length > 0) ctx.enrich.notice(notices.join(' '));
 
     return {
       works,
@@ -369,15 +484,31 @@ export const searchWorksTool = tool('crossref_search_works', {
   },
 
   format: (result) => {
+    /**
+     * An empty page renders nothing of its own. Its counts and the notice naming its cause ride
+     * the enrichment trailer, which the framework appends after this — so emitting a block here
+     * would put an empty `content[0]` ahead of the only text the page has, and a client that
+     * shows the first block would show nothing. A no-results line here would state the notice
+     * twice. nextCursor is never set on an empty page, so nothing else is lost.
+     */
+    if (result.works.length === 0) return [];
+
     const lines: string[] = [];
-    if (result.nextCursor) lines.push(`**Next cursor:** \`${result.nextCursor}\``);
-    if (lines.length > 0) lines.push('');
+    if (result.nextCursor) lines.push(`**Next cursor:** \`${result.nextCursor}\``, '');
 
     for (const w of result.works) {
       lines.push(`### ${w.title ? mdText(w.title) : w.doi}`);
       lines.push(`**DOI:** ${w.doi}${w.type ? ` | **Type:** ${w.type}` : ''}`);
       if (w.published?.year) lines.push(`**Published:** ${formatDateParts(w.published)}`);
       if (w.containerTitle) lines.push(`**Journal:** ${mdText(w.containerTitle)}`);
+      const locators = [
+        w.volume !== undefined && `**Volume:** ${w.volume}`,
+        w.issue !== undefined && `**Issue:** ${w.issue}`,
+        w.page !== undefined && `**Pages:** ${w.page}`,
+        w.articleNumber !== undefined && `**Article number:** ${w.articleNumber}`,
+      ].filter(Boolean);
+      if (locators.length > 0) lines.push(locators.join(' | '));
+      if (w.issn?.length) lines.push(`**ISSN:** ${w.issn.join(', ')}`);
       if (w.publisher) lines.push(`**Publisher:** ${mdText(w.publisher)}`);
       if (w.authors?.length) {
         const authorStr = w.authors

@@ -99,6 +99,51 @@ describe('the argument contract every tool advertises', () => {
   }
 
   /**
+   * Every count and position these tools take is a whole number upstream: Crossref refuses a
+   * fractional `rows` as an unstructured 400. Advertising `integer` puts that on the schema a
+   * client validates against, and refuses the value before any request is made.
+   */
+  it('advertises every numeric argument as an integer', () => {
+    for (const definition of allToolDefinitions) {
+      const properties = advertisedInputSchema(definition).properties ?? {};
+      for (const [name, property] of Object.entries(properties)) {
+        expect((property as { type?: string }).type, `${definition.name}.${name}`).not.toBe(
+          'number',
+        );
+      }
+    }
+  });
+
+  it.each([
+    ['crossref_search_works', 'rows'],
+    ['crossref_search_works', 'offset'],
+    ['crossref_search_journals', 'rows'],
+    ['crossref_search_funders', 'rows'],
+  ])('%s refuses a fractional %s on both surfaces', async (name, field) => {
+    const definition = allToolDefinitions.find((d) => d.name === name);
+    if (!definition) throw new Error(`${name} is not registered`);
+    const property = advertisedInputSchema(definition).properties?.[field] as
+      | { type?: string }
+      | undefined;
+    expect(property?.type).toBe('integer');
+
+    const result = await runToolContract(definition, {
+      ...VALID_INPUT[name],
+      [field]: 1.5,
+    } as never);
+
+    expect(result.isError).toBe(true);
+    const error = (
+      result.structuredContent as { error?: { code?: number; data?: { reason?: string } } }
+    ).error;
+    expect(error?.code).toBe(JsonRpcErrorCode.InvalidParams);
+    expect(error?.data?.reason).toBe('invalid_arguments');
+    const text = blockText(result.content?.[0]);
+    expect(text).toContain(field);
+    expect(text).toContain('invalid_arguments');
+  });
+
+  /**
    * The other half of strictness: it bounds only what was never declared. An optional field
    * left out is still a valid call, and no upstream request is needed to prove it — a schema
    * rejection never reaches the handler, so this asserts the absence of that rejection.

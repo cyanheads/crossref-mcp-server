@@ -106,6 +106,12 @@ export type RawCrossrefWork = {
   'short-container-title'?: string[];
   ISSN?: string[];
   ISBN?: string[];
+  /** Citation locators within the container, deposited as strings (`"585"`, `"357-362"`). */
+  volume?: string;
+  issue?: string;
+  page?: string;
+  /** Deposited by journals that number articles instead of paging them. */
+  'article-number'?: string;
   publisher?: string;
   'publisher-location'?: string;
   member?: string;

@@ -1,9 +1,9 @@
 /**
- * @fileoverview Error contract for Crossref transport and upstream failures, plus the
- * factory that throws against it. `CrossrefService` is shared by every tool, so the
- * reasons it can raise are declared once here, spread into each tool's `errors[]`, and
- * used as the wire recovery hint at the throw site — one table, so a tool's declared
- * contract and the hint its caller receives cannot drift apart.
+ * @fileoverview Error contract for Crossref transport and upstream failures and for Crossref's
+ * rejections of caller input, plus the factory that throws against it. `CrossrefService` is
+ * shared by every tool, so the reasons it can raise are declared once here, spread into each
+ * tool's `errors[]`, and used as the wire recovery hint at the throw site — one table, so a
+ * tool's declared contract and the hint its caller receives cannot drift apart.
  * @module services/crossref/upstream-errors
  */
 
@@ -94,6 +94,65 @@ export const UPSTREAM_ERROR_CONTRACT = [
 ] as const;
 
 /**
+ * Crossref refused a filter key it does not recognize (`filter-not-available`). The hyphenated
+ * form of an underscored key is suggested only when Crossref lists it as valid for the route —
+ * `is_open_access` hyphenates to a key that does not exist either, which is why the recovery
+ * names an open-access route that does. That route is `license.url` rather than
+ * `directory:DOAJ`: Crossref accepts the directory filter and then answers every request that
+ * carries it with HTTP 500, so pointing a caller there hands them an outage.
+ */
+export const UNKNOWN_FILTER = {
+  reason: 'unknown_filter',
+  code: JsonRpcErrorCode.ValidationError,
+  thrownBy: 'service',
+  when: 'Crossref rejected a filter key it does not recognize (filter-not-available).',
+  recovery:
+    "Use Crossref's hyphenated filter keys — has-abstract, from-pub-date, has-full-text, has-references — taking the key the error message suggests when it names one. Crossref has no open-access flag; for openly licensed content filter on license.url with a Creative Commons license URL, e.g. http://creativecommons.org/licenses/by/4.0/.",
+} as const satisfies ErrorContract;
+
+/**
+ * Crossref refuses to walk a publication-date sort by cursor
+ * (`sort-criteria-incompatible-with-cursor`). Mapped from the rejection rather than guarded
+ * ahead of the call: the refused set is Crossref's to define and has changed before.
+ */
+export const SORT_CURSOR_CONFLICT = {
+  reason: 'sort_cursor_conflict',
+  code: JsonRpcErrorCode.ValidationError,
+  thrownBy: 'service',
+  when: 'A publication-date sort (published, published-print, published-online) was combined with cursor paging, which Crossref refuses.',
+  recovery:
+    'Drop sort, or switch to one Crossref walks by cursor — created, deposited, indexed, updated, score, is-referenced-by-count, or references-count — or page with offset instead of cursor to keep the publication-date sort.',
+} as const satisfies ErrorContract;
+
+/**
+ * Crossref did not recognize a cursor token. It answers HTTP 404 with a `cursor-invalid`
+ * entry, and the service reads that body before a 404 is left to the handlers as a not-found:
+ * the token is malformed caller input, not a missing record.
+ */
+export const INVALID_CURSOR = {
+  reason: 'invalid_cursor',
+  code: JsonRpcErrorCode.ValidationError,
+  thrownBy: 'service',
+  when: 'Crossref did not recognize the cursor token (HTTP 404 cursor-invalid).',
+  recovery:
+    'Restart the walk by passing "*" as cursor (works_cursor on the journal and funder works lists), then chain only the continuation token each response returns (nextCursor, or nextWorksCursor on those lists), passed back unmodified.',
+} as const satisfies ErrorContract;
+
+/**
+ * Every other Crossref rejection of a request parameter — a filter value of the wrong type or
+ * form (`type-not-valid`, `boolean-not-valid`, `date-not-valid`, …) — plus a 400 whose body does
+ * not parse, and the `issn` filter values the service refuses before the request.
+ */
+export const INVALID_PARAMETER = {
+  reason: 'invalid_parameter',
+  code: JsonRpcErrorCode.ValidationError,
+  thrownBy: 'service',
+  when: 'Crossref rejected a parameter value (a filter value of the wrong type or form), or answered HTTP 400 with a body that did not parse.',
+  recovery:
+    'Correct the value the error message names to the form it states — a type from the listed values, true or false for a has- flag, a yyyy-mm-dd date — then reissue the call.',
+} as const satisfies ErrorContract;
+
+/**
  * Build an `McpError` against a contract entry, mirroring what `ctx.fail` +
  * `ctx.recoveryFor` do inside a handler. The service throws from outside any tool's
  * contract, so it cannot use those: `ctx.recoveryFor` resolves against the calling
@@ -137,9 +196,11 @@ export function upstreamError(
 /**
  * The contract entry an HTTP status maps to, or `undefined` when the status is the
  * caller's to act on rather than the upstream's. 404 and 400 are deliberately absent:
- * the tool handlers turn those into their own typed reasons (`doi_not_found`,
- * `issn_not_found`, Crossref's own validation message), and re-classifying them here
- * would bury those.
+ * a 400 is Crossref rejecting the request, which `CrossrefService` maps onto the rejection
+ * reasons above from Crossref's own `type`; a 404 is either the same kind of rejection
+ * (`cursor-invalid`, read from the body) or a missing record the tool handlers turn into their
+ * own typed reasons (`doi_not_found`, `issn_not_found`). Re-classifying either here would bury
+ * those.
  */
 export function upstreamEntryForStatus(status: number): ErrorContract | undefined {
   if (status === 429) return RATE_LIMITED;

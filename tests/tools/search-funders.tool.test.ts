@@ -565,9 +565,11 @@ describe('searchFundersTool', () => {
       expect(wire.notice).toContain('10000');
       expect(wire.notice).toContain('559017');
       expect(wire.notice).toContain('works_cursor');
-      // The cursor walk restarts at the newest work rather than resuming from this offset,
-      // so a caller who follows the notice must not expect to pick up where it left off.
+      // The cursor walk restarts at the most recently registered work rather than resuming
+      // from this offset, and runs in registration order rather than by publication date, so
+      // a caller who follows the notice must not expect to pick up where it left off.
       expect(wire.notice).toMatch(/restart/i);
+      expect(wire.notice).toContain('registration date, not publication date');
       expect(wire.nextWorksCursor).toBeUndefined();
     });
 
@@ -703,7 +705,7 @@ describe('searchFundersTool', () => {
     it('withholds nextWorksCursor once the walk runs off the end of the works list', async () => {
       const ctx = createMockContext({ errors: searchFundersTool.errors });
       mockSearchFunders.mockResolvedValue(funderList([RAW_FUNDER], 1));
-      // Crossref keeps minting a token past the end of a list — the empty page is the signal.
+      // Crossref has handed a token back on the empty page past the end — the empty page is the signal.
       mockGetFunderWorks.mockResolvedValue({
         totalResults: 559033,
         itemsPerPage: 2,

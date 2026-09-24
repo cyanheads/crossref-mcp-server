@@ -34,10 +34,10 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { Context } from '@cyanheads/mcp-ts-core';
 import {
+  type ErrorContract,
   JsonRpcErrorCode,
   McpError,
   requestCancelled,
-  validationError,
 } from '@cyanheads/mcp-ts-core/errors';
 import { httpErrorFromResponse, logger, withExtra, withRetry } from '@cyanheads/mcp-ts-core/utils';
 import { getServerConfig } from '@/config/server-config.js';
@@ -53,9 +53,13 @@ import type {
   RawCrossrefWork,
 } from './types.js';
 import {
+  INVALID_CURSOR,
+  INVALID_PARAMETER,
   MALFORMED_RESPONSE,
   REQUEST_TIMEOUT,
   rateLimitHint,
+  SORT_CURSOR_CONFLICT,
+  UNKNOWN_FILTER,
   UPSTREAM_UNAVAILABLE,
   upstreamEntryForStatus,
   upstreamError,
@@ -752,6 +756,8 @@ export type FundersSearchOptions = {
  * Paging options for the `/journals/{issn}/works` and `/funders/{id}/works` sub-resources.
  * `cursor` and `offset` are alternatives, not a pair — Crossref rejects the combination with
  * `cursor-with-offset-or-sample`, so `cursor` wins here and callers validate ahead of the call.
+ * The two modes also order the list differently: an offset page is newest-published first, a
+ * cursor walk newest-registered first — see `subResourcePageParams`.
  */
 export type SubResourceWorksOptions = {
   rows: number;
@@ -972,23 +978,36 @@ export class CrossrefService {
   }
 
   /**
-   * Convert a non-2xx response into a classified error carrying recovery. Statuses the
-   * caller owns keep their existing treatment: 400 surfaces Crossref's own
-   * validation-failure detail, and everything else outside the upstream set (404 above
-   * all) passes through as `httpErrorFromResponse` classified it, for the tool handlers
-   * to turn into their own typed reasons.
+   * Convert a non-2xx response into a classified error carrying recovery.
+   *
+   * Crossref rejecting the request is the caller's to fix, and becomes a declared rejection
+   * reason keyed on Crossref's own `type`: every 400, and the one 404 that is a rejection
+   * rather than a missing record — a `cursor-invalid` body. Any other 404 passes through as
+   * `httpErrorFromResponse` classified it, for the tool handlers to turn into their own typed
+   * not-found reasons; the upstream statuses are re-classified onto the upstream contract.
    */
   private async responseError(response: Response): Promise<McpError> {
-    if (response.status === 400) return crossrefValidationError(response);
+    if (response.status === 400) return crossrefRejection(await readRejected(response));
+    if (response.status === 404) {
+      const rejected = await readRejected(response);
+      if (rejected?.some((entry) => entry.type === 'cursor-invalid')) {
+        return crossrefRejection(rejected);
+      }
+    }
 
     const retryAfter = response.headers.get('retry-after');
     /**
-     * `includeUrl` is left at its default. The framework stopped putting `response.url` on
-     * `error.data` in 0.13.4 for the reason that applies here in full — `error.data` reaches
-     * the caller, and this server's base URL is operator-set. The message still names the
-     * service, and `request()` logs the URL on the sink an operator reads.
+     * Neither the URL nor the body reaches `error.data`, which is forwarded to the caller.
+     * `includeUrl` is left at its default: the framework stopped putting `response.url` there
+     * in 0.13.4, and this server's base URL is operator-set. `captureBody` is turned off: a
+     * Crossref 5xx body is a Java exception with a stack excerpt, which tells the caller
+     * nothing to do, and the status and message already say what failed. `request()` logs the
+     * URL on the sink an operator reads.
      */
-    const error = await httpErrorFromResponse(response, { service: 'Crossref' });
+    const error = await httpErrorFromResponse(response, {
+      service: 'Crossref',
+      captureBody: false,
+    });
     const entry = upstreamEntryForStatus(response.status);
     if (!entry) return error;
 
@@ -1081,6 +1100,7 @@ export class CrossrefService {
       const filterStr = Object.entries(opts.filter)
         .map(([k, v]) => `${k}:${v}`)
         .join(',');
+      assertIssnFilters(filterStr);
       params.set('filter', filterStr);
     }
 
@@ -1091,8 +1111,9 @@ export class CrossrefService {
      * identifier and the sole key that chains into /works/{doi}, so a projection
      * that drops it yields records nothing downstream can resolve. Crossref's
      * select names are case-sensitive ("DOI" is valid, "doi" is rejected as
-     * select-not-available), so the dedupe matches exactly — a caller who
-     * miscases the name still gets the upstream validation error naming it.
+     * select-not-available), so the dedupe matches exactly. crossref_search_works
+     * admits only the names its summary projects, so a miscased or unprojected
+     * name is refused by the tool schema before it reaches here.
      */
     if (opts.fields && opts.fields.length > 0) {
       const fields = opts.fields.includes('DOI') ? opts.fields : ['DOI', ...opts.fields];
@@ -1134,23 +1155,17 @@ export class CrossrefService {
     return { totalResults: envelope.message['total-results'], items: envelope.message.items };
   }
 
-  /** Fetch a page of works for a specific journal by ISSN, most recent first. */
+  /**
+   * Fetch a page of works for a specific journal by ISSN, most recent first — by publication
+   * date on an offset page, by registration date on a cursor walk.
+   */
   async getJournalWorks(
     issn: string,
     opts: SubResourceWorksOptions,
     ctx: Context,
   ): Promise<WorksSearchResult> {
-    // Sort by publication date descending so "most recent works" is accurate — the
-    // /works endpoint's default ordering is not chronological. `published` (chosen)
-    // reflects publication date; `deposited` would reflect Crossref registration date.
-    const params = new URLSearchParams({
-      rows: String(opts.rows),
-      sort: 'published',
-      order: 'desc',
-    });
-    setSubResourcePage(params, opts);
     const envelope = await this.request<CrossrefListMessage<RawCrossrefWork>>(
-      `/journals/${encodeURIComponent(issn)}/works?${params}`,
+      `/journals/${encodeURIComponent(issn)}/works?${subResourcePageParams(opts)}`,
       ctx,
     );
     return toWorksSearchResult(envelope.message);
@@ -1183,24 +1198,19 @@ export class CrossrefService {
     return { totalResults: envelope.message['total-results'], items: envelope.message.items };
   }
 
-  /** Fetch a page of works for a specific funder by funder DOI/ID, most recent first. */
+  /**
+   * Fetch a page of works for a specific funder by funder DOI/ID, most recent first — by
+   * publication date on an offset page, by registration date on a cursor walk. Ordered the
+   * same way as `getJournalWorks`, so the two works lists agree.
+   */
   async getFunderWorks(
     funderId: string,
     opts: SubResourceWorksOptions,
     ctx: Context,
   ): Promise<WorksSearchResult> {
     const id = normalizeDoi(funderId);
-    // Sort by publication date descending for predictable, most-recent-first ordering —
-    // the /works endpoint's default ordering is not chronological. Matches
-    // getJournalWorks so both funded-works and journal-works surfaces agree.
-    const params = new URLSearchParams({
-      rows: String(opts.rows),
-      sort: 'published',
-      order: 'desc',
-    });
-    setSubResourcePage(params, opts);
     const envelope = await this.request<CrossrefListMessage<RawCrossrefWork>>(
-      `/funders/${encodeURIComponent(id)}/works?${params}`,
+      `/funders/${encodeURIComponent(id)}/works?${subResourcePageParams(opts)}`,
       ctx,
     );
     return toWorksSearchResult(envelope.message);
@@ -1217,53 +1227,159 @@ function causeOf(err: unknown): string {
   return err.cause instanceof Error ? err.cause.message : err.message;
 }
 
+/** One input Crossref named in a rejection: its own `type` for the failure, and the value. */
+type RejectedInput = { type: string; value: string; message: string };
+
 /**
- * Crossref returns a structured validation-failure body on 400. Parse it and surface an
- * actionable message instead of leaking the raw body. Consumes the response body.
+ * The entries of a Crossref rejection body — `{"message": [{type, value, message}, …]}`, the
+ * shape both the 400 `validation-failure` and the 404 `resource-failure` bodies take — or
+ * `undefined` when the body is anything else. Consumes the response body. `value` is the
+ * rejected input as sent, or a parameter name (`"sort"`) when the rejection is about a
+ * combination; the offset rejections carry it as a number.
  */
-async function crossrefValidationError(response: Response): Promise<McpError> {
-  let detail = '';
+async function readRejected(response: Response): Promise<RejectedInput[] | undefined> {
+  let body: unknown;
   try {
-    const json = (await response.json()) as {
-      'message-type'?: string;
-      message?: Array<{ type?: string; value?: string; message?: string }>;
-    };
-    if (json['message-type'] === 'validation-failure' && Array.isArray(json.message)) {
-      detail = json.message
-        .map((m) => {
-          const badKey = m.value ? `"${m.value}"` : '';
-          const hint =
-            m.type === 'filter-not-available'
-              ? ` — Crossref filter keys use hyphens (e.g. "${(m.value ?? '').replace(/_/g, '-')}")`
-              : m.message
-                ? ` — ${m.message}`
-                : '';
-          return `${badKey}${hint}`;
-        })
-        .filter(Boolean)
-        .join('; ');
-    }
+    body = JSON.parse(await response.text());
   } catch {
-    // Body was not the documented JSON shape — fall through to the generic message.
+    return;
   }
-  return validationError(
-    detail
-      ? `Crossref rejected the request: ${detail}`
-      : 'Crossref returned HTTP 400 Bad Request — check filter key names (use hyphens, not underscores) and field names.',
+  const entries = (body as { message?: unknown } | null)?.message;
+  if (!Array.isArray(entries)) return;
+  return entries.map((entry: { type?: unknown; value?: unknown; message?: unknown }) => ({
+    type: String(entry?.type ?? ''),
+    value: entry?.value == null ? '' : String(entry.value),
+    message: typeof entry?.message === 'string' ? entry.message : '',
+  }));
+}
+
+/** The reason each Crossref rejection `type` is declared under; anything else is `invalid_parameter`. */
+const REJECTION_REASONS: Record<string, ErrorContract> = {
+  'filter-not-available': UNKNOWN_FILTER,
+  'sort-criteria-incompatible-with-cursor': SORT_CURSOR_CONFLICT,
+  'cursor-invalid': INVALID_CURSOR,
+};
+
+/**
+ * The hyphenated spelling of an underscored filter key, when Crossref lists it as a valid
+ * filter for the route. The list rides the `filter-not-available` message; a key that only
+ * hyphenates into another unknown key (`is_open_access`) gets no suggestion, since offering
+ * one would send the caller to a second rejection.
+ */
+function filterSuggestion(rejected: RejectedInput): string | undefined {
+  if (!rejected.value.includes('_')) return;
+  const candidate = rejected.value.replace(/_/g, '-');
+  const listed = /Valid filters for this route are:(.*)$/s.exec(rejected.message)?.[1];
+  const valid = listed?.split(',').map((key) => key.trim());
+  return valid?.includes(candidate) ? candidate : undefined;
+}
+
+/**
+ * One rejected input, as a phrase: the value quoted, then Crossref's own statement of the form it
+ * takes. An unknown filter drops Crossref's sentence, which is ninety-odd valid keys long, for the
+ * suggestion that matters. No rejection here quotes a blank filter value — `crossref_search_works`
+ * drops a blank value before the request is built.
+ */
+function describeRejected(rejected: RejectedInput): string {
+  if (rejected.type === 'filter-not-available') {
+    const suggestion = filterSuggestion(rejected);
+    return `filter key "${rejected.value}" is not a Crossref filter${suggestion ? ` — did you mean "${suggestion}"?` : ''}`;
+  }
+  const subject = `"${rejected.value}"`;
+  const detail = collapseWhitespace(rejected.message);
+  return detail ? `${subject} — ${detail}` : subject;
+}
+
+/**
+ * Crossref's rejection of the request as a declared reason. The reason follows the first
+ * entry, `data.rejected` lists every one as `{type, value}`, and the message renders each in
+ * turn. Nothing of the upstream response — body, status, URL — goes on `data`: the parsed
+ * entries are the part a caller can act on. A body that did not parse is still the caller's
+ * rejection, and lands on `invalid_parameter` with an empty `rejected`.
+ */
+function crossrefRejection(rejected: RejectedInput[] | undefined): McpError {
+  const first = rejected?.[0];
+  if (!first) {
+    return upstreamError(
+      INVALID_PARAMETER,
+      'Crossref rejected the request with HTTP 400 and no reason it could parse. Check that filter keys are hyphenated and that each filter value has the form its key takes.',
+      { data: { rejected: [] } },
+    );
+  }
+  const entry = REJECTION_REASONS[first.type] ?? INVALID_PARAMETER;
+  const suggestion = first.type === 'filter-not-available' ? filterSuggestion(first) : undefined;
+  return upstreamError(
+    entry,
+    `Crossref rejected the request: ${rejected.map(describeRejected).join('; ')}`,
+    {
+      data: {
+        rejected: rejected.map(({ type, value }) => ({ type, value })),
+        ...(suggestion !== undefined && { suggestion }),
+      },
+    },
   );
 }
 
 /**
- * Apply the page selector for a works sub-resource. Cursor and offset are mutually exclusive
- * upstream, so only one is ever written — the same precedence `searchWorks` uses on `/works`.
- * An offset of 0 is the start of the list and is left off the query string entirely.
+ * How Crossref reads an `issn` filter value: it keeps only the digits and `X`s, then takes the
+ * first run of seven digits and a check character. So it is lenient about separators —
+ * `0028–0836`, `0028 0836`, and `ISSN 0028-0836` all resolve to the same journal — and reads
+ * `0028-08361` as `0028-0836`. A value with no such run is the one it cannot read.
  */
-function setSubResourcePage(params: URLSearchParams, opts: SubResourceWorksOptions): void {
+const NOT_ISSN_CHARACTER = /[^\dX]/gi;
+const ISSN_RUN = /\d{7}[\dX]/i;
+
+/**
+ * Refuse an `issn` filter value Crossref cannot read, before the request. Crossref answers one
+ * with HTTP 500 and a Java exception rather than a validation failure, which would classify as
+ * an outage, be retried, and tell the caller to resend the query unchanged — the one move that
+ * cannot work. Everything Crossref does read goes through as written.
+ *
+ * The check walks the serialized filter string the way Crossref splits it, one `key:value` pair
+ * per comma, so it sees what Crossref sees: an `issn:` pair written inside another value
+ * (`0028-0836,issn:1476-4687`, which Crossref reads as two ISSNs) is checked on its own.
+ */
+function assertIssnFilters(filterStr: string): void {
+  for (const pair of filterStr.split(',')) {
+    if (!pair.startsWith('issn:')) continue;
+    const value = pair.slice('issn:'.length);
+    if (ISSN_RUN.test(value.replace(NOT_ISSN_CHARACTER, ''))) continue;
+    const subject =
+      value.trim() === '' ? 'filter "issn" was sent blank' : `filter "issn" value "${value}"`;
+    throw upstreamError(
+      INVALID_PARAMETER,
+      `${subject} is not an ISSN — the issn filter takes NNNN-NNNX: four digits, three digits, then a check digit or X, the hyphen optional.`,
+      {
+        data: { rejected: [{ type: 'issn-not-valid', value }] },
+        hint: 'Pass the issn filter one ISSN in NNNN-NNNX form, for example {"issn":"0028-0836"}; crossref_search_journals lists the ISSNs a journal is registered under.',
+      },
+    );
+  }
+}
+
+/**
+ * The query string for one page of a works sub-resource. Cursor and offset are mutually
+ * exclusive upstream, so only one is ever written — the same precedence `searchWorks` uses on
+ * `/works` — and an offset of 0 is the start of the list, left off the query string entirely.
+ *
+ * Both modes read newest first, by different dates. An offset page sorts by publication date.
+ * A cursor walk cannot: Crossref refuses every publication-date sort alongside a cursor
+ * (`sort-criteria-incompatible-with-cursor`), and a walk with no sort runs oldest-registered
+ * first, which would put decades-old works at the head of a "most recent" list. So a walk sorts
+ * by `created` — the date the DOI was first registered — which Crossref walks by cursor and
+ * which never changes under a record, so a walk cannot reorder mid-way.
+ */
+function subResourcePageParams(opts: SubResourceWorksOptions): URLSearchParams {
+  const params = new URLSearchParams({ rows: String(opts.rows) });
   if (opts.cursor) {
     params.set('cursor', opts.cursor);
-  } else if (opts.offset != null && opts.offset > 0) {
-    params.set('offset', String(opts.offset));
+    params.set('sort', 'created');
+  } else {
+    if (opts.offset != null && opts.offset > 0) params.set('offset', String(opts.offset));
+    params.set('sort', 'published');
   }
+  params.set('order', 'desc');
+  return params;
 }
 
 function toWorksSearchResult(

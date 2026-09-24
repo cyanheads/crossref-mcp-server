@@ -378,7 +378,10 @@ describe('CrossrefService', () => {
       createMockContext(),
     );
 
-    expect(requestedParams().get('offset')).toBe('20');
+    const qs = requestedParams();
+    expect(qs.get('offset')).toBe('20');
+    expect(qs.get('sort')).toBe('published');
+    expect(qs.get('order')).toBe('desc');
     expect(result.totalResults).toBe(446507);
   });
 
@@ -391,11 +394,20 @@ describe('CrossrefService', () => {
       createMockContext(),
     );
 
-    expect(requestedParams().get('offset')).toBe('30');
+    const qs = requestedParams();
+    expect(qs.get('offset')).toBe('30');
+    expect(qs.get('sort')).toBe('published');
+    expect(qs.get('order')).toBe('desc');
     expect(result.totalResults).toBe(559017);
   });
 
-  it('sends cursor instead of offset on the journal works sub-resource and returns the next token', async () => {
+  /**
+   * Crossref refuses every publication-date sort alongside a cursor
+   * (`sort-criteria-incompatible-with-cursor`), and a cursor walk with no sort runs
+   * oldest-registered first. So the cursor path orders by registration date, newest first —
+   * the one "most recent" ordering a cursor can carry.
+   */
+  it('sends cursor instead of offset on the journal works sub-resource, sorted by registration date', async () => {
     serve(makeListEnvelope([{ DOI: '10.1038/a' }], 446507, { 'next-cursor': 'AoJw8P3T3fAC' }));
 
     const result = await service.getJournalWorks(
@@ -408,11 +420,13 @@ describe('CrossrefService', () => {
     const qs = requestedParams();
     expect(qs.get('cursor')).toBe('*');
     expect(qs.get('offset')).toBeNull();
-    expect(qs.get('sort')).toBe('published');
+    expect(qs.get('sort')).toBe('created');
+    expect(qs.get('order')).toBe('desc');
+    expect(qs.getAll('sort')).toEqual(['created']);
     expect(result.nextCursor).toBe('AoJw8P3T3fAC');
   });
 
-  it('sends cursor instead of offset on the funder works sub-resource and returns the next token', async () => {
+  it('sends cursor instead of offset on the funder works sub-resource, sorted by registration date', async () => {
     serve(makeListEnvelope([{ DOI: '10.1038/a' }], 559033, { 'next-cursor': 'AoJw8P3T3fAC' }));
 
     const result = await service.getFunderWorks(
@@ -424,6 +438,9 @@ describe('CrossrefService', () => {
     const qs = requestedParams();
     expect(qs.get('cursor')).toBe('continuation-token');
     expect(qs.get('offset')).toBeNull();
+    expect(qs.get('sort')).toBe('created');
+    expect(qs.get('order')).toBe('desc');
+    expect(qs.getAll('sort')).toEqual(['created']);
     expect(result.nextCursor).toBe('AoJw8P3T3fAC');
   });
 
@@ -539,7 +556,12 @@ describe('CrossrefService', () => {
       {
         'message-type': 'validation-failure',
         message: [
-          { type: 'filter-not-available', value: 'has_abstract', message: 'Filter not available' },
+          {
+            type: 'filter-not-available',
+            value: 'has_abstract',
+            message:
+              "Filter 'has_abstract' specified but there is no such filter for this route. Valid filters for this route are: issn, has-abstract, type",
+          },
         ],
       },
       { status: 400 },
@@ -550,9 +572,26 @@ describe('CrossrefService', () => {
     ).rejects.toMatchObject({
       code: JsonRpcErrorCode.ValidationError,
       message: expect.stringContaining('has-abstract'),
+      data: {
+        reason: 'unknown_filter',
+        suggestion: 'has-abstract',
+        rejected: [{ type: 'filter-not-available', value: 'has_abstract' }],
+      },
     });
     // The caller's request to fix, so it is never retried.
     expect(http.calls).toHaveLength(1);
+  });
+
+  it('checks an issn filter value before sending it', async () => {
+    serve(makeListEnvelope([]));
+
+    await expect(
+      service.searchWorks({ filter: { issn: '123' } }, createMockContext()),
+    ).rejects.toMatchObject({
+      code: JsonRpcErrorCode.ValidationError,
+      data: { reason: 'invalid_parameter' },
+    });
+    expect(http.calls).toHaveLength(0);
   });
 
   it('does not retry a body that arrived whole and failed to parse', async () => {
