@@ -58,12 +58,14 @@ Scholarly metadata from the Crossref REST API. Resolve DOIs to full metadata rec
 
 ### `crossref_search_works` <sub>tool</sub>
 
-- Free-text `query` plus a structured `filter` object using Crossref's hyphenated keys (`from-pub-date`, `type`, `funder`, `issn`, `has-abstract`, `directory: "DOAJ"`, etc.)
+- Free-text `query` plus a structured `filter` object using Crossref's hyphenated keys (`from-pub-date`, `type`, `funder`, `issn`, `has-abstract`, `license.url`, etc.)
 - Field-scoped parameters `queryTitle`, `queryAuthor`, `queryContainerTitle`, and `queryBibliographic` combine with `query` and with each other
-- Sort by `relevance`, `score`, `is-referenced-by-count`, `published`, `deposited`, or other listed fields; `fields` narrows the payload (`DOI` is always returned)
+- Sort by `relevance`, `score`, `is-referenced-by-count`, `published`, `deposited`, or other listed fields — the publication-date sorts page by `offset` only, since Crossref refuses them with a cursor
+- `fields` narrows the payload to any of the 17 select names the summary projects — including the citation locators `volume`, `issue`, `page`, `article-number`, and `ISSN` — and refuses any other name; `DOI` is always returned, and `crossref_get_work` carries the rest of the record
+- A blank or whitespace-only query term or filter value, and an empty `sort` or `order`, is read as omitted; when that leaves nothing to search by, the `notice` says the page is an unfiltered listing
 - `authorLimit` caps authors per work (default 25, max 500); `authorCount` reports the full deposited total — chain a cut work's DOI into `crossref_get_work` for the rest
 - Offset paging is capped at ~10K; `cursor="*"` starts deep paging via chained `nextCursor` tokens — cursor and offset cannot be combined
-- A cursor walk ends on the page that omits `nextCursor` (Crossref keeps minting tokens past the end of a list); every empty page's `notice` names which of the three causes applies
+- A cursor walk ends on the page that omits `nextCursor` — an empty page never carries one; every empty page's `notice` names which of the three causes applies
 
 ---
 
@@ -80,10 +82,10 @@ Scholarly metadata from the Crossref REST API. Resolve DOIs to full metadata rec
 
 ### `crossref_search_journals` <sub>tool</sub>
 
-- `include_works: true` also returns a page of the journal's most recent works by publication date; requires an unambiguous journal — a title query matching more than one returns `ambiguous_journal`, naming candidates and ISSNs
+- `include_works: true` also returns a page of the journal's most recent works — newest published first by `works_offset`, newest registered first on a `works_cursor` walk; requires an unambiguous journal — a title query matching more than one returns `ambiguous_journal`, naming candidates and ISSNs
 - Returns journal title, publisher, ISSN-L, subject areas, and total DOI count
-- Title-query results page by `offset` (ceiling `offset + rows ≤ 100,000`); the works list pages separately by `works_offset` (ceiling `≤ 10,000`) — a page that stalls at either ceiling carries a `notice` naming it
-- `works_cursor="*"` pages the works list with no ceiling via chained `nextWorksCursor` tokens; a cursor walk always starts at the newest work and cannot combine with `works_offset > 0` (`works_cursor_offset_conflict`)
+- Title-query results page by `offset` (ceiling `offset + rows ≤ 100,000`); the works list pages separately by `works_offset` (ceiling `≤ 10,000`) — a page that stalls at either ceiling, or an offset past the end of either list, carries a `notice` naming it
+- `works_cursor="*"` pages the works list with no ceiling via chained `nextWorksCursor` tokens; a cursor walk runs by Crossref registration date, newest first (Crossref does not walk a publication-date sort by cursor), and cannot combine with `works_offset > 0` (`works_cursor_offset_conflict`)
 - A matched journal with no ISSN registered has no addressable works list — `include_works` is skipped with a `notice` rather than returning an empty list
 
 ---
@@ -93,7 +95,7 @@ Scholarly metadata from the Crossref REST API. Resolve DOIs to full metadata rec
 - Accepts a name `query`, a bare registry ID (`100000001`), or a full funder DOI (`10.13039/100000001`, optionally behind a `doi:`/`https://doi.org/` prefix)
 - `include_works: true` also returns a page of funded works; requires an unambiguous funder — a name query matching more than one returns `ambiguous_funder`, naming candidates and registry IDs
 - Returns funder name, registry ID, country, and alternate names
-- Name-query results page by `offset` (ceiling `≤ 100,000`); the funded-works list pages separately by `works_offset` (ceiling `≤ 10,000`) or, with no ceiling, `works_cursor="*"` chaining `nextWorksCursor` — a cursor walk starts at the newest work and cannot combine with `works_offset > 0`
+- Name-query results page by `offset` (ceiling `≤ 100,000`); the funded-works list pages separately by `works_offset` (ceiling `≤ 10,000`) or, with no ceiling, `works_cursor="*"` chaining `nextWorksCursor` — offset pages run newest published first, a cursor walk newest registered first, and the two cannot combine (`works_offset > 0`); an offset past the end of either list carries a `notice` naming it
 - The funded-works list also counts works funded by the funder's registry descendants, which a `crossref_search_works` filter on `{"funder": "10.13039/<id>"}` does not
 - A deprecated registry entry answers to its successor's name while counting only its own works — the response's `notice` names the superseding ID via `replacedBy`; the replacement is never followed automatically
 
@@ -122,14 +124,14 @@ Crossref-specific:
 - Polite-pool `User-Agent` header injected on every request — priority access via `CROSSREF_MAILTO`, keyless otherwise; no API token required
 - Retry with exponential backoff on 429 (honoring `Retry-After`), 5xx, HTTP 408/504, and network failures; a malformed response body and a request that hits `CROSSREF_TIMEOUT_MS` are not retried
 - Cursor-based deep paging on the works search and on both works sub-resources, for result sets beyond the offset cap
-- Filter key validation enforces Crossref's hyphenated syntax (`has-abstract`, `has-references`, `from-pub-date`) and surfaces upstream validation errors with recovery hints
+- Crossref's rejections of a request come back as declared reasons — `unknown_filter` (with the hyphenated key when Crossref lists one), `invalid_parameter`, `sort_cursor_conflict`, `invalid_cursor` — carrying the rejected inputs and a recovery hint; a malformed `issn` filter value is refused before the request, and no upstream error relays Crossref's raw response body
 - Text normalization on every human-readable value: HTML character references decoded and whitespace collapsed; citation strings additionally have formatting markup stripped, so titles and abstracts read as plain text instead of raw JATS XML
 
 Agent-friendly output:
 
 - Provenance — identifiers, URLs, and dates are returned byte-exact while human-readable text is normalized, so a caller can trust `doi`, `issn`, and date fields without re-verification
-- Graceful partial failure — an offset or cursor past the end of a list returns an empty array with a `notice` explaining why (query exhausted, offset past end, or cursor walk complete) instead of an error
-- Discriminated output contracts — `nextCursor`, `nextOffset`, `works_cursor`, and `nextWorksCursor` continuation fields are present only when more data remains; their absence alone signals the list is exhausted
+- Graceful partial failure — an empty page is a success, not an error: an offset past the end of a list, or a query nothing matched, carries a `notice` saying which, and so does the page that ends a `crossref_search_works` cursor walk; a journal or funder works walk ends on the page that omits `nextWorksCursor`
+- Discriminated output contracts — the `nextCursor`, `nextOffset`, `nextWorksOffset`, and `nextWorksCursor` continuation fields are withheld once a list is exhausted, and a page that stops at an offset ceiling says so in its `notice`; a cursor token can still ride the last partial page, and the empty page after it carries none
 - Ambiguity handled explicitly — `ambiguous_journal` and `ambiguous_funder` list every candidate and its identifier in the error data rather than silently resolving to the first match
 
 ## Getting started
