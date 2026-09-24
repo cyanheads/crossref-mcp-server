@@ -1,6 +1,6 @@
 # crossref-mcp-server - Directory Structure
 
-Generated on: 2026-09-24 05:52:40
+Generated on: 2026-09-24 07:40:12
 
 ```text
 crossref-mcp-server/
@@ -155,35 +155,66 @@ crossref-mcp-server/
 │   │       │   ├── search-journals.tool.ts
 │   │       │   └── search-works.tool.ts
 │   │       ├── blank-input.ts
-│   │       └── markdown-text.ts
+│   │       ├── markdown-text.ts
+│   │       └── work-locators.ts
 │   ├── services/
 │   │   └── crossref/
 │   │       ├── crossref-service.ts
 │   │       ├── html-entities.ts
+│   │       ├── link-text.ts
+│   │       ├── mathml.ts
 │   │       ├── types.ts
 │   │       └── upstream-errors.ts
 │   └── index.ts
 ├── tests/
 │   ├── config/
 │   │   └── server-config.test.ts
+│   ├── fixtures/
+│   │   ├── mathml/
+│   │   │   ├── 10.1090-s0002-9939-05-08007-x.json
+│   │   │   ├── 10.1090-s0025-5718-00-01296-5.json
+│   │   │   └── 10.1186-s13661-014-0236-x.json
+│   │   └── works/
+│   │       ├── __snapshots__/
+│   │       │   ├── get-work-existing-fields.snap
+│   │       │   └── get-work-stripped-records.snap
+│   │       ├── 10.1016_j.apsusc.2007.01.131.json
+│   │       ├── 10.1016_j.chemosphere.2021.130212.json
+│   │       ├── 10.1016_s0140-6736_20_31180-6.json
+│   │       ├── 10.1016_s0140-6736_20_31324-6.json
+│   │       ├── 10.1038_s41586-020-2649-2.json
+│   │       ├── 10.1101_2025.11.10.687519.json
+│   │       ├── 10.1103_physrevd.109.023023.json
+│   │       ├── 10.1109_icetce.2011.5774727.json
+│   │       ├── 10.1364_oe.572415.json
+│   │       ├── 10.1364_opticaopen.29459153.v1.json
+│   │       ├── 10.20944_preprints202302.0051.v34.json
+│   │       ├── 10.2139_ssrn.4944457.json
+│   │       ├── 10.47094_978-65-6036-545-2.json
+│   │       └── 10.7554_elife.03714.json
 │   ├── helpers/
 │   │   ├── content.ts
-│   │   └── crossref-responses.ts
+│   │   ├── crossref-responses.ts
+│   │   └── scaling.ts
 │   ├── prompts/
 │   ├── resources/
 │   ├── services/
 │   │   └── crossref/
 │   │       ├── crossref-service.test.ts
+│   │       ├── markup-regions.test.ts
+│   │       ├── mathml.test.ts
 │   │       └── upstream-classification.test.ts
 │   └── tools/
 │       ├── date-surface.test.ts
 │       ├── get-member.tool.test.ts
 │       ├── get-prefix.tool.test.ts
 │       ├── get-references.tool.test.ts
+│       ├── get-work-records.test.ts
 │       ├── get-work.tool.test.ts
 │       ├── input-strictness.test.ts
 │       ├── markdown-surface.test.ts
 │       ├── markdown-text.test.ts
+│       ├── mathml-surface.test.ts
 │       ├── search-blank-inputs.test.ts
 │       ├── search-empty-pages.test.ts
 │       ├── search-funders.tool.test.ts

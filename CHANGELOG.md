@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.4.1](changelog/0.4.x/0.4.1.md) — 2026-09-24
+
+crossref_get_work adds citation locators, ISBNs, editors, publication updates, and related identifiers, and MathML formulas read as their TeX annotation or a linear form instead of losing roots, scripts, and fractions.
+
 ## [0.4.0](changelog/0.4.x/0.4.0.md) — 2026-09-23 · ⚠️ Breaking
 
 Crossref rejections come back as declared reasons with the rejected inputs, works_cursor walks on the journal and funder tools work again, crossref_search_works.fields is limited to the 17 names the summary projects, and blank search inputs read as omitted.
