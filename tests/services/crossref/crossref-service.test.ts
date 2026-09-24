@@ -858,7 +858,8 @@ describe('normalizeMarkupText', () => {
    * The deposit behind the divergence: an abstract whose formulas are presentation MathML
    * wrapped in `<inline-formula>`. Every tag inside the region comes out with the whitespace
    * a deposit pretty-prints between them, so the expression reads as one token instead of
-   * being shattered into single characters.
+   * being shattered into single characters — here the TeX annotation the deposit carries, in
+   * place of the presentation tree rather than beside it.
    */
   it('renders a MathML formula in an abstract as one expression', () => {
     const abstract = [
@@ -875,7 +876,7 @@ describe('normalizeMarkupText', () => {
       '  </inline-formula>',
       '  is a Hilbert space.</p>',
     ].join('\n');
-    expect(normalizeMarkupText(abstract)).toBe('If H is a Hilbert space.');
+    expect(normalizeMarkupText(abstract)).toBe('If \\mathcal {H} is a Hilbert space.');
   });
 
   /**
@@ -886,8 +887,8 @@ describe('normalizeMarkupText', () => {
   it('separates a MathML region from the prose it abuts', () => {
     const raw =
       'states of neutron-rich<mml:math xmlns:mml="x"><mml:mmultiscripts><mml:mi>Si</mml:mi><mml:mprescripts /><mml:none /><mml:mn>33</mml:mn></mml:mmultiscripts></mml:math>and thin films';
-    expect(normalizeMarkupText(raw)).toBe('states of neutron-rich Si33 and thin films');
-    expect(normalizeReferenceText(raw)).toBe('states of neutron-rich Si33 and thin films');
+    expect(normalizeMarkupText(raw)).toBe('states of neutron-rich ^{33}Si and thin films');
+    expect(normalizeReferenceText(raw)).toBe('states of neutron-rich ^{33}Si and thin films');
   });
 
   /**
@@ -912,7 +913,7 @@ describe('normalizeMarkupText', () => {
       normalizeMarkupText(
         '<math><msup><mi>A</mi><mn>2</mn></msup><annotation-xml encoding="MathML-Content"><apply><power/><ci>A</ci><cn>2</cn></apply></annotation-xml></math>',
       ),
-    ).toBe('A2');
+    ).toBe('A^2');
   });
 
   /**
@@ -1351,7 +1352,7 @@ describe('stripReferenceMarkup', () => {
       stripReferenceMarkup(
         'Fractal geometry of <math xmlns="http://www.w3.org/1998/Math/MathML" id="eq_3"><msub><mrow><mi mathvariant="normal">Airy</mi></mrow><mrow><mn>2</mn></mrow></msub></math> processes',
       ),
-    ).toBe('Fractal geometry of Airy2 processes');
+    ).toBe('Fractal geometry of Airy_2 processes');
   });
 
   /** An unclosed formula matches nothing, so it is left whole rather than half-stripped. */
@@ -1425,15 +1426,15 @@ describe('an <alternatives> wrapper', () => {
 
   /**
    * The selected child is handed back as deposited, so the pass that follows classifies it like
-   * any other markup — here a MathML region, emptied of tags and read as one token.
+   * any other markup — here a MathML region, read as one token.
    */
   it('classifies the child it selects rather than emitting it raw', () => {
     const graphicFirst =
       'the <alternatives><inline-graphic xlink:href="eq1.gif" />' +
       '<mml:math><mml:msub><mml:mi>Airy</mml:mi><mml:mn>2</mml:mn></mml:msub></mml:math>' +
       '</alternatives> process';
-    expect(normalizeMarkupText(graphicFirst)).toBe('the Airy2 process');
-    expect(normalizeReferenceText(graphicFirst)).toBe('the Airy2 process');
+    expect(normalizeMarkupText(graphicFirst)).toBe('the Airy_2 process');
+    expect(normalizeReferenceText(graphicFirst)).toBe('the Airy_2 process');
   });
 
   /** A child carrying no text is passed over on that basis, not by its element name. */
@@ -1521,7 +1522,7 @@ describe('the JATS pass and the reference pass', () => {
       // A MathML formula is a region on both surfaces, and renders once.
       [
         'Fractal geometry of <math xmlns="x"><semantics><msub><mi>Airy</mi><mn>2</mn></msub><annotation encoding="application/x-tex">\\mathrm{Airy}_2</annotation></semantics></math> processes',
-        'Fractal geometry of Airy2 processes',
+        'Fractal geometry of \\mathrm{Airy}_2 processes',
       ],
       // An alternatives wrapper is a region too, and renders one of its encodings.
       [

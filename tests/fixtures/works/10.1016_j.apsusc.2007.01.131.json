@@ -1,0 +1,605 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2026, 9, 14]],
+      "date-time": "2026-09-14T09:49:51Z",
+      "timestamp": 1789379391121,
+      "version": "build-2803163510"
+    },
+    "reference-count": 43,
+    "publisher": "Elsevier BV",
+    "issue": "16",
+    "license": [
+      {
+        "start": {
+          "date-parts": [[2007, 6, 1]],
+          "date-time": "2007-06-01T00:00:00Z",
+          "timestamp": 1180656000000
+        },
+        "content-version": "tdm",
+        "delay-in-days": 0,
+        "URL": "https://www.elsevier.com/tdm/userlicense/1.0/"
+      }
+    ],
+    "content-domain": {
+      "domain": [],
+      "crossmark-restriction": false
+    },
+    "short-container-title": ["Applied Surface Science"],
+    "published-print": {
+      "date-parts": [[2007, 6]]
+    },
+    "DOI": "10.1016/j.apsusc.2007.01.131",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [[2007, 2, 10]],
+      "date-time": "2007-02-10T12:11:56Z",
+      "timestamp": 1171109516000
+    },
+    "page": "6787-6799",
+    "source": "Crossref",
+    "is-referenced-by-count": 18,
+    "title": [
+      "RETRACTED: Relative performances of effective medium formulations in interpreting specific composite thin films optical properties"
+    ],
+    "prefix": "10.1016",
+    "volume": "253",
+    "author": [
+      {
+        "given": "N.K.",
+        "family": "Sahoo",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "S.",
+        "family": "Thakur",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "R.B.",
+        "family": "Tokas",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "N.M.",
+        "family": "Kamble",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "member": "78",
+    "reference": [
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib1",
+        "doi-asserted-by": "crossref",
+        "first-page": "1838",
+        "DOI": "10.1039/b500521c",
+        "volume": "15",
+        "author": "Armelao",
+        "year": "2005",
+        "journal-title": "J. Mater. Chem."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib2",
+        "doi-asserted-by": "crossref",
+        "first-page": "2945",
+        "DOI": "10.1364/AO.28.002945",
+        "volume": "28",
+        "author": "Gunning",
+        "year": "1989",
+        "journal-title": "Appl. Opt."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib3",
+        "doi-asserted-by": "crossref",
+        "first-page": "1188",
+        "DOI": "10.1116/1.577600",
+        "volume": "9",
+        "author": "Ouellette",
+        "year": "1991",
+        "journal-title": "J. Vac. Sci. Technol. A"
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib4",
+        "doi-asserted-by": "crossref",
+        "first-page": "90",
+        "DOI": "10.1364/AO.35.000090",
+        "volume": "35",
+        "author": "Chen",
+        "year": "1996",
+        "journal-title": "Appl. Opt."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib5",
+        "doi-asserted-by": "crossref",
+        "first-page": "3121",
+        "DOI": "10.1364/AO.22.003121",
+        "volume": "22",
+        "author": "Kobayashi",
+        "year": "1983",
+        "journal-title": "Appl. Opt."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib6",
+        "first-page": "51",
+        "article-title": "Inhomogeneous and coevaporated homogeneous films for optical applications",
+        "volume": "vol. 8",
+        "author": "Jacobsson",
+        "year": "1975"
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib7",
+        "doi-asserted-by": "crossref",
+        "first-page": "495",
+        "DOI": "10.1364/AO.30.000495",
+        "volume": "30",
+        "author": "Sankur",
+        "year": "1991",
+        "journal-title": "Appl. Opt."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib8",
+        "doi-asserted-by": "crossref",
+        "first-page": "807",
+        "DOI": "10.1063/1.343501",
+        "volume": "66",
+        "author": "Sankur",
+        "year": "1989",
+        "journal-title": "J. Appl. Phys."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib9",
+        "doi-asserted-by": "crossref",
+        "first-page": "2048",
+        "DOI": "10.1116/1.1782638",
+        "volume": "22",
+        "author": "Koo",
+        "year": "2004",
+        "journal-title": "J. Vac. Sci. Technol. A"
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib10",
+        "doi-asserted-by": "crossref",
+        "first-page": "698",
+        "DOI": "10.1364/AO.37.000698",
+        "volume": "37",
+        "author": "Sahoo",
+        "year": "1998",
+        "journal-title": "Appl. Opt."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib11",
+        "doi-asserted-by": "crossref",
+        "first-page": "311",
+        "DOI": "10.1088/0957-4484/15/3/014",
+        "volume": "15",
+        "author": "Savaloni",
+        "year": "2004",
+        "journal-title": "Nanotechnology"
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib12",
+        "doi-asserted-by": "crossref",
+        "first-page": "157",
+        "DOI": "10.1021/cg025596b",
+        "volume": "4",
+        "author": "Mirica",
+        "year": "2004",
+        "journal-title": "Crystal Growth Des."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib13",
+        "doi-asserted-by": "crossref",
+        "first-page": "637",
+        "DOI": "10.1002/(SICI)1521-396X(199910)175:2<637::AID-PSSA637>3.0.CO;2-7",
+        "volume": "175",
+        "author": "Adamik",
+        "year": "1999",
+        "journal-title": "Phys. Status Solidi (A)"
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib14",
+        "doi-asserted-by": "crossref",
+        "first-page": "4397",
+        "DOI": "10.1088/0953-8984/15/25/310",
+        "volume": "15",
+        "author": "Gao",
+        "year": "2003",
+        "journal-title": "J. Phys. Condens. Matter"
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib15",
+        "doi-asserted-by": "crossref",
+        "first-page": "2617",
+        "DOI": "10.1116/1.1397465",
+        "volume": "19",
+        "author": "Lai",
+        "year": "2001",
+        "journal-title": "J. Vac. Sci. Technol. A"
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib16",
+        "doi-asserted-by": "crossref",
+        "first-page": "2745",
+        "DOI": "10.1364/AO.39.002745",
+        "volume": "39",
+        "author": "Dakka",
+        "year": "2000",
+        "journal-title": "Appl. Opt."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib17",
+        "doi-asserted-by": "crossref",
+        "first-page": "2217",
+        "DOI": "10.1364/JOSAA.10.002217",
+        "volume": "10",
+        "author": "Haggans",
+        "year": "1993",
+        "journal-title": "J. Opt. Soc. Am. A"
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib18",
+        "doi-asserted-by": "crossref",
+        "first-page": "377",
+        "DOI": "10.1016/0370-1573(78)90009-1",
+        "volume": "43",
+        "author": "Bergman",
+        "year": "1978",
+        "journal-title": "Phys. Rep."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib19",
+        "doi-asserted-by": "crossref",
+        "first-page": "10323",
+        "DOI": "10.1088/0953-8984/11/50/324",
+        "volume": "11",
+        "author": "Barabash",
+        "year": "1999",
+        "journal-title": "J. Phys. Condens. Matter"
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib20",
+        "doi-asserted-by": "crossref",
+        "first-page": "505",
+        "DOI": "10.1088/0963-9659/5/5/005",
+        "volume": "5",
+        "author": "Boyd",
+        "year": "1996",
+        "journal-title": "Pure Appl. Opt."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib21",
+        "first-page": "699",
+        "volume": "33",
+        "author": "Yoon",
+        "year": "1998",
+        "journal-title": "J. Kor. Phys. Soc."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib22",
+        "doi-asserted-by": "crossref",
+        "first-page": "1369",
+        "DOI": "10.1116/1.1486005",
+        "volume": "20",
+        "author": "Henda",
+        "year": "2002",
+        "journal-title": "J. Vac. Sci. Technol. A"
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib23",
+        "doi-asserted-by": "crossref",
+        "first-page": "505",
+        "DOI": "10.1016/j.tsf.2005.08.173",
+        "volume": "496",
+        "author": "Braun",
+        "year": "2006",
+        "journal-title": "Thin Solid Films"
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib24",
+        "doi-asserted-by": "crossref",
+        "first-page": "107",
+        "DOI": "10.1016/j.optcom.2004.11.039",
+        "volume": "247",
+        "author": "Wang",
+        "year": "2005",
+        "journal-title": "Optics Commun."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib25",
+        "doi-asserted-by": "crossref",
+        "first-page": "1611",
+        "DOI": "10.1088/0022-3727/31/14/002",
+        "volume": "31",
+        "author": "Cox",
+        "year": "1998",
+        "journal-title": "J. Phys. D Appl. Phys."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib26",
+        "series-title": "Electrodynamcis of Continuous Media",
+        "author": "Landau",
+        "year": "1984"
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib27",
+        "doi-asserted-by": "crossref",
+        "first-page": "401",
+        "DOI": "10.1016/0031-8914(65)90045-5",
+        "volume": "31",
+        "author": "Looyenga",
+        "year": "1956",
+        "journal-title": "Physica (Amsterdam)"
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib28",
+        "doi-asserted-by": "crossref",
+        "first-page": "10437",
+        "DOI": "10.1103/PhysRevB.61.10437",
+        "volume": "61",
+        "author": "Spanier",
+        "year": "2000",
+        "journal-title": "Phys. Rev. B"
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib29",
+        "doi-asserted-by": "crossref",
+        "first-page": "891",
+        "DOI": "10.1086/377437",
+        "volume": "595",
+        "author": "Wurm",
+        "year": "2003",
+        "journal-title": "Astrophys. J."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib30",
+        "doi-asserted-by": "crossref",
+        "first-page": "907",
+        "DOI": "10.1088/0953-8984/6/4/010",
+        "volume": "6",
+        "author": "Monecke",
+        "year": "1994",
+        "journal-title": "J. Phys. Condens. Matter"
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib31",
+        "doi-asserted-by": "crossref",
+        "first-page": "35",
+        "DOI": "10.1051/0004-6361:20030456",
+        "volume": "404",
+        "author": "Min",
+        "year": "2003",
+        "journal-title": "Astron. Astrophys."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib32",
+        "series-title": "Classical Electrodynamics",
+        "author": "Jackson",
+        "year": "1975"
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib33",
+        "doi-asserted-by": "crossref",
+        "first-page": "703",
+        "DOI": "10.1016/S0038-1101(01)00092-2",
+        "volume": "45",
+        "author": "Bosch",
+        "year": "2001",
+        "journal-title": "Solid State Electron."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib34",
+        "series-title": "Theory of Electric Polarization, vol. 1",
+        "author": "Böttcher",
+        "year": "1973"
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib35",
+        "doi-asserted-by": "crossref",
+        "first-page": "865",
+        "DOI": "10.1107/S0365110X53002519",
+        "volume": "6",
+        "author": "Bragg",
+        "year": "1953",
+        "journal-title": "Acta Crystallogr."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib36",
+        "doi-asserted-by": "crossref",
+        "first-page": "1013",
+        "DOI": "10.1109/36.921419",
+        "volume": "39",
+        "author": "Kärkkäinen",
+        "year": "2001",
+        "journal-title": "IEEE Trans. GeoSci. Rem. Sens."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib37",
+        "doi-asserted-by": "crossref",
+        "first-page": "2969",
+        "DOI": "10.1116/1.573610",
+        "volume": "4",
+        "author": "Feldman",
+        "year": "1986",
+        "journal-title": "J. Vac. Sci. Technol. A"
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib38",
+        "doi-asserted-by": "crossref",
+        "first-page": "5229",
+        "DOI": "10.1364/AO.28.005229",
+        "volume": "28",
+        "author": "Feldman",
+        "year": "1989",
+        "journal-title": "Appl. Opt."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib39",
+        "doi-asserted-by": "crossref",
+        "first-page": "813",
+        "DOI": "10.1063/1.1378337",
+        "volume": "90",
+        "author": "Lee",
+        "year": "2001",
+        "journal-title": "J. Appl. Phys."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib40",
+        "doi-asserted-by": "crossref",
+        "first-page": "31",
+        "DOI": "10.1016/j.tsf.2004.06.102",
+        "volume": "472",
+        "author": "Osipov",
+        "year": "2005",
+        "journal-title": "Thin Solid Films"
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib41",
+        "doi-asserted-by": "crossref",
+        "first-page": "1249",
+        "DOI": "10.1063/1.1448384",
+        "volume": "80",
+        "author": "Cho",
+        "year": "2002",
+        "journal-title": "Appl. Phys. Lett."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib42",
+        "doi-asserted-by": "crossref",
+        "first-page": "3137",
+        "DOI": "10.1364/AO.41.003137",
+        "volume": "41",
+        "author": "Blanckenhagen",
+        "year": "2002",
+        "journal-title": "Appl. Opt."
+      },
+      {
+        "key": "10.1016/j.apsusc.2007.01.131_bib43",
+        "doi-asserted-by": "crossref",
+        "first-page": "1139",
+        "DOI": "10.1063/1.337358",
+        "volume": "60",
+        "author": "Ravindra",
+        "year": "1986",
+        "journal-title": "J. Appl. Phys."
+      }
+    ],
+    "updated-by": [
+      {
+        "DOI": "10.1016/j.apsusc.2017.07.145",
+        "type": "retraction",
+        "label": "Retraction",
+        "source": "retraction-watch",
+        "updated": {
+          "date-parts": [[2017, 7, 24]],
+          "date-time": "2017-07-24T00:00:00Z",
+          "timestamp": 1500854400000
+        },
+        "record-id": "11459"
+      },
+      {
+        "DOI": "10.1016/j.apsusc.2017.07.145",
+        "type": "erratum",
+        "label": "Erratum",
+        "source": "publisher",
+        "updated": {
+          "date-parts": [[2017, 10, 31]],
+          "date-time": "2017-10-31T00:00:00Z",
+          "timestamp": 1509408000000
+        }
+      }
+    ],
+    "container-title": ["Applied Surface Science"],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "https://api.elsevier.com/content/article/PII:S016943320700205X?httpAccept=text/xml",
+        "content-type": "text/xml",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "https://api.elsevier.com/content/article/PII:S016943320700205X?httpAccept=text/plain",
+        "content-type": "text/plain",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2019, 5, 1]],
+      "date-time": "2019-05-01T17:03:58Z",
+      "timestamp": 1556730238000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://linkinghub.elsevier.com/retrieve/pii/S016943320700205X"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [[2007, 6]]
+    },
+    "references-count": 43,
+    "journal-issue": {
+      "issue": "16",
+      "published-print": {
+        "date-parts": [[2007, 6]]
+      }
+    },
+    "alternative-id": ["S016943320700205X"],
+    "URL": "https://doi.org/10.1016/j.apsusc.2007.01.131",
+    "relation": {
+      "erratum": [
+        {
+          "id-type": "doi",
+          "id": "10.1016/j.apsusc.2017.07.145",
+          "asserted-by": "object"
+        }
+      ]
+    },
+    "ISSN": ["0169-4332"],
+    "issn-type": [
+      {
+        "value": "0169-4332",
+        "type": "print"
+      }
+    ],
+    "subject": [],
+    "published": {
+      "date-parts": [[2007, 6]]
+    }
+  }
+}

@@ -6,18 +6,23 @@
  * A funder and an affiliation are the two organizations a record names, and a publisher may
  * assert either through the ROR registry instead of by name — so both are projected with the
  * identifier standing in for the name they lack, on both surfaces, rather than as a blank entry.
+ * Editors, update links, and related identifiers are returned whole: none approaches the author
+ * tail, and each is relayed entry for entry as deposited. Update links also feed the notice,
+ * which shares its one string with the author-paging guidance.
  * @module mcp-server/tools/definitions/get-work.tool
  */
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { mdText, mdTextAtLineStart } from '@/mcp-server/tools/markdown-text.js';
+import { locatorFields, locatorLine, projectLocators } from '@/mcp-server/tools/work-locators.js';
 import {
   formatDateParts,
   getCrossrefService,
   normalizeDoi,
   normalizeMarkupText,
   normalizeText,
+  parseDateParts,
   resolveWorkDate,
 } from '@/services/crossref/crossref-service.js';
 import type {
@@ -25,6 +30,8 @@ import type {
   CrossrefAuthor,
   CrossrefFunder,
   CrossrefOrganizationId,
+  CrossrefRelation,
+  CrossrefUpdate,
 } from '@/services/crossref/types.js';
 import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
 
@@ -106,10 +113,58 @@ const DatePartsSchema = z.object({
   day: z.number().optional().describe('Day of month'),
 });
 
+const UpdateSchema = z
+  .object({
+    doi: z
+      .string()
+      .describe(
+        "DOI on the other side of the link: the notice, in updatedBy; the updated work, in updateTo. It is this work's own DOI when the update was made to this record in place.",
+      ),
+    type: z
+      .string()
+      .describe(
+        'Crossref update type as deposited: correction, erratum, corrigendum, addendum, retraction, withdrawal, expression_of_concern, new_version, new_edition, or another code',
+      ),
+    source: z
+      .string()
+      .describe(
+        'Who recorded the link: publisher, or retraction-watch for an entry Crossref carries from the Retraction Watch database',
+      ),
+    recordId: z
+      .string()
+      .optional()
+      .describe('Retraction Watch record ID. Present only on retraction-watch entries.'),
+    updated: DatePartsSchema.optional().describe('Date the update was issued'),
+  })
+  .describe('Update link');
+
+const RelationSchema = z
+  .object({
+    type: z
+      .string()
+      .describe(
+        'Relation type as deposited, read from this work toward ids: is-preprint-of, has-preprint, is-version-of, has-version, has-review, is-supplemented-by, references, has-part, and others',
+      ),
+    idType: z
+      .string()
+      .describe('Identifier scheme of ids: doi, uri, pmid, arxiv, accession, issn, isbn, or other'),
+    assertedBy: z
+      .string()
+      .describe(
+        "Whose deposit asserts the relation: subject (this work's depositor) or object (the related record's depositor, whose assertion Crossref shows here inverted)",
+      ),
+    ids: z
+      .array(z.string())
+      .describe(
+        'Related identifiers in deposited order. A DOI resolves through crossref_get_work only when Crossref registered it; one registered with another agency, such as DataCite, returns doi_not_found there.',
+      ),
+  })
+  .describe('Related identifiers sharing one relation type, identifier type, and asserting party');
+
 export const getWorkTool = tool('crossref_get_work', {
   title: 'Get Work by DOI',
   description:
-    'Resolves a DOI to its full Crossref metadata record: title, authors, affiliations, abstract (when deposited), journal or container, publication date, type, license, full-text links, and funder acknowledgements. The author list is paged: authorCount is the full deposited total, offset and limit select the page (25 authors by default), and when authors remain the response carries a nextOffset to pass back as offset — large-collaboration papers deposit thousands. Outgoing references are reported as a count in referencesCount; the reference entries themselves come from crossref_get_references. The isReferencedByCount field reports the total incoming citation count from Crossref; the citing works themselves are not available through Crossref — use OpenAlex for citation graphs.',
+    'Resolves a DOI to its full Crossref metadata record: title, authors, editors, affiliations, abstract (when deposited), journal or container with the volume, issue, pages, and article number that locate the work in it, ISSNs and ISBNs, publication date, type, license, full-text links, and funder acknowledgements. The author list is paged: authorCount is the full deposited total, offset and limit select the page (25 authors by default), and when authors remain the response carries a nextOffset to pass back as offset — large-collaboration papers deposit thousands. Post-publication updates are relayed as Crossref records them: updatedBy names each correction, retraction, expression of concern, or new version issued against this work, with its notice DOI and whether the publisher or Retraction Watch recorded it, and updateTo names the works this record is itself a notice for. An absent updatedBy does not mean the work was never updated — coverage depends on those deposits. relations lists related identifiers, such as a preprint and its published version, grouped by relation type; only the Crossref-registered DOIs among them resolve through crossref_get_work. Outgoing references are reported as a count in referencesCount; the reference entries themselves come from crossref_get_references. The isReferencedByCount field reports the total incoming citation count from Crossref; the citing works themselves are not available through Crossref — use OpenAlex for citation graphs.',
   annotations: { readOnlyHint: true, idempotentHint: true },
 
   input: z.object({
@@ -167,11 +222,35 @@ export const getWorkTool = tool('crossref_get_work', {
       .describe(
         'Zero-based index of the first returned author within the deposited list. Omitted alongside authors when the record deposits no author field.',
       ),
+    editors: z
+      .array(AuthorSchema)
+      .optional()
+      .describe(
+        'Editors of the work, or of the book or proceedings containing it, in the entry shape authors use. Returned whole — never paged by offset and limit, and never counted in authorCount. Omitted when the record deposits none.',
+      ),
+    updatedBy: z
+      .array(UpdateSchema)
+      .optional()
+      .describe(
+        'Update notices Crossref records against this work — corrections, errata, retractions, expressions of concern, withdrawals, new versions — in deposited order. Entries are never merged: the same notice DOI can appear once per source, typed differently by each. Omitted when none is recorded, which does not mean the work was never updated: coverage depends on publisher and Retraction Watch deposits.',
+      ),
+    updateTo: z
+      .array(UpdateSchema)
+      .optional()
+      .describe(
+        'Works this record is an update notice for, in the entry shape updatedBy uses and in deposited order. Omitted when the record is not registered as a notice.',
+      ),
+    relations: z
+      .array(RelationSchema)
+      .optional()
+      .describe(
+        "Related identifiers — preprints and published versions, other versions, reviews, supplements, parts — grouped by relation type, identifier type, and asserting party, groups in Crossref's order and ids in deposited order. Returned whole. Omitted when the record deposits none.",
+      ),
     abstract: z
       .string()
       .optional()
       .describe(
-        'Abstract when deposited by the publisher. Many records lack abstracts. Publishers deposit it as JATS XML, so this is the text of that deposit with markup removed and character references decoded; a link keeps its tag only where its href holds an address the text it wraps does not already carry, and a formula the deposit encodes more than once — TeX beside MathML — appears once, in the first notation deposited.',
+        'Abstract when deposited by the publisher. Many records lack abstracts. Publishers deposit it as JATS XML, so this is the text of that deposit with markup removed and character references decoded; a link keeps its tag only where its href holds an address the text it wraps does not already carry, and each formula appears once — MathML as the TeX annotation it carries, otherwise written out linearly (x_i, A^{−1}, √(m), (a+b)/c), and TeX deposited beside MathML in whichever notation comes first.',
       ),
     isReferencedByCount: z
       .number()
@@ -185,7 +264,14 @@ export const getWorkTool = tool('crossref_get_work', {
       .string()
       .optional()
       .describe('Journal, book, or proceedings name containing this work'),
+    ...locatorFields,
     issn: z.array(z.string()).optional().describe('ISSN(s) of the containing journal'),
+    isbn: z
+      .array(z.string())
+      .optional()
+      .describe(
+        'ISBN(s) as deposited — for a book chapter, those of the containing book. Omitted when the record deposits none.',
+      ),
     publisher: z.string().optional().describe('Publisher name'),
     published: DatePartsSchema.optional().describe(
       'Publication date — the first of published, published-print, published-online, and issued that names one. A component Crossref records as unknown is omitted, and so is every component below it.',
@@ -215,7 +301,7 @@ export const getWorkTool = tool('crossref_get_work', {
       .string()
       .optional()
       .describe(
-        'Which authors this page covers and the offset that reaches the next ones, or an explanation when the requested offset is past the end of the author list. Absent when the page holds the whole list.',
+        'When updatedBy is present, the update types Crossref records for this work with the source of each, and where the notice is read. Then which authors this page covers and the offset that reaches the next ones, or an explanation when the requested offset is past the end of the author list. Both share this one string when both apply. Absent when the page holds the whole author list and no update is recorded.',
       ),
   },
 
@@ -273,17 +359,41 @@ export const getWorkTool = tool('crossref_get_work', {
       .map(normalizeAuthor);
     const authorNextOffset = input.offset + (authorPage?.length ?? 0);
 
+    const updatedBy = raw['updated-by']?.length
+      ? raw['updated-by'].map(normalizeUpdate)
+      : undefined;
+    const updateTo = raw['update-to']?.length ? raw['update-to'].map(normalizeUpdate) : undefined;
+    const relations = raw.relation ? groupRelations(raw.relation) : [];
+
+    /**
+     * `notice` is last-wins, and `truncated()` writes it too, so every text the notice carries
+     * is collected here and handed over once — through `truncated()` when the author page is
+     * cut, since that call is what sets the paging fields beside it. The update text leads: a
+     * retraction is the fact about the record, the page range only a fact about this response.
+     * Keyed on updatedBy alone — updateTo says what this record is a notice for, and a
+     * publisher's erroneous updateTo would otherwise announce the retracted work as a retraction.
+     */
+    const notices: string[] = [];
+    if (updatedBy) notices.push(updateNotice(updatedBy, raw.DOI));
+    const pageCut = authorNextOffset < authorTotal;
     if (authorTotal > 0 && input.offset >= authorTotal) {
-      ctx.enrich.notice(
+      notices.push(
         `Offset ${input.offset} is past the end of this author list (${authorTotal} authors). Request an offset below ${authorTotal}.`,
       );
-    } else if (authorNextOffset < authorTotal) {
+    } else if (pageCut) {
+      notices.push(
+        `Showing authors ${input.offset + 1}–${authorNextOffset} of ${authorTotal}. Call again with offset=${authorNextOffset} for the next page.`,
+      );
+    }
+    if (pageCut) {
       ctx.enrich({ nextOffset: authorNextOffset });
       ctx.enrich.truncated({
         shown: authorPage?.length ?? 0,
         cap: input.limit,
-        guidance: `Showing authors ${input.offset + 1}–${authorNextOffset} of ${authorTotal}. Call again with offset=${authorNextOffset} for the next page.`,
+        guidance: notices.join(' '),
       });
+    } else if (notices.length > 0) {
+      ctx.enrich.notice(notices.join(' '));
     }
 
     return {
@@ -291,11 +401,15 @@ export const getWorkTool = tool('crossref_get_work', {
       ...(title !== undefined && { title }),
       ...(subtitle !== undefined && { subtitle }),
       ...(raw.type != null && { type: raw.type }),
+      ...(updatedBy && { updatedBy }),
+      ...(updateTo && { updateTo }),
+      ...(relations.length > 0 && { relations }),
       ...(authorPage !== undefined && {
         authors: authorPage,
         authorCount: authorTotal,
         offset: input.offset,
       }),
+      ...(raw.editor?.length && { editors: raw.editor.map(normalizeAuthor) }),
       ...(raw.abstract !== undefined && { abstract: normalizeMarkupText(raw.abstract) }),
       ...(raw['is-referenced-by-count'] !== undefined && {
         isReferencedByCount: raw['is-referenced-by-count'],
@@ -304,7 +418,9 @@ export const getWorkTool = tool('crossref_get_work', {
         referencesCount: raw['references-count'],
       }),
       ...(containerTitle !== undefined && { containerTitle }),
+      ...projectLocators(raw),
       ...(raw.ISSN && raw.ISSN.length > 0 && { issn: raw.ISSN }),
+      ...(raw.ISBN?.length && { isbn: raw.ISBN }),
       ...(raw.publisher !== undefined && { publisher: normalizeText(raw.publisher) }),
       ...(published !== undefined && { published }),
       ...(raw.funder && { funders: raw.funder.map(normalizeFunder) }),
@@ -341,7 +457,10 @@ export const getWorkTool = tool('crossref_get_work', {
     if (result.publisher) lines.push(`**Publisher:** ${mdText(result.publisher)}`);
     if (result.containerTitle)
       lines.push(`**Journal/Container:** ${mdText(result.containerTitle)}`);
+    const locators = locatorLine(result);
+    if (locators) lines.push(locators);
     if (result.issn?.length) lines.push(`**ISSN:** ${result.issn.join(', ')}`);
+    if (result.isbn?.length) lines.push(`**ISBN:** ${result.isbn.join(', ')}`);
     if (result.published?.year) lines.push(`**Published:** ${formatDateParts(result.published)}`);
     if (result.language) lines.push(`**Language:** ${result.language}`);
 
@@ -350,26 +469,37 @@ export const getWorkTool = tool('crossref_get_work', {
     if (result.referencesCount !== undefined)
       lines.push(`**References:** ${result.referencesCount}`);
 
+    /**
+     * Update links, relations, and editors render ahead of the author page, which can run to
+     * 500 lines: a retraction has to be visible before it, not after. Each section is a list
+     * of its own, opened and closed by a blank line so a CommonMark reader never folds the
+     * next label into the last bullet.
+     */
+    const sections = [
+      result.updatedBy && ['**Updated by:**', ...result.updatedBy.map(updateLine)],
+      result.updateTo && ['**Update notice for:**', ...result.updateTo.map(updateLine)],
+      result.relations && ['**Relations:**', ...result.relations.map(relationLine)],
+      result.editors && ['**Editors:**', ...result.editors.map(contributorLine)],
+    ].filter((section) => section !== undefined);
+    if (sections.length > 0) {
+      for (const section of sections) lines.push('', ...section);
+      lines.push('');
+    }
+
     if (result.authorCount !== undefined && result.offset !== undefined) {
       lines.push(
         `**Authors:** showing ${result.authors?.length ?? 0} of ${result.authorCount}, starting at index ${result.offset}`,
       );
     }
-    if (result.authors?.length) {
-      for (const a of result.authors) {
-        const nameParts = [a.given, a.family, a.name].filter(Boolean);
-        const displayName = nameParts.length ? mdText(nameParts.join(' ')) : '(unknown)';
-        const orcidPart = a.orcid ? ` [ORCID: ${a.orcid}]` : '';
-        const seqPart = a.sequence ? ` (${a.sequence})` : '';
-        const affPart = a.affiliation?.length
-          ? ` — ${a.affiliation.map(affiliationLabel).join(', ')}`
-          : '';
-        lines.push(`- ${displayName}${orcidPart}${seqPart}${affPart}`);
-      }
-    }
+    if (result.authors?.length) lines.push(...result.authors.map(contributorLine));
 
-    if (result.subject?.length)
-      lines.push(`**Subjects:** ${result.subject.map(mdText).join(', ')}`);
+    /**
+     * Opened by a blank line like every section after it: written straight under the last
+     * author bullet, a CommonMark reader continues that bullet onto it.
+     */
+    if (result.subject?.length) {
+      lines.push('', `**Subjects:** ${result.subject.map(mdText).join(', ')}`);
+    }
 
     lines.push('');
     lines.push('**Abstract:**');
@@ -479,6 +609,10 @@ function normalizeAffiliation(af: CrossrefAffiliation) {
   };
 }
 
+/**
+ * Project an author or an editor. Crossref deposits both in one entry shape, plus a `role` on
+ * each that restates which array it sits in, so the role is dropped and the field name says it.
+ */
 function normalizeAuthor(a: CrossrefAuthor) {
   return {
     ...(a.given && { given: normalizeText(a.given) }),
@@ -490,4 +624,105 @@ function normalizeAuthor(a: CrossrefAuthor) {
     }),
     ...(a.sequence && { sequence: a.sequence }),
   };
+}
+
+type Contributor = z.infer<typeof AuthorSchema>;
+type Update = z.infer<typeof UpdateSchema>;
+type Relation = z.infer<typeof RelationSchema>;
+
+/** An author's or an editor's line in a Markdown list. */
+function contributorLine(a: Contributor): string {
+  const nameParts = [a.given, a.family, a.name].filter(Boolean);
+  const displayName = nameParts.length ? mdText(nameParts.join(' ')) : '(unknown)';
+  const orcidPart = a.orcid ? ` [ORCID: ${a.orcid}]` : '';
+  const seqPart = a.sequence ? ` (${a.sequence})` : '';
+  const affPart = a.affiliation?.length
+    ? ` — ${a.affiliation.map(affiliationLabel).join(', ')}`
+    : '';
+  return `- ${displayName}${orcidPart}${seqPart}${affPart}`;
+}
+
+/**
+ * Project one update link. `label` is dropped: it restates `type` in title case on every entry
+ * Crossref deposits. The Retraction Watch record ID rides along where Crossref carries one.
+ */
+function normalizeUpdate(u: CrossrefUpdate): Update {
+  const updated = parseDateParts(u.updated);
+  return {
+    doi: u.DOI,
+    type: u.type,
+    source: u.source,
+    ...(u['record-id'] !== undefined && { recordId: u['record-id'] }),
+    ...(updated !== undefined && { updated }),
+  };
+}
+
+/** An update link's line: the DOI a reader copies first, then what kind of update and whose. */
+function updateLine(u: Update): string {
+  const record = u.recordId !== undefined ? `, record ${u.recordId}` : '';
+  const date = u.updated ? `, ${formatDateParts(u.updated)}` : '';
+  return `- ${u.doi} — ${mdText(u.type)} (${mdText(u.source)}${record})${date}`;
+}
+
+/**
+ * Group a record's relations by type, identifier type, and asserting party, keeping Crossref's
+ * key order and each key's deposited id order. Grouping is what keeps a long version chain
+ * affordable to return whole: a 199-entry chain adds 14.4 KB to the tool result grouped, against
+ * about 36 KB as one object per entry, the difference being the three values every entry would
+ * otherwise repeat on both surfaces. It never merges across asserting parties — the same id
+ * asserted by both sides stays in both groups, since each is a separate deposit.
+ */
+function groupRelations(relation: Record<string, CrossrefRelation[]>): Relation[] {
+  const groups: Relation[] = [];
+  for (const [type, entries] of Object.entries(relation)) {
+    const byScheme = new Map<string, Relation>();
+    for (const entry of entries) {
+      const key = `${entry['id-type']} ${entry['asserted-by']}`;
+      let group = byScheme.get(key);
+      if (!group) {
+        group = { type, idType: entry['id-type'], assertedBy: entry['asserted-by'], ids: [] };
+        byScheme.set(key, group);
+        groups.push(group);
+      }
+      group.ids.push(entry.id);
+    }
+  }
+  return groups;
+}
+
+/** A relation group's line: what the relation is and whose, then every id it holds. */
+function relationLine(r: Relation): string {
+  return `- ${mdText(r.type)} (${mdText(r.idType)}, asserted by ${mdText(r.assertedBy)}): ${r.ids.join(', ')}`;
+}
+
+/**
+ * The notice text for a record Crossref lists updates against: each update type with the
+ * sources that recorded it, in first-seen order, and where the notice is read.
+ *
+ * It names what the deposits say and nothing more. It does not call the work retracted,
+ * corrected, or current — the entries can disagree with each other (the same notice typed a
+ * retraction by Retraction Watch and an erratum by the publisher), and a caller reads them
+ * all in `updatedBy`. An entry naming the record's own DOI is an update made in place, whose
+ * notice is this record: pointing a caller at `crossref_get_work` for it would send them back
+ * to the call they just made, so the pointer is dropped when every entry is one of those and
+ * qualified when only some are.
+ */
+function updateNotice(updates: Update[], doi: string): string {
+  const sourcesByType = new Map<string, string[]>();
+  for (const u of updates) {
+    const sources = sourcesByType.get(u.type) ?? [];
+    if (!sources.includes(u.source)) sources.push(u.source);
+    sourcesByType.set(u.type, sources);
+  }
+  const listed = [...sourcesByType]
+    .map(([type, sources]) => `${type} (${sources.join(', ')})`)
+    .join('; ');
+  const inPlace = updates.filter((u) => u.doi.toLowerCase() === doi.toLowerCase()).length;
+  const where =
+    inPlace === updates.length
+      ? "Every entry names this work's own DOI: the update was made to this record in place, so there is no separate notice to fetch."
+      : inPlace > 0
+        ? "updatedBy names each notice DOI; call crossref_get_work with one other than this work's own to read it — an entry naming this work's DOI records an update made to this record in place."
+        : 'updatedBy names each notice DOI; call crossref_get_work with one to read it.';
+  return `Crossref records updates to this work: ${listed}. ${where}`;
 }

@@ -4,6 +4,7 @@
  */
 
 import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mcp-ts-core/testing';
+import { HtmlRenderer, Parser } from 'commonmark';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getWorkTool } from '@/mcp-server/tools/definitions/get-work.tool.js';
 import { blockText } from '../helpers/content.js';
@@ -27,6 +28,11 @@ beforeEach(() => {
   >);
   mockGetWork.mockReset();
 });
+
+/** What a CommonMark reader shows for a Markdown document, as HTML. */
+function commonmark(markdown: string): string {
+  return new HtmlRenderer().render(new Parser().parse(markdown));
+}
 
 /** Minimal raw Crossref work record. */
 function makeRawWork(overrides: Record<string, unknown> = {}) {
@@ -428,6 +434,20 @@ describe('getWorkTool', () => {
     expect(result.url).toBe('https://doi.org/10.1038/nature12373');
   });
 
+  /**
+   * CommonMark continues a list item's paragraph onto a non-blank line written straight after
+   * it, so a label pushed directly under the last author bullet is read as more of that author.
+   */
+  it('keeps the subject line out of the author list above it', async () => {
+    mockGetWork.mockResolvedValue(makeRawWork({ subject: ['Genetics', 'Biochemistry'] }));
+
+    const result = await runToolContract(getWorkTool, { doi: '10.1038/nature12373' });
+    const html = result.content.map((block) => commonmark(blockText(block))).join('');
+
+    expect(html).toContain('<p><strong>Subjects:</strong> Genetics, Biochemistry</p>');
+    expect(html).not.toMatch(/<li>(?:(?!<\/li>)[\s\S])*Subjects/);
+  });
+
   it('decodes HTML entities in title and abstract', async () => {
     const ctx = createMockContext({ errors: getWorkTool.errors });
     mockGetWork.mockResolvedValue(
@@ -502,7 +522,8 @@ describe('getWorkTool', () => {
     expect(result.structuredContent).toMatchObject({
       abstract: 'values for the anti- $$k_{\\bot }$$ algorithm',
     });
-    expect(text).toContain('values for the anti- $$k_{\\bot }$$ algorithm');
+    // content[] escapes the subscript underscore a Markdown reader could take for emphasis.
+    expect(text).toContain('values for the anti- $$k\\_{\\bot }$$ algorithm');
     expect(text).not.toContain('k⊥');
   });
 
@@ -576,7 +597,7 @@ describe('getWorkTool', () => {
     const rendered = `Optimal $$[n,2]_4$$ codes are constructed. P \${\\bar 3}$ m 1`;
 
     expect(result.structuredContent).toMatchObject({ abstract: rendered });
-    expect(text).toContain(rendered);
+    expect(text).toContain(rendered.replace('_', '\\_'));
   });
 
   /**
@@ -860,6 +881,93 @@ describe('getWorkTool', () => {
     expect(text).toMatch(/offset=10/);
     expect(text).not.toContain('G10 F10');
     expect(result.structuredContent).toMatchObject({ authorCount: 400, nextOffset: 10 });
+  });
+
+  /**
+   * An update or relation code is Crossref's controlled vocabulary today, but it is still a
+   * string relayed from upstream onto the Markdown surface, and it takes the escape the rest of
+   * the deposited text does. Identifiers beside it — the notice DOI, the related ids — are
+   * relayed byte-exact, the way every DOI on the surface is.
+   */
+  it('escapes the update and relation codes it renders, and relays identifiers byte-exact', async () => {
+    mockGetWork.mockResolvedValue(
+      makeRawWork({
+        'updated-by': [
+          {
+            DOI: '10.1000/notice_1_',
+            type: 'new*version',
+            label: 'New version',
+            source: 'publisher_',
+            updated: { 'date-parts': [[2024, 2]] },
+          },
+        ],
+        relation: {
+          'is*variant-of': [{ id: '10.1000/rel_a_', 'id-type': 'doi', 'asserted-by': 'subject' }],
+        },
+      }),
+    );
+
+    const result = await runToolContract(getWorkTool, { doi: '10.1038/nature12373' });
+    const lines = result.content.flatMap((b) => blockText(b).split('\n'));
+
+    expect(result.structuredContent).toMatchObject({
+      updatedBy: [
+        {
+          doi: '10.1000/notice_1_',
+          type: 'new*version',
+          source: 'publisher_',
+          updated: { year: 2024, month: 2 },
+        },
+      ],
+      relations: [
+        { type: 'is*variant-of', idType: 'doi', assertedBy: 'subject', ids: ['10.1000/rel_a_'] },
+      ],
+    });
+    expect(lines).toContain('- 10.1000/notice_1_ — new\\*version (publisher\\_), 2024-02');
+    expect(lines).toContain('- is\\*variant-of (doi, asserted by subject): 10.1000/rel_a_');
+  });
+
+  it('omits an update entry date Crossref records as unknown', async () => {
+    mockGetWork.mockResolvedValue(
+      makeRawWork({
+        'updated-by': [
+          {
+            DOI: '10.1000/notice',
+            type: 'correction',
+            source: 'publisher',
+            updated: { 'date-parts': [[null]] },
+          },
+        ],
+      }),
+    );
+
+    const result = await runToolContract(getWorkTool, { doi: '10.1038/nature12373' });
+
+    expect((result.structuredContent as { updatedBy: unknown[] }).updatedBy).toEqual([
+      { doi: '10.1000/notice', type: 'correction', source: 'publisher' },
+    ]);
+    expect(result.content.map(blockText).join('\n')).toContain(
+      '- 10.1000/notice — correction (publisher)\n',
+    );
+  });
+
+  it('keeps the whole editor list when the author page is cut', async () => {
+    const ctx = createMockContext({ errors: getWorkTool.errors });
+    mockGetWork.mockResolvedValue(
+      makeRawWork({ author: makeAuthors(30), editor: makeAuthors(12), 'updated-by': [] }),
+    );
+
+    const input = getWorkTool.input.parse({ doi: '10.1038/nature12373', limit: 5 });
+    const result = await getWorkTool.handler(input, ctx);
+
+    expect(result.authors).toHaveLength(5);
+    expect(result.authorCount).toBe(30);
+    expect(result.editors).toHaveLength(12);
+    // An empty update list deposited as `[]` is no update at all.
+    expect(result.updatedBy).toBeUndefined();
+    expect(getEnrichment(ctx).notice).toBe(
+      'Showing authors 1–5 of 30. Call again with offset=5 for the next page.',
+    );
   });
 
   it('rejects offset and limit outside their declared ranges', () => {

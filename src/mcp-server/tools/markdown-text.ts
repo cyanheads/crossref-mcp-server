@@ -52,17 +52,17 @@ const MARKDOWN_ACTIVE = new RegExp(
      * asterisk inside the title closes the emphasis early and is consumed doing it — which is
      * why these are unconditional: `*` opens emphasis even between two word characters, and a
      * code span swallows everything to the next backtick.
-     *
-     * `_` is deliberately not among them. Nothing this server writes is an underscore, so a
-     * deposited one can only pair with another deposited one, and what that costs is the two
-     * markers rather than any text between them. Measured across 12,000 sampled works, 76 of
-     * 215,933 values carry an underscore that could flank at all and 45 carry the two a pair
-     * needs. Escaping it would also cost more than it protects: the linter that checks every
-     * `output` field reaches `content[]` probes with an underscore-delimited sentinel, so
-     * escaping one blinds that check — which guards the same two-surface invariant, across
-     * every tool — to save two characters in 0.02% of values.
      */
     '[*~`]',
+    /**
+     * `_` wherever CommonMark could read it as an emphasis delimiter, which is everywhere except
+     * between two letters or digits: there it can neither open nor close, so `TP53_HUMAN` and
+     * `x_i` stay bare. Anywhere else a pair of them consumes both markers — a formula written
+     * out, or deposited as TeX, puts one in front of every braced subscript, and
+     * `\mathbb {Q} _{5}\setminus … \mathbb {Q}_{p}` renders the two as emphasis around the text
+     * between them.
+     */
+    String.raw`(?<![\p{L}\p{N}])_|_(?![\p{L}\p{N}])`,
     /**
      * `<` in the shapes that begin raw HTML or an autolink — a name, a closing slash, a
      * declaration, a processing instruction. A bracket the strip deliberately kept because it

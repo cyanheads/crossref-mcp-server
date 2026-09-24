@@ -1,0 +1,1292 @@
+{
+  "10.1038/s41586-020-2649-2": {
+    "doi": "10.1038/s41586-020-2649-2",
+    "title": "Array programming with NumPy",
+    "type": "journal-article",
+    "authors": [
+      {
+        "given": "Charles R.",
+        "family": "Harris",
+        "sequence": "first"
+      },
+      {
+        "given": "K. Jarrod",
+        "family": "Millman",
+        "orcid": "https://orcid.org/0000-0002-5263-5070",
+        "sequence": "additional"
+      },
+      {
+        "given": "Stéfan J.",
+        "family": "van der Walt",
+        "orcid": "https://orcid.org/0000-0001-9276-1891",
+        "sequence": "additional"
+      },
+      {
+        "given": "Ralf",
+        "family": "Gommers",
+        "orcid": "https://orcid.org/0000-0002-0300-3333",
+        "sequence": "additional"
+      },
+      {
+        "given": "Pauli",
+        "family": "Virtanen",
+        "sequence": "additional"
+      },
+      {
+        "given": "David",
+        "family": "Cournapeau",
+        "sequence": "additional"
+      },
+      {
+        "given": "Eric",
+        "family": "Wieser",
+        "sequence": "additional"
+      },
+      {
+        "given": "Julian",
+        "family": "Taylor",
+        "sequence": "additional"
+      },
+      {
+        "given": "Sebastian",
+        "family": "Berg",
+        "sequence": "additional"
+      },
+      {
+        "given": "Nathaniel J.",
+        "family": "Smith",
+        "sequence": "additional"
+      },
+      {
+        "given": "Robert",
+        "family": "Kern",
+        "sequence": "additional"
+      },
+      {
+        "given": "Matti",
+        "family": "Picus",
+        "orcid": "https://orcid.org/0000-0002-1771-9949",
+        "sequence": "additional"
+      },
+      {
+        "given": "Stephan",
+        "family": "Hoyer",
+        "orcid": "https://orcid.org/0000-0002-5207-0380",
+        "sequence": "additional"
+      },
+      {
+        "given": "Marten H.",
+        "family": "van Kerkwijk",
+        "sequence": "additional"
+      },
+      {
+        "given": "Matthew",
+        "family": "Brett",
+        "sequence": "additional"
+      },
+      {
+        "given": "Allan",
+        "family": "Haldane",
+        "sequence": "additional"
+      },
+      {
+        "given": "Jaime Fernández",
+        "family": "del Río",
+        "sequence": "additional"
+      },
+      {
+        "given": "Mark",
+        "family": "Wiebe",
+        "orcid": "https://orcid.org/0000-0003-3603-8038",
+        "sequence": "additional"
+      },
+      {
+        "given": "Pearu",
+        "family": "Peterson",
+        "orcid": "https://orcid.org/0000-0001-7328-4305",
+        "sequence": "additional"
+      },
+      {
+        "given": "Pierre",
+        "family": "Gérard-Marchant",
+        "sequence": "additional"
+      },
+      {
+        "given": "Kevin",
+        "family": "Sheppard",
+        "orcid": "https://orcid.org/0000-0001-8700-2292",
+        "sequence": "additional"
+      },
+      {
+        "given": "Tyler",
+        "family": "Reddy",
+        "sequence": "additional"
+      },
+      {
+        "given": "Warren",
+        "family": "Weckesser",
+        "sequence": "additional"
+      },
+      {
+        "given": "Hameer",
+        "family": "Abbasi",
+        "sequence": "additional"
+      },
+      {
+        "given": "Christoph",
+        "family": "Gohlke",
+        "orcid": "https://orcid.org/0000-0001-8108-7707",
+        "sequence": "additional"
+      }
+    ],
+    "authorCount": 26,
+    "offset": 0,
+    "abstract": "Abstract Array programming provides a powerful, compact and expressive syntax for accessing, manipulating and operating on data in vectors, matrices and higher-dimensional arrays. NumPy is the primary array programming library for the Python language. It has an essential role in research analysis pipelines in fields as diverse as physics, chemistry, astronomy, geoscience, biology, psychology, materials science, engineering, finance and economics. For example, in astronomy, NumPy was an important part of the software stack used in the discovery of gravitational waves 1 and in the first imaging of a black hole 2 . Here we review how a few fundamental array concepts lead to a simple and powerful programming paradigm for organizing, exploring and analysing scientific data. NumPy is the foundation upon which the scientific Python ecosystem is constructed. It is so pervasive that several projects, targeting audiences with specialized needs, have developed their own NumPy-like interfaces and array objects. Owing to its central position in the ecosystem, NumPy increasingly acts as an interoperability layer between such array computation libraries and, together with its application programming interface (API), provides a flexible framework to support the next decade of scientific and industrial analysis.",
+    "isReferencedByCount": 24518,
+    "referencesCount": 57,
+    "containerTitle": "Nature",
+    "issn": [
+      "0028-0836",
+      "1476-4687"
+    ],
+    "publisher": "Springer Science and Business Media LLC",
+    "published": {
+      "year": 2020,
+      "month": 9,
+      "day": 16
+    },
+    "licenses": [
+      {
+        "url": "https://creativecommons.org/licenses/by/4.0",
+        "contentVersion": "tdm",
+        "delayInDays": 0
+      },
+      {
+        "url": "https://creativecommons.org/licenses/by/4.0",
+        "contentVersion": "vor",
+        "delayInDays": 0
+      }
+    ],
+    "links": [
+      {
+        "url": "https://www.nature.com/articles/s41586-020-2649-2.pdf",
+        "contentType": "application/pdf",
+        "intendedApplication": "text-mining"
+      },
+      {
+        "url": "https://www.nature.com/articles/s41586-020-2649-2",
+        "contentType": "text/html",
+        "intendedApplication": "text-mining"
+      },
+      {
+        "url": "https://www.nature.com/articles/s41586-020-2649-2.pdf",
+        "contentType": "application/pdf",
+        "intendedApplication": "similarity-checking"
+      }
+    ],
+    "url": "https://doi.org/10.1038/s41586-020-2649-2",
+    "language": "en",
+    "nextOffset": 25,
+    "truncated": true,
+    "shown": 25,
+    "cap": 25,
+    "notice": "Showing authors 1–25 of 26. Call again with offset=25 for the next page."
+  },
+  "10.7554/elife.03714": {
+    "doi": "10.7554/elife.03714",
+    "title": "A structural mechanism for bacterial autotransporter glycosylation by a dodecameric heptosyltransferase family",
+    "type": "journal-article",
+    "authors": [
+      {
+        "given": "Qing",
+        "family": "Yao",
+        "affiliation": [
+          {
+            "name": "Dr Feng Shao's Laboratory, National Institute of Biological Sciences, Beijing, China"
+          }
+        ],
+        "sequence": "first"
+      },
+      {
+        "given": "Qiuhe",
+        "family": "Lu",
+        "affiliation": [
+          {
+            "name": "Dr Feng Shao's Laboratory, National Institute of Biological Sciences, Beijing, China"
+          }
+        ],
+        "sequence": "additional"
+      },
+      {
+        "given": "Xiaobo",
+        "family": "Wan",
+        "affiliation": [
+          {
+            "name": "Dr Niu Huang's Laboratory, National Institute of Biological Sciences, Beijing, China"
+          }
+        ],
+        "sequence": "additional"
+      },
+      {
+        "given": "Feng",
+        "family": "Song",
+        "affiliation": [
+          {
+            "name": "National Laboratory of Biomacromolecules, Institute of Biophysics, Chinese Academy of Sciences, Beijing, China"
+          },
+          {
+            "name": "Shandong Provincial Key Laboratory of Functional Macromolecular Biophysics, Institute of Biophysics, Dezhou University, Dezhou, China"
+          }
+        ],
+        "sequence": "additional"
+      },
+      {
+        "given": "Yue",
+        "family": "Xu",
+        "affiliation": [
+          {
+            "name": "Dr Feng Shao's Laboratory, National Institute of Biological Sciences, Beijing, China"
+          }
+        ],
+        "sequence": "additional"
+      },
+      {
+        "given": "Mo",
+        "family": "Hu",
+        "affiliation": [
+          {
+            "name": "Institute of Analytic Chemistry, College of Chemistry and Molecular Engineering, Peking University, Beijing, China"
+          },
+          {
+            "name": "Synthetic Functional Biomolecules Center, College of Chemistry and Molecular Engineering, Peking University, Beijing, China"
+          }
+        ],
+        "sequence": "additional"
+      },
+      {
+        "given": "Alla",
+        "family": "Zamyatina",
+        "affiliation": [
+          {
+            "name": "Department of Chemistry, University of Natural Resources and Life Sciences, Vienna, Austria"
+          }
+        ],
+        "sequence": "additional"
+      },
+      {
+        "given": "Xiaoyun",
+        "family": "Liu",
+        "affiliation": [
+          {
+            "name": "Institute of Analytic Chemistry, College of Chemistry and Molecular Engineering, Peking University, Beijing, China"
+          },
+          {
+            "name": "Synthetic Functional Biomolecules Center, College of Chemistry and Molecular Engineering, Peking University, Beijing, China"
+          }
+        ],
+        "sequence": "additional"
+      },
+      {
+        "given": "Niu",
+        "family": "Huang",
+        "affiliation": [
+          {
+            "name": "Dr Niu Huang's Laboratory, National Institute of Biological Sciences, Beijing, China"
+          }
+        ],
+        "sequence": "additional"
+      },
+      {
+        "given": "Ping",
+        "family": "Zhu",
+        "affiliation": [
+          {
+            "name": "National Laboratory of Biomacromolecules, Institute of Biophysics, Chinese Academy of Sciences, Beijing, China"
+          }
+        ],
+        "sequence": "additional"
+      },
+      {
+        "given": "Feng",
+        "family": "Shao",
+        "affiliation": [
+          {
+            "name": "Dr Feng Shao's Laboratory, National Institute of Biological Sciences, Beijing, China"
+          },
+          {
+            "name": "National Laboratory of Biomacromolecules, Institute of Biophysics, Chinese Academy of Sciences, Beijing, China"
+          }
+        ],
+        "sequence": "additional"
+      }
+    ],
+    "authorCount": 11,
+    "offset": 0,
+    "abstract": "A large group of bacterial virulence autotransporters including AIDA-I from diffusely adhering E. coli (DAEC) and TibA from enterotoxigenic E. coli (ETEC) require hyperglycosylation for functioning. Here we demonstrate that TibC from ETEC harbors a heptosyltransferase activity on TibA and AIDA-I, defining a large family of bacterial autotransporter heptosyltransferases (BAHTs). The crystal structure of TibC reveals a characteristic ring-shape dodecamer. The protomer features an N-terminal β-barrel, a catalytic domain, a β-hairpin thumb, and a unique iron-finger motif. The iron-finger motif contributes to back-to-back dimerization; six dimers form the ring through β-hairpin thumb-mediated hand-in-hand contact. The structure of ADP-D-glycero-β-D-manno-heptose (ADP-D,D-heptose)-bound TibC reveals a sugar transfer mechanism and also the ligand stereoselectivity determinant. Electron-cryomicroscopy analyses uncover a TibC–TibA dodecamer/hexamer assembly with two enzyme molecules binding to one TibA substrate. The complex structure also highlights a high efficient hyperglycosylation of six autotransporter substrates simultaneously by the dodecamer enzyme complex.",
+    "isReferencedByCount": 34,
+    "referencesCount": 64,
+    "containerTitle": "eLife",
+    "issn": [
+      "2050-084X"
+    ],
+    "publisher": "eLife Sciences Publications, Ltd",
+    "published": {
+      "year": 2014,
+      "month": 10,
+      "day": 13
+    },
+    "funders": [
+      {
+        "name": "Howard Hughes Medical Institute",
+        "doi": "10.13039/100000011",
+        "award": [
+          "55007431"
+        ]
+      },
+      {
+        "name": "Ministry of Science and Technology of the People's Republic of China",
+        "doi": "10.13039/501100002855",
+        "award": [
+          "2012CB518700 and 2014CB849602"
+        ]
+      },
+      {
+        "name": "National Natural Science Foundation of China",
+        "doi": "10.13039/501100001809",
+        "award": [
+          "Program for Distinguished Young Scholars 31225002"
+        ]
+      },
+      {
+        "name": "Chinese Academy of Sciences",
+        "doi": "10.13039/501100002367",
+        "award": [
+          "XDB08020202"
+        ]
+      },
+      {
+        "name": "National Natural Science Foundation of China",
+        "doi": "10.13039/501100001809",
+        "award": [
+          "Program for Distinguished Young Scholars 31230018"
+        ]
+      }
+    ],
+    "licenses": [
+      {
+        "url": "http://creativecommons.org/licenses/by/4.0/",
+        "contentVersion": "vor",
+        "delayInDays": 0
+      },
+      {
+        "url": "http://creativecommons.org/licenses/by/4.0/",
+        "contentVersion": "am",
+        "delayInDays": 0
+      },
+      {
+        "url": "http://creativecommons.org/licenses/by/4.0/",
+        "contentVersion": "tdm",
+        "delayInDays": 0
+      }
+    ],
+    "links": [
+      {
+        "url": "http://elifesciences.org/lookup/doi/10.7554/eLife.03714",
+        "contentType": "application/pdf",
+        "intendedApplication": "text-mining"
+      },
+      {
+        "url": "https://cdn.elifesciences.org/articles/03714/elife-03714-v2.pdf",
+        "contentType": "application/pdf",
+        "intendedApplication": "text-mining"
+      },
+      {
+        "url": "https://cdn.elifesciences.org/articles/03714/elife-03714-v2.xml",
+        "contentType": "application/xml",
+        "intendedApplication": "text-mining"
+      },
+      {
+        "url": "https://elifesciences.org/articles/03714",
+        "contentType": "unspecified",
+        "intendedApplication": "similarity-checking"
+      }
+    ],
+    "url": "https://doi.org/10.7554/elife.03714",
+    "language": "en"
+  },
+  "10.1016/j.chemosphere.2021.130212": {
+    "doi": "10.1016/j.chemosphere.2021.130212",
+    "title": "Nano-Fe3O4-modified biochar promotes the formation of iron plaque and cadmium immobilization in rice root",
+    "type": "journal-article",
+    "authors": [
+      {
+        "given": "Jing-Yi",
+        "family": "Zhang",
+        "sequence": "first"
+      },
+      {
+        "given": "Hang",
+        "family": "Zhou",
+        "sequence": "additional"
+      },
+      {
+        "given": "Peng",
+        "family": "Zeng",
+        "sequence": "additional"
+      },
+      {
+        "given": "Shi-Long",
+        "family": "Wang",
+        "sequence": "additional"
+      },
+      {
+        "given": "Wen-Jun",
+        "family": "Yang",
+        "sequence": "additional"
+      },
+      {
+        "given": "Fang",
+        "family": "Huang",
+        "sequence": "additional"
+      },
+      {
+        "given": "Yang",
+        "family": "Huo",
+        "sequence": "additional"
+      },
+      {
+        "given": "Shu-Ning",
+        "family": "Yu",
+        "sequence": "additional"
+      },
+      {
+        "given": "Jiao-Feng",
+        "family": "Gu",
+        "sequence": "additional"
+      },
+      {
+        "given": "Bo-Han",
+        "family": "Liao",
+        "sequence": "additional"
+      }
+    ],
+    "authorCount": 10,
+    "offset": 0,
+    "isReferencedByCount": 80,
+    "referencesCount": 34,
+    "containerTitle": "Chemosphere",
+    "issn": [
+      "0045-6535"
+    ],
+    "publisher": "Elsevier BV",
+    "published": {
+      "year": 2021,
+      "month": 8
+    },
+    "funders": [
+      {
+        "name": "Foundation for Innovative Research Groups of the National Natural Science Foundation of China",
+        "doi": "10.13039/501100012659"
+      }
+    ],
+    "licenses": [
+      {
+        "url": "https://www.elsevier.com/tdm/userlicense/1.0/",
+        "contentVersion": "tdm",
+        "delayInDays": 0
+      },
+      {
+        "url": "https://www.elsevier.com/legal/tdmrep-license",
+        "contentVersion": "tdm",
+        "delayInDays": 0
+      },
+      {
+        "url": "https://doi.org/10.15223/policy-017",
+        "contentVersion": "stm-asf",
+        "delayInDays": 0
+      },
+      {
+        "url": "https://doi.org/10.15223/policy-037",
+        "contentVersion": "stm-asf",
+        "delayInDays": 0
+      },
+      {
+        "url": "https://doi.org/10.15223/policy-012",
+        "contentVersion": "stm-asf",
+        "delayInDays": 0
+      },
+      {
+        "url": "https://doi.org/10.15223/policy-029",
+        "contentVersion": "stm-asf",
+        "delayInDays": 0
+      },
+      {
+        "url": "https://doi.org/10.15223/policy-004",
+        "contentVersion": "stm-asf",
+        "delayInDays": 0
+      }
+    ],
+    "links": [
+      {
+        "url": "https://api.elsevier.com/content/article/PII:S0045653521006810?httpAccept=text/xml",
+        "contentType": "text/xml",
+        "intendedApplication": "text-mining"
+      },
+      {
+        "url": "https://api.elsevier.com/content/article/PII:S0045653521006810?httpAccept=text/plain",
+        "contentType": "text/plain",
+        "intendedApplication": "text-mining"
+      }
+    ],
+    "url": "https://doi.org/10.1016/j.chemosphere.2021.130212",
+    "language": "en"
+  },
+  "10.47094/978-65-6036-545-2": {
+    "doi": "10.47094/978-65-6036-545-2",
+    "title": "DILEMAS ÉTICOS E BIOÉTICOS EM SITUAÇÕES PERSISTENTES NA ÁREA DAS CIÊNCIAS DA SAÚDE E DA VIDA",
+    "type": "edited-book",
+    "authors": [
+      {
+        "given": "Regina Márcia Soares",
+        "family": "Cavalcante",
+        "sequence": "first"
+      }
+    ],
+    "authorCount": 1,
+    "offset": 0,
+    "isReferencedByCount": 0,
+    "referencesCount": 0,
+    "publisher": "Editora Omnis Scientia",
+    "published": {
+      "year": 2024
+    },
+    "url": "https://doi.org/10.47094/978-65-6036-545-2"
+  },
+  "10.1016/S0140-6736(20)31180-6": {
+    "doi": "10.1016/s0140-6736(20)31180-6",
+    "title": "RETRACTED: Hydroxychloroquine or chloroquine with or without a macrolide for treatment of COVID-19: a multinational registry analysis",
+    "type": "journal-article",
+    "authors": [
+      {
+        "given": "Mandeep R",
+        "family": "Mehra",
+        "sequence": "first"
+      },
+      {
+        "given": "Sapan S",
+        "family": "Desai",
+        "sequence": "additional"
+      },
+      {
+        "given": "Frank",
+        "family": "Ruschitzka",
+        "sequence": "additional"
+      },
+      {
+        "given": "Amit N",
+        "family": "Patel",
+        "sequence": "additional"
+      }
+    ],
+    "authorCount": 4,
+    "offset": 0,
+    "isReferencedByCount": 416,
+    "referencesCount": 26,
+    "containerTitle": "The Lancet",
+    "issn": [
+      "0140-6736"
+    ],
+    "publisher": "Elsevier BV",
+    "published": {
+      "year": 2020,
+      "month": 5
+    },
+    "licenses": [
+      {
+        "url": "https://www.elsevier.com/tdm/userlicense/1.0/",
+        "contentVersion": "tdm",
+        "delayInDays": 0
+      },
+      {
+        "url": "https://www.elsevier.com/legal/tdmrep-license",
+        "contentVersion": "tdm",
+        "delayInDays": 0
+      }
+    ],
+    "links": [
+      {
+        "url": "https://api.elsevier.com/content/article/PII:S0140673620311806?httpAccept=text/xml",
+        "contentType": "text/xml",
+        "intendedApplication": "text-mining"
+      },
+      {
+        "url": "https://api.elsevier.com/content/article/PII:S0140673620311806?httpAccept=text/plain",
+        "contentType": "text/plain",
+        "intendedApplication": "text-mining"
+      }
+    ],
+    "url": "https://doi.org/10.1016/s0140-6736(20)31180-6",
+    "language": "en"
+  },
+  "10.1016/s0140-6736(20)31324-6": {
+    "doi": "10.1016/s0140-6736(20)31324-6",
+    "title": "Retraction—Hydroxychloroquine or chloroquine with or without a macrolide for treatment of COVID-19: a multinational registry analysis",
+    "type": "journal-article",
+    "authors": [
+      {
+        "given": "Mandeep R",
+        "family": "Mehra",
+        "sequence": "first"
+      },
+      {
+        "given": "Frank",
+        "family": "Ruschitzka",
+        "sequence": "additional"
+      },
+      {
+        "given": "Amit N",
+        "family": "Patel",
+        "sequence": "additional"
+      }
+    ],
+    "authorCount": 3,
+    "offset": 0,
+    "isReferencedByCount": 366,
+    "referencesCount": 1,
+    "containerTitle": "The Lancet",
+    "issn": [
+      "0140-6736"
+    ],
+    "publisher": "Elsevier BV",
+    "published": {
+      "year": 2020,
+      "month": 6
+    },
+    "funders": [
+      {
+        "name": "Roche",
+        "doi": "10.13039/100004337"
+      }
+    ],
+    "licenses": [
+      {
+        "url": "https://www.elsevier.com/tdm/userlicense/1.0/",
+        "contentVersion": "tdm",
+        "delayInDays": 0
+      },
+      {
+        "url": "https://www.elsevier.com/legal/tdmrep-license",
+        "contentVersion": "tdm",
+        "delayInDays": 0
+      }
+    ],
+    "links": [
+      {
+        "url": "https://api.elsevier.com/content/article/PII:S0140673620313246?httpAccept=text/xml",
+        "contentType": "text/xml",
+        "intendedApplication": "text-mining"
+      },
+      {
+        "url": "https://api.elsevier.com/content/article/PII:S0140673620313246?httpAccept=text/plain",
+        "contentType": "text/plain",
+        "intendedApplication": "text-mining"
+      }
+    ],
+    "url": "https://doi.org/10.1016/s0140-6736(20)31324-6",
+    "language": "en"
+  },
+  "10.1016/j.apsusc.2007.01.131": {
+    "doi": "10.1016/j.apsusc.2007.01.131",
+    "title": "RETRACTED: Relative performances of effective medium formulations in interpreting specific composite thin films optical properties",
+    "type": "journal-article",
+    "authors": [
+      {
+        "given": "N.K.",
+        "family": "Sahoo",
+        "sequence": "first"
+      },
+      {
+        "given": "S.",
+        "family": "Thakur",
+        "sequence": "additional"
+      },
+      {
+        "given": "R.B.",
+        "family": "Tokas",
+        "sequence": "additional"
+      },
+      {
+        "given": "N.M.",
+        "family": "Kamble",
+        "sequence": "additional"
+      }
+    ],
+    "authorCount": 4,
+    "offset": 0,
+    "isReferencedByCount": 18,
+    "referencesCount": 43,
+    "containerTitle": "Applied Surface Science",
+    "issn": [
+      "0169-4332"
+    ],
+    "publisher": "Elsevier BV",
+    "published": {
+      "year": 2007,
+      "month": 6
+    },
+    "licenses": [
+      {
+        "url": "https://www.elsevier.com/tdm/userlicense/1.0/",
+        "contentVersion": "tdm",
+        "delayInDays": 0
+      }
+    ],
+    "links": [
+      {
+        "url": "https://api.elsevier.com/content/article/PII:S016943320700205X?httpAccept=text/xml",
+        "contentType": "text/xml",
+        "intendedApplication": "text-mining"
+      },
+      {
+        "url": "https://api.elsevier.com/content/article/PII:S016943320700205X?httpAccept=text/plain",
+        "contentType": "text/plain",
+        "intendedApplication": "text-mining"
+      }
+    ],
+    "url": "https://doi.org/10.1016/j.apsusc.2007.01.131",
+    "language": "en"
+  },
+  "10.1103/physrevd.109.023023": {
+    "doi": "10.1103/physrevd.109.023023",
+    "title": "Reexamining the dark matter scenario accounting for the positron excess in a new cosmic ray propagation model",
+    "type": "journal-article",
+    "authors": [
+      {
+        "given": "Xing-Jian",
+        "family": "Lv",
+        "orcid": "https://orcid.org/0000-0002-5197-3393",
+        "affiliation": [
+          {
+            "name": "Key Laboratory of Particle Astrophysics, Institute of High Energy Physics, Chinese Academy of Sciences, Beijing 100049, China"
+          },
+          {
+            "name": "University of Chinese Academy of Sciences, Beijing 100049, China"
+          }
+        ],
+        "sequence": "first"
+      },
+      {
+        "given": "Xiao-Jun",
+        "family": "Bi",
+        "affiliation": [
+          {
+            "name": "Key Laboratory of Particle Astrophysics, Institute of High Energy Physics, Chinese Academy of Sciences, Beijing 100049, China"
+          },
+          {
+            "name": "University of Chinese Academy of Sciences, Beijing 100049, China"
+          }
+        ],
+        "sequence": "additional"
+      },
+      {
+        "given": "Kun",
+        "family": "Fang",
+        "affiliation": [
+          {
+            "name": "Key Laboratory of Particle Astrophysics, Institute of High Energy Physics, Chinese Academy of Sciences, Beijing 100049, China"
+          }
+        ],
+        "sequence": "additional"
+      },
+      {
+        "given": "Peng-Fei",
+        "family": "Yin",
+        "affiliation": [
+          {
+            "name": "Key Laboratory of Particle Astrophysics, Institute of High Energy Physics, Chinese Academy of Sciences, Beijing 100049, China"
+          }
+        ],
+        "sequence": "additional"
+      },
+      {
+        "given": "Meng-Jie",
+        "family": "Zhao",
+        "orcid": "https://orcid.org/0000-0001-6844-1409",
+        "affiliation": [
+          {
+            "name": "Key Laboratory of Particle Astrophysics, Institute of High Energy Physics, Chinese Academy of Sciences, Beijing 100049, China"
+          },
+          {
+            "name": "University of Chinese Academy of Sciences, Beijing 100049, China"
+          }
+        ],
+        "sequence": "additional"
+      }
+    ],
+    "authorCount": 5,
+    "offset": 0,
+    "isReferencedByCount": 2,
+    "referencesCount": 115,
+    "containerTitle": "Physical Review D",
+    "issn": [
+      "2470-0010",
+      "2470-0029"
+    ],
+    "publisher": "American Physical Society (APS)",
+    "published": {
+      "year": 2024,
+      "month": 1,
+      "day": 19
+    },
+    "funders": [
+      {
+        "name": "National Key Research and Development Program of China",
+        "doi": "10.13039/501100012166",
+        "award": [
+          "2022YFA1604802"
+        ]
+      },
+      {
+        "name": "National Natural Science Foundation of China",
+        "doi": "10.13039/501100001809",
+        "award": [
+          "12175248"
+        ]
+      },
+      {
+        "name": "National Natural Science Foundation of China",
+        "doi": "10.13039/501100001809",
+        "award": [
+          "12105292"
+        ]
+      }
+    ],
+    "licenses": [
+      {
+        "url": "https://link.aps.org/licenses/aps-default-license",
+        "contentVersion": "vor",
+        "delayInDays": 0
+      }
+    ],
+    "links": [
+      {
+        "url": "https://link.aps.org/article/10.1103/PhysRevD.109.023023",
+        "contentType": "unspecified",
+        "intendedApplication": "syndication"
+      },
+      {
+        "url": "http://harvest.aps.org/v2/journals/articles/10.1103/PhysRevD.109.023023/fulltext",
+        "contentType": "unspecified",
+        "intendedApplication": "similarity-checking"
+      }
+    ],
+    "url": "https://doi.org/10.1103/physrevd.109.023023",
+    "language": "en"
+  },
+  "10.1109/icetce.2011.5774727": {
+    "doi": "10.1109/icetce.2011.5774727",
+    "title": "Notice of Retraction: World-class city under globalization",
+    "type": "proceedings-article",
+    "authors": [
+      {
+        "given": "Jiayu",
+        "family": "Hu",
+        "sequence": "first"
+      }
+    ],
+    "authorCount": 1,
+    "offset": 0,
+    "isReferencedByCount": 0,
+    "referencesCount": 7,
+    "containerTitle": "2011 International Conference on Electric Technology and Civil Engineering (ICETCE)",
+    "publisher": "IEEE",
+    "published": {
+      "year": 2011,
+      "month": 4
+    },
+    "links": [
+      {
+        "url": "http://xplorestaging.ieee.org/ielx5/5765754/5774181/05774727.pdf?arnumber=5774727",
+        "contentType": "unspecified",
+        "intendedApplication": "similarity-checking"
+      }
+    ],
+    "url": "https://doi.org/10.1109/icetce.2011.5774727"
+  },
+  "10.1364/opticaopen.29459153.v1": {
+    "doi": "10.1364/opticaopen.29459153.v1",
+    "title": "Optical Frequency Comb Bandwidth Enhancement of a Monolithically Integrated Gain Switched Device",
+    "type": "posted-content",
+    "authors": [
+      {
+        "given": "Diarmuid O'",
+        "family": "Sullivan",
+        "sequence": "first"
+      },
+      {
+        "given": "John",
+        "family": "McCarthy",
+        "sequence": "first"
+      },
+      {
+        "given": "Eoin",
+        "family": "Russell",
+        "sequence": "first"
+      },
+      {
+        "given": "Zhengkai",
+        "family": "Jia",
+        "sequence": "first"
+      },
+      {
+        "given": "Bryan",
+        "family": "Kelleher",
+        "sequence": "first"
+      },
+      {
+        "given": "Frank",
+        "family": "Peters",
+        "sequence": "first"
+      }
+    ],
+    "authorCount": 6,
+    "offset": 0,
+    "abstract": "We demonstrate bandwidth enhancement of optical frequency combs (OFCs) generated by a monolithically integrated gain switched laser using mutual optical coupling. Traditionally, gain switched comb sources rely on asymmetrically biased configurations to maintain phase coherence. In this work, we implement a bidirectionally coupled system comprising a two-section discrete mode laser (DML) and a Fabry-P\\'erot gain switched laser (GSL) integrated on an InP epistructure. By transitioning to a mutually coupled regime with symmetric biasing, we achieve significantly broader and flatter optical spectra. Experimental characterisation reveals that the comb bandwidth and power increase significantly across regimes, with stable phase locking preserved. A delay-differential rate equation model, incorporating nonlinear carrier dynamics and modulation, is developed to replicate the observed comb behaviour. Numerical analysis highlights the role of modulation depth, bias current, injection strength, and frequency detuning in determining comb bandwidth. The results indicate that mutual coupling provides a robust, scalable route for OFC generation with spectral performance enhanced by a factor of 3.4 compared to the asymmetric regime, suitable for high-capacity optical communications and integrated photonic systems.",
+    "isReferencedByCount": 0,
+    "referencesCount": 0,
+    "publisher": "Optica Publishing Group",
+    "published": {
+      "year": 2025,
+      "month": 7,
+      "day": 3
+    },
+    "licenses": [
+      {
+        "url": "https://doi.org/10.1364/OA_License_v2#OPG-OO",
+        "contentVersion": "unspecified",
+        "delayInDays": 0
+      }
+    ],
+    "links": [
+      {
+        "url": "https://ndownloader.figshare.com/files/55929341",
+        "contentType": "unspecified",
+        "intendedApplication": "similarity-checking"
+      }
+    ],
+    "url": "https://doi.org/10.1364/opticaopen.29459153.v1"
+  },
+  "10.1364/OE.572415": {
+    "doi": "10.1364/oe.572415",
+    "title": "Optical frequency comb bandwidth enhancement of a monolithically integrated gain switched device",
+    "type": "journal-article",
+    "authors": [
+      {
+        "given": "Diarmuid",
+        "family": "O’Sullivan",
+        "affiliation": [
+          {
+            "ror": "https://ror.org/007ecwd34"
+          },
+          {
+            "ror": "https://ror.org/03265fv13"
+          }
+        ],
+        "sequence": "first"
+      },
+      {
+        "given": "John",
+        "family": "McCarthy",
+        "orcid": "https://orcid.org/0000-0001-8935-6289",
+        "affiliation": [
+          {
+            "ror": "https://ror.org/007ecwd34"
+          },
+          {
+            "ror": "https://ror.org/03265fv13"
+          }
+        ],
+        "sequence": "additional"
+      },
+      {
+        "given": "Eoin",
+        "family": "Russell",
+        "orcid": "https://orcid.org/0000-0003-4423-7088",
+        "affiliation": [
+          {
+            "ror": "https://ror.org/007ecwd34"
+          }
+        ],
+        "sequence": "additional"
+      },
+      {
+        "given": "Zhengkai",
+        "family": "Jia",
+        "orcid": "https://orcid.org/0000-0001-7604-207X",
+        "affiliation": [
+          {
+            "name": "Chinese Academy of Sciences"
+          },
+          {
+            "name": "University of Chinese Academy of Sciences"
+          }
+        ],
+        "sequence": "additional"
+      },
+      {
+        "given": "Frank H.",
+        "family": "Peters",
+        "orcid": "https://orcid.org/0000-0001-8116-7811",
+        "affiliation": [
+          {
+            "ror": "https://ror.org/007ecwd34"
+          },
+          {
+            "ror": "https://ror.org/03265fv13"
+          }
+        ],
+        "sequence": "additional"
+      },
+      {
+        "given": "Bryan",
+        "family": "Kelleher",
+        "orcid": "https://orcid.org/0000-0003-3806-9874",
+        "affiliation": [
+          {
+            "ror": "https://ror.org/007ecwd34"
+          },
+          {
+            "ror": "https://ror.org/03265fv13"
+          }
+        ],
+        "sequence": "additional"
+      }
+    ],
+    "authorCount": 6,
+    "offset": 0,
+    "abstract": "We demonstrate bandwidth enhancement of optical frequency combs generated by a monolithically integrated gain switched laser using symmetric optical coupling. Traditionally, gain switched comb sources rely on asymmetrically biased configurations to maintain phase coherence. In this work, we implement a bidirectionally coupled system comprising a two-section discrete mode laser and a Fabry-Pérot gain switched laser integrated on an InP epistructure. By transitioning to a symmetrically coupled regime with symmetric biasing, we achieve significantly broader and flatter optical spectra. Experimental characterisation reveals that the comb bandwidth and power increase significantly across regimes, with stable phase locking preserved. A delay-differential rate equation model, incorporating nonlinear carrier dynamics and modulation, is developed to replicate the observed comb behaviour. Numerical analysis highlights the role of modulation depth, bias current, injection strength, and frequency detuning in determining comb bandwidth. The results indicate that symmetric coupling provides a robust, scalable route for frequency comb generation with spectral performance enhanced by a factor of 4 compared to the asymmetric regime, suitable for high-capacity optical communications and integrated photonic systems.",
+    "isReferencedByCount": 4,
+    "referencesCount": 25,
+    "containerTitle": "Optics Express",
+    "issn": [
+      "1094-4087"
+    ],
+    "publisher": "Optica Publishing Group",
+    "published": {
+      "year": 2025,
+      "month": 9,
+      "day": 12
+    },
+    "funders": [
+      {
+        "name": "Research Ireland",
+        "award": [
+          "GOIPG/2024/4599"
+        ]
+      },
+      {
+        "name": "Research Ireland",
+        "award": [
+          "12/RC/2276"
+        ]
+      },
+      {
+        "name": "Irish Research eLibrary",
+        "doi": "10.13039/100018998"
+      }
+    ],
+    "licenses": [
+      {
+        "url": "https://creativecommons.org/licenses/by/4.0/",
+        "contentVersion": "vor",
+        "delayInDays": 0
+      },
+      {
+        "url": "https://opg.optica.org/policies/opg-tdm-policy.json",
+        "contentVersion": "tdm",
+        "delayInDays": 0
+      }
+    ],
+    "links": [
+      {
+        "url": "https://opg.optica.org/viewmedia.cfm?URI=oe-33-19-39991&seq=0",
+        "contentType": "unspecified",
+        "intendedApplication": "similarity-checking"
+      }
+    ],
+    "url": "https://doi.org/10.1364/oe.572415",
+    "language": "en"
+  },
+  "10.20944/preprints202302.0051.v34": {
+    "doi": "10.20944/preprints202302.0051.v34",
+    "title": "Duality Principles and Numerical Procedures for a Large Class of Non-convex Models in the Calculus of Variations",
+    "type": "posted-content",
+    "authors": [
+      {
+        "given": "Fabio",
+        "family": "Botelho",
+        "orcid": "https://orcid.org/0000-0002-3890-8263",
+        "sequence": "first"
+      }
+    ],
+    "authorCount": 1,
+    "offset": 0,
+    "abstract": "This article develops duality principles and numerical results for a large class of non-convex variational models. The main results are based on fundamental tools of convex analysis, duality theory and calculus of variations. More specifically the approach is established for a class of non-convex functionals similar as those found in some models in phase transition. Finally, in some sections we present concerning numerical examples and the respective softwares.",
+    "isReferencedByCount": 0,
+    "referencesCount": 0,
+    "publisher": "MDPI AG",
+    "published": {
+      "year": 2023,
+      "month": 11,
+      "day": 8
+    },
+    "licenses": [
+      {
+        "url": "http://creativecommons.org/licenses/by/4.0",
+        "contentVersion": "unspecified",
+        "delayInDays": 0
+      }
+    ],
+    "url": "https://doi.org/10.20944/preprints202302.0051.v34"
+  },
+  "10.1101/2025.11.10.687519": {
+    "doi": "10.1101/2025.11.10.687519",
+    "title": "Counterconditioning Alcohol Cues: Neural and Behavioral Modulation of Automatic Tendencies and Pavlovian-to-Instrumental Transfer in Male Alcohol Users",
+    "type": "posted-content",
+    "authors": [
+      {
+        "given": "Adarsh K.",
+        "family": "Verma",
+        "orcid": "https://orcid.org/0000-0003-0249-6989",
+        "affiliation": [
+          {
+            "name": "Department of Psychology, University of Hyderabad, India"
+          }
+        ],
+        "sequence": "first"
+      },
+      {
+        "given": "Usha",
+        "family": "Chivukula",
+        "affiliation": [
+          {
+            "name": "Department of Psychology, University of Hyderabad, India"
+          }
+        ],
+        "sequence": "additional"
+      },
+      {
+        "given": "Maria",
+        "family": "Garbusow",
+        "affiliation": [
+          {
+            "name": "Department of Psychology, Medical School Berlin, Germany"
+          }
+        ],
+        "sequence": "additional"
+      },
+      {
+        "given": "Neeraj",
+        "family": "Kumar",
+        "affiliation": [
+          {
+            "name": "Department of Liberal Arts, Indian Institute of Technology Hyderabad, India"
+          }
+        ],
+        "sequence": "additional"
+      }
+    ],
+    "authorCount": 4,
+    "offset": 0,
+    "abstract": "Abstract Objective Repeated alcohol-cue pairings with rewarding experiences establish automatic response tendencies that bias instrumental behavior through Pavlovian-to-instrumental transfer (PIT). How individual differences in approach and avoidance tendencies shape PIT and intervention responsiveness remains poorly understood. This study examined whether automatic tendencies differentially modulate PIT, and whether counterconditioning (CC) combined with retrieval cues can attenuate approach biases and cue-driven instrumental interference. Method Thirty-nine male alcohol users completed an Alcohol Approach-Avoidance Task and PIT task before and after CC, classified into approach or avoidance groups based on their baseline Alcohol Approach Index. Alcohol cues were paired with monetary loss during CC, with retrieval cues introduced to facilitate reactivation of newly formed aversive associations. Right frontal N2 and centroparietal P3 were examined as indices of early evaluative and attentional processing. Results Despite comparable behavioral PIT performance, approach-oriented individuals showed attenuated right frontal N2 during push actions at baseline, reflecting reduced frontal regulatory engagement during cue-incongruent responding. CC selectively reduced approach biases in the approach group, with retrieval cues producing additional reductions, accompanied by N2 and P3 restoration. CC recalibrated PIT interference by reducing push and increasing pull interference, particularly with retrieval cues. CC-induced changes in approach bias did not predict PIT interference, suggesting modulation through partially dissociable pathways. Conclusions CC with retrieval cues selectively reduced approach biases and recalibrated cue-driven instrumental interference in approach-oriented individuals, providing proof-of-concept for retrieval cue-integrated CC as a targeted associative intervention and highlighting the importance of individual tendency profiles in intervention responsiveness.",
+    "isReferencedByCount": 0,
+    "referencesCount": 61,
+    "publisher": "openRxiv",
+    "published": {
+      "year": 2025,
+      "month": 11,
+      "day": 11
+    },
+    "licenses": [
+      {
+        "url": "http://creativecommons.org/licenses/by/4.0/",
+        "contentVersion": "vor",
+        "delayInDays": 0
+      }
+    ],
+    "links": [
+      {
+        "url": "https://syndication.highwire.org/content/doi/10.1101/2025.11.10.687519",
+        "contentType": "unspecified",
+        "intendedApplication": "similarity-checking"
+      }
+    ],
+    "url": "https://doi.org/10.1101/2025.11.10.687519"
+  },
+  "10.2139/ssrn.4944457": {
+    "doi": "10.2139/ssrn.4944457",
+    "title": "Modulated Co-Precipitation-Assisted Synthesis of Uniformly Aluminum-Doped Lithium Cobalt Oxide for High-Voltage Lithium-Ion Battery Cathodes",
+    "type": "posted-content",
+    "authors": [
+      {
+        "given": "Jie",
+        "family": "Xia",
+        "sequence": "first"
+      },
+      {
+        "given": "Wei",
+        "family": "Xu",
+        "sequence": "additional"
+      },
+      {
+        "given": "Kejun",
+        "family": "Zhang",
+        "sequence": "additional"
+      },
+      {
+        "given": "Liping",
+        "family": "Tian",
+        "sequence": "additional"
+      },
+      {
+        "given": "Rensheng",
+        "family": "Liu",
+        "sequence": "additional"
+      },
+      {
+        "given": "Lunlun",
+        "family": "Gong",
+        "sequence": "additional"
+      },
+      {
+        "given": "Yuansheng",
+        "family": "Wu",
+        "sequence": "additional"
+      },
+      {
+        "given": "Rongzhou",
+        "family": "Zhang",
+        "sequence": "additional"
+      },
+      {
+        "given": "Ying",
+        "family": "Yu",
+        "sequence": "additional"
+      },
+      {
+        "given": "Tiechui",
+        "family": "Yuan",
+        "sequence": "additional"
+      }
+    ],
+    "authorCount": 10,
+    "offset": 0,
+    "isReferencedByCount": 0,
+    "referencesCount": 0,
+    "publisher": "Elsevier BV",
+    "published": {
+      "year": 2024
+    },
+    "url": "https://doi.org/10.2139/ssrn.4944457"
+  }
+}

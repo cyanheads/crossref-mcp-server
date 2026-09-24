@@ -74,6 +74,7 @@ function probeWork() {
     subject: [DEPOSITED],
     published: { 'date-parts': [[2024, 1, 1]] },
     author: [{ given: DEPOSITED, family: DEPOSITED, affiliation: [{ name: DEPOSITED }] }],
+    editor: [{ given: DEPOSITED, family: DEPOSITED, affiliation: [{ name: DEPOSITED }] }],
     funder: [{ name: DEPOSITED }],
     reference: [
       {
@@ -220,6 +221,53 @@ describe('the Markdown surface of every tool', () => {
     const lines = result.content.flatMap((block) => blockText(block).split('\n'));
 
     expect(lines).toContain(ESCAPED_AT_LINE_START);
+  });
+
+  /**
+   * An editor is rendered in its own section, through the same line an author is — the probe
+   * above fails if either one skips the escape, and this pins that the editor line is the one
+   * under the editor label rather than the author line counted twice.
+   */
+  it('escapes an editor crossref_get_work renders, under the editor label', async () => {
+    service.getWork.mockResolvedValue(probeWork());
+    const result = await runToolContract(getWorkTool, { doi: '10.1000/probe' });
+    const lines = result.content.flatMap((block) => blockText(block).split('\n'));
+    const editors = lines.indexOf('**Editors:**');
+
+    expect(result.structuredContent).toMatchObject({
+      editors: [{ given: NORMALIZED, family: NORMALIZED, affiliation: [{ name: NORMALIZED }] }],
+    });
+    expect(editors).toBeGreaterThan(-1);
+    expect(lines[editors + 1]).toBe(`- ${ESCAPED} ${ESCAPED} — ${ESCAPED}`);
+  });
+
+  /**
+   * A citation locator is relayed as deposited — not normalized, since it is a number a reader
+   * copies — but it is still a string the publisher typed, and both work tools render it on the
+   * same line through the same escape.
+   */
+  it('escapes a deposited locator on both work tools', async () => {
+    const record = { ...probeWork(), volume: '12', issue: '3 *Suppl*', page: '<i>e1</i>' };
+    service.getWork.mockResolvedValue(record);
+    service.searchWorks.mockResolvedValue({ ...worksPage, items: [record] });
+
+    const results = {
+      crossref_get_work: await runToolContract(getWorkTool, { doi: '10.1000/probe' }),
+      crossref_search_works: await runToolContract(searchWorksTool, { query: 'probe' }),
+    };
+    expect(results.crossref_get_work.structuredContent).toMatchObject({
+      volume: '12',
+      issue: '3 *Suppl*',
+      page: '<i>e1</i>',
+    });
+    expect(results.crossref_search_works.structuredContent).toMatchObject({
+      works: [{ volume: '12', issue: '3 *Suppl*', page: '<i>e1</i>' }],
+    });
+    for (const [name, result] of Object.entries(results)) {
+      expect(result.content.map(blockText).join('\n'), name).toContain(
+        '**Volume:** 12 | **Issue:** 3 \\*Suppl\\* | **Pages:** \\<i>e1\\</i>',
+      );
+    }
   });
 
   /**

@@ -1,0 +1,437 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2026, 4, 13]],
+      "date-time": "2026-04-13T17:44:22Z",
+      "timestamp": 1776102262404,
+      "version": "3.50.1"
+    },
+    "reference-count": 25,
+    "publisher": "American Mathematical Society (AMS)",
+    "issue": "3",
+    "license": [
+      {
+        "start": {
+          "date-parts": [[2006, 9, 28]],
+          "date-time": "2006-09-28T00:00:00Z",
+          "timestamp": 1159401600000
+        },
+        "content-version": "am",
+        "delay-in-days": 365,
+        "URL": "https://www.ams.org/publications/copyright-and-permissions"
+      }
+    ],
+    "content-domain": {
+      "domain": [],
+      "crossmark-restriction": false
+    },
+    "short-container-title": ["Proc. Amer. Math. Soc."],
+    "abstract": "<p>\n                    If\n                    <inline-formula content-type=\"math/mathml\">\n                      <mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\" alttext=\"script upper H\">\n                        <mml:semantics>\n                          <mml:mrow class=\"MJX-TeXAtom-ORD\">\n                            <mml:mi class=\"MJX-tex-caligraphic\" mathvariant=\"script\">H</mml:mi>\n                          </mml:mrow>\n                          <mml:annotation encoding=\"application/x-tex\">\\mathcal {H}</mml:annotation>\n                        </mml:semantics>\n                      </mml:math>\n                    </inline-formula>\n                    is a Hilbert space,\n                    <inline-formula content-type=\"math/mathml\">\n                      <mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\" alttext=\"upper A\">\n                        <mml:semantics>\n                          <mml:mi>A</mml:mi>\n                          <mml:annotation encoding=\"application/x-tex\">A</mml:annotation>\n                        </mml:semantics>\n                      </mml:math>\n                    </inline-formula>\n                    is a positive bounded linear operator on\n                    <inline-formula content-type=\"math/mathml\">\n                      <mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\" alttext=\"script upper H\">\n                        <mml:semantics>\n                          <mml:mrow class=\"MJX-TeXAtom-ORD\">\n                            <mml:mi class=\"MJX-tex-caligraphic\" mathvariant=\"script\">H</mml:mi>\n                          </mml:mrow>\n                          <mml:annotation encoding=\"application/x-tex\">\\mathcal {H}</mml:annotation>\n                        </mml:semantics>\n                      </mml:math>\n                    </inline-formula>\n                    and\n                    <inline-formula content-type=\"math/mathml\">\n                      <mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\" alttext=\"script upper S\">\n                        <mml:semantics>\n                          <mml:mrow class=\"MJX-TeXAtom-ORD\">\n                            <mml:mi class=\"MJX-tex-caligraphic\" mathvariant=\"script\">S</mml:mi>\n                          </mml:mrow>\n                          <mml:annotation encoding=\"application/x-tex\">\\mathcal {S}</mml:annotation>\n                        </mml:semantics>\n                      </mml:math>\n                    </inline-formula>\n                    is a closed subspace of\n                    <inline-formula content-type=\"math/mathml\">\n                      <mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\" alttext=\"script upper H\">\n                        <mml:semantics>\n                          <mml:mrow class=\"MJX-TeXAtom-ORD\">\n                            <mml:mi class=\"MJX-tex-caligraphic\" mathvariant=\"script\">H</mml:mi>\n                          </mml:mrow>\n                          <mml:annotation encoding=\"application/x-tex\">\\mathcal {H}</mml:annotation>\n                        </mml:semantics>\n                      </mml:math>\n                    </inline-formula>\n                    , the relative position between\n                    <inline-formula content-type=\"math/mathml\">\n                      <mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\" alttext=\"script upper S\">\n                        <mml:semantics>\n                          <mml:mrow class=\"MJX-TeXAtom-ORD\">\n                            <mml:mi class=\"MJX-tex-caligraphic\" mathvariant=\"script\">S</mml:mi>\n                          </mml:mrow>\n                          <mml:annotation encoding=\"application/x-tex\">\\mathcal {S}</mml:annotation>\n                        </mml:semantics>\n                      </mml:math>\n                    </inline-formula>\n                    and\n                    <inline-formula content-type=\"math/mathml\">\n                      <mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\" alttext=\"upper A Superscript negative 1 Baseline left-parenthesis script upper S Superscript up-tack Baseline right-parenthesis\">\n                        <mml:semantics>\n                          <mml:mrow>\n                            <mml:msup>\n                              <mml:mi>A</mml:mi>\n                              <mml:mrow class=\"MJX-TeXAtom-ORD\">\n                                <mml:mo>\n                                  −\n                                  \n                                </mml:mo>\n                                <mml:mn>1</mml:mn>\n                              </mml:mrow>\n                            </mml:msup>\n                            <mml:mo stretchy=\"false\">(</mml:mo>\n                            <mml:msup>\n                              <mml:mrow class=\"MJX-TeXAtom-ORD\">\n                                <mml:mi class=\"MJX-tex-caligraphic\" mathvariant=\"script\">S</mml:mi>\n                              </mml:mrow>\n                              <mml:mo>\n                                ⊥\n                                \n                              </mml:mo>\n                            </mml:msup>\n                            <mml:mo stretchy=\"false\">)</mml:mo>\n                          </mml:mrow>\n                          <mml:annotation encoding=\"application/x-tex\">A^{-1}(\\mathcal {S}^\\perp )</mml:annotation>\n                        </mml:semantics>\n                      </mml:math>\n                    </inline-formula>\n                    establishes a notion of compatibility. We show that the compatibility of\n                    <inline-formula content-type=\"math/mathml\">\n                      <mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\" alttext=\"left-parenthesis upper A comma script upper S right-parenthesis\">\n                        <mml:semantics>\n                          <mml:mrow>\n                            <mml:mo stretchy=\"false\">(</mml:mo>\n                            <mml:mi>A</mml:mi>\n                            <mml:mo>,</mml:mo>\n                            <mml:mrow class=\"MJX-TeXAtom-ORD\">\n                              <mml:mi class=\"MJX-tex-caligraphic\" mathvariant=\"script\">S</mml:mi>\n                            </mml:mrow>\n                            <mml:mo stretchy=\"false\">)</mml:mo>\n                          </mml:mrow>\n                          <mml:annotation encoding=\"application/x-tex\">(A,\\mathcal {S})</mml:annotation>\n                        </mml:semantics>\n                      </mml:math>\n                    </inline-formula>\n                    is equivalent to the existence of a convenient orthogonal projection in the operator range\n                    <inline-formula content-type=\"math/mathml\">\n                      <mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\" alttext=\"upper R left-parenthesis upper A Superscript 1 slash 2 Baseline right-parenthesis\">\n                        <mml:semantics>\n                          <mml:mrow>\n                            <mml:mi>R</mml:mi>\n                            <mml:mo stretchy=\"false\">(</mml:mo>\n                            <mml:msup>\n                              <mml:mi>A</mml:mi>\n                              <mml:mrow class=\"MJX-TeXAtom-ORD\">\n                                <mml:mn>1</mml:mn>\n                                <mml:mrow class=\"MJX-TeXAtom-ORD\">\n                                  <mml:mo>/</mml:mo>\n                                </mml:mrow>\n                                <mml:mn>2</mml:mn>\n                              </mml:mrow>\n                            </mml:msup>\n                            <mml:mo stretchy=\"false\">)</mml:mo>\n                          </mml:mrow>\n                          <mml:annotation encoding=\"application/x-tex\">R(A^{1/2})</mml:annotation>\n                        </mml:semantics>\n                      </mml:math>\n                    </inline-formula>\n                    with its canonical Hilbertian structure.\n                  </p>",
+    "DOI": "10.1090/s0002-9939-05-08007-x",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [[2005, 11, 17]],
+      "date-time": "2005-11-17T08:16:43Z",
+      "timestamp": 1132215403000
+    },
+    "page": "765-778",
+    "source": "Crossref",
+    "is-referenced-by-count": 4,
+    "special_numbering": "561",
+    "title": ["Projections in operator ranges"],
+    "prefix": "10.1090",
+    "volume": "134",
+    "author": [
+      {
+        "given": "Gustavo",
+        "family": "Corach",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Alejandra",
+        "family": "Maestripieri",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Demetrio",
+        "family": "Stojanoff",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      }
+    ],
+    "member": "14",
+    "published-online": {
+      "date-parts": [[2005, 9, 28]]
+    },
+    "reference": [
+      {
+        "key": "1",
+        "unstructured": "[1] T. Ando, De Branges spaces and analytic operator functions, Research Institute of Applied Electricity, Hokkaido University, Sapporo, Japan, 1990, 1371-1375."
+      },
+      {
+        "issue": "1",
+        "key": "2",
+        "first-page": "61",
+        "article-title": "Geometry of oblique projections",
+        "volume": "137",
+        "author": "Andruchow, E.",
+        "year": "1999",
+        "journal-title": "Studia Math.",
+        "ISSN": "https://id.crossref.org/issn/0039-3223",
+        "issn-type": "print"
+      },
+      {
+        "issue": "12",
+        "key": "3",
+        "first-page": "127",
+        "article-title": "Solution of the Δ₂ problem for an equation of hyperbolic type",
+        "author": "Fedorov, Ju. I.",
+        "year": "1978",
+        "journal-title": "Differentsial\\cprime nye Uravneniya (Ryazan)"
+      },
+      {
+        "issue": "5",
+        "key": "4",
+        "doi-asserted-by": "publisher",
+        "first-page": "1371",
+        "DOI": "10.1090/S0002-9939-99-05326-5",
+        "article-title": "The spectral properties of certain linear operators and their extensions",
+        "volume": "128",
+        "author": "Barnes, Bruce A.",
+        "year": "2000",
+        "journal-title": "Proc. Amer. Math. Soc.",
+        "ISSN": "https://id.crossref.org/issn/0002-9939",
+        "issn-type": "print"
+      },
+      {
+        "key": "5",
+        "series-title": "CMS Books in Mathematics/Ouvrages de Math\\'{e}matiques de la SMC",
+        "isbn-type": "print",
+        "volume-title": "Generalized inverses",
+        "volume": "15",
+        "author": "Ben-Israel, Adi",
+        "year": "2003",
+        "ISBN": "https://id.crossref.org/isbn/0387002936",
+        "edition": "2"
+      },
+      {
+        "issue": "1",
+        "key": "6",
+        "doi-asserted-by": "publisher",
+        "first-page": "80",
+        "DOI": "10.1016/0021-9045(81)90032-0",
+        "article-title": "Convergence of abstract splines",
+        "volume": "31",
+        "author": "de Boor, Carl",
+        "year": "1981",
+        "journal-title": "J. Approx. Theory",
+        "ISSN": "https://id.crossref.org/issn/0021-9045",
+        "issn-type": "print"
+      },
+      {
+        "key": "7",
+        "volume-title": "Square summable power series",
+        "author": "de Branges, Louis",
+        "year": "1966"
+      },
+      {
+        "issue": "2",
+        "key": "8",
+        "doi-asserted-by": "publisher",
+        "first-page": "228",
+        "DOI": "10.1006/jfan.1994.1107",
+        "article-title": "Factorization in Kreĭn spaces",
+        "volume": "124",
+        "author": "de Branges, Louis",
+        "year": "1994",
+        "journal-title": "J. Funct. Anal.",
+        "ISSN": "https://id.crossref.org/issn/0022-1236",
+        "issn-type": "print"
+      },
+      {
+        "issue": "1-2",
+        "key": "9",
+        "first-page": "337",
+        "article-title": "Oblique projections and Schur complements",
+        "volume": "67",
+        "author": "Corach, Gustavo",
+        "year": "2001",
+        "journal-title": "Acta Sci. Math. (Szeged)",
+        "ISSN": "https://id.crossref.org/issn/0001-6969",
+        "issn-type": "print"
+      },
+      {
+        "key": "10",
+        "doi-asserted-by": "publisher",
+        "first-page": "259",
+        "DOI": "10.1016/S0024-3795(01)00384-6",
+        "article-title": "Generalized Schur complements and oblique projections",
+        "volume": "341",
+        "author": "Corach, G.",
+        "year": "2002",
+        "journal-title": "Linear Algebra Appl.",
+        "ISSN": "https://id.crossref.org/issn/0024-3795",
+        "issn-type": "print"
+      },
+      {
+        "issue": "2",
+        "key": "11",
+        "doi-asserted-by": "publisher",
+        "first-page": "189",
+        "DOI": "10.1006/jath.2002.3696",
+        "article-title": "Oblique projections and abstract splines",
+        "volume": "117",
+        "author": "Corach, G.",
+        "year": "2002",
+        "journal-title": "J. Approx. Theory",
+        "ISSN": "https://id.crossref.org/issn/0021-9045",
+        "issn-type": "print"
+      },
+      {
+        "key": "12",
+        "unstructured": "[12] G. Corach, A. Maestripieri and D. Stojanoff, A classification of projectors, Banach Center Publications (to appear)."
+      },
+      {
+        "key": "13",
+        "doi-asserted-by": "crossref",
+        "first-page": "442",
+        "DOI": "10.1137/0111031",
+        "article-title": "A note on pseudoinverses",
+        "volume": "11",
+        "author": "Desoer, C. A.",
+        "year": "1963",
+        "journal-title": "J. Soc. Indust. Appl. Math.",
+        "ISSN": "https://id.crossref.org/issn/0368-4245",
+        "issn-type": "print"
+      },
+      {
+        "key": "14",
+        "isbn-type": "print",
+        "first-page": "107",
+        "article-title": "The angle between subspaces of a Hilbert space",
+        "author": "Deutsch, Frank",
+        "year": "1995",
+        "ISBN": "https://id.crossref.org/isbn/0792333349"
+      },
+      {
+        "key": "15",
+        "series-title": "CMS Books in Mathematics/Ouvrages de Math\\'{e}matiques de la SMC",
+        "isbn-type": "print",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1007/978-1-4684-9298-9",
+        "volume-title": "Best approximation in inner product spaces",
+        "volume": "7",
+        "author": "Deutsch, Frank",
+        "year": "2001",
+        "ISBN": "https://id.crossref.org/isbn/0387951563"
+      },
+      {
+        "key": "16",
+        "doi-asserted-by": "crossref",
+        "first-page": "11",
+        "DOI": "10.24033/bsmf.1403",
+        "article-title": "Étude sur les variétés et les opérateurs de Julia, avec quelques applications",
+        "volume": "77",
+        "author": "Dixmier, Jacques",
+        "year": "1949",
+        "journal-title": "Bull. Soc. Math. France",
+        "ISSN": "https://id.crossref.org/issn/0037-9484",
+        "issn-type": "print"
+      },
+      {
+        "key": "17",
+        "doi-asserted-by": "publisher",
+        "first-page": "413",
+        "DOI": "10.2307/2035178",
+        "article-title": "On majorization, factorization, and range inclusion of operators on Hilbert space",
+        "volume": "17",
+        "author": "Douglas, R. G.",
+        "year": "1966",
+        "journal-title": "Proc. Amer. Math. Soc.",
+        "ISSN": "https://id.crossref.org/issn/0002-9939",
+        "issn-type": "print"
+      },
+      {
+        "key": "18",
+        "doi-asserted-by": "publisher",
+        "first-page": "254",
+        "DOI": "10.1016/S0001-8708(71)80006-3",
+        "article-title": "On operator ranges",
+        "volume": "7",
+        "author": "Fillmore, P. A.",
+        "year": "1971",
+        "journal-title": "Advances in Math.",
+        "ISSN": "https://id.crossref.org/issn/0001-8708",
+        "issn-type": "print"
+      },
+      {
+        "key": "19",
+        "doi-asserted-by": "publisher",
+        "first-page": "828",
+        "DOI": "10.1137/0126074",
+        "article-title": "Solutions of the matrix equation 𝑋𝐴𝑋=𝑋, and relations between oblique and orthogonal projectors",
+        "volume": "26",
+        "author": "Greville, T. N. E.",
+        "year": "1974",
+        "journal-title": "SIAM J. Appl. Math.",
+        "ISSN": "https://id.crossref.org/issn/0036-1399",
+        "issn-type": "print"
+      },
+      {
+        "key": "20",
+        "doi-asserted-by": "publisher",
+        "first-page": "401",
+        "DOI": "10.1016/0024-3795(94)90452-9",
+        "article-title": "On projections in a space with an indefinite metric",
+        "volume": "208/209",
+        "author": "Hassi, Seppo",
+        "year": "1994",
+        "journal-title": "Linear Algebra Appl.",
+        "ISSN": "https://id.crossref.org/issn/0024-3795",
+        "issn-type": "print"
+      },
+      {
+        "key": "21",
+        "series-title": "Ergebnisse der Mathematik und ihrer Grenzgebiete (3) [Results in Mathematics and Related Areas (3)]",
+        "isbn-type": "print",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1007/978-3-642-78377-7",
+        "volume-title": "The uncertainty principle in harmonic analysis",
+        "volume": "28",
+        "author": "Havin, Victor",
+        "year": "1994",
+        "ISBN": "https://id.crossref.org/isbn/354056991X"
+      },
+      {
+        "issue": "3",
+        "key": "22",
+        "doi-asserted-by": "publisher",
+        "first-page": "269",
+        "DOI": "10.1016/0021-9045(83)90133-8",
+        "article-title": "Convergence of generalized inverses and spline projectors",
+        "volume": "38",
+        "author": "Izumino, Saichi",
+        "year": "1983",
+        "journal-title": "J. Approx. Theory",
+        "ISSN": "https://id.crossref.org/issn/0021-9045",
+        "issn-type": "print"
+      },
+      {
+        "key": "23",
+        "series-title": "Classics in Mathematics",
+        "isbn-type": "print",
+        "doi-asserted-by": "crossref",
+        "DOI": "10.1007/978-3-642-66282-9",
+        "volume-title": "Perturbation theory for linear operators",
+        "author": "Kato, Tosio",
+        "year": "1995",
+        "ISBN": "https://id.crossref.org/isbn/354058661X"
+      },
+      {
+        "key": "24",
+        "first-page": "431",
+        "article-title": "The theory of self-adjoint extensions of semi-bounded Hermitian transformations and its applications. I",
+        "volume": "20(62)",
+        "author": "Krein, M.",
+        "year": "1947",
+        "journal-title": "Rec. Math. [Mat. Sbornik] N.S."
+      },
+      {
+        "issue": "1",
+        "key": "25",
+        "doi-asserted-by": "publisher",
+        "first-page": "1",
+        "DOI": "10.4064/sm-128-1-1-17",
+        "article-title": "On the dependence of the orthogonal projector on deformations of the scalar product",
+        "volume": "128",
+        "author": "Pasternak-Winiarski, Zbigniew",
+        "year": "1998",
+        "journal-title": "Studia Math.",
+        "ISSN": "https://id.crossref.org/issn/0039-3223",
+        "issn-type": "print"
+      }
+    ],
+    "container-title": ["Proceedings of the American Mathematical Society"],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "http://www.ams.org/proc/2006-134-03/S0002-9939-05-08007-X/S0002-9939-05-08007-X.pdf",
+        "content-type": "unspecified",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      },
+      {
+        "URL": "https://www.ams.org/proc/2006-134-03/S0002-9939-05-08007-X/S0002-9939-05-08007-X.pdf",
+        "content-type": "unspecified",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2026, 4, 13]],
+      "date-time": "2026-04-13T16:44:25Z",
+      "timestamp": 1776098665000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://www.ams.org/proc/2006-134-03/S0002-9939-05-08007-X/"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [[2005, 9, 28]]
+    },
+    "references-count": 25,
+    "journal-issue": {
+      "issue": "3",
+      "published-print": {
+        "date-parts": [[2006, 3]]
+      }
+    },
+    "alternative-id": ["S0002-9939-05-08007-X"],
+    "URL": "https://doi.org/10.1090/s0002-9939-05-08007-x",
+    "archive": ["CLOCKSS", "Portico"],
+    "relation": {},
+    "ISSN": ["1088-6826", "0002-9939"],
+    "issn-type": [
+      {
+        "value": "1088-6826",
+        "type": "electronic"
+      },
+      {
+        "value": "0002-9939",
+        "type": "print"
+      }
+    ],
+    "subject": [],
+    "published": {
+      "date-parts": [[2005, 9, 28]]
+    }
+  }
+}

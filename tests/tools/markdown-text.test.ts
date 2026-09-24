@@ -4,6 +4,7 @@
  * @module tests/tools/markdown-text.test
  */
 
+import { HtmlRenderer, Parser } from 'commonmark';
 import { describe, expect, it } from 'vitest';
 import { mdText, mdTextAtLineStart } from '@/mcp-server/tools/markdown-text.js';
 
@@ -79,14 +80,26 @@ describe('mdText', () => {
   });
 
   /**
-   * An underscore is left alone. This server writes none of its own, so a deposited one can
-   * only pair with another deposited one, and what a pair costs is the two markers rather than
-   * the text between them — against a backslash in every identifier, URL, and TeX subscript
-   * that carries one.
+   * An underscore is escaped where CommonMark could read it as an emphasis delimiter, and left
+   * bare between two letters or digits, where it cannot: a pair of TeX subscripts is otherwise
+   * read as emphasis, and the text between them loses both underscores to it.
    */
-  it('leaves an underscore alone', () => {
-    expect(mdText('the TP53_HUMAN entry')).toBe('the TP53_HUMAN entry');
-    expect(mdText('a _title_ and $$k_{\\bot }$$')).toBe('a _title_ and $$k_{\\bot }$$');
+  it('escapes an underscore only where it could delimit emphasis', () => {
+    expect(mdText('the TP53_HUMAN entry and x_i')).toBe('the TP53_HUMAN entry and x_i');
+    expect(mdText('Δ_pu and 東京_大学')).toBe('Δ_pu and 東京_大学');
+    expect(mdText('a _title_ and $$k_{\\bot }$$')).toBe('a \\_title\\_ and $$k\\_{\\bot }$$');
+    expect(mdText('snake__case_ and _')).toBe('snake\\_\\_case\\_ and \\_');
+  });
+
+  /** Checked with the CommonMark reference renderer rather than by the shape of the escape. */
+  it('keeps every underscore a CommonMark reader would otherwise consume', () => {
+    const render = (markdown: string) => new HtmlRenderer().render(new Parser().parse(markdown));
+    const tex = '\\sqrt {m}\\in \\mathbb {Q} _{5}\\setminus \\mathbb {Q}, and \\mathbb {Q}_{p}';
+
+    expect(render(tex)).toContain('<em>');
+    expect(render(mdText(tex))).toBe(`<p>${tex}</p>\n`);
+    expect(render(mdText('the TP53_HUMAN entry'))).toBe('<p>the TP53_HUMAN entry</p>\n');
+    expect(render(mdText('a _title_ here'))).toBe('<p>a _title_ here</p>\n');
   });
 
   /**
@@ -108,7 +121,7 @@ describe('mdText', () => {
    * word survives untouched while a TeX escape keeps the backslash the deposit carried.
    */
   it('escapes a backslash only where a reader would let it escape something', () => {
-    expect(mdText('$$k_{\\bot }$$ and \\hbox')).toBe('$$k_{\\bot }$$ and \\hbox');
+    expect(mdText('$$k_{\\bot }$$ and \\hbox')).toBe('$$k\\_{\\bot }$$ and \\hbox');
     expect(mdText('50\\% of \\$5')).toBe('50\\\\% of \\\\$5');
   });
 
@@ -162,6 +175,8 @@ describe('mdText', () => {
       `<${'a'.repeat(100_000)}`,
       '\\'.repeat(100_000),
       ']'.repeat(100_000),
+      '_'.repeat(100_000),
+      'a_'.repeat(50_000),
     ];
     for (const value of adversarial) {
       const started = performance.now();

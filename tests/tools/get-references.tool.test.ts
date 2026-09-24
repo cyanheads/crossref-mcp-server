@@ -3,7 +3,8 @@
  * @module tests/tools/get-references.tool.test
  */
 
-import { createMockContext, getEnrichment } from '@cyanheads/mcp-ts-core/testing';
+import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mcp-ts-core/testing';
+import { HtmlRenderer, Parser } from 'commonmark';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getReferencesTool } from '@/mcp-server/tools/definitions/get-references.tool.js';
 import { blockText } from '../helpers/content.js';
@@ -27,6 +28,11 @@ beforeEach(() => {
   >);
   mockGetWork.mockReset();
 });
+
+/** What a CommonMark reader shows for a Markdown document, as HTML. */
+function commonmark(markdown: string): string {
+  return new HtmlRenderer().render(new Parser().parse(markdown));
+}
 
 const REF_LIST = [
   {
@@ -380,6 +386,26 @@ describe('getReferencesTool', () => {
     expect(text).toContain('*Proc. SPIE 9\\**');
     expect(text).toContain('Imaging \\`at\\` scale');
     expect(text).toContain('A\\*STAR consortium');
+  });
+
+  /**
+   * A reference's volume and first page are strings the publisher typed, rendered on the same
+   * line as the escaped citation fields around them, and they take the same escape.
+   */
+  it('escapes a deposited volume and first page on content[]', async () => {
+    mockGetWork.mockResolvedValue({
+      DOI: '10.1000/probe',
+      reference: [{ key: 'r1', volume: '3 *Suppl*', 'first-page': '<i>e1</i>' }],
+    });
+
+    const result = await runToolContract(getReferencesTool, { doi: '10.1000/probe' });
+    const html = result.content.map((block) => commonmark(blockText(block))).join('');
+
+    expect(result.structuredContent).toMatchObject({
+      references: [{ key: 'r1', volume: '3 *Suppl*', firstPage: '<i>e1</i>' }],
+    });
+    expect(html).toContain('3 *Suppl*:&lt;i&gt;e1&lt;/i&gt;');
+    expect(html).not.toContain('<em>');
   });
 
   it('handles reference with only unstructured field', async () => {

@@ -74,6 +74,33 @@ export type CrossrefDateParts = {
   timestamp?: number;
 };
 
+/**
+ * One link between a work and a post-publication update notice, as carried in `updated-by` (on
+ * the updated work, naming the notice) and `update-to` (on the notice, naming the updated work).
+ * `DOI` is the record's own DOI when the update was made in place. `source` is `publisher` or
+ * `retraction-watch`; only a `retraction-watch` entry carries `record-id`. `label` restates
+ * `type` in title case.
+ */
+export type CrossrefUpdate = {
+  DOI: string;
+  type: string;
+  label?: string;
+  source: string;
+  'record-id'?: string;
+  updated?: CrossrefDateParts;
+};
+
+/**
+ * One related identifier under a `relation` key. `asserted-by` is `subject` when this record's
+ * depositor made the assertion and `object` when the related record's depositor did, Crossref
+ * showing the inverse relation here.
+ */
+export type CrossrefRelation = {
+  id: string;
+  'id-type': string;
+  'asserted-by': string;
+};
+
 /** A single reference entry from a Crossref work's reference list. */
 export type CrossrefReference = {
   key?: string;
@@ -129,6 +156,13 @@ export type RawCrossrefWork = {
   license?: CrossrefLicense[];
   link?: CrossrefLink[];
   reference?: CrossrefReference[];
+  'updated-by'?: CrossrefUpdate[];
+  'update-to'?: CrossrefUpdate[];
+  /**
+   * Related identifiers keyed by relation type (`is-preprint-of`, `has-version`, …), each key
+   * holding an array. Deposited as `{}` on many records that relate to nothing.
+   */
+  relation?: Record<string, CrossrefRelation[]>;
   URL?: string;
   score?: number;
   language?: string;

@@ -1,0 +1,693 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2026, 9, 11]],
+      "date-time": "2026-09-11T06:21:36Z",
+      "timestamp": 1789107696274,
+      "version": "build-2803163510"
+    },
+    "reference-count": 34,
+    "publisher": "Elsevier BV",
+    "license": [
+      {
+        "start": {
+          "date-parts": [[2021, 8, 1]],
+          "date-time": "2021-08-01T00:00:00Z",
+          "timestamp": 1627776000000
+        },
+        "content-version": "tdm",
+        "delay-in-days": 0,
+        "URL": "https://www.elsevier.com/tdm/userlicense/1.0/"
+      },
+      {
+        "start": {
+          "date-parts": [[2021, 8, 1]],
+          "date-time": "2021-08-01T00:00:00Z",
+          "timestamp": 1627776000000
+        },
+        "content-version": "tdm",
+        "delay-in-days": 0,
+        "URL": "https://www.elsevier.com/legal/tdmrep-license"
+      },
+      {
+        "start": {
+          "date-parts": [[2021, 8, 1]],
+          "date-time": "2021-08-01T00:00:00Z",
+          "timestamp": 1627776000000
+        },
+        "content-version": "stm-asf",
+        "delay-in-days": 0,
+        "URL": "https://doi.org/10.15223/policy-017"
+      },
+      {
+        "start": {
+          "date-parts": [[2021, 8, 1]],
+          "date-time": "2021-08-01T00:00:00Z",
+          "timestamp": 1627776000000
+        },
+        "content-version": "stm-asf",
+        "delay-in-days": 0,
+        "URL": "https://doi.org/10.15223/policy-037"
+      },
+      {
+        "start": {
+          "date-parts": [[2021, 8, 1]],
+          "date-time": "2021-08-01T00:00:00Z",
+          "timestamp": 1627776000000
+        },
+        "content-version": "stm-asf",
+        "delay-in-days": 0,
+        "URL": "https://doi.org/10.15223/policy-012"
+      },
+      {
+        "start": {
+          "date-parts": [[2021, 8, 1]],
+          "date-time": "2021-08-01T00:00:00Z",
+          "timestamp": 1627776000000
+        },
+        "content-version": "stm-asf",
+        "delay-in-days": 0,
+        "URL": "https://doi.org/10.15223/policy-029"
+      },
+      {
+        "start": {
+          "date-parts": [[2021, 8, 1]],
+          "date-time": "2021-08-01T00:00:00Z",
+          "timestamp": 1627776000000
+        },
+        "content-version": "stm-asf",
+        "delay-in-days": 0,
+        "URL": "https://doi.org/10.15223/policy-004"
+      }
+    ],
+    "funder": [
+      {
+        "DOI": "10.13039/501100012659",
+        "name": "Foundation for Innovative Research Groups of the National Natural Science Foundation of China",
+        "doi-asserted-by": "publisher",
+        "id": [
+          {
+            "id": "10.13039/501100012659",
+            "id-type": "DOI",
+            "asserted-by": "publisher"
+          }
+        ]
+      }
+    ],
+    "content-domain": {
+      "domain": ["elsevier.com", "sciencedirect.com"],
+      "crossmark-restriction": true
+    },
+    "short-container-title": ["Chemosphere"],
+    "published-print": {
+      "date-parts": [[2021, 8]]
+    },
+    "DOI": "10.1016/j.chemosphere.2021.130212",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [[2021, 3, 9]],
+      "date-time": "2021-03-09T16:46:14Z",
+      "timestamp": 1615308374000
+    },
+    "page": "130212",
+    "update-policy": "https://doi.org/10.1016/elsevier_cm_policy",
+    "source": "Crossref",
+    "is-referenced-by-count": 80,
+    "special_numbering": "C",
+    "title": [
+      "Nano-Fe3O4-modified biochar promotes the formation of iron plaque and cadmium immobilization in rice root"
+    ],
+    "prefix": "10.1016",
+    "volume": "276",
+    "author": [
+      {
+        "given": "Jing-Yi",
+        "family": "Zhang",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Hang",
+        "family": "Zhou",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Peng",
+        "family": "Zeng",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Shi-Long",
+        "family": "Wang",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Wen-Jun",
+        "family": "Yang",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Fang",
+        "family": "Huang",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Yang",
+        "family": "Huo",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Shu-Ning",
+        "family": "Yu",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Jiao-Feng",
+        "family": "Gu",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Bo-Han",
+        "family": "Liao",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "member": "78",
+    "reference": [
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib1",
+        "doi-asserted-by": "crossref",
+        "first-page": "621",
+        "DOI": "10.1016/j.earscirev.2017.06.005",
+        "article-title": "Trace elements in the soil-plant interface: phytoavailability, translocation, and phytoremediation–A review",
+        "volume": "171",
+        "author": "Antoniadis",
+        "year": "2017",
+        "journal-title": "Earth Sci. Rev."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib2",
+        "doi-asserted-by": "crossref",
+        "first-page": "767",
+        "DOI": "10.1016/j.scitotenv.2019.01.181",
+        "article-title": "Iron plaque reduces cerium uptake and translocation in rice seedlings (Oryza sativa L.) exposed to CeO2 nanoparticles with different sizes",
+        "volume": "661",
+        "author": "Bao",
+        "year": "2019",
+        "journal-title": "Sci. Total Environ."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib3",
+        "doi-asserted-by": "crossref",
+        "first-page": "22",
+        "DOI": "10.1016/j.plaphy.2019.01.007",
+        "article-title": "Cadmium tolerance is associated with the root-driven coordination of cadmium sequestration, iron regulation, and ROS scavenging in rice",
+        "volume": "136",
+        "author": "Bari",
+        "year": "2019",
+        "journal-title": "Plant Physiol. Biochem."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib4",
+        "first-page": "1437",
+        "article-title": "Effect and mechanisms of magnetic iron supported on rice husk biochar removing Pb2+ in wastewater",
+        "volume": "11",
+        "author": "Cao",
+        "year": "2017",
+        "journal-title": "J. Environ. Eng."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib5",
+        "doi-asserted-by": "crossref",
+        "first-page": "144",
+        "DOI": "10.1016/j.cej.2018.12.175",
+        "article-title": "Modification, application and reaction mechanisms of nano-sized iron sulfide particles for pollutant removal from soil and water: a review",
+        "volume": "362",
+        "author": "Chen",
+        "year": "2019",
+        "journal-title": "Chem. Eng. J."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib6",
+        "doi-asserted-by": "crossref",
+        "first-page": "275",
+        "DOI": "10.1016/j.chemosphere.2017.02.053",
+        "article-title": "Mechanisms of Fe biofortification and mitigation of Cd accumulation in rice (Oryza sativa L.) grown hydroponically with Fe chelate fertilization",
+        "volume": "175",
+        "author": "Chen",
+        "year": "2017",
+        "journal-title": "Chemosphere"
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib7",
+        "doi-asserted-by": "crossref",
+        "first-page": "215",
+        "DOI": "10.1016/j.envpol.2016.05.071",
+        "article-title": "Iron plaque formed under aerobic conditions efficiently immobilizes arsenic in Lupinus albus L roots",
+        "volume": "216",
+        "author": "Fresno",
+        "year": "2016",
+        "journal-title": "Environ. Pollut."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib8",
+        "doi-asserted-by": "crossref",
+        "first-page": "534",
+        "DOI": "10.1016/j.ecoenv.2018.06.015",
+        "article-title": "Root iron plaque alleviates cadmium toxicity to rice (Oryza sativa) seedlings",
+        "volume": "161",
+        "author": "Fu",
+        "year": "2018",
+        "journal-title": "Ecotoxicol. Environ. Saf."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib9",
+        "doi-asserted-by": "crossref",
+        "first-page": "277",
+        "DOI": "10.1007/s11104-016-2802-8",
+        "article-title": "Identification, separation and component analysis of reddish brown and non-reddish brown iron plaque on rice (Oryza sativa) root surface",
+        "volume": "402",
+        "author": "Fu",
+        "year": "2016",
+        "journal-title": "Plant Soil"
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib10",
+        "doi-asserted-by": "crossref",
+        "first-page": "12",
+        "DOI": "10.1186/s12284-016-0112-7",
+        "article-title": "Comparison on cellular mechanisms of iron and cadmium accumulation in rice: prospects for cultivating Fe-rich but Cd-free rice",
+        "volume": "9",
+        "author": "Gao",
+        "year": "2016",
+        "journal-title": "Rice"
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib11",
+        "doi-asserted-by": "crossref",
+        "first-page": "1040",
+        "DOI": "10.1016/j.scitotenv.2018.04.369",
+        "article-title": "Topdressing iron fertilizer coupled with pre-immobilization in acidic paddy fields reduced cadmium uptake by rice (Oryza sativa L.)",
+        "volume": "636",
+        "author": "Huang",
+        "year": "2018",
+        "journal-title": "Sci. Total Environ."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib12",
+        "doi-asserted-by": "crossref",
+        "first-page": "908",
+        "DOI": "10.1016/j.arabjc.2017.05.011",
+        "article-title": "Nanoparticles: properties, applications and toxicities",
+        "volume": "12",
+        "author": "Khan",
+        "year": "2019",
+        "journal-title": "Arab. J. Chem."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib13",
+        "doi-asserted-by": "crossref",
+        "first-page": "622",
+        "DOI": "10.1016/j.envpol.2017.01.087",
+        "article-title": "Cadmium in rice: transport mechanisms, influencing factors, and minimizing measures",
+        "volume": "224",
+        "author": "Li",
+        "year": "2017",
+        "journal-title": "Environ. Pollut."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib14",
+        "doi-asserted-by": "crossref",
+        "first-page": "14",
+        "DOI": "10.1186/s12284-019-0291-0",
+        "article-title": "Aeration increases cadmium (Cd) retention by enhancing iron plaque formation and regulating pectin synthesis in the roots of rice (Oryza sativa) seedlings",
+        "volume": "12",
+        "author": "Li",
+        "year": "2019",
+        "journal-title": "Rice"
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib15",
+        "doi-asserted-by": "crossref",
+        "first-page": "314",
+        "DOI": "10.1016/j.envexpbot.2006.04.001",
+        "article-title": "Role of iron plaque in Cd uptake by and translocation within rice (Oryza sativa L.) seedlings grown in solution culture",
+        "volume": "59",
+        "author": "Liu",
+        "year": "2007",
+        "journal-title": "Environ. Exp. Bot."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib16",
+        "doi-asserted-by": "crossref",
+        "first-page": "122026",
+        "DOI": "10.1016/j.jhazmat.2020.122026",
+        "article-title": "Preparation, environmental application and prospect of biochar-supported metal nanoparticles: a review",
+        "volume": "388",
+        "author": "Liu",
+        "year": "2020",
+        "journal-title": "J. Hazard Mater."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib17",
+        "doi-asserted-by": "crossref",
+        "first-page": "147",
+        "DOI": "10.1016/j.ccr.2017.11.003",
+        "article-title": "Nanomaterials for removal of toxic elements from water",
+        "volume": "356",
+        "author": "Lu",
+        "year": "2018",
+        "journal-title": "Coord. Chem. Rev."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib18",
+        "doi-asserted-by": "crossref",
+        "first-page": "1732",
+        "DOI": "10.1007/s11356-015-5423-5",
+        "article-title": "Root water transport of Helianthus annuus L. under iron oxide nanoparticle exposure",
+        "volume": "23",
+        "author": "Martinez-Fernandez",
+        "year": "2016",
+        "journal-title": "Environ. Sci. Pollut. Res."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib19",
+        "first-page": "33",
+        "article-title": "Progress in ZIP transporter gene family in rice",
+        "author": "Meng",
+        "year": "2018",
+        "journal-title": "Hereditas (in Chinese)"
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib20",
+        "doi-asserted-by": "crossref",
+        "first-page": "14099",
+        "DOI": "10.1021/es403365w",
+        "article-title": "Fate of Cd during microbial Fe(III) mineral reduction by a novel and Cd-tolerant geobacter species",
+        "volume": "47",
+        "author": "Muehe",
+        "year": "2013",
+        "journal-title": "Environ. Sci. Technol."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib21",
+        "doi-asserted-by": "crossref",
+        "first-page": "296",
+        "DOI": "10.1016/j.envpol.2016.10.014",
+        "article-title": "Maghemite nanoparticles and ferrous sulfate for the stimulation of iron plaque formation and arsenic immobilization in Phragmites australis",
+        "volume": "219",
+        "author": "Pardo",
+        "year": "2016",
+        "journal-title": "Environ. Pollut."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib22",
+        "doi-asserted-by": "crossref",
+        "first-page": "21",
+        "DOI": "10.1016/j.jiec.2019.06.008",
+        "article-title": "Biochar-supported nanomaterials for environmental applications",
+        "volume": "78",
+        "author": "Rodriguez-Narvaez",
+        "year": "2019",
+        "journal-title": "J. Ind. Eng. Chem."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib23",
+        "doi-asserted-by": "crossref",
+        "first-page": "1008",
+        "DOI": "10.1111/plb.12484",
+        "article-title": "Iron plaque decreases cadmium accumulation in Oryza sativa L. and serves as a source of iron",
+        "volume": "18",
+        "author": "Sebastian",
+        "year": "2016",
+        "journal-title": "Plant Biol."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib24",
+        "doi-asserted-by": "crossref",
+        "first-page": "265",
+        "DOI": "10.1016/j.ecoenv.2011.11.030",
+        "article-title": "Iron plaque formation and morphoanatomy of roots from species of restinga subjected to excess iron",
+        "volume": "78",
+        "author": "Siqueira-Silva",
+        "year": "2012",
+        "journal-title": "Ecotoxicol. Environ. Saf."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib25",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Wang, Y., Wang, S., Xu, M., Xiao, et al., The impacts of γ-Fe2O3 and Fe3O4 nanoparticles on the physiology and fruit quality of muskmelon (Cucumis melo) plants. Environ. Pollut. 249, 1011-1018.",
+        "DOI": "10.1016/j.envpol.2019.03.119"
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib26",
+        "doi-asserted-by": "crossref",
+        "first-page": "100145",
+        "DOI": "10.1016/j.rhisph.2019.100145",
+        "article-title": "Biogeochemical cycles of key elements in the paddy-rice rhizosphere: microbial mechanisms and coupling processes",
+        "volume": "10",
+        "author": "Wei",
+        "year": "2019",
+        "journal-title": "Rhizosphere"
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib27",
+        "doi-asserted-by": "crossref",
+        "first-page": "51",
+        "DOI": "10.1016/j.ecoenv.2018.06.063",
+        "article-title": "Influence of iron plaque on the uptake and accumulation of chromium by rice (Oryza sativa L.) seedlings: insights from hydroponic and soil cultivation",
+        "volume": "162",
+        "author": "Xu",
+        "year": "2018",
+        "journal-title": "Ecotoxicol. Environ. Saf."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib28",
+        "first-page": "8",
+        "article-title": "Biochar amendment improves crop production in problem soils: a review",
+        "volume": "232",
+        "author": "Yu",
+        "year": "2019",
+        "journal-title": "J. Environ. Manag."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib29",
+        "series-title": "Advances in Agronomy",
+        "doi-asserted-by": "crossref",
+        "first-page": "279",
+        "DOI": "10.1016/bs.agron.2015.12.006",
+        "article-title": "Chapter five - iron redox cycling coupled to transformation and immobilization of heavy metals: implications for paddy rice safety in the red soil of South China",
+        "author": "Yu",
+        "year": "2016"
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib30",
+        "doi-asserted-by": "crossref",
+        "first-page": "473",
+        "DOI": "10.1016/j.scitotenv.2018.12.400",
+        "article-title": "Review of biochar for the management of contaminated soil: preparation, application and prospect",
+        "volume": "659",
+        "author": "Yuan",
+        "year": "2019",
+        "journal-title": "Sci. Total Environ."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib31",
+        "doi-asserted-by": "crossref",
+        "first-page": "113970",
+        "DOI": "10.1016/j.envpol.2020.113970",
+        "article-title": "Effects of nano-Fe3O4-modified biochar on iron plaque formation and Cd accumulation in rice (Oryza sativa L.)",
+        "volume": "260",
+        "author": "Zhang",
+        "year": "2020",
+        "journal-title": "Environ. Pollut."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib32",
+        "doi-asserted-by": "crossref",
+        "first-page": "392",
+        "DOI": "10.1016/j.envexpbot.2019.03.004",
+        "article-title": "Heavy metal uptake in rice is regulated by pH-dependent iron plaque formation and the expression of the metal transporter genes",
+        "volume": "162",
+        "author": "Zhang",
+        "year": "2019",
+        "journal-title": "Environ. Exp. Bot."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib33",
+        "doi-asserted-by": "crossref",
+        "first-page": "91",
+        "DOI": "10.1016/j.ecoenv.2018.01.031",
+        "article-title": "Cadmium uptake, accumulation, and remobilization in iron plaque and rice tissues at different growth stages",
+        "volume": "152",
+        "author": "Zhou",
+        "year": "2018",
+        "journal-title": "Ecotoxicol. Environ. Saf."
+      },
+      {
+        "key": "10.1016/j.chemosphere.2021.130212_bib34",
+        "doi-asserted-by": "crossref",
+        "first-page": "1052",
+        "DOI": "10.1016/j.jclepro.2018.02.248",
+        "article-title": "Supplementation with ferromanganese oxide-impregnated biochar composite reduces cadmium uptake by indica rice (Oryza sativa L.)",
+        "volume": "184",
+        "author": "Zhou",
+        "year": "2018",
+        "journal-title": "J. Clean. Prod."
+      }
+    ],
+    "container-title": ["Chemosphere"],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "https://api.elsevier.com/content/article/PII:S0045653521006810?httpAccept=text/xml",
+        "content-type": "text/xml",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "https://api.elsevier.com/content/article/PII:S0045653521006810?httpAccept=text/plain",
+        "content-type": "text/plain",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2025, 9, 23]],
+      "date-time": "2025-09-23T11:58:22Z",
+      "timestamp": 1758628702000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://linkinghub.elsevier.com/retrieve/pii/S0045653521006810"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [[2021, 8]]
+    },
+    "references-count": 34,
+    "alternative-id": ["S0045653521006810"],
+    "URL": "https://doi.org/10.1016/j.chemosphere.2021.130212",
+    "relation": {},
+    "ISSN": ["0045-6535"],
+    "issn-type": [
+      {
+        "value": "0045-6535",
+        "type": "print"
+      }
+    ],
+    "subject": [],
+    "published": {
+      "date-parts": [[2021, 8]]
+    },
+    "assertion": [
+      {
+        "value": "Elsevier",
+        "name": "publisher",
+        "label": "This article is maintained by"
+      },
+      {
+        "value": "Nano-Fe3O4-modified biochar promotes the formation of iron plaque and cadmium immobilization in rice root",
+        "name": "articletitle",
+        "label": "Article Title"
+      },
+      {
+        "value": "Chemosphere",
+        "name": "journaltitle",
+        "label": "Journal Title"
+      },
+      {
+        "value": "https://doi.org/10.1016/j.chemosphere.2021.130212",
+        "name": "articlelink",
+        "label": "CrossRef DOI link to publisher maintained version"
+      },
+      {
+        "value": "article",
+        "name": "content_type",
+        "label": "Content Type"
+      },
+      {
+        "value": "© 2021 Elsevier Ltd. All rights reserved.",
+        "name": "copyright",
+        "label": "Copyright"
+      }
+    ],
+    "article-number": "130212"
+  }
+}

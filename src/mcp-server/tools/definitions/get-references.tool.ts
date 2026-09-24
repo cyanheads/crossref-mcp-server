@@ -216,7 +216,9 @@ export const getReferencesTool = tool('crossref_get_references', {
       const journal = r.journalTitle ? ` *${mdText(r.journalTitle)}*` : '';
       const authorPart = r.author ? ` ${mdText(r.author)}` : '';
       const volPage =
-        r.volume || r.firstPage ? ` ${r.volume ?? ''}${r.firstPage ? `:${r.firstPage}` : ''}` : '';
+        r.volume || r.firstPage
+          ? ` ${mdText(r.volume ?? '')}${r.firstPage ? `:${mdText(r.firstPage)}` : ''}`
+          : '';
       const issnPart = r.issn ? ` ISSN:${r.issn}` : '';
       const title = r.articleTitle ? mdText(r.articleTitle) : `[${position}]`;
       const keyPart = r.key ? ` key:${r.key}` : '';

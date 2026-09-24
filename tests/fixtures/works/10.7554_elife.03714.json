@@ -1,0 +1,1180 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2026, 8, 24]],
+      "date-time": "2026-08-24T15:18:00Z",
+      "timestamp": 1787584680336,
+      "version": "build-2736575974"
+    },
+    "reference-count": 64,
+    "publisher": "eLife Sciences Publications, Ltd",
+    "license": [
+      {
+        "start": {
+          "date-parts": [[2014, 10, 13]],
+          "date-time": "2014-10-13T00:00:00Z",
+          "timestamp": 1413158400000
+        },
+        "content-version": "vor",
+        "delay-in-days": 0,
+        "URL": "http://creativecommons.org/licenses/by/4.0/"
+      },
+      {
+        "start": {
+          "date-parts": [[2014, 10, 13]],
+          "date-time": "2014-10-13T00:00:00Z",
+          "timestamp": 1413158400000
+        },
+        "content-version": "am",
+        "delay-in-days": 0,
+        "URL": "http://creativecommons.org/licenses/by/4.0/"
+      },
+      {
+        "start": {
+          "date-parts": [[2014, 10, 13]],
+          "date-time": "2014-10-13T00:00:00Z",
+          "timestamp": 1413158400000
+        },
+        "content-version": "tdm",
+        "delay-in-days": 0,
+        "URL": "http://creativecommons.org/licenses/by/4.0/"
+      }
+    ],
+    "funder": [
+      {
+        "DOI": "10.13039/100000011",
+        "name": "Howard Hughes Medical Institute",
+        "doi-asserted-by": "publisher",
+        "award": ["55007431"],
+        "award-info": [
+          {
+            "award-number": ["55007431"]
+          }
+        ],
+        "id": [
+          {
+            "id": "10.13039/100000011",
+            "id-type": "DOI",
+            "asserted-by": "publisher"
+          }
+        ]
+      },
+      {
+        "DOI": "10.13039/501100002855",
+        "name": "Ministry of Science and Technology of the People's Republic of China",
+        "doi-asserted-by": "publisher",
+        "award": ["2012CB518700 and 2014CB849602"],
+        "award-info": [
+          {
+            "award-number": ["2012CB518700 and 2014CB849602"]
+          }
+        ],
+        "id": [
+          {
+            "id": "10.13039/501100002855",
+            "id-type": "DOI",
+            "asserted-by": "publisher"
+          }
+        ]
+      },
+      {
+        "DOI": "10.13039/501100001809",
+        "name": "National Natural Science Foundation of China",
+        "doi-asserted-by": "publisher",
+        "award": ["Program for Distinguished Young Scholars 31225002"],
+        "award-info": [
+          {
+            "award-number": ["Program for Distinguished Young Scholars 31225002"]
+          }
+        ],
+        "id": [
+          {
+            "id": "10.13039/501100001809",
+            "id-type": "DOI",
+            "asserted-by": "publisher"
+          }
+        ]
+      },
+      {
+        "DOI": "10.13039/501100002367",
+        "name": "Chinese Academy of Sciences",
+        "doi-asserted-by": "publisher",
+        "award": ["XDB08020202"],
+        "award-info": [
+          {
+            "award-number": ["XDB08020202"]
+          }
+        ],
+        "id": [
+          {
+            "id": "10.13039/501100002367",
+            "id-type": "DOI",
+            "asserted-by": "publisher"
+          }
+        ]
+      },
+      {
+        "DOI": "10.13039/501100001809",
+        "name": "National Natural Science Foundation of China",
+        "doi-asserted-by": "publisher",
+        "award": ["Program for Distinguished Young Scholars 31230018"],
+        "award-info": [
+          {
+            "award-number": ["Program for Distinguished Young Scholars 31230018"]
+          }
+        ],
+        "id": [
+          {
+            "id": "10.13039/501100001809",
+            "id-type": "DOI",
+            "asserted-by": "publisher"
+          }
+        ]
+      }
+    ],
+    "content-domain": {
+      "domain": [],
+      "crossmark-restriction": false
+    },
+    "short-container-title": [],
+    "abstract": "<jats:p>A large group of bacterial virulence autotransporters including AIDA-I from diffusely adhering E. coli (DAEC) and TibA from enterotoxigenic E. coli (ETEC) require hyperglycosylation for functioning. Here we demonstrate that TibC from ETEC harbors a heptosyltransferase activity on TibA and AIDA-I, defining a large family of bacterial autotransporter heptosyltransferases (BAHTs). The crystal structure of TibC reveals a characteristic ring-shape dodecamer. The protomer features an N-terminal β-barrel, a catalytic domain, a β-hairpin thumb, and a unique iron-finger motif. The iron-finger motif contributes to back-to-back dimerization; six dimers form the ring through β-hairpin thumb-mediated hand-in-hand contact. The structure of ADP-D-glycero-β-D-manno-heptose (ADP-D,D-heptose)-bound TibC reveals a sugar transfer mechanism and also the ligand stereoselectivity determinant. Electron-cryomicroscopy analyses uncover a TibC–TibA dodecamer/hexamer assembly with two enzyme molecules binding to one TibA substrate. The complex structure also highlights a high efficient hyperglycosylation of six autotransporter substrates simultaneously by the dodecamer enzyme complex.</jats:p>",
+    "DOI": "10.7554/elife.03714",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [[2014, 10, 13]],
+      "date-time": "2014-10-13T07:33:43Z",
+      "timestamp": 1413185623000
+    },
+    "source": "Crossref",
+    "is-referenced-by-count": 34,
+    "title": [
+      "A structural mechanism for bacterial autotransporter glycosylation by a dodecameric heptosyltransferase family"
+    ],
+    "prefix": "10.7554",
+    "volume": "3",
+    "author": [
+      {
+        "given": "Qing",
+        "family": "Yao",
+        "sequence": "first",
+        "affiliation": [
+          {
+            "name": "Dr Feng Shao's Laboratory, National Institute of Biological Sciences, Beijing, China"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Qiuhe",
+        "family": "Lu",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Dr Feng Shao's Laboratory, National Institute of Biological Sciences, Beijing, China"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Xiaobo",
+        "family": "Wan",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Dr Niu Huang's Laboratory, National Institute of Biological Sciences, Beijing, China"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Feng",
+        "family": "Song",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "National Laboratory of Biomacromolecules, Institute of Biophysics, Chinese Academy of Sciences, Beijing, China"
+          },
+          {
+            "name": "Shandong Provincial Key Laboratory of Functional Macromolecular Biophysics, Institute of Biophysics, Dezhou University, Dezhou, China"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Yue",
+        "family": "Xu",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Dr Feng Shao's Laboratory, National Institute of Biological Sciences, Beijing, China"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Mo",
+        "family": "Hu",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Institute of Analytic Chemistry, College of Chemistry and Molecular Engineering, Peking University, Beijing, China"
+          },
+          {
+            "name": "Synthetic Functional Biomolecules Center, College of Chemistry and Molecular Engineering, Peking University, Beijing, China"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Alla",
+        "family": "Zamyatina",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Department of Chemistry, University of Natural Resources and Life Sciences, Vienna, Austria"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Xiaoyun",
+        "family": "Liu",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Institute of Analytic Chemistry, College of Chemistry and Molecular Engineering, Peking University, Beijing, China"
+          },
+          {
+            "name": "Synthetic Functional Biomolecules Center, College of Chemistry and Molecular Engineering, Peking University, Beijing, China"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Niu",
+        "family": "Huang",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Dr Niu Huang's Laboratory, National Institute of Biological Sciences, Beijing, China"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Ping",
+        "family": "Zhu",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "National Laboratory of Biomacromolecules, Institute of Biophysics, Chinese Academy of Sciences, Beijing, China"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Feng",
+        "family": "Shao",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Dr Feng Shao's Laboratory, National Institute of Biological Sciences, Beijing, China"
+          },
+          {
+            "name": "National Laboratory of Biomacromolecules, Institute of Biophysics, Chinese Academy of Sciences, Beijing, China"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "member": "4374",
+    "published-online": {
+      "date-parts": [[2014, 10, 13]]
+    },
+    "reference": [
+      {
+        "key": "bib1",
+        "doi-asserted-by": "publisher",
+        "first-page": "544",
+        "DOI": "10.1016/j.sbi.2008.06.010",
+        "article-title": "Not just for Eukarya anymore: protein glycosylation in Bacteria and Archaea",
+        "volume": "18",
+        "author": "Abu-Qarn",
+        "year": "2008",
+        "journal-title": "Current Opinion in Structural Biology"
+      },
+      {
+        "key": "bib2",
+        "doi-asserted-by": "publisher",
+        "first-page": "4854",
+        "DOI": "10.1073/pnas.72.12.4854",
+        "article-title": "NH–S hydrogen bonds in Peptococcus aerogenes ferredoxin, Clostridium pasteurianum rubredoxin, and Chromatium high potential iron protein",
+        "volume": "72",
+        "author": "Adman",
+        "year": "1975",
+        "journal-title": "Proceedings of the National Academy of Sciences of USA"
+      },
+      {
+        "key": "bib3",
+        "doi-asserted-by": "crossref",
+        "first-page": "1506",
+        "DOI": "10.1128/IAI.57.5.1506-1511.1989",
+        "article-title": "Cloning and expression of an adhesin (AIDA-I) involved in diffuse adherence of enteropathogenic Escherichia coli",
+        "volume": "57",
+        "author": "Benz",
+        "year": "1989",
+        "journal-title": "Infection and Immunity"
+      },
+      {
+        "key": "bib4",
+        "doi-asserted-by": "publisher",
+        "first-page": "1403",
+        "DOI": "10.1046/j.1365-2958.2001.02487.x",
+        "article-title": "Glycosylation with heptose residues mediated by the aah gene product is essential for adherence of the AIDA-I adhesin",
+        "volume": "40",
+        "author": "Benz",
+        "year": "2001",
+        "journal-title": "Molecular Microbiology"
+      },
+      {
+        "key": "bib5",
+        "doi-asserted-by": "publisher",
+        "first-page": "3257",
+        "DOI": "10.1021/ct300400x",
+        "article-title": "Optimization of the additive CHARMM all-atom protein force field targeting improved sampling of the backbone phi, psi and side-chain chi(1) and chi(2) dihedral angles",
+        "volume": "8",
+        "author": "Best",
+        "year": "2012",
+        "journal-title": "Journal of Chemical Theory and Computation"
+      },
+      {
+        "key": "bib6",
+        "doi-asserted-by": "publisher",
+        "first-page": "593",
+        "DOI": "10.1016/S0959-440X(00)00253-0",
+        "article-title": "Glycoside hydrolases and glycosyltransferases: families and functional modules",
+        "volume": "11",
+        "author": "Bourne",
+        "year": "2001",
+        "journal-title": "Current Opinion in Structural Biology"
+      },
+      {
+        "key": "bib7",
+        "doi-asserted-by": "publisher",
+        "first-page": "230",
+        "DOI": "10.1002/qua.1214",
+        "article-title": "Modeling zinc sulfhydryl bonds in zinc fingers",
+        "volume": "83",
+        "author": "Bredenberg",
+        "year": "2001",
+        "journal-title": "International Journal of Quantum Chemistry"
+      },
+      {
+        "key": "bib8",
+        "doi-asserted-by": "publisher",
+        "first-page": "540",
+        "DOI": "10.1016/j.sbi.2012.06.007",
+        "article-title": "Recent structures, evolution and mechanisms of glycosyltransferases",
+        "volume": "22",
+        "author": "Breton",
+        "year": "2012",
+        "journal-title": "Current Opinion in Structural Biology"
+      },
+      {
+        "key": "bib9",
+        "doi-asserted-by": "publisher",
+        "first-page": "29R",
+        "DOI": "10.1093/glycob/cwj016",
+        "article-title": "Structures and mechanisms of glycosyltransferases",
+        "volume": "16",
+        "author": "Breton",
+        "year": "2006",
+        "journal-title": "Glycobiology"
+      },
+      {
+        "key": "bib10",
+        "doi-asserted-by": "publisher",
+        "first-page": "33",
+        "DOI": "10.1006/jsbi.2000.4314",
+        "article-title": "Leginon: an automated system for acquisition of images from vitreous ice specimens",
+        "volume": "132",
+        "author": "Carragher",
+        "year": "2000",
+        "journal-title": "Journal of Structural Biology"
+      },
+      {
+        "key": "bib11",
+        "doi-asserted-by": "publisher",
+        "first-page": "9020",
+        "DOI": "10.1128/JB.01238-07",
+        "article-title": "Functional organization of the autotransporter adhesin involved in diffuse adherence",
+        "volume": "189",
+        "author": "Charbonneau",
+        "year": "2007",
+        "journal-title": "Journal of Bacteriology"
+      },
+      {
+        "key": "bib12",
+        "doi-asserted-by": "publisher",
+        "first-page": "1002",
+        "DOI": "10.1107/S0907444906022116",
+        "article-title": "The Buccaneer software for automated model building. 1. Tracing protein chains",
+        "volume": "62",
+        "author": "Cowtan",
+        "year": "2006",
+        "journal-title": "Acta Crystallographica Section D, Biological Crystallography"
+      },
+      {
+        "key": "bib13",
+        "doi-asserted-by": "publisher",
+        "first-page": "10089",
+        "DOI": "10.1063/1.464397",
+        "article-title": "Particle mesh Ewald: an N • log (N) method for Ewald sums in large systems",
+        "volume": "98",
+        "author": "Darden",
+        "year": "1993",
+        "journal-title": "Journal of Chemical Physics"
+      },
+      {
+        "key": "bib14",
+        "doi-asserted-by": "publisher",
+        "first-page": "620",
+        "DOI": "10.1016/S0076-6879(97)77034-4",
+        "article-title": "Collaborative Computational Project, number 4: providing programs for protein crystallography",
+        "volume": "277",
+        "author": "Dodson",
+        "year": "1997",
+        "journal-title": "Methods in Enzymology"
+      },
+      {
+        "key": "bib15",
+        "doi-asserted-by": "crossref",
+        "first-page": "3463",
+        "DOI": "10.1128/IAI.62.8.3463-3471.1994",
+        "article-title": "Epithelial cell invasion and adherence directed by the enterotoxigenic Escherichia coli tib locus is associated with a 104-kilodalton outer membrane protein",
+        "volume": "62",
+        "author": "Elsinghorst",
+        "year": "1994",
+        "journal-title": "Infection and Immunity"
+      },
+      {
+        "key": "bib16",
+        "doi-asserted-by": "publisher",
+        "first-page": "486",
+        "DOI": "10.1107/S0907444910007493",
+        "article-title": "Features and development of Coot",
+        "volume": "66",
+        "author": "Emsley",
+        "year": "2010",
+        "journal-title": "Acta Crystallographica Section D, Biological Crystallography"
+      },
+      {
+        "key": "bib17",
+        "doi-asserted-by": "publisher",
+        "first-page": "402",
+        "DOI": "10.1016/S0006-3495(95)80203-1",
+        "article-title": "Molecular dynamics simulations of the glucocorticoid receptor DNA-binding domain in complex with DNA and free in solution",
+        "volume": "68",
+        "author": "Eriksson",
+        "year": "1995",
+        "journal-title": "Biophysical Journal"
+      },
+      {
+        "key": "bib18",
+        "doi-asserted-by": "publisher",
+        "first-page": "4613",
+        "DOI": "10.1063/1.470648",
+        "article-title": "Constant pressure molecular dynamics simulation: the Langevin piston method",
+        "volume": "103",
+        "author": "Feller",
+        "year": "1995",
+        "journal-title": "Journal of Chemical Physics"
+      },
+      {
+        "key": "bib19",
+        "doi-asserted-by": "publisher",
+        "first-page": "170",
+        "DOI": "10.1016/j.jsb.2008.05.010",
+        "article-title": "Sharpening high resolution information in single particle electron cryomicroscopy",
+        "volume": "164",
+        "author": "Fernandez",
+        "year": "2008",
+        "journal-title": "Journal of Structural Biology"
+      },
+      {
+        "key": "bib20",
+        "doi-asserted-by": "publisher",
+        "first-page": "383",
+        "DOI": "10.1016/j.jmb.2006.07.057",
+        "article-title": "Structure of the Escherichia coli heptosyltransferase WaaC: binary complexes with ADP and ADP-2-deoxy-2-fluoro heptose",
+        "volume": "363",
+        "author": "Grizot",
+        "year": "2006",
+        "journal-title": "Journal of Molecular Biology"
+      },
+      {
+        "key": "bib21",
+        "doi-asserted-by": "publisher",
+        "first-page": "692",
+        "DOI": "10.1128/MMBR.68.4.692-744.2004",
+        "article-title": "Type V protein secretion pathway: the autotransporter story",
+        "volume": "68",
+        "author": "Henderson",
+        "year": "2004",
+        "journal-title": "Microbiology and Molecular Biology Reviews"
+      },
+      {
+        "key": "bib22",
+        "doi-asserted-by": "publisher",
+        "first-page": "845",
+        "DOI": "10.1073/pnas.0235749100",
+        "article-title": "Crystal structure of the MurG: UDP-GlcNAc complex reveals common structural principles of a superfamily of glycosyltransferases",
+        "volume": "100",
+        "author": "Hu",
+        "year": "2003",
+        "journal-title": "Proceedings of the National Academy of Sciences of USA"
+      },
+      {
+        "key": "bib23",
+        "doi-asserted-by": "publisher",
+        "first-page": "1287",
+        "DOI": "10.1016/S1074-5521(02)00295-8",
+        "article-title": "Remarkable structural similarities between diverse glycosyltransferases",
+        "volume": "9",
+        "author": "Hu",
+        "year": "2002",
+        "journal-title": "Chemistry & Biology"
+      },
+      {
+        "key": "bib24",
+        "doi-asserted-by": "publisher",
+        "first-page": "33",
+        "DOI": "10.1016/0263-7855(96)00018-5",
+        "article-title": "VMD: visual molecular dynamics",
+        "volume": "14",
+        "author": "Humphrey",
+        "year": "1996",
+        "journal-title": "Journal of Molecular Graphics"
+      },
+      {
+        "key": "bib25",
+        "doi-asserted-by": "publisher",
+        "first-page": "224",
+        "DOI": "10.1016/S0959-440X(00)00194-9",
+        "article-title": "Steered molecular dynamics and mechanical functions of proteins",
+        "volume": "11",
+        "author": "Isralewitz",
+        "year": "2001",
+        "journal-title": "Current Opinion in Structural Biology"
+      },
+      {
+        "key": "bib26",
+        "doi-asserted-by": "publisher",
+        "first-page": "11673",
+        "DOI": "10.1021/jp021564n",
+        "article-title": "Force field validation using protein side chain prediction",
+        "volume": "106",
+        "author": "Jacobson",
+        "year": "2002",
+        "journal-title": "Journal of Physical Chemistry B"
+      },
+      {
+        "key": "bib27",
+        "doi-asserted-by": "publisher",
+        "first-page": "521",
+        "DOI": "10.1146/annurev.biochem.76.061005.092322",
+        "article-title": "Glycosyltransferases: structures, functions, and mechanisms",
+        "volume": "77",
+        "author": "Lairson",
+        "year": "2008",
+        "journal-title": "Annual Review of Biochemistry"
+      },
+      {
+        "key": "bib28",
+        "doi-asserted-by": "publisher",
+        "first-page": "283",
+        "DOI": "10.1107/S0021889892009944",
+        "article-title": "PROCHECK: a program to check the stereochemical quality of protein structures",
+        "volume": "26",
+        "author": "Laskowski",
+        "year": "1993",
+        "journal-title": "Journal of Applied Crystallography"
+      },
+      {
+        "key": "bib29",
+        "doi-asserted-by": "publisher",
+        "first-page": "151",
+        "DOI": "10.3389/fmicb.2011.00151",
+        "article-title": "Autotransporters and Their Role in the Virulence of Burkholderia pseudomallei and Burkholderia mallei",
+        "volume": "2",
+        "author": "Lazar Adler",
+        "year": "2011",
+        "journal-title": "Frontiers in Microbiology"
+      },
+      {
+        "key": "bib30",
+        "doi-asserted-by": "publisher",
+        "first-page": "242",
+        "DOI": "10.1038/nature12436",
+        "article-title": "Pathogen blocks host death receptor signalling by arginine GlcNAcylation of death domains",
+        "volume": "501",
+        "author": "Li",
+        "year": "2013",
+        "journal-title": "Nature"
+      },
+      {
+        "key": "bib31",
+        "doi-asserted-by": "crossref",
+        "first-page": "4084",
+        "DOI": "10.1128/IAI.67.8.4084-4091.1999",
+        "article-title": "Identification of a glycoprotein produced by enterotoxigenic Escherichia coli",
+        "volume": "67",
+        "author": "Lindenthal",
+        "year": "1999",
+        "journal-title": "Infection and Immunity"
+      },
+      {
+        "key": "bib32",
+        "doi-asserted-by": "publisher",
+        "first-page": "193",
+        "DOI": "10.1073/pnas.54.1.193",
+        "article-title": "Rubredoxin: a new electron transfer protein from Clostridium pasteurianum",
+        "volume": "54",
+        "author": "Lovenberg",
+        "year": "1965",
+        "journal-title": "Proceedings of the National Academy of Sciences of USA"
+      },
+      {
+        "key": "bib33",
+        "doi-asserted-by": "publisher",
+        "first-page": "351",
+        "DOI": "10.1016/j.chom.2014.08.008",
+        "article-title": "An iron-containing dodecameric heptosyltransferase family modifies bacterial autotransporters in pathogenesis",
+        "volume": "16",
+        "author": "Lu",
+        "year": "2014",
+        "journal-title": "Cell Host & Microbe"
+      },
+      {
+        "key": "bib34",
+        "doi-asserted-by": "publisher",
+        "first-page": "1400",
+        "DOI": "10.1002/jcc.20065",
+        "article-title": "Extending the treatment of backbone energetics in protein force fields: limitations of gas-phase quantum mechanics in reproducing protein conformational distributions in molecular dynamics simulations",
+        "volume": "25",
+        "author": "Mackerell",
+        "year": "2004",
+        "journal-title": "Journal of Computational Chemistry"
+      },
+      {
+        "key": "bib35",
+        "doi-asserted-by": "publisher",
+        "first-page": "3586",
+        "DOI": "10.1021/jp973084f",
+        "article-title": "All-atom empirical potential for molecular modeling and dynamics studies of proteins",
+        "volume": "102",
+        "author": "MacKerell",
+        "year": "1998",
+        "journal-title": "Journal of Physical Chemistry B"
+      },
+      {
+        "key": "bib36",
+        "doi-asserted-by": "publisher",
+        "first-page": "291",
+        "DOI": "10.1146/annurev.biophys.29.1.291",
+        "article-title": "Comparative protein structure modeling of genes and genomes",
+        "volume": "29",
+        "author": "Marti-Renom",
+        "year": "2000",
+        "journal-title": "Annual Review of Biophysics and Biomolecular Structure"
+      },
+      {
+        "key": "bib37",
+        "doi-asserted-by": "publisher",
+        "first-page": "658",
+        "DOI": "10.1107/S0021889807021206",
+        "article-title": "Phaser crystallographic software",
+        "volume": "40",
+        "author": "McCoy",
+        "year": "2007",
+        "journal-title": "Journal of Applied Crystallography"
+      },
+      {
+        "key": "bib38",
+        "doi-asserted-by": "publisher",
+        "first-page": "2264",
+        "DOI": "10.1128/IAI.70.5.2264-2270.2002",
+        "article-title": "Functional substitution of the TibC protein of enterotoxigenic Escherichia coli strains for the autotransporter adhesin heptosyltransferase of the AIDA system",
+        "volume": "70",
+        "author": "Moormann",
+        "year": "2002",
+        "journal-title": "Infection and Immunity"
+      },
+      {
+        "key": "bib39",
+        "doi-asserted-by": "publisher",
+        "first-page": "240",
+        "DOI": "10.1107/S0907444996012255",
+        "article-title": "Refinement of macromolecular structures by the maximum-likelihood method",
+        "volume": "53",
+        "author": "Murshudov",
+        "year": "1997",
+        "journal-title": "Acta Crystallographica Section D, Biological Crystallography"
+      },
+      {
+        "key": "bib40",
+        "doi-asserted-by": "publisher",
+        "first-page": "765",
+        "DOI": "10.1038/nrmicro2383",
+        "article-title": "Protein glycosylation in bacteria: sweeter than ever",
+        "volume": "8",
+        "author": "Nothaft",
+        "year": "2010",
+        "journal-title": "Nature Reviews Microbiology"
+      },
+      {
+        "key": "bib64",
+        "doi-asserted-by": "crossref",
+        "DOI": "10.1016/S0076-6879(97)76066-X",
+        "volume-title": "Processing of x-ray diffraction data collected in oscillation mode",
+        "author": "Otwinowski",
+        "year": "1997"
+      },
+      {
+        "key": "bib41",
+        "doi-asserted-by": "publisher",
+        "first-page": "247",
+        "DOI": "10.1038/nature12524",
+        "article-title": "A type III effector antagonizes death receptor signalling during bacterial gut infection",
+        "volume": "501",
+        "author": "Pearson",
+        "year": "2013",
+        "journal-title": "Nature"
+      },
+      {
+        "key": "bib42",
+        "doi-asserted-by": "publisher",
+        "first-page": "1605",
+        "DOI": "10.1002/jcc.20084",
+        "article-title": "UCSF Chimera–a visualization system for exploratory research and analysis",
+        "volume": "25",
+        "author": "Pettersen",
+        "year": "2004",
+        "journal-title": "Journal of Computational Chemistry"
+      },
+      {
+        "key": "bib43",
+        "doi-asserted-by": "publisher",
+        "first-page": "1781",
+        "DOI": "10.1002/jcc.20289",
+        "article-title": "Scalable molecular dynamics with NAMD",
+        "volume": "26",
+        "author": "Phillips",
+        "year": "2005",
+        "journal-title": "Journal of Computational Chemistry"
+      },
+      {
+        "key": "bib44",
+        "doi-asserted-by": "publisher",
+        "first-page": "721",
+        "DOI": "10.1016/j.jmb.2003.07.013",
+        "article-title": "Optimal determination of particle orientation, absolute hand, and contrast loss in single-particle electron cryomicroscopy",
+        "volume": "333",
+        "author": "Rosenthal",
+        "year": "2003",
+        "journal-title": "Journal of Molecular Biology"
+      },
+      {
+        "key": "bib45",
+        "doi-asserted-by": "publisher",
+        "first-page": "519",
+        "DOI": "10.1016/j.jsb.2012.09.006",
+        "article-title": "RELION: implementation of a Bayesian approach to cryo-EM structure determination",
+        "volume": "180",
+        "author": "Scheres",
+        "year": "2012",
+        "journal-title": "Journal of Structural Biology"
+      },
+      {
+        "key": "bib46",
+        "doi-asserted-by": "publisher",
+        "first-page": "853",
+        "DOI": "10.1038/nmeth.2115",
+        "article-title": "Prevention of overfitting in cryo-EM structure determination",
+        "volume": "9",
+        "author": "Scheres",
+        "year": "2012",
+        "journal-title": "Nature Methods"
+      },
+      {
+        "key": "bib47",
+        "doi-asserted-by": "publisher",
+        "first-page": "1579",
+        "DOI": "10.1046/j.1365-2958.2003.03527.x",
+        "article-title": "Structural, genetic and functional characterization of the flagellin glycosylation process in Helicobacter pylori",
+        "volume": "48",
+        "author": "Schirm",
+        "year": "2003",
+        "journal-title": "Molecular Microbiology"
+      },
+      {
+        "key": "bib48",
+        "doi-asserted-by": "publisher",
+        "first-page": "1772",
+        "DOI": "10.1107/S0907444902011678",
+        "article-title": "Substructure solution with SHELXD",
+        "volume": "58",
+        "author": "Schneider",
+        "year": "2002",
+        "journal-title": "Acta Crystallographica Section D, Biological Crystallography"
+      },
+      {
+        "key": "bib49",
+        "doi-asserted-by": "publisher",
+        "first-page": "1606",
+        "DOI": "10.1016/S0006-3495(00)76713-0",
+        "article-title": "Size-distribution analysis of macromolecules by sedimentation velocity ultracentrifugation and lamm equation modeling",
+        "volume": "78",
+        "author": "Schuck",
+        "year": "2000",
+        "journal-title": "Biophysical Journal"
+      },
+      {
+        "key": "bib50",
+        "doi-asserted-by": "publisher",
+        "first-page": "1798",
+        "DOI": "10.1128/JB.188.5.1798-1807.2006",
+        "article-title": "Glycosylation of the self-recognizing Escherichia coli Ag43 autotransporter protein",
+        "volume": "188",
+        "author": "Sherlock",
+        "year": "2006",
+        "journal-title": "Journal of Bacteriology"
+      },
+      {
+        "key": "bib51",
+        "doi-asserted-by": "publisher",
+        "first-page": "8058",
+        "DOI": "10.1128/JB.186.23.8058-8065.2004",
+        "article-title": "Novel roles for the AIDA adhesin from diarrheagenic Escherichia coli: cell aggregation and biofilm formation",
+        "volume": "186",
+        "author": "Sherlock",
+        "year": "2004",
+        "journal-title": "Journal of Bacteriology"
+      },
+      {
+        "key": "bib52",
+        "doi-asserted-by": "publisher",
+        "first-page": "170",
+        "DOI": "10.1038/316170a0",
+        "article-title": "Beta-hairpin families in globular proteins",
+        "volume": "316",
+        "author": "Sibanda",
+        "year": "1985",
+        "journal-title": "Nature"
+      },
+      {
+        "key": "bib53",
+        "doi-asserted-by": "publisher",
+        "first-page": "203",
+        "DOI": "10.1016/0076-6879(94)43016-0",
+        "article-title": "Rubredoxin in crystalline state",
+        "volume": "243",
+        "author": "Sieker",
+        "year": "1994",
+        "journal-title": "Methods in Enzymology"
+      },
+      {
+        "key": "bib54",
+        "doi-asserted-by": "publisher",
+        "first-page": "43R",
+        "DOI": "10.1093/glycob/12.4.43R",
+        "article-title": "Protein glycosylation: nature, distribution, enzymatic formation, and disease implications of glycopeptide bonds",
+        "volume": "12",
+        "author": "Spiro",
+        "year": "2002",
+        "journal-title": "Glycobiology"
+      },
+      {
+        "key": "bib55",
+        "doi-asserted-by": "publisher",
+        "first-page": "225",
+        "DOI": "10.1038/nrmicro1100",
+        "article-title": "Protein glycosylation in bacterial mucosal pathogens",
+        "volume": "3",
+        "author": "Szymanski",
+        "year": "2005",
+        "journal-title": "Nature Reviews Microbiology"
+      },
+      {
+        "key": "bib56",
+        "doi-asserted-by": "publisher",
+        "first-page": "38",
+        "DOI": "10.1016/j.jsb.2006.05.009",
+        "article-title": "EMAN2: an extensible image processing suite for electron microscopy",
+        "volume": "157",
+        "author": "Tang",
+        "year": "2007",
+        "journal-title": "Journal of Structural Biology"
+      },
+      {
+        "key": "bib57",
+        "doi-asserted-by": "publisher",
+        "first-page": "174",
+        "DOI": "10.1016/j.ymeth.2009.04.005",
+        "article-title": "Molecular dynamics flexible fitting: a practical guide to combine cryo-electron microscopy and X-ray crystallography",
+        "volume": "49",
+        "author": "Trabuco",
+        "year": "2009",
+        "journal-title": "Methods"
+      },
+      {
+        "key": "bib58",
+        "doi-asserted-by": "publisher",
+        "first-page": "510",
+        "DOI": "10.1016/S0959-440X(00)00124-X",
+        "article-title": "Glycosyltransferase structure and mechanism",
+        "volume": "10",
+        "author": "Unligil",
+        "year": "2000",
+        "journal-title": "Current Opinion in Structural Biology"
+      },
+      {
+        "key": "bib59",
+        "doi-asserted-by": "publisher",
+        "first-page": "163",
+        "DOI": "10.1111/j.1574-6968.2007.00833.x",
+        "article-title": "Autotransporter proteins: novel targets at the bacterial cell surface",
+        "volume": "274",
+        "author": "Wells",
+        "year": "2007",
+        "journal-title": "FEMS Microbiology Letters"
+      },
+      {
+        "key": "bib60",
+        "doi-asserted-by": "publisher",
+        "first-page": "365",
+        "DOI": "10.1006/jmbi.2001.5151",
+        "article-title": "Homology between O-linked GlcNAc transferases and proteins of the glycogen phosphorylase superfamily",
+        "volume": "314",
+        "author": "Wrabl",
+        "year": "2001",
+        "journal-title": "Journal of Molecular Biology"
+      },
+      {
+        "key": "bib61",
+        "doi-asserted-by": "publisher",
+        "first-page": "2571",
+        "DOI": "10.1016/S0008-6215(03)00319-7",
+        "article-title": "Efficient chemical synthesis of both anomers of ADP L-glycero- and D-glycero-D-manno-heptopyranose",
+        "volume": "338",
+        "author": "Zamyatina",
+        "year": "2003",
+        "journal-title": "Carbohydrate Research"
+      },
+      {
+        "key": "bib62",
+        "doi-asserted-by": "publisher",
+        "first-page": "2108",
+        "DOI": "10.1021/ct700166f",
+        "article-title": "Improved methods for side chain and loop predictions via the protein local optimization program: variable dielectric model for implicitly improving the treatment of polarization effects",
+        "volume": "3",
+        "author": "Zhu",
+        "year": "2007",
+        "journal-title": "Journal of Chemical Theory and Computation"
+      },
+      {
+        "key": "bib63",
+        "doi-asserted-by": "publisher",
+        "first-page": "2359",
+        "DOI": "10.1002/jcc.21816",
+        "article-title": "SwissParam: a fast force field generation tool for small organic molecules",
+        "volume": "32",
+        "author": "Zoete",
+        "year": "2011",
+        "journal-title": "Journal of Computational Chemistry"
+      }
+    ],
+    "container-title": ["eLife"],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "http://elifesciences.org/lookup/doi/10.7554/eLife.03714",
+        "content-type": "application/pdf",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "https://cdn.elifesciences.org/articles/03714/elife-03714-v2.pdf",
+        "content-type": "application/pdf",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "https://cdn.elifesciences.org/articles/03714/elife-03714-v2.xml",
+        "content-type": "application/xml",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "https://elifesciences.org/articles/03714",
+        "content-type": "unspecified",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2023, 10, 11]],
+      "date-time": "2023-10-11T20:47:17Z",
+      "timestamp": 1697057237000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://elifesciences.org/articles/03714"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [[2014, 10, 13]]
+    },
+    "references-count": 64,
+    "alternative-id": ["10.7554/eLife.03714"],
+    "URL": "https://doi.org/10.7554/elife.03714",
+    "archive": ["CLOCKSS"],
+    "relation": {
+      "references": [
+        {
+          "id-type": "uri",
+          "id": "http://www.pdb.org/pdb/explore/explore.do?structureId=4Q1Q",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "uri",
+          "id": "http://www.pdb.org/pdb/explore/explore.do?structureId=2H1H",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "uri",
+          "id": "http://www.pdb.org/pdb/explore/explore.do?structureId=1NLM",
+          "asserted-by": "subject"
+        }
+      ],
+      "is-supplemented-by": [
+        {
+          "id-type": "uri",
+          "id": "http://www.pdb.org/pdb/search/structidSearch.do?structureId=4RAP",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "uri",
+          "id": "http://www.pdb.org/pdb/search/structidSearch.do?structureId=4RB4",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "uri",
+          "id": "http://www.ebi.ac.uk/pdbe/entry/EMD-2755",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "uri",
+          "id": "http://www.ebi.ac.uk/pdbe/entry/EMD-2756",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "uri",
+          "id": "http://www.ebi.ac.uk/pdbe/entry/EMD-2757",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "uri",
+          "id": "http://www.ebi.ac.uk/pdbe/entry/EMD-2758",
+          "asserted-by": "subject"
+        }
+      ],
+      "has-review": [
+        {
+          "id-type": "doi",
+          "id": "10.7554/eLife.03714.022",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.7554/eLife.03714.021",
+          "asserted-by": "object"
+        }
+      ]
+    },
+    "ISSN": ["2050-084X"],
+    "issn-type": [
+      {
+        "value": "2050-084X",
+        "type": "electronic"
+      }
+    ],
+    "subject": [],
+    "published": {
+      "date-parts": [[2014, 10, 13]]
+    },
+    "article-number": "e03714"
+  }
+}

@@ -135,6 +135,37 @@ describe('crossref_search_works fields', () => {
     expect(textOf(result)).toContain('**Article number:** 1234');
   });
 
+  /**
+   * The locator line crossref_get_work renders too: one line, citation order, each part only
+   * where deposited. A page and an article number are relayed independently even when a
+   * publisher deposits the same value in both.
+   */
+  it('renders every deposited locator on one line, in citation order', async () => {
+    http.route({
+      match: WORKS,
+      respond: () =>
+        workList([
+          {
+            DOI: '10.1016/j.chemosphere.2021.130212',
+            volume: '276',
+            page: '130212',
+            'article-number': '130212',
+          },
+          { DOI: '10.1038/s41586-020-2649-2', volume: '585', issue: '7825', page: '357-362' },
+        ]),
+    });
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'q',
+      fields: ['volume', 'issue', 'page', 'article-number'],
+      rows: 2,
+    });
+    const lines = textOf(result).split('\n');
+
+    expect(lines).toContain('**Volume:** 276 | **Pages:** 130212 | **Article number:** 130212');
+    expect(lines).toContain('**Volume:** 585 | **Issue:** 7825 | **Pages:** 357-362');
+  });
+
   it('omits a selected field the record does not deposit, without erroring', async () => {
     http.route({ match: WORKS, respond: () => workList([{ DOI: '10.5555/sparse' }]) });
 

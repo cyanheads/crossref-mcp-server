@@ -1,0 +1,1096 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2026, 8, 11]],
+      "date-time": "2026-08-11T08:29:08Z",
+      "timestamp": 1786436948514,
+      "version": "build-2736575974"
+    },
+    "posted": {
+      "date-parts": [[2023, 11, 8]]
+    },
+    "group-title": "Computer Science and Mathematics",
+    "reference-count": 0,
+    "publisher": "MDPI AG",
+    "license": [
+      {
+        "start": {
+          "date-parts": [[2023, 11, 8]],
+          "date-time": "2023-11-08T00:00:00Z",
+          "timestamp": 1699401600000
+        },
+        "content-version": "unspecified",
+        "delay-in-days": 0,
+        "URL": "http://creativecommons.org/licenses/by/4.0"
+      }
+    ],
+    "content-domain": {
+      "domain": [],
+      "crossmark-restriction": false
+    },
+    "short-container-title": [],
+    "accepted": {
+      "date-parts": [[2023, 11, 6]]
+    },
+    "abstract": "<jats:p>This article develops duality principles and numerical results for a large class of non-convex variational models. The main results are based on fundamental tools of convex analysis, duality theory and calculus of variations. More specifically the approach is established for a class of non-convex functionals similar as those found in some models in phase transition. Finally, in some sections we present concerning numerical examples and the respective softwares.</jats:p>",
+    "DOI": "10.20944/preprints202302.0051.v34",
+    "type": "posted-content",
+    "created": {
+      "date-parts": [[2023, 11, 8]],
+      "date-time": "2023-11-08T20:01:43Z",
+      "timestamp": 1699473703000
+    },
+    "source": "Crossref",
+    "is-referenced-by-count": 0,
+    "title": [
+      "Duality Principles and Numerical Procedures for a Large Class of Non-convex Models in the Calculus of Variations"
+    ],
+    "prefix": "10.20944",
+    "author": [
+      {
+        "ORCID": "https://orcid.org/0000-0002-3890-8263",
+        "authenticated-orcid": false,
+        "given": "Fabio",
+        "family": "Botelho",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "member": "1968",
+    "container-title": [],
+    "original-title": [],
+    "deposited": {
+      "date-parts": [[2026, 8, 11]],
+      "date-time": "2026-08-11T07:45:44Z",
+      "timestamp": 1786434344000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://www.preprints.org/manuscript/202302.0051/v34"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [[2023, 11, 8]]
+    },
+    "references-count": 0,
+    "URL": "https://doi.org/10.20944/preprints202302.0051.v34",
+    "relation": {
+      "is-version-of": [
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v1",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v2",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v3",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v4",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v5",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v6",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v7",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v8",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v9",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v10",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v11",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v12",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v13",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v14",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v15",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v16",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v17",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v18",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v19",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v20",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v21",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v22",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v23",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v24",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v25",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v26",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v27",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v28",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v29",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v30",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v31",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v32",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v33",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v35",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v36",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v37",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v38",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v39",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v40",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v41",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v42",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v43",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v44",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v45",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v46",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v47",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v48",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v49",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v50",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v51",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v52",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v53",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v54",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v55",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v56",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v57",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v58",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v59",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v60",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v61",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v62",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v63",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v64",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v65",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v66",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v67",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v68",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v69",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v70",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v71",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v72",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v73",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v74",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v75",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v76",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v77",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v78",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v79",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v80",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v81",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v82",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v83",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v84",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v85",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v86",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v87",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v88",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v89",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v90",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v91",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v92",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v93",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v94",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v95",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v96",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v97",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v98",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v99",
+          "asserted-by": "subject"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v100",
+          "asserted-by": "subject"
+        }
+      ],
+      "has-version": [
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v2",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v85",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v53",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v61",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v93",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v69",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v37",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v45",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v13",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v21",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v77",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v29",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v101",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v74",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v42",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v50",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v82",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v90",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v58",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v26",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v98",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v10",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v66",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v5",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v18",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v75",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v83",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v51",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v91",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v27",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v59",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v67",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v35",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v43",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v11",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v99",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v8",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v19",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v3",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v96",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v64",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v72",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v40",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v80",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v16",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v48",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v56",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v24",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v32",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v88",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v100",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v41",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v97",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v73",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v81",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v49",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v17",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v25",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v89",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v57",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v65",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v33",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v6",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v1",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v30",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v86",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v94",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v62",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v70",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v38",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v14",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v78",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v46",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v54",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v22",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v9",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v4",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v63",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v31",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v95",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v71",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v39",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v47",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v15",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v23",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v79",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v87",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v55",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v52",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v20",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v84",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v92",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v60",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v28",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v36",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v12",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v68",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v76",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v44",
+          "asserted-by": "object"
+        },
+        {
+          "id-type": "doi",
+          "id": "10.20944/preprints202302.0051.v7",
+          "asserted-by": "object"
+        }
+      ]
+    },
+    "subject": [],
+    "published": {
+      "date-parts": [[2023, 11, 8]]
+    },
+    "subtype": "preprint"
+  }
+}

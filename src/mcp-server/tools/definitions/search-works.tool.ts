@@ -15,6 +15,7 @@ import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { isBlank, nonBlank } from '@/mcp-server/tools/blank-input.js';
 import { mdText } from '@/mcp-server/tools/markdown-text.js';
+import { locatorFields, locatorLine, projectLocators } from '@/mcp-server/tools/work-locators.js';
 import {
   formatDateParts,
   getCrossrefService,
@@ -95,15 +96,7 @@ const WorkSummarySchema = z
         'Publication date — the first of published, published-print, and published-online that names one. A component Crossref records as unknown is omitted, and so is every component below it.',
       ),
     containerTitle: z.string().optional().describe('Journal or container name'),
-    volume: z.string().optional().describe('Volume of the container the work appears in'),
-    issue: z.string().optional().describe('Issue of the container the work appears in'),
-    page: z.string().optional().describe('Page range as deposited, e.g. "357-362"'),
-    articleNumber: z
-      .string()
-      .optional()
-      .describe(
-        'Article number, deposited by journals that number articles instead of paging them',
-      ),
+    ...locatorFields,
     issn: z.array(z.string()).optional().describe('ISSN(s) of the containing journal'),
     publisher: z.string().optional().describe('Publisher name'),
     isReferencedByCount: z.number().optional().describe('Incoming citation count'),
@@ -112,7 +105,7 @@ const WorkSummarySchema = z
       .string()
       .optional()
       .describe(
-        'Abstract when present in the indexed record — the text of the publisher’s JATS deposit, with markup removed and character references decoded; a link keeps its tag only where its href holds an address the text it wraps does not already carry, and a formula the deposit encodes more than once appears once, in the first notation deposited',
+        'Abstract when present in the indexed record — the text of the publisher’s JATS deposit, with markup removed and character references decoded; a link keeps its tag only where its href holds an address the text it wraps does not already carry, and each formula appears once — MathML as the TeX annotation it carries, otherwise written out linearly (x_i, A^{−1}, √(m), (a+b)/c), and TeX deposited beside MathML in whichever notation comes first',
       ),
   })
   .describe('Work summary');
@@ -390,10 +383,7 @@ export const searchWorksTool = tool('crossref_search_works', {
         ...(raw['container-title']?.[0] !== undefined && {
           containerTitle: normalizeMarkupText(raw['container-title'][0]),
         }),
-        ...(raw.volume !== undefined && { volume: raw.volume }),
-        ...(raw.issue !== undefined && { issue: raw.issue }),
-        ...(raw.page !== undefined && { page: raw.page }),
-        ...(raw['article-number'] !== undefined && { articleNumber: raw['article-number'] }),
+        ...projectLocators(raw),
         ...(raw.ISSN?.length && { issn: raw.ISSN }),
         ...(raw.publisher !== undefined && { publisher: normalizeText(raw.publisher) }),
         ...(raw['is-referenced-by-count'] !== undefined && {
@@ -501,13 +491,8 @@ export const searchWorksTool = tool('crossref_search_works', {
       lines.push(`**DOI:** ${w.doi}${w.type ? ` | **Type:** ${w.type}` : ''}`);
       if (w.published?.year) lines.push(`**Published:** ${formatDateParts(w.published)}`);
       if (w.containerTitle) lines.push(`**Journal:** ${mdText(w.containerTitle)}`);
-      const locators = [
-        w.volume !== undefined && `**Volume:** ${w.volume}`,
-        w.issue !== undefined && `**Issue:** ${w.issue}`,
-        w.page !== undefined && `**Pages:** ${w.page}`,
-        w.articleNumber !== undefined && `**Article number:** ${w.articleNumber}`,
-      ].filter(Boolean);
-      if (locators.length > 0) lines.push(locators.join(' | '));
+      const locators = locatorLine(w);
+      if (locators) lines.push(locators);
       if (w.issn?.length) lines.push(`**ISSN:** ${w.issn.join(', ')}`);
       if (w.publisher) lines.push(`**Publisher:** ${mdText(w.publisher)}`);
       if (w.authors?.length) {

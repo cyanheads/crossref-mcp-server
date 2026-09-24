@@ -15,7 +15,10 @@
  * out only where its own text already carries the address its `href` holds; an `<alternatives>`
  * wrapper is the one region that selects rather than strips, keeping the first of the encodings
  * it holds so one expression does not reach the reader twice and leaving the block boundary a
- * formula leaves, whichever encoding it kept. All three passes end in the same
+ * formula leaves, whichever encoding it kept; a MathML formula is the one region that is read
+ * rather than emptied — see `mathml` — so the operators its tree encodes as structure survive
+ * the loss of its tags. Every region is found by a scan linear in the field, however many of
+ * its openers the deposit leaves unclosed. All three passes end in the same
  * baseline: character references decoded against the HTML5 named set in `html-entities`, then
  * whitespace collapsed.
  *
@@ -42,6 +45,8 @@ import {
 import { httpErrorFromResponse, logger, withExtra, withRetry } from '@cyanheads/mcp-ts-core/utils';
 import { getServerConfig } from '@/config/server-config.js';
 import { decodeHtmlEntities } from './html-entities.js';
+import { type LinkText, linkTextReader } from './link-text.js';
+import { mathmlText } from './mathml.js';
 import type {
   CrossrefDateParts,
   CrossrefListMessage,
@@ -117,9 +122,11 @@ export function normalizeText(raw: string): string {
  * match `"y"` gives every attribute two readings and the whole tail 2^n of them, which a tag
  * left unterminated by its deposit backtracks through: `<p class="a" x = "y" x = "y" …` costs
  * seconds at fifty pairs and does not improve with fewer. A bare value containing a quote is not
- * well formed in any case.
+ * well formed in any case. It excludes `<` for the same kind of reason: a tag cannot hold one
+ * unquoted, and admitting it lets the value of a tag the deposit never terminated run on through
+ * every tag after it — `<i x=1<i x=1…` — so each one is rescanned to the end of the field.
  */
-const TAG_ATTRIBUTES = String.raw`(?:\s+[A-Za-z_:][\w.:-]*\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>"']+))*\s*`;
+const TAG_ATTRIBUTES = String.raw`(?:\s+[A-Za-z_:][\w.:-]*\s*=\s*(?:"[^"]*"|'[^']*'|[^\s<>"']+))*\s*`;
 
 /**
  * A well-formed tag. The name follows `<` with no space — so an inequality written
@@ -212,47 +219,86 @@ export const ELEMENT_VERDICTS = new Map<string, Verdict>([
 ]);
 
 /**
- * A whole MathML formula, matched end to end so a strip can never half-consume one. Removing
- * the region outright would delete the symbol the sentence is about.
+ * A construct matched end to end — from its opening tag to the first closing tag after it — so
+ * a strip can never half-consume one. The two tags are matched separately rather than as one
+ * lazy `<open>[\s\S]*?</close>` pattern: that pattern learns an opener has no closer by scanning
+ * to the end of the field, and does so again from every later opener, which is quadratic in a
+ * field packed with unclosed ones. Found separately, the first opener with no closer after it
+ * ends the search, since no later opener can have one either — see `replaceRegions`.
  */
-const MATHML_SPAN =
-  /<(?:[A-Za-z][\w.-]*:)?math\b[^>]*>([\s\S]*?)<\/(?:[A-Za-z][\w.-]*:)?math\s*>/gi;
+interface Region {
+  /** The closing tag, global. */
+  readonly closer: RegExp;
+  /** The opening tag, global. */
+  readonly opener: RegExp;
+}
+
+/** A region whose elements are named by `names` (a regex alternation), opened by `openerTail`. */
+function region(names: string, openerTail: string): Region {
+  const prefix = '(?:[A-Za-z][\\w.-]*:)?';
+  return {
+    opener: new RegExp(String.raw`<${prefix}(?:${names})\b${openerTail}>`, 'gi'),
+    closer: new RegExp(String.raw`</${prefix}(?:${names})\s*>`, 'gi'),
+  };
+}
 
 /**
- * The alternate encoding a MathML deposit carries beside its presentation markup — the same
- * expression a second time, in TeX or in Content MathML. Emitting both renders one formula
- * twice, so the annotation and its payload come out with the region's tags.
+ * A whole MathML formula. Removing the region outright would delete the symbol the sentence is
+ * about, and emptying it of tags deletes every operator its tree encodes as structure — so it is
+ * read instead, by `mathmlText`. The opener's attributes stop at the next `<`, which no
+ * attribute can hold unquoted, so an opener the deposit never terminated costs one short scan.
  */
-const MATHML_ANNOTATION =
-  /<(?:[A-Za-z][\w.-]*:)?annotation(?:-xml)?\b[^>]*>[\s\S]*?<\/(?:[A-Za-z][\w.-]*:)?annotation(?:-xml)?\s*>/gi;
+const MATHML = region('math', '[^<>]*');
 
 /**
- * A JATS `<alternatives>` wrapper, matched end to end. It holds several encodings of one
- * object and expects a consumer to pick one — a formula's TeX beside the same formula's
- * presentation MathML, or a graphic beside the TeX that reproduces it. Emitting every child
- * that carries text renders one expression twice.
+ * A JATS `<alternatives>` wrapper. It holds several encodings of one object and expects a
+ * consumer to pick one — a formula's TeX beside the same formula's presentation MathML, or a
+ * graphic beside the TeX that reproduces it. Emitting every child that carries text renders one
+ * expression twice.
  *
  * `alternatives` is an ordinary English word, which on the reference surface would ordinarily
  * keep its brackets. Matching it as a region is what settles that: a reader who writes the
  * word in angle brackets does not also write a closing tag for it, so the pair is what
  * identifies the construct, and an unclosed one matches nothing and is left whole.
  */
-const ALTERNATIVES_SPAN = new RegExp(
-  String.raw`<(?:[A-Za-z][\w.-]*:)?alternatives\b${TAG_ATTRIBUTES}>([\s\S]*?)<\/(?:[A-Za-z][\w.-]*:)?alternatives\s*>`,
-  'gi',
-);
+const ALTERNATIVES = region('alternatives', TAG_ATTRIBUTES);
 
 /**
- * A JATS structured citation deposited whole into a free-text field, matched end to end the
- * way a MathML formula is. Inside one, every bracket is a tag by construction — nobody types
- * a Miller index inside `<mixed-citation>` — so the name-by-name allow-list does not apply
- * there and the whole vocabulary comes out, however it is spelled.
+ * A JATS structured citation deposited whole into a free-text field. Inside one, every bracket
+ * is a tag by construction — nobody types a Miller index inside `<mixed-citation>` — so the
+ * name-by-name allow-list does not apply there and the whole vocabulary comes out, however it
+ * is spelled.
  */
-const CITATION_ELEMENTS = ['mixed-citation', 'element-citation', 'nlm-citation', 'citation'];
-const CITATION_SPAN = new RegExp(
-  String.raw`<(?:[A-Za-z][\w.-]*:)?(?:${CITATION_ELEMENTS.join('|')})\b${TAG_ATTRIBUTES}>([\s\S]*?)<\/(?:[A-Za-z][\w.-]*:)?(?:${CITATION_ELEMENTS.join('|')})\s*>`,
-  'gi',
-);
+const CITATION = region('mixed-citation|element-citation|nlm-citation|citation', TAG_ATTRIBUTES);
+
+/**
+ * Replace every region in a string with what `read` makes of its content — the text between
+ * its opening and closing tags — and leave everything outside the regions as it was.
+ *
+ * Each region runs from an opener to the first closer after it, and the next search resumes
+ * past that closer. An opener with no closer after it claims nothing, and it ends the search:
+ * every later opener sits after it, so a closer following one would have followed this one
+ * too. That is what keeps the scan linear — the one search for a closer that comes back empty
+ * reads the rest of the field once, rather than once per unclosed opener.
+ */
+function replaceRegions(
+  text: string,
+  { opener, closer }: Region,
+  read: (inner: string) => string,
+): string {
+  let result = '';
+  let resume = 0;
+  opener.lastIndex = 0;
+  for (let open = opener.exec(text); open; open = opener.exec(text)) {
+    closer.lastIndex = opener.lastIndex;
+    const close = closer.exec(text);
+    if (!close) break;
+    result += text.slice(resume, open.index) + read(text.slice(opener.lastIndex, close.index));
+    resume = closer.lastIndex;
+    opener.lastIndex = resume;
+  }
+  return result + text.slice(resume);
+}
 
 /** Letters and digits in any script — Latin, CJK, Greek — not just ASCII `\w`. */
 const WORD_CHAR = /[\p{L}\p{N}]/u;
@@ -297,26 +343,13 @@ const URI_SCHEME = /^[A-Za-z][A-Za-z0-9+.-]*:(?:\/\/)?/;
  * The closing tag of each link element, in any namespace spelling. Global rather than plain so
  * the search can start at the opening tag through `lastIndex` and read the rest of the string
  * in place — the alternative copies everything after every link element just to find its end.
+ * `linkTextReader` reads each link's text up to the first of these after it.
  */
-const LINK_CLOSERS = new Map(
+const LINK_CLOSERS: ReadonlyMap<string, RegExp> = new Map(
   LINK_ELEMENTS.map(
     (name) => [name, new RegExp(String.raw`</(?:[A-Za-z][\w.-]*:)?${name}\s*>`, 'gi')] as const,
   ),
 );
-
-/**
- * The text a link element wraps, with any markup inside it removed and whitespace collapsed —
- * what a reader is left holding if the element's own tags come out. Undefined when the deposit
- * never closes the element, the one case where the text cannot be seen at all.
- */
-function linkText(whole: string, from: number, name: string): string | undefined {
-  const closer = LINK_CLOSERS.get(name);
-  if (!closer) return;
-  closer.lastIndex = from;
-  const close = closer.exec(whole);
-  if (!close) return;
-  return collapseWhitespace(whole.slice(from, close.index).replace(/<[^>]*>/g, ''));
-}
 
 /**
  * Whether a link element's tags can come out without costing the reader its address.
@@ -345,7 +378,7 @@ function linkText(whole: string, from: number, name: string): string | undefined
  * tighter one (equality rather than containment) keeps the tag whenever the deposit wraps a
  * sentence around the URL, which protects nothing.
  */
-function linkAddressSurvives(openTag: string, text: string): boolean {
+function linkAddressSurvives(openTag: string, text: LinkText): boolean {
   const attribute = HREF_ATTRIBUTE.exec(openTag);
   const href = (attribute?.[1] ?? attribute?.[2] ?? attribute?.[3] ?? '').trim();
   if (href === '' || href.startsWith('#')) return true;
@@ -411,26 +444,20 @@ function firstAlternative(inner: string): string {
 }
 
 /**
- * Empty a MathML formula of its markup, so the expression reads as one token —
- * `<msub><mi>Airy</mi><mn>2</mn></msub>` is `Airy2`. Inside a region every bracket is a tag by
- * construction, so neither the shape test nor the allow-list has anything to protect: the tags
- * come out with no separator, and the whitespace a deposit pretty-prints between them comes out
- * with them, since it is insignificant in XML. A formula that needs a visible space writes it as
- * a character reference, which the strip does not touch and the decode resolves afterwards.
+ * A MathML formula as one expression in the sentence around it. Inside, the region is read by
+ * `mathmlText` — its TeX annotation where it deposits one, otherwise its tree written out — with
+ * no separator of its own and none of the whitespace a deposit pretty-prints between its tags,
+ * which is insignificant in XML. A character reference in a token is text to that reading and
+ * resolves in the decode afterwards, so an escaped `<` is a relation, never a tag.
  *
  * Outside is the opposite of inside: the region stands as its own token in the sentence and is
  * never a continuation of the word beside it, so it leaves a block boundary. A MathML deposit
  * carries the whole token — `<mmultiscripts><mi>Si</mi>…<mn>33</mn>` is all of `³³Si` — and
  * publishers routinely deposit no space against the prose, so a tight join there would read
- * `thin films ofSi33and partially filled`.
+ * `thin films of^{33}Siand partially filled`.
  */
-function stripMathml(inner: string): string {
-  const formula = inner
-    .replace(MATHML_ANNOTATION, '')
-    .split(/<[^>]*>/)
-    .map((run) => run.trim())
-    .join('');
-  return ` ${formula} `;
+function readMathml(inner: string): string {
+  return ` ${mathmlText(inner)} `;
 }
 
 /**
@@ -459,6 +486,7 @@ function stripTags(text: string, unlisted: Verdict): string {
    * packed with unterminated openers from costing a full scan apiece.
    */
   const unclosed = new Set<string>();
+  const linkText = linkTextReader(text, LINK_CLOSERS);
   return text.replace(
     TAG,
     (
@@ -477,7 +505,7 @@ function stripTags(text: string, unlisted: Verdict): string {
         } else if (selfClose || unclosed.has(name)) {
           return tag;
         } else {
-          const inner = linkText(whole, offset + tag.length, name);
+          const inner = linkText(offset + tag.length, name);
           if (inner === undefined) {
             unclosed.add(name);
             return tag;
@@ -511,12 +539,13 @@ function stripTags(text: string, unlisted: Verdict): string {
  *    `<Stack Overflow, https://…>`, `<Available from: http://…>`, and `<B. subtilis>` — all text
  *    a reader needs, and all of them read as a tag under a looser `<name\b[^>]*>`.
  * 2. **Region.** A MathML formula, a JATS structured citation, and an `<alternatives>` wrapper
- *    are matched end to end, because inside one there is no typed bracket to protect. The first
- *    two are emptied of tags; the third holds one object encoded several ways and is reduced to
- *    its first text-bearing child, or the same expression reaches the reader twice. All or
- *    nothing: an unclosed region matches nothing and is left whole rather than half-consumed.
- *    The two formula-bearing regions leave a block boundary on their outer edge, because a
- *    formula stands as its own token in the sentence rather than continuing the word beside it.
+ *    are matched end to end, because inside one there is no typed bracket to protect. A formula
+ *    is read as one expression, keeping the operators its tree encodes as structure; a citation
+ *    is emptied of tags; a wrapper holds one object encoded several ways and is reduced to its
+ *    first text-bearing child, or the same expression reaches the reader twice. All or nothing:
+ *    an unclosed region matches nothing and is left whole rather than half-consumed. The two
+ *    formula-bearing regions leave a block boundary on their outer edge, because a formula
+ *    stands as its own token in the sentence rather than continuing the word beside it.
  * 3. **Name.** Everywhere else the element name decides, on three shared classes plus a
  *    per-surface default. Scripts and inline formula wrappers leave nothing — `O<sub>2</sub>` is
  *    one formula and a space there splits it, `T<inf>c</inf>` is one symbol. Inline emphasis and
@@ -544,27 +573,21 @@ function stripTags(text: string, unlisted: Verdict): string {
  * `<span class="smallcaps">xvii</span><sup>e</sup>` is `xviie`, not `xvii e`.
  */
 function stripMarkup(raw: string, unlisted: Verdict): string {
-  return collapseWhitespace(
-    stripTags(
-      raw
-        /**
-         * The `<alternatives>` selection runs before the others: it hands back one of its
-         * children as deposited, and that child is a MathML formula as often as not.
-         *
-         * The block boundary is the wrapper's own, not the selected child's. A wrapper holds a
-         * formula, and a formula stands as its own token in the sentence rather than continuing
-         * the word beside it — the same reading that gives a MathML region its outer edge. It
-         * has to be the wrapper's, because publishers deposit the encodings in either order:
-         * decided by the child, the same construct would separate where the MathML came first
-         * and close up where the TeX did, and `time scale<inline-formula>…` would read
-         * `time scale$\mathbb{T}$with`.
-         */
-        .replace(ALTERNATIVES_SPAN, (_, inner: string) => ` ${firstAlternative(inner)} `)
-        .replace(MATHML_SPAN, (_, inner: string) => stripMathml(inner))
-        .replace(CITATION_SPAN, (_, inner: string) => stripTags(inner, 'inline')),
-      unlisted,
-    ),
-  );
+  /**
+   * The `<alternatives>` selection runs before the others: it hands back one of its children as
+   * deposited, and that child is a MathML formula as often as not.
+   *
+   * The block boundary is the wrapper's own, not the selected child's. A wrapper holds a formula,
+   * and a formula stands as its own token in the sentence rather than continuing the word beside
+   * it — the same reading that gives a MathML region its outer edge. It has to be the wrapper's,
+   * because publishers deposit the encodings in either order: decided by the child, the same
+   * construct would separate where the MathML came first and close up where the TeX did, and
+   * `time scale<inline-formula>…` would read `time scale$\mathbb{T}$with`.
+   */
+  const selected = replaceRegions(raw, ALTERNATIVES, (inner) => ` ${firstAlternative(inner)} `);
+  const read = replaceRegions(selected, MATHML, readMathml);
+  const cited = replaceRegions(read, CITATION, (inner) => stripTags(inner, 'inline'));
+  return collapseWhitespace(stripTags(cited, unlisted));
 }
 
 /**

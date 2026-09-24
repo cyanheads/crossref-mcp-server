@@ -1,0 +1,229 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2024, 9, 6]],
+      "date-time": "2024-09-06T00:38:06Z",
+      "timestamp": 1725583086840
+    },
+    "edition-number": "1",
+    "reference-count": 0,
+    "publisher": "Editora Omnis Scientia",
+    "isbn-type": [
+      {
+        "value": "9786560365452",
+        "type": "print"
+      }
+    ],
+    "content-domain": {
+      "domain": [],
+      "crossmark-restriction": false
+    },
+    "short-container-title": [],
+    "DOI": "10.47094/978-65-6036-545-2",
+    "type": "edited-book",
+    "created": {
+      "date-parts": [[2024, 9, 5]],
+      "date-time": "2024-09-05T13:53:09Z",
+      "timestamp": 1725544389000
+    },
+    "source": "Crossref",
+    "is-referenced-by-count": 0,
+    "title": [
+      "DILEMAS ÉTICOS E BIOÉTICOS EM SITUAÇÕES PERSISTENTES NA ÁREA DAS CIÊNCIAS DA SAÚDE E DA VIDA"
+    ],
+    "prefix": "10.47094",
+    "author": [
+      {
+        "given": "Regina Márcia Soares",
+        "family": "Cavalcante",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "author",
+            "vocabulary": "crossref"
+          }
+        ]
+      }
+    ],
+    "member": "26693",
+    "published-online": {
+      "date-parts": [[2024]]
+    },
+    "container-title": [],
+    "original-title": [],
+    "deposited": {
+      "date-parts": [[2024, 9, 5]],
+      "date-time": "2024-09-05T13:53:11Z",
+      "timestamp": 1725544391000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://editoraomnisscientia.com.br/catalogos/ciencias-da-saude/dilemas-eticos-e-bioeticos-em-situacoes-persistentes-na-area-das-ciencias-da-saude-e-da-vida/"
+      }
+    },
+    "subtitle": [],
+    "editor": [
+      {
+        "given": "Daniel Luís Viana",
+        "family": "Cruz",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "editor",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Amâncio António de Sousa",
+        "family": "Carvalho",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "editor",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Cássio",
+        "family": "Brancaleone",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "editor",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Marcelo Luiz Bezerra da",
+        "family": "Silva",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "editor",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Pauliana Valéria Machado",
+        "family": "Galvão",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "editor",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Plínio Pereira",
+        "family": "Gomes Júnior",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "editor",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Walter Santos",
+        "family": "Evangelista Júnior",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "editor",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Wendel José Teles",
+        "family": "Pontes",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "editor",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Camyla Rocha de Carvalho",
+        "family": "Guedine",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "editor",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Cristieli Sérgio de Menezes",
+        "family": "Oliveira",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "editor",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Hugo Barbosa do",
+        "family": "Nascimento",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "editor",
+            "vocabulary": "crossref"
+          }
+        ]
+      },
+      {
+        "given": "Marcio Luiz Lima",
+        "family": "Taga",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "role": "editor",
+            "vocabulary": "crossref"
+          }
+        ]
+      }
+    ],
+    "short-title": [],
+    "issued": {
+      "date-parts": [[2024]]
+    },
+    "ISBN": ["9786560365452"],
+    "references-count": 0,
+    "URL": "https://doi.org/10.47094/978-65-6036-545-2",
+    "relation": {},
+    "subject": [],
+    "published": {
+      "date-parts": [[2024]]
+    }
+  }
+}
