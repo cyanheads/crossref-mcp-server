@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.4.0](changelog/0.4.x/0.4.0.md) — 2026-09-23 · ⚠️ Breaking
+
+Crossref rejections come back as declared reasons with the rejected inputs, works_cursor walks on the journal and funder tools work again, crossref_search_works.fields is limited to the 17 names the summary projects, and blank search inputs read as omitted.
+
 ## [0.3.13](changelog/0.3.x/0.3.13.md) — 2026-09-19 · 🛡️ Security
 
 crossref_get_work and crossref_get_references accept a resolver-wrapped DOI, sessions declare themselves stateless in src/, and the Crossref request URL no longer reaches callers in error.data.

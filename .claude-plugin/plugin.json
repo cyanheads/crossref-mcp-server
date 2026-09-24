@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "crossref-mcp-server",
-  "version": "0.3.13",
+  "version": "0.4.0",
   "description": "Resolve DOIs, search ~155M scholarly works, fetch references, and look up publishers via the Crossref REST API. STDIO or Streamable HTTP.",
   "author": {
     "name": "Casey Hand",

@@ -1,6 +1,6 @@
 # crossref-mcp-server - Directory Structure
 
-Generated on: 2026-09-19 17:02:10
+Generated on: 2026-09-24 05:52:40
 
 ```text
 crossref-mcp-server/
@@ -27,6 +27,7 @@ crossref-mcp-server/
 │   ├── 0.1.x/
 │   ├── 0.2.x/
 │   ├── 0.3.x/
+│   ├── 0.4.x/
 │   └── template.md
 ├── docs/
 │   ├── design.md
@@ -153,6 +154,7 @@ crossref-mcp-server/
 │   │       │   ├── search-funders.tool.ts
 │   │       │   ├── search-journals.tool.ts
 │   │       │   └── search-works.tool.ts
+│   │       ├── blank-input.ts
 │   │       └── markdown-text.ts
 │   ├── services/
 │   │   └── crossref/
@@ -165,7 +167,8 @@ crossref-mcp-server/
 │   ├── config/
 │   │   └── server-config.test.ts
 │   ├── helpers/
-│   │   └── content.ts
+│   │   ├── content.ts
+│   │   └── crossref-responses.ts
 │   ├── prompts/
 │   ├── resources/
 │   ├── services/
@@ -181,9 +184,13 @@ crossref-mcp-server/
 │       ├── input-strictness.test.ts
 │       ├── markdown-surface.test.ts
 │       ├── markdown-text.test.ts
+│       ├── search-blank-inputs.test.ts
+│       ├── search-empty-pages.test.ts
 │       ├── search-funders.tool.test.ts
 │       ├── search-journals.tool.test.ts
-│       └── search-works.tool.test.ts
+│       ├── search-works-fields.test.ts
+│       ├── search-works.tool.test.ts
+│       └── works-cursor-walk.test.ts
 ├── .dockerignore
 ├── .env.example
 ├── .gitattributes
