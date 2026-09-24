@@ -13,7 +13,7 @@
 
 <div align="center">
 
-[![Install in Claude Desktop](https://img.shields.io/badge/Install_in-Claude_Desktop-D97757?style=for-the-badge&logo=anthropic&logoColor=white)](https://github.com/cyanheads/crossref-mcp-server/releases/latest/download/crossref-mcp-server.mcpb) [![Install in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=crossref-mcp-server&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBjeWFuaGVhZHMvY3Jvc3NyZWYtbWNwLXNlcnZlciJdfQ==) [![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Server-0098FF?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect?url=vscode:mcp/install?%7B%22name%22%3A%22crossref-mcp-server%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40cyanheads/crossref-mcp-server%22%5D%7D)
+[![Install in Claude Desktop](https://img.shields.io/badge/Install_in-Claude_Desktop-D97757?style=for-the-badge&logo=anthropic&logoColor=white)](https://github.com/cyanheads/crossref-mcp-server/releases/latest/download/crossref-mcp-server.mcpb) [![Install in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=crossref-mcp-server&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBjeWFuaGVhZHMvY3Jvc3NyZWYtbWNwLXNlcnZlciJdfQ==) [![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Server-0098FF?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://vscode.dev/redirect?url=vscode:mcp/install?%7B%22name%22%3A%22crossref-mcp-server%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40cyanheads%2Fcrossref-mcp-server%22%5D%7D)
 
 [![Framework](https://img.shields.io/badge/Built%20on-@cyanheads/mcp--ts--core-67E8F9?style=flat-square)](https://www.npmjs.com/package/@cyanheads/mcp-ts-core)
 
@@ -35,7 +35,7 @@ Scholarly metadata from the Crossref REST API. Resolve DOIs to full metadata rec
 
 | Tool | Description |
 |:---|:---|
-| `crossref_get_work` | Resolve a DOI to its full Crossref metadata record: title, authors, affiliations, abstract, journal, publication date, license, full-text links, and funder acknowledgements |
+| `crossref_get_work` | Resolve a DOI to its full Crossref metadata record: title, authors, editors, affiliations, abstract, journal with volume/issue/pages, ISSNs and ISBNs, publication date, license, full-text links, funder acknowledgements, post-publication updates, and related identifiers |
 | `crossref_search_works` | Search the Crossref works index by free text and/or structured filters, with field-scoped query parameters, sort, field selection, and offset or cursor-based paging |
 | `crossref_get_references` | Return the outgoing reference list for a DOI — the works cited by this paper, with citation strings and resolved DOIs where available |
 | `crossref_search_journals` | Find Crossref journal records by ISSN or title query; optionally retrieve a page of the journal's most recent works |
@@ -49,7 +49,11 @@ Scholarly metadata from the Crossref REST API. Resolve DOIs to full metadata rec
 
 - DOI validated against the `10.NNNN/suffix` regex before the upstream call, accepted either bare or wrapped in its resolver (`https://doi.org/…`, `https://dx.doi.org/…`, `doi:…`) and unwrapped before the lookup
 - Returns title, authors with affiliations, abstract (when deposited), container/journal, publication date, work type, ISSN, license URLs, full-text link URLs, and funder acknowledgements
+- Citation locators `volume`, `issue`, `page`, and `articleNumber` under the same names and on the same rendered line as `crossref_search_works`, plus `isbn` — each as deposited, omitted when absent
+- `editors` in the author entry shape, returned whole and never counted in `authorCount`
 - Author list paged by `offset`/`limit` (default 25, max 500); `authorCount` reports the full deposited total and a `nextOffset` continues when authors remain — every other field is returned in full on every page
+- `updatedBy` lists the corrections, retractions, expressions of concern, and new versions Crossref records against the work — notice DOI, type, source (`publisher` or `retraction-watch`, with its record ID), and date, entry for entry — and `updateTo` the works this record is a notice for; when `updatedBy` is present, `notice` names each update type with its sources. An absent `updatedBy` does not mean the work was never updated
+- `relations` groups related identifiers (preprint ↔ published version, versions, reviews, supplements) by relation type, identifier type, and asserting party, returned whole; only Crossref-registered DOIs among them resolve through this tool
 - A funder or affiliation asserted only through the ROR registry (no name deposited) carries `ror` in place of `name`, never as a blank entry
 - Publication date is the first of `published`, `published-print`, `published-online`, and `issued` (this tool only) that names a value; a date component Crossref records as unknown is omitted, along with everything less precise below it
 - Outgoing references are reported as a count (`referencesCount`) — entries come from `crossref_get_references`; incoming citation count (`isReferencedByCount`) is included, but citing works are not exposed by Crossref — use OpenAlex for citation graphs
@@ -125,7 +129,7 @@ Crossref-specific:
 - Retry with exponential backoff on 429 (honoring `Retry-After`), 5xx, HTTP 408/504, and network failures; a malformed response body and a request that hits `CROSSREF_TIMEOUT_MS` are not retried
 - Cursor-based deep paging on the works search and on both works sub-resources, for result sets beyond the offset cap
 - Crossref's rejections of a request come back as declared reasons — `unknown_filter` (with the hyphenated key when Crossref lists one), `invalid_parameter`, `sort_cursor_conflict`, `invalid_cursor` — carrying the rejected inputs and a recovery hint; a malformed `issn` filter value is refused before the request, and no upstream error relays Crossref's raw response body
-- Text normalization on every human-readable value: HTML character references decoded and whitespace collapsed; citation strings additionally have formatting markup stripped, so titles and abstracts read as plain text instead of raw JATS XML
+- Text normalization on every human-readable value: HTML character references decoded and whitespace collapsed; citation strings additionally have formatting markup stripped, so titles and abstracts read as plain text instead of raw JATS XML; a MathML formula keeps its structure — the TeX annotation where the deposit carries one, otherwise a linear form such as `x_i`, `A^{−1}`, `√(m)`, `(a+b)/c`
 
 Agent-friendly output:
 

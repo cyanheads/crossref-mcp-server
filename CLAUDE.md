@@ -227,12 +227,15 @@ src/
     crossref/
       crossref-service.ts               # HTTP client, polite-pool User-Agent, retry, pagination
       html-entities.ts                  # HTML5 named character reference table + single-pass decode
+      link-text.ts                      # A link element's text, read once per closer, for the href check
+      mathml.ts                         # MathML region → TeX annotation, else linear notation
       types.ts                          # Crossref domain types (Work, Reference, Journal, Funder)
       upstream-errors.ts                # Upstream/transport error contract + throw-site factory
   mcp-server/
     tools/
       blank-input.ts                    # nonBlank / isBlank — a blank optional string reads as omitted
       markdown-text.ts                  # mdText / mdTextAtLineStart — the content[] escape
+      work-locators.ts                  # volume / issue / page / articleNumber — fields, projection, line
     tools/definitions/
       get-work.tool.ts                  # crossref_get_work
       get-references.tool.ts            # crossref_get_references
