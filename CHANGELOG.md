@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.4.2](changelog/0.4.x/0.4.2.md) — 2026-10-08
+
+Framework update to @cyanheads/mcp-ts-core 0.13.14: tool error results carry a request ID and no longer expose server internals in their data, and numeric or boolean strings and null optional values in tool arguments are repaired instead of rejected.
+
 ## [0.4.1](changelog/0.4.x/0.4.1.md) — 2026-09-24
 
 crossref_get_work adds citation locators, ISBNs, editors, publication updates, and related identifiers, and MathML formulas read as their TeX annotation or a linear form instead of losing roots, scripts, and fractions.
