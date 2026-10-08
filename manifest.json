@@ -3,11 +3,7 @@
   "name": "crossref-mcp-server",
   "version": "0.4.1",
   "description": "Resolve DOIs, search ~155M scholarly works, fetch references, and look up publishers via the Crossref REST API. STDIO or Streamable HTTP.",
-  "author": {
-    "name": "cyanheads",
-    "email": "casey@caseyjhand.com",
-    "url": "https://caseyjhand.com"
-  },
+  "author": { "name": "cyanheads" },
   "repository": {
     "type": "git",
     "url": "https://github.com/cyanheads/crossref-mcp-server"
