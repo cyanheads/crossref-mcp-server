@@ -265,7 +265,6 @@ export const searchJournalsTool = tool('crossref_search_journals', {
           offset: input.offset,
           rows: input.rows,
           cap: NAME_SEARCH_OFFSET_CAP,
-          ...ctx.recoveryFor('offset_too_large'),
         },
       );
     }
@@ -289,10 +288,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       throw ctx.fail(
         'works_cursor_offset_conflict',
         `works_cursor and works_offset ${input.works_offset} cannot be combined — Crossref rejects the pair, and the journal works list pages one way or the other.`,
-        {
-          worksOffset: input.works_offset,
-          ...ctx.recoveryFor('works_cursor_offset_conflict'),
-        },
+        { worksOffset: input.works_offset },
       );
     }
     // Unconditional: the guard above leaves works_offset at 0 whenever a cursor is present,
@@ -305,7 +301,6 @@ export const searchJournalsTool = tool('crossref_search_journals', {
           worksOffset: input.works_offset,
           rows: input.rows,
           cap: WORKS_OFFSET_CAP,
-          ...ctx.recoveryFor('works_offset_too_large'),
         },
       );
     }
@@ -325,10 +320,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       journalsResult = await svc.searchJournals(journalOpts, ctx);
     } catch (err) {
       if (issn && err instanceof McpError && err.code === -32001) {
-        throw ctx.fail('issn_not_found', `No journal found for ISSN: ${issn}`, {
-          issn,
-          ...ctx.recoveryFor('issn_not_found'),
-        });
+        throw ctx.fail('issn_not_found', `No journal found for ISSN: ${issn}`, { issn });
       }
       throw err;
     }
@@ -423,7 +415,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
           `${partial ? `; this page lists ${candidates.length}` : ''}: ${listed}. ` +
           `Re-run with issn set to one of those ISSNs` +
           `${partial ? ', or narrow the query if the journal you want is not among them,' : ''} to fetch its works.`,
-        { candidates, matchedTotal: journalsTotal, ...ctx.recoveryFor('ambiguous_journal') },
+        { candidates, matchedTotal: journalsTotal },
       );
     }
 

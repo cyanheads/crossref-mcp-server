@@ -153,11 +153,11 @@ export const INVALID_PARAMETER = {
 } as const satisfies ErrorContract;
 
 /**
- * Build an `McpError` against a contract entry, mirroring what `ctx.fail` +
- * `ctx.recoveryFor` do inside a handler. The service throws from outside any tool's
- * contract, so it cannot use those: `ctx.recoveryFor` resolves against the calling
- * tool's declared reasons and returns an empty object — silently, with no hint on the
- * wire — for any tool that has not declared the one being raised.
+ * Build an `McpError` against a contract entry, mirroring what `ctx.fail` does inside a
+ * handler, with the entry's `recovery` set on the error itself. The framework fills a
+ * declared hint onto a failure that carries none, but it resolves the reason against the
+ * calling tool's `errors[]` — and the service throws from outside any one tool's contract,
+ * so a reason the calling tool has not declared would reach the wire with no hint at all.
  *
  * `hint` overrides the contract's static `recovery` text when the throw site has
  * specifics worth carrying (the concrete `Retry-After` value, for instance). The

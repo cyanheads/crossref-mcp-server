@@ -139,7 +139,6 @@ export const getReferencesTool = tool('crossref_get_references', {
     if (!raw) {
       throw ctx.fail('doi_not_found', `No Crossref record for DOI: ${doi}`, {
         doi,
-        ...ctx.recoveryFor('doi_not_found'),
       });
     }
 

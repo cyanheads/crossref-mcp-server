@@ -109,7 +109,6 @@ export const getMemberTool = tool('crossref_get_member', {
     if (!raw) {
       throw ctx.fail('member_not_found', `No Crossref member for ID: ${input.member_id}`, {
         memberId: input.member_id,
-        ...ctx.recoveryFor('member_not_found'),
       });
     }
     return projectMember(raw, input.member_id);

@@ -59,7 +59,6 @@ export const getPrefixTool = tool('crossref_get_prefix', {
     if (!raw) {
       throw ctx.fail('prefix_not_found', `No Crossref member owns prefix: ${input.prefix}`, {
         prefix: input.prefix,
-        ...ctx.recoveryFor('prefix_not_found'),
       });
     }
 

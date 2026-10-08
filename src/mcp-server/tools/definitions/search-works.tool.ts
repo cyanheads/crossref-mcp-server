@@ -316,9 +316,7 @@ export const searchWorksTool = tool('crossref_search_works', {
 
     // Validate: cursor and offset cannot coexist
     if (cursor !== undefined && input.offset !== undefined) {
-      throw ctx.fail('cursor_offset_conflict', 'Provide cursor or offset, not both.', {
-        ...ctx.recoveryFor('cursor_offset_conflict'),
-      });
+      throw ctx.fail('cursor_offset_conflict', 'Provide cursor or offset, not both.');
     }
 
     // Validate: offset cap
@@ -327,7 +325,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       throw ctx.fail(
         'offset_too_large',
         `Offset ${input.offset} + rows ${rows} = ${input.offset + rows} exceeds the ~${OFFSET_CAP} Crossref offset limit.`,
-        { offset: input.offset, rows, ...ctx.recoveryFor('offset_too_large') },
+        { offset: input.offset, rows },
       );
     }
 
