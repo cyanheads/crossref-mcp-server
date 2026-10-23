@@ -4,6 +4,7 @@
  */
 
 import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mcp-ts-core/testing';
+import { type Node, Parser } from 'commonmark';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { searchJournalsTool } from '@/mcp-server/tools/definitions/search-journals.tool.js';
 import { blockText } from '../helpers/content.js';
@@ -178,8 +179,8 @@ describe('searchJournalsTool', () => {
   });
 
   /**
-   * Crossref sends `"ISSN-L": null` — not an absent key — on a journal with no linking ISSN,
-   * so an `!== undefined` projection guard would put a null into a string-typed output field.
+   * Current Crossref journal records omit the `ISSN-L` key, but the raw type admits an explicit
+   * `null`, and an `!== undefined` projection guard would put that null into a string-typed field.
    */
   it('omits issnL when the record carries a null ISSN-L', async () => {
     const ctx = createMockContext({ errors: searchJournalsTool.errors });
@@ -328,11 +329,6 @@ describe('searchJournalsTool', () => {
   it('accepts rows between 1 and 100', () => {
     expect(() => searchJournalsTool.input.parse({ query: 'test', rows: 1 })).not.toThrow();
     expect(() => searchJournalsTool.input.parse({ query: 'test', rows: 100 })).not.toThrow();
-  });
-
-  it('rejects rows outside 1–100 range', () => {
-    expect(() => searchJournalsTool.input.parse({ query: 'test', rows: 0 })).toThrow();
-    expect(() => searchJournalsTool.input.parse({ query: 'test', rows: 101 })).toThrow();
   });
 
   it('accepts valid ISSN formats — with and without hyphen, uppercase X check digit', () => {
@@ -899,5 +895,413 @@ describe('searchJournalsTool', () => {
         error: { data: { reason: 'ambiguous_journal' } },
       });
     });
+  });
+});
+
+describe('searchJournalsTool page-size clamp', () => {
+  const CLAMP = 'rows 250 is above the per-call cap of 100, so 100 was applied.';
+  const journals = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({ ...RAW_JOURNAL, title: `Journal ${i}` }));
+
+  it('clamps rows above 100 on the journal list, continuing nextOffset after the page returned', async () => {
+    mockSearchJournals.mockResolvedValue(journalList(journals(100), 5000));
+
+    const result = await runToolContract(searchJournalsTool, {
+      query: 'Journal',
+      rows: 250,
+      offset: 40,
+    });
+
+    expect(mockSearchJournals).toHaveBeenCalledWith(
+      expect.objectContaining({ rows: 100, offset: 40 }),
+      expect.anything(),
+    );
+    expect(result.structuredContent).toMatchObject({ journalCount: 100, nextOffset: 140 });
+    expect((result.structuredContent as { notice?: string }).notice).toBe(CLAMP);
+    expect(result.content.map(blockText).join('\n')).toContain(CLAMP);
+  });
+
+  it('clamps rows on the works list and checks works_offset against the clamped rows', async () => {
+    mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
+    mockGetJournalWorks.mockResolvedValue({
+      totalResults: 90_000,
+      items: Array.from({ length: 100 }, (_, i) => ({ DOI: `10.1038/w${i}` })),
+    });
+
+    const result = await runToolContract(searchJournalsTool, {
+      issn: '0028-0836',
+      include_works: true,
+      rows: 250,
+      works_offset: 9900,
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(mockGetJournalWorks).toHaveBeenCalledWith(
+      '0028-0836',
+      { rows: 100, offset: 9900 },
+      expect.anything(),
+    );
+    // 9900 + 100 returned = 10000 leaves no room for another offset page; the ceiling notice joins the clamp.
+    const structured = result.structuredContent as { notice?: string; nextWorksOffset?: number };
+    expect(structured.nextWorksOffset).toBeUndefined();
+    expect(structured.notice).toBe(
+      `${CLAMP} This is the last works page reachable by works_offset — Crossref caps works_offset + rows at 10000 on a journal works list and 90000 works exist. Re-run with works_cursor="*" and chain nextWorksCursor to read the whole list; the walk restarts at the most recently registered work and runs by registration date, not publication date.`,
+    );
+  });
+
+  it('rejects works_offset 9950 + rows 250 with works_offset_too_large on rows 100', async () => {
+    const result = await runToolContract(searchJournalsTool, {
+      issn: '0028-0836',
+      include_works: true,
+      rows: 250,
+      works_offset: 9950,
+    });
+
+    expect(result.isError).toBe(true);
+    const error = (
+      result.structuredContent as { error?: { message?: string; data?: Record<string, unknown> } }
+    ).error;
+    expect(error?.data).toMatchObject({ reason: 'works_offset_too_large', rows: 100 });
+    expect(error?.message).toContain('works_offset 9950 + rows 100 = 10050');
+    expect(error?.message).toContain(CLAMP);
+    expect(mockSearchJournals).not.toHaveBeenCalled();
+  });
+
+  it('leaves rows 100 untouched and notice-free', async () => {
+    mockSearchJournals.mockResolvedValue(journalList(journals(100), 5000));
+
+    const result = await runToolContract(searchJournalsTool, { query: 'Journal', rows: 100 });
+
+    expect(mockSearchJournals).toHaveBeenCalledWith(
+      expect.objectContaining({ rows: 100 }),
+      expect.anything(),
+    );
+    expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
+  });
+});
+
+/**
+ * Both Crossref ceilings are on `offset + rows`, accepted up to exactly the cap. Every request a
+ * page or a rejection tells the caller to make next has to be one the next call accepts, so each
+ * recipe is executed.
+ */
+describe('searchJournalsTool offset-ceiling recipes', () => {
+  type ErrorShape = { error?: { data?: { reason?: string; recovery?: { hint?: string } } } };
+  const hintOf = (result: { structuredContent?: unknown }) =>
+    (result.structuredContent as ErrorShape).error?.data?.recovery?.hint ?? '';
+  const works = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({ DOI: `10.1038/w${i}` }));
+
+  it('names the rows that still fit when works_offset + rows passes 10000', async () => {
+    const rejected = await runToolContract(searchJournalsTool, {
+      issn: '0028-0836',
+      include_works: true,
+      rows: 100,
+      works_offset: 9950,
+    });
+
+    expect((rejected.structuredContent as ErrorShape).error?.data?.reason).toBe(
+      'works_offset_too_large',
+    );
+    const hint = hintOf(rejected);
+    expect(hint).toBe(
+      'Pass works_offset=9950 with rows=50 to read the last works offset paging reaches, or restart the works list with works_cursor="*" and chain the nextWorksCursor token from each response to read the whole list.',
+    );
+    expect(rejected.content.map(blockText).join('\n')).toContain(hint);
+
+    mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
+    mockGetJournalWorks.mockResolvedValue({ totalResults: 90_000, items: works(50) });
+    const next = await runToolContract(searchJournalsTool, {
+      issn: '0028-0836',
+      include_works: true,
+      rows: 50,
+      works_offset: 9950,
+    });
+    expect(next.isError).toBeFalsy();
+    expect(mockGetJournalWorks).toHaveBeenCalledWith(
+      '0028-0836',
+      { rows: 50, offset: 9950 },
+      expect.anything(),
+    );
+  });
+
+  it('routes only to works_cursor once works_offset itself reaches 10000', async () => {
+    const rejected = await runToolContract(searchJournalsTool, {
+      issn: '0028-0836',
+      include_works: true,
+      rows: 10,
+      works_offset: 10_000,
+    });
+    expect((rejected.structuredContent as ErrorShape).error?.data?.reason).toBe(
+      'works_offset_too_large',
+    );
+    const hint = hintOf(rejected);
+    expect(hint).toContain('works_cursor="*"');
+    expect(hint).not.toContain('with rows=');
+  });
+
+  it('names the rows that still fit when offset + rows passes 100000 on title search', async () => {
+    const rejected = await runToolContract(searchJournalsTool, {
+      query: 'a',
+      rows: 100,
+      offset: 99_950,
+    });
+    expect((rejected.structuredContent as ErrorShape).error?.data?.reason).toBe('offset_too_large');
+    expect(hintOf(rejected)).toMatch(/^Pass offset=99950 with rows=50 to read the last journals /);
+
+    mockSearchJournals.mockResolvedValue(journalList(titled(50), 169_103));
+    const next = await runToolContract(searchJournalsTool, {
+      query: 'a',
+      rows: 50,
+      offset: 99_950,
+    });
+    expect(next.isError).toBeFalsy();
+  });
+
+  it('names works_offset and rows for the last reachable works page short of the ceiling', async () => {
+    mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
+    mockGetJournalWorks.mockResolvedValue({ totalResults: 90_000, items: works(100) });
+
+    const page = await runToolContract(searchJournalsTool, {
+      issn: '0028-0836',
+      include_works: true,
+      rows: 250,
+      works_offset: 9850,
+    });
+
+    const structured = page.structuredContent as { notice?: string; nextWorksOffset?: number };
+    // Withheld: a nextWorksOffset cannot carry the smaller rows the last page needs.
+    expect(structured.nextWorksOffset).toBeUndefined();
+    const notice =
+      'rows 250 is above the per-call cap of 100, so 100 was applied. Crossref caps works_offset + rows at 10000 on a journal works list and 90000 works exist, so a full page at works_offset 9950 is out of reach. Pass works_offset=9950 with rows=50 for the last works page reachable by works_offset, or re-run with works_cursor="*" and chain nextWorksCursor to read the whole list; the walk restarts at the most recently registered work and runs by registration date, not publication date.';
+    expect(structured.notice).toBe(notice);
+    expect(page.content.map(blockText).join('\n')).toContain(notice);
+  });
+
+  it('names offset and rows for the last reachable journal page short of the ceiling', async () => {
+    mockSearchJournals.mockResolvedValue(journalList(titled(100), 169_103));
+
+    const page = await runToolContract(searchJournalsTool, {
+      query: 'a',
+      rows: 100,
+      offset: 99_850,
+    });
+
+    const structured = page.structuredContent as { notice?: string; nextOffset?: number };
+    expect(structured.nextOffset).toBeUndefined();
+    expect(structured.notice).toBe(
+      'Crossref caps offset + rows at 100000 on journal search and 169103 journals matched, so a full page at offset 99950 is out of reach. Pass offset=99950 with rows=50 for the last journal page reachable by offset, and narrow the query to bring the rest into reach.',
+    );
+  });
+});
+
+/** `count` title-query journal records. */
+function titled(count: number) {
+  return Array.from({ length: count }, (_, i) => ({ ...RAW_JOURNAL, title: `Journal ${i}` }));
+}
+
+describe('searchJournalsTool coverage, ISSN types, and DOI counts', () => {
+  /** Shape of the live /journals/1476-4687 record: no ISSN-L key, breakdown ordered by count. */
+  const NATURE = {
+    title: 'Nature',
+    ISSN: ['0028-0836', '1476-4687'],
+    'issn-type': [
+      { type: 'print', value: '0028-0836' },
+      { type: 'electronic', value: '1476-4687' },
+    ],
+    publisher: 'Springer Science and Business Media LLC',
+    counts: { 'current-dois': 12598, 'backfile-dois': 435113, 'total-dois': 447711 },
+    coverage: {
+      'abstracts-current': 0.1172408318780759,
+      'abstracts-backfile': 0.002803869339688771,
+      'funders-current': 0,
+      'funders-backfile': 0.00002068428201409749,
+      'references-current': 0.6393872043181457,
+      'references-backfile': 0.3926060586560273,
+    },
+    breakdowns: {
+      'dois-by-issued-year': [
+        [2025, 4550],
+        [1869, 12],
+        [2026, 3661],
+        [1950, 900],
+      ],
+    },
+  };
+  type Structured = {
+    journals: Array<Record<string, unknown>>;
+  };
+  const journalOf = (result: { structuredContent?: unknown }) =>
+    (result.structuredContent as Structured).journals[0];
+  const textOf = (result: { content: unknown[] }) =>
+    result.content.map((b) => blockText(b as Parameters<typeof blockText>[0])).join('\n');
+
+  it('projects every new field on an issn lookup, doisByYear ascending by year', async () => {
+    mockSearchJournals.mockResolvedValue(journalList([NATURE]));
+
+    const result = await runToolContract(searchJournalsTool, { issn: '1476-4687' });
+
+    expect(result.isError).toBeFalsy();
+    const journal = journalOf(result);
+    expect(journal?.issnTypes).toEqual([
+      { value: '0028-0836', type: 'print' },
+      { value: '1476-4687', type: 'electronic' },
+    ]);
+    expect(journal?.totalDois).toBe(447711);
+    expect(journal?.currentDois).toBe(12598);
+    expect(journal?.backfileDois).toBe(435113);
+    expect(journal?.coverage).toEqual([
+      { category: 'abstracts', current: 0.1172408318780759, backfile: 0.002803869339688771 },
+      { category: 'funders', current: 0, backfile: 0.00002068428201409749 },
+      { category: 'references', current: 0.6393872043181457, backfile: 0.3926060586560273 },
+    ]);
+    expect(journal?.doisByYear).toEqual([
+      { year: 1869, count: 12 },
+      { year: 1950, count: 900 },
+      { year: 2025, count: 4550 },
+      { year: 2026, count: 3661 },
+    ]);
+    expect(journal).not.toHaveProperty('issnL');
+
+    const text = textOf(result);
+    expect(text).toContain('**ISSN types:** 0028-0836 (print), 1476-4687 (electronic)');
+    expect(text).toContain('**Current DOIs:** 12598');
+    expect(text).toContain('**Backfile DOIs:** 435113');
+    expect(text).toContain(
+      [
+        '**Metadata coverage (current / backfile):**',
+        '- abstracts: 12% / 0.28%',
+        '- funders: 0% / 0.0021%',
+        '- references: 64% / 39%',
+      ].join('\n'),
+    );
+    expect(text).toContain('**DOIs by issued year:** 1869: 12, 1950: 900, 2025: 4550, 2026: 3661');
+    expect(text).not.toContain('ISSN-L');
+  });
+
+  it('keeps the DOIs-by-year line out of the coverage list when CommonMark parses content[]', async () => {
+    mockSearchJournals.mockResolvedValue(journalList([NATURE]));
+
+    const result = await runToolContract(searchJournalsTool, { issn: '1476-4687' });
+
+    /** Literal text under a node, softbreaks read as newlines. */
+    const textUnder = (node: Node): string => {
+      let out = '';
+      const walker = node.walker();
+      for (let step = walker.next(); step; step = walker.next()) {
+        if (!step.entering) continue;
+        if (step.node.literal) out += step.node.literal;
+        if (step.node.type === 'softbreak') out += '\n';
+      }
+      return out;
+    };
+    const items: string[] = [];
+    const paragraphs: string[] = [];
+    for (const block of result.content) {
+      const walker = new Parser().parse(blockText(block)).walker();
+      for (let step = walker.next(); step; step = walker.next()) {
+        if (!step.entering) continue;
+        if (step.node.type === 'item') items.push(textUnder(step.node));
+        if (step.node.type === 'paragraph' && step.node.parent?.type !== 'item')
+          paragraphs.push(textUnder(step.node));
+      }
+    }
+
+    expect(items).toEqual([
+      'abstracts: 12% / 0.28%',
+      'funders: 0% / 0.0021%',
+      'references: 64% / 39%',
+    ]);
+    expect(items.some((item) => item.includes('DOIs by issued year'))).toBe(false);
+    expect(paragraphs.some((p) => p.includes('DOIs by issued year: 1869: 12'))).toBe(true);
+  });
+
+  it('carries coverage, issnTypes, and DOI counts on a title query, but no doisByYear', async () => {
+    mockSearchJournals.mockResolvedValue(
+      journalList([NATURE, { ...NATURE, title: 'Nature 2' }], 2),
+    );
+
+    const result = await runToolContract(searchJournalsTool, { query: 'Nature' });
+
+    expect(result.isError).toBeFalsy();
+    const journals = (result.structuredContent as Structured).journals;
+    expect(journals).toHaveLength(2);
+    for (const journal of journals) {
+      expect(journal.issnTypes).toHaveLength(2);
+      expect(journal.currentDois).toBe(12598);
+      expect(journal.backfileDois).toBe(435113);
+      expect(journal.coverage).toHaveLength(3);
+      expect(journal).not.toHaveProperty('doisByYear');
+    }
+    const text = textOf(result);
+    expect(text.match(/\*\*Metadata coverage \(current \/ backfile\):\*\*/g)).toHaveLength(2);
+    expect(text).not.toContain('DOIs by issued year');
+  });
+
+  it('omits each key whose upstream field is absent or empty', async () => {
+    mockSearchJournals.mockResolvedValue(
+      journalList([
+        { title: 'Bare', ISSN: ['1234-5678'] },
+        {
+          title: 'Hollow',
+          ISSN: [],
+          'issn-type': [],
+          counts: { 'total-dois': 0 },
+          coverage: { 'last-status-check-time': 1 },
+          breakdowns: { 'dois-by-issued-year': [] },
+        },
+      ]),
+    );
+    const lookup = await runToolContract(searchJournalsTool, { query: 'x' });
+    const listed = (lookup.structuredContent as Structured).journals;
+    expect(listed.map((j) => j.title)).toEqual(['Bare', 'Hollow']);
+    for (const journal of listed) {
+      for (const key of ['issnTypes', 'currentDois', 'backfileDois', 'coverage', 'doisByYear']) {
+        expect(journal).not.toHaveProperty(key);
+      }
+    }
+    expect(textOf(lookup)).not.toMatch(/ISSN types|Current DOIs|Backfile DOIs|Metadata coverage/);
+
+    mockSearchJournals.mockResolvedValue(
+      journalList([{ title: 'Hollow', breakdowns: { 'dois-by-issued-year': [] } }]),
+    );
+    const single = await runToolContract(searchJournalsTool, { issn: '1234-5678' });
+    expect(journalOf(single)).toEqual({ title: 'Hollow' });
+    expect(textOf(single)).not.toContain('DOIs by issued year');
+  });
+
+  it('keeps an ISSN whose type Crossref records as null, without a type', async () => {
+    mockSearchJournals.mockResolvedValue(
+      journalList([
+        {
+          title: 'Sociedade & Natureza',
+          ISSN: ['1982-4513', '1982-4513', '0103-1570'],
+          'issn-type': [
+            { type: 'print', value: '1982-4513' },
+            { type: 'electronic', value: '1982-4513' },
+            { type: null, value: '0103-1570' },
+          ],
+        },
+      ]),
+    );
+
+    const result = await runToolContract(searchJournalsTool, { issn: '1982-4513' });
+
+    expect(result.isError).toBeFalsy();
+    expect(journalOf(result)?.issnTypes).toEqual([
+      { value: '1982-4513', type: 'print' },
+      { value: '1982-4513', type: 'electronic' },
+      { value: '0103-1570' },
+    ]);
+    expect(textOf(result)).toContain(
+      '**ISSN types:** 1982-4513 (print), 1982-4513 (electronic), 0103-1570',
+    );
+  });
+
+  it('stops advertising ISSN-L as returned', () => {
+    expect(searchJournalsTool.description).not.toContain('ISSN-L');
+    const issnL = searchJournalsTool.output.shape.journals.element.shape.issnL;
+    expect(issnL.description).toContain('Crossref journal records do not carry');
+    expect(issnL.description).not.toContain('explicit null');
   });
 });

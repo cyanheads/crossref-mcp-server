@@ -3,7 +3,7 @@
  * @module tests/tools/get-member.tool.test
  */
 
-import { createMockContext } from '@cyanheads/mcp-ts-core/testing';
+import { createMockContext, runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getMemberTool } from '@/mcp-server/tools/definitions/get-member.tool.js';
 import { blockText } from '../helpers/content.js';
@@ -261,6 +261,60 @@ describe('getMemberTool', () => {
 
     expect(text).toContain('- ror-ids: 0.38% / 0.0014%');
     expect(text).toContain('- similarity-checking: 0% / 0%');
+  });
+
+  /**
+   * Pins both surfaces byte-for-byte. The coverage schema, projection, and renderer are shared
+   * with crossref_search_journals, and this tool's output must not move when they do.
+   */
+  it('keeps both result surfaces byte-identical through the full contract', async () => {
+    mockGetMember.mockResolvedValue(
+      makeRawMember({
+        coverage: {
+          'references-current': 0.8656243232888579,
+          'references-backfile': 0.7042172661179557,
+          'abstracts-current': 0.2459951193510236,
+          'abstracts-backfile': 0.07027088377353202,
+          'ror-ids-backfile': 0.00001384254375974146,
+          'funders-current': 0,
+          'last-status-check-time': 1783897818337,
+        },
+      }),
+    );
+
+    const result = await runToolContract(getMemberTool, { member_id: 297 });
+
+    expect(result.isError).toBeFalsy();
+    expect((result.structuredContent as { coverage: unknown }).coverage).toEqual([
+      { category: 'abstracts', current: 0.2459951193510236, backfile: 0.07027088377353202 },
+      { category: 'funders', current: 0 },
+      { category: 'references', current: 0.8656243232888579, backfile: 0.7042172661179557 },
+      { category: 'ror-ids', backfile: 0.00001384254375974146 },
+    ]);
+    expect(result.content.map(blockText).join('\n')).toBe(
+      [
+        '## Springer Science and Business Media LLC',
+        '**Member ID:** 297',
+        '**Location:** Dordrecht, GX, Netherlands',
+        '**DOIs:** 18727584 total · 2401320 current · 16326264 backfile',
+        '**Deposits metadata:** Yes',
+        '**Deposits articles:** Yes',
+        '**Prefixes:** 10.1007, 10.1038, 10.1186',
+        '**Other names:** Springer-Verlag; Springer (Biomed Central Ltd.)',
+        '',
+        '**Works by type:**',
+        '- journal-article: 11168081',
+        '- book-chapter: 7312822',
+        '- book: 370941',
+        '- posted-content: 351969',
+        '',
+        '**Metadata coverage (current / backfile):**',
+        '- abstracts: 25% / 7.0%',
+        '- funders: 0% / n/a',
+        '- references: 87% / 70%',
+        '- ror-ids: n/a / 0.0014%',
+      ].join('\n'),
+    );
   });
 
   it('security: output does not leak CROSSREF_MAILTO env value', async () => {

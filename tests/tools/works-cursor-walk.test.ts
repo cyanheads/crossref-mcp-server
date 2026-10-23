@@ -1,8 +1,9 @@
 /**
- * @fileoverview A `works_cursor` walk of the journal and funder works lists, run end to end:
- * the real tool definitions and the real `CrossrefService` against a fetch fake that answers
- * the way Crossref does — including refusing a publication-date sort alongside a cursor. The
- * tool tests stub the service, so the query string a walk actually sends is only visible here.
+ * @fileoverview A `works_cursor` walk of the journal and funder works lists, and a `cursor` walk
+ * of `crossref_search_works`, run end to end: the real tool definitions and the real
+ * `CrossrefService` against a fetch fake that answers the way Crossref does — including refusing
+ * a publication-date sort alongside a cursor. The tool tests stub the service, so the query
+ * string a walk actually sends is only visible here.
  * @module tests/tools/works-cursor-walk.test
  */
 
@@ -18,7 +19,11 @@ vi.mock('@/config/server-config.js', () => ({
   }),
 }));
 
-import { searchFundersTool, searchJournalsTool } from '@/mcp-server/tools/definitions/index.js';
+import {
+  searchFundersTool,
+  searchJournalsTool,
+  searchWorksTool,
+} from '@/mcp-server/tools/definitions/index.js';
 import { initCrossrefService } from '@/services/crossref/crossref-service.js';
 
 type ToolResult = Awaited<ReturnType<typeof runToolContract>>;
@@ -175,5 +180,68 @@ describe.each(SUB_RESOURCES)('a works_cursor walk on $name', (target) => {
       expect(qs.get('order')).toBe('desc');
       expect(qs.get('offset')).toBeNull();
     }
+  });
+});
+
+/**
+ * Crossref walks a cursor in registration order unless the request names a sort, so a
+ * `crossref_search_works` walk with a query term has to ask for `sort=score` on every page or
+ * lose its ranking. `order` is left off that walk: Crossref ignores it without a caller sort,
+ * and beside `sort=score` an `asc` puts the least relevant records first.
+ */
+describe('a cursor walk on crossref_search_works', () => {
+  const WORKS = /^https:\/\/api\.crossref\.test\/works\?/;
+
+  beforeEach(() => {
+    http.route({ match: WORKS, respond: worksPage });
+  });
+
+  /** The query strings of the works requests sent, in order. */
+  function sent(): URLSearchParams[] {
+    return http.calls.map((call) => new URL(call.request.url).searchParams);
+  }
+
+  async function page(input: Record<string, unknown>) {
+    const result = await runToolContract(searchWorksTool, { rows: 2, ...input });
+    expect(result.isError).toBeFalsy();
+    return result.structuredContent as { works: Array<{ doi: string }>; nextCursor?: string };
+  }
+
+  it('sends sort=score and no order on every page of a query walk', async () => {
+    const first = await page({ queryTitle: 'thermometry', cursor: '*', order: 'asc' });
+    expect(first.works.map((w) => w.doi)).toEqual(['10.5555/w1', '10.5555/w2']);
+    await page({ queryTitle: 'thermometry', cursor: first.nextCursor, order: 'asc' });
+
+    const requests = sent();
+    expect(requests.map((qs) => qs.get('cursor'))).toEqual(['*', first.nextCursor]);
+    for (const qs of requests) {
+      expect(qs.getAll('sort')).toEqual(['score']);
+      expect(qs.get('order')).toBeNull();
+      expect(qs.get('query.title')).toBe('thermometry');
+    }
+  });
+
+  it('sends the caller sort and order unchanged', async () => {
+    await page({ query: 'thermometry', cursor: '*', sort: 'created', order: 'desc' });
+    expect(sent()[0]?.getAll('sort')).toEqual(['created']);
+    expect(sent()[0]?.get('order')).toBe('desc');
+  });
+
+  it('sends no sort on a filter-only walk', async () => {
+    await page({ filter: { type: 'journal-article' }, cursor: '*' });
+    expect(sent()[0]?.get('sort')).toBeNull();
+    expect(sent()[0]?.get('filter')).toBe('type:journal-article');
+  });
+
+  it('still refuses a publication-date sort beside a cursor as sort_cursor_conflict', async () => {
+    const result = await runToolContract(searchWorksTool, {
+      query: 'thermometry',
+      cursor: '*',
+      sort: 'published',
+    });
+    expect(result.isError).toBe(true);
+    const error = (result.structuredContent as { error?: { data?: { reason?: string } } }).error;
+    expect(error?.data?.reason).toBe('sort_cursor_conflict');
+    expect(sent()[0]?.get('sort')).toBe('published');
   });
 });

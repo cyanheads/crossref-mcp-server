@@ -3,6 +3,8 @@
  * @module tests/tools/get-work.tool.test
  */
 
+import { z } from '@cyanheads/mcp-ts-core';
+import { JsonRpcErrorCode, requestCancelled } from '@cyanheads/mcp-ts-core/errors';
 import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import { HtmlRenderer, Parser } from 'commonmark';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -21,12 +23,16 @@ vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
 import { getCrossrefService } from '@/services/crossref/crossref-service.js';
 
 const mockGetWork = vi.fn();
+const mockLookup = vi.fn();
 
 beforeEach(() => {
-  vi.mocked(getCrossrefService).mockReturnValue({ getWork: mockGetWork } as unknown as ReturnType<
-    typeof getCrossrefService
-  >);
+  vi.mocked(getCrossrefService).mockReturnValue({
+    getWork: mockGetWork,
+    getRegistrationAgency: mockLookup,
+  } as unknown as ReturnType<typeof getCrossrefService>);
   mockGetWork.mockReset();
+  mockLookup.mockReset();
+  mockLookup.mockResolvedValue({ kind: 'unknown' });
 });
 
 /** What a CommonMark reader shows for a Markdown document, as HTML. */
@@ -973,7 +979,7 @@ describe('getWorkTool', () => {
   it('rejects offset and limit outside their declared ranges', () => {
     expect(() => getWorkTool.input.parse({ doi: '10.1038/x1', offset: -1 })).toThrow();
     expect(() => getWorkTool.input.parse({ doi: '10.1038/x1', limit: 0 })).toThrow();
-    expect(() => getWorkTool.input.parse({ doi: '10.1038/x1', limit: 501 })).toThrow();
+    expect(() => getWorkTool.input.parse({ doi: '10.1038/x1', limit: 100_001 })).toThrow();
     expect(() => getWorkTool.input.parse({ doi: '10.1038/x1', limit: 2.5 })).toThrow();
   });
 
@@ -984,6 +990,92 @@ describe('getWorkTool', () => {
     const input = getWorkTool.input.parse({ doi: '10.9999/nonexistent' });
     await expect(getWorkTool.handler(input, ctx)).rejects.toMatchObject({
       data: { reason: 'doi_not_found' },
+    });
+  });
+
+  /**
+   * The message, hint, and agency for each registry answer are tabled once in
+   * registration-agency.test.ts; these pin this tool's wiring: the lookup reads the unwrapped
+   * DOI, the answer reaches both surfaces, and the tool's own declared recovery is the one
+   * passed in.
+   */
+  describe('not-found answer, by registration agency', () => {
+    const RECOVERY =
+      'Verify the DOI is correct or use crossref_search_works to find similar works by title or author.';
+
+    async function notFound(doi: string) {
+      mockGetWork.mockResolvedValue(null);
+      const result = await runToolContract(getWorkTool, { doi });
+      const { error } = result.structuredContent as {
+        error: { code: number; message: string; data: Record<string, unknown> };
+      };
+      return { error, text: result.content.map(blockText).join('\n') };
+    }
+
+    it('keeps the message and recovery exactly as before when the registry gives no readable answer', async () => {
+      const { error, text } = await notFound('10.9999/nonexistent');
+
+      expect(error.message).toBe('No Crossref record for DOI: 10.9999/nonexistent');
+      expect(error.data).toMatchObject({
+        reason: 'doi_not_found',
+        doi: '10.9999/nonexistent',
+        recovery: { hint: RECOVERY },
+      });
+      expect(error.data).not.toHaveProperty('registrationAgency');
+      expect(text).toContain(
+        `Error: No Crossref record for DOI: 10.9999/nonexistent\n\nRecovery: ${RECOVERY}`,
+      );
+    });
+
+    it('names the agency that holds a DOI Crossref does not, looking up the unwrapped DOI', async () => {
+      mockLookup.mockResolvedValue({ kind: 'registered', agency: 'DataCite' });
+      const { error, text } = await notFound('https://doi.org/10.5281/zenodo.3242074');
+
+      expect(mockLookup).toHaveBeenCalledWith('10.5281/zenodo.3242074', expect.anything());
+      expect(error.message).toBe(
+        'No Crossref record for DOI: 10.5281/zenodo.3242074 — it is registered with DataCite, not Crossref.',
+      );
+      expect(error.data).toMatchObject({
+        reason: 'doi_not_found',
+        doi: '10.5281/zenodo.3242074',
+        registrationAgency: 'DataCite',
+        recovery: {
+          hint: "No Crossref tool can return a DOI registered with DataCite; query DataCite's metadata service for it.",
+        },
+      });
+      expect(text).toContain(
+        "Error: No Crossref record for DOI: 10.5281/zenodo.3242074 — it is registered with DataCite, not Crossref.\n\nRecovery: No Crossref tool can return a DOI registered with DataCite; query DataCite's metadata service for it.",
+      );
+    });
+
+    it('points a Crossref-registered DOI with no work record at the Funder Registry lookup', async () => {
+      mockLookup.mockResolvedValue({ kind: 'registered', agency: 'Crossref' });
+      const { error, text } = await notFound('10.13039/100000001');
+
+      expect(error.message).toBe(
+        'No Crossref record for DOI: 10.13039/100000001 — Crossref registered this DOI but serves no work record for it.',
+      );
+      const hint = `${RECOVERY} A Funder Registry DOI (10.13039/…) is looked up with crossref_search_funders funder_doi.`;
+      expect(error.data).toMatchObject({ registrationAgency: 'Crossref', recovery: { hint } });
+      expect(text).toContain(`Recovery: ${hint}`);
+    });
+
+    it('propagates caller cancellation during the lookup instead of the not-found answer', async () => {
+      mockGetWork.mockResolvedValue(null);
+      mockLookup.mockRejectedValue(requestCancelled('DOI registry lookup cancelled by caller.'));
+      const ctx = createMockContext({ errors: getWorkTool.errors });
+
+      await expect(
+        getWorkTool.handler(getWorkTool.input.parse({ doi: '10.5281/zenodo.3242074' }), ctx),
+      ).rejects.toMatchObject({ code: JsonRpcErrorCode.RequestCancelled });
+    });
+
+    it('asks the registry nothing when Crossref returns the work', async () => {
+      mockGetWork.mockResolvedValue({ DOI: '10.1038/nature12373', type: 'journal-article' });
+
+      await runToolContract(getWorkTool, { doi: '10.1038/nature12373' });
+
+      expect(mockLookup).not.toHaveBeenCalled();
     });
   });
 
@@ -1119,5 +1211,184 @@ describe('getWorkTool', () => {
       if (originalMailto === undefined) delete process.env.CROSSREF_MAILTO;
       else process.env.CROSSREF_MAILTO = originalMailto;
     }
+  });
+});
+
+describe('getWorkTool page-size clamp', () => {
+  const CLAMP = 'limit 1000 is above the per-call cap of 500, so 500 was applied.';
+
+  it('clamps limit above 500: pages 500 authors, reports cap 500, and advances nextOffset by the page', async () => {
+    mockGetWork.mockResolvedValue(makeRawWork({ author: makeAuthors(1200) }));
+
+    const result = await runToolContract(getWorkTool, {
+      doi: '10.1038/nature12373',
+      offset: 100,
+      limit: 1000,
+    });
+
+    const structured = result.structuredContent as {
+      authors?: Array<{ given?: string }>;
+      notice?: string;
+    };
+    expect(structured.authors).toHaveLength(500);
+    expect(structured.authors?.[0]?.given).toBe('G100');
+    expect(structured.authors?.at(-1)?.given).toBe('G599');
+    expect(result.structuredContent).toMatchObject({
+      truncated: true,
+      shown: 500,
+      cap: 500,
+      nextOffset: 600,
+    });
+    expect(structured.notice).toBe(
+      `${CLAMP} Showing authors 101–600 of 1200. Call again with offset=600 for the next page.`,
+    );
+    expect(result.content.map(blockText).join('\n')).toContain(CLAMP);
+  });
+
+  it('joins the clamp to the update notice and discloses it when the whole list fits', async () => {
+    mockGetWork.mockResolvedValue(
+      makeRawWork({
+        author: makeAuthors(3),
+        'updated-by': [
+          {
+            DOI: '10.1038/retraction',
+            type: 'retraction',
+            source: 'publisher',
+            updated: { 'date-parts': [[2020, 1, 1]] },
+          },
+        ],
+      }),
+    );
+
+    const result = await runToolContract(getWorkTool, {
+      doi: '10.1038/nature12373',
+      limit: 1000,
+    });
+
+    const structured = result.structuredContent as { notice?: string; truncated?: boolean };
+    expect(structured.truncated).toBeUndefined();
+    // The update text leads; the clamp follows it rather than overwriting it.
+    expect(structured.notice).toBe(
+      `Crossref records updates to this work: retraction (publisher). updatedBy names each notice DOI; call crossref_get_work with one to read it. ${CLAMP}`,
+    );
+  });
+});
+
+/**
+ * The update entry shape and its line are shared with crossref_search_works. What
+ * crossref_get_work advertises and renders for them is pinned here so sharing them changes
+ * neither.
+ */
+describe('getWorkTool update entries', () => {
+  const ENTRY_SCHEMA = {
+    type: 'object',
+    properties: {
+      doi: {
+        type: 'string',
+        description:
+          "DOI on the other side of the link: the notice, in updatedBy; the updated work, in updateTo. It is this work's own DOI when the update was made to this record in place.",
+      },
+      type: {
+        type: 'string',
+        description:
+          'Crossref update type as deposited: correction, erratum, corrigendum, addendum, retraction, withdrawal, expression_of_concern, new_version, new_edition, or another code',
+      },
+      source: {
+        type: 'string',
+        description:
+          'Who recorded the link: publisher, or retraction-watch for an entry Crossref carries from the Retraction Watch database',
+      },
+      recordId: {
+        description: 'Retraction Watch record ID. Present only on retraction-watch entries.',
+        type: 'string',
+      },
+      updated: {
+        description: 'Date the update was issued',
+        type: 'object',
+        properties: {
+          year: { description: 'Year', type: 'number' },
+          month: { description: 'Month (1–12)', type: 'number' },
+          day: { description: 'Day of month', type: 'number' },
+        },
+        additionalProperties: false,
+      },
+    },
+    required: ['doi', 'type', 'source'],
+    additionalProperties: false,
+    description: 'Update link',
+  };
+
+  it('advertises updatedBy and updateTo in the same entry shape', () => {
+    const schema = z.toJSONSchema(getWorkTool.output) as {
+      properties: Record<string, { description?: string; items?: unknown }>;
+    };
+
+    expect(schema.properties.updatedBy?.items).toEqual(ENTRY_SCHEMA);
+    expect(schema.properties.updateTo?.items).toEqual(ENTRY_SCHEMA);
+    expect(schema.properties.updateTo?.description).toBe(
+      'Works this record is an update notice for, in the entry shape updatedBy uses and in deposited order. Omitted when the record is not registered as a notice.',
+    );
+  });
+
+  it('renders both sections with one line per entry, every field on it', async () => {
+    mockGetWork.mockResolvedValue(
+      makeRawWork({
+        'updated-by': [
+          {
+            DOI: '10.1016/s0140-6736(20)31324-6',
+            type: 'retraction',
+            label: 'Retraction',
+            source: 'retraction-watch',
+            'record-id': '23529',
+            updated: { 'date-parts': [[2020, 6, 5]] },
+          },
+          { DOI: '10.1000/erratum', type: 'erratum', source: 'publisher' },
+        ],
+        'update-to': [
+          {
+            DOI: '10.1000/original',
+            type: 'retraction',
+            source: 'publisher',
+            updated: { 'date-parts': [[2020, 5]] },
+          },
+        ],
+      }),
+    );
+
+    const result = await runToolContract(getWorkTool, { doi: '10.1038/nature12373' });
+    const text = result.content.map(blockText).join('\n');
+
+    expect(text).toContain(
+      [
+        '',
+        '**Updated by:**',
+        '- 10.1016/s0140-6736(20)31324-6 — retraction (retraction-watch, record 23529), 2020-06-05',
+        '- 10.1000/erratum — erratum (publisher)',
+        '',
+        '**Update notice for:**',
+        '- 10.1000/original — retraction (publisher), 2020-05',
+        '',
+      ].join('\n'),
+    );
+    expect(result.structuredContent).toMatchObject({
+      updatedBy: [
+        {
+          doi: '10.1016/s0140-6736(20)31324-6',
+          type: 'retraction',
+          source: 'retraction-watch',
+          recordId: '23529',
+          updated: { year: 2020, month: 6, day: 5 },
+        },
+        { doi: '10.1000/erratum', type: 'erratum', source: 'publisher' },
+      ],
+      updateTo: [
+        {
+          doi: '10.1000/original',
+          type: 'retraction',
+          source: 'publisher',
+          updated: { year: 2020, month: 5 },
+        },
+      ],
+    });
   });
 });

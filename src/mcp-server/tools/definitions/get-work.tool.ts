@@ -15,14 +15,25 @@
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { mdText, mdTextAtLineStart } from '@/mcp-server/tools/markdown-text.js';
+import {
+  clampPageSize,
+  ENTRY_LIMIT_CAP,
+  ENTRY_LIMIT_CEILING,
+} from '@/mcp-server/tools/page-size.js';
+import { notFoundDetail } from '@/mcp-server/tools/registration-agency.js';
 import { locatorFields, locatorLine, projectLocators } from '@/mcp-server/tools/work-locators.js';
+import {
+  projectUpdates,
+  type Update,
+  updateFields,
+  updateSections,
+} from '@/mcp-server/tools/work-updates.js';
 import {
   formatDateParts,
   getCrossrefService,
   normalizeDoi,
   normalizeMarkupText,
   normalizeText,
-  parseDateParts,
   resolveWorkDate,
 } from '@/services/crossref/crossref-service.js';
 import type {
@@ -31,7 +42,6 @@ import type {
   CrossrefFunder,
   CrossrefOrganizationId,
   CrossrefRelation,
-  CrossrefUpdate,
 } from '@/services/crossref/types.js';
 import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
 
@@ -113,31 +123,6 @@ const DatePartsSchema = z.object({
   day: z.number().optional().describe('Day of month'),
 });
 
-const UpdateSchema = z
-  .object({
-    doi: z
-      .string()
-      .describe(
-        "DOI on the other side of the link: the notice, in updatedBy; the updated work, in updateTo. It is this work's own DOI when the update was made to this record in place.",
-      ),
-    type: z
-      .string()
-      .describe(
-        'Crossref update type as deposited: correction, erratum, corrigendum, addendum, retraction, withdrawal, expression_of_concern, new_version, new_edition, or another code',
-      ),
-    source: z
-      .string()
-      .describe(
-        'Who recorded the link: publisher, or retraction-watch for an entry Crossref carries from the Retraction Watch database',
-      ),
-    recordId: z
-      .string()
-      .optional()
-      .describe('Retraction Watch record ID. Present only on retraction-watch entries.'),
-    updated: DatePartsSchema.optional().describe('Date the update was issued'),
-  })
-  .describe('Update link');
-
 const RelationSchema = z
   .object({
     type: z
@@ -189,10 +174,10 @@ export const getWorkTool = tool('crossref_get_work', {
       .number()
       .int()
       .min(1)
-      .max(500)
+      .max(ENTRY_LIMIT_CEILING)
       .default(25)
       .describe(
-        'Maximum number of authors to return in one page (1–500, default 25). Ordinary records fit in a single page; large-collaboration papers in particle physics and genomics deposit thousands.',
+        `Maximum number of authors to return in one page (1–${ENTRY_LIMIT_CAP} per call, default 25). A larger value, up to ${ENTRY_LIMIT_CEILING}, returns ${ENTRY_LIMIT_CAP} and says so in notice; nextOffset continues after the authors returned. Ordinary records fit in a single page; large-collaboration papers in particle physics and genomics deposit thousands.`,
       ),
   }),
 
@@ -228,18 +213,7 @@ export const getWorkTool = tool('crossref_get_work', {
       .describe(
         'Editors of the work, or of the book or proceedings containing it, in the entry shape authors use. Returned whole — never paged by offset and limit, and never counted in authorCount. Omitted when the record deposits none.',
       ),
-    updatedBy: z
-      .array(UpdateSchema)
-      .optional()
-      .describe(
-        'Update notices Crossref records against this work — corrections, errata, retractions, expressions of concern, withdrawals, new versions — in deposited order. Entries are never merged: the same notice DOI can appear once per source, typed differently by each. Omitted when none is recorded, which does not mean the work was never updated: coverage depends on publisher and Retraction Watch deposits.',
-      ),
-    updateTo: z
-      .array(UpdateSchema)
-      .optional()
-      .describe(
-        'Works this record is an update notice for, in the entry shape updatedBy uses and in deposited order. Omitted when the record is not registered as a notice.',
-      ),
+    ...updateFields,
     relations: z
       .array(RelationSchema)
       .optional()
@@ -301,7 +275,7 @@ export const getWorkTool = tool('crossref_get_work', {
       .string()
       .optional()
       .describe(
-        'When updatedBy is present, the update types Crossref records for this work with the source of each, and where the notice is read. Then which authors this page covers and the offset that reaches the next ones, or an explanation when the requested offset is past the end of the author list. Both share this one string when both apply. Absent when the page holds the whole author list and no update is recorded.',
+        'When updatedBy is present, the update types Crossref records for this work with the source of each, and where the notice is read. Then, when limit was above its per-call cap, the value requested and the cap applied. Then which authors this page covers and the offset that reaches the next ones, or an explanation when the requested offset is past the end of the author list. All share this one string when more than one applies. Absent when the page holds the whole author list, no update is recorded, and limit was within its cap.',
       ),
   },
 
@@ -322,13 +296,20 @@ export const getWorkTool = tool('crossref_get_work', {
      * not-found message all read the bare DOI, so the unwrap happens once, here.
      */
     const doi = normalizeDoi(input.doi);
+    // Clamped once, here, so the author slice, nextOffset, and the `cap` enrichment read the page size used.
+    const limitClamp = clampPageSize('limit', input.limit, ENTRY_LIMIT_CAP);
+    const limit = limitClamp.value;
     ctx.log.info('Resolving DOI', { doi });
     const svc = getCrossrefService();
     const raw = await svc.getWork(doi, ctx);
     if (!raw) {
-      throw ctx.fail('doi_not_found', `No Crossref record for DOI: ${doi}`, {
-        doi,
+      const detail = notFoundDetail({
+        subject: 'doi',
+        message: `No Crossref record for DOI: ${doi}`,
+        recovery: ctx.recoveryFor('doi_not_found').recovery.hint,
+        lookup: await svc.getRegistrationAgency(doi, ctx),
       });
+      throw ctx.fail('doi_not_found', detail.message, { doi, ...detail.data });
     }
 
     const title = raw.title?.[0] !== undefined ? normalizeMarkupText(raw.title[0]) : undefined;
@@ -353,15 +334,10 @@ export const getWorkTool = tool('crossref_get_work', {
      * record — and authorCount is what keeps a bounded page visibly bounded.
      */
     const authorTotal = raw.author?.length ?? 0;
-    const authorPage = raw.author
-      ?.slice(input.offset, input.offset + input.limit)
-      .map(normalizeAuthor);
+    const authorPage = raw.author?.slice(input.offset, input.offset + limit).map(normalizeAuthor);
     const authorNextOffset = input.offset + (authorPage?.length ?? 0);
 
-    const updatedBy = raw['updated-by']?.length
-      ? raw['updated-by'].map(normalizeUpdate)
-      : undefined;
-    const updateTo = raw['update-to']?.length ? raw['update-to'].map(normalizeUpdate) : undefined;
+    const updates = projectUpdates(raw);
     const relations = raw.relation ? groupRelations(raw.relation) : [];
 
     /**
@@ -373,7 +349,8 @@ export const getWorkTool = tool('crossref_get_work', {
      * publisher's erroneous updateTo would otherwise announce the retracted work as a retraction.
      */
     const notices: string[] = [];
-    if (updatedBy) notices.push(updateNotice(updatedBy, raw.DOI));
+    if (updates.updatedBy) notices.push(updateNotice(updates.updatedBy, raw.DOI));
+    if (limitClamp.notice) notices.push(limitClamp.notice);
     const pageCut = authorNextOffset < authorTotal;
     if (authorTotal > 0 && input.offset >= authorTotal) {
       notices.push(
@@ -388,7 +365,7 @@ export const getWorkTool = tool('crossref_get_work', {
       ctx.enrich({ nextOffset: authorNextOffset });
       ctx.enrich.truncated({
         shown: authorPage?.length ?? 0,
-        cap: input.limit,
+        cap: limit,
         guidance: notices.join(' '),
       });
     } else if (notices.length > 0) {
@@ -400,8 +377,7 @@ export const getWorkTool = tool('crossref_get_work', {
       ...(title !== undefined && { title }),
       ...(subtitle !== undefined && { subtitle }),
       ...(raw.type != null && { type: raw.type }),
-      ...(updatedBy && { updatedBy }),
-      ...(updateTo && { updateTo }),
+      ...updates,
       ...(relations.length > 0 && { relations }),
       ...(authorPage !== undefined && {
         authors: authorPage,
@@ -475,8 +451,7 @@ export const getWorkTool = tool('crossref_get_work', {
      * next label into the last bullet.
      */
     const sections = [
-      result.updatedBy && ['**Updated by:**', ...result.updatedBy.map(updateLine)],
-      result.updateTo && ['**Update notice for:**', ...result.updateTo.map(updateLine)],
+      ...updateSections(result),
       result.relations && ['**Relations:**', ...result.relations.map(relationLine)],
       result.editors && ['**Editors:**', ...result.editors.map(contributorLine)],
     ].filter((section) => section !== undefined);
@@ -626,7 +601,6 @@ function normalizeAuthor(a: CrossrefAuthor) {
 }
 
 type Contributor = z.infer<typeof AuthorSchema>;
-type Update = z.infer<typeof UpdateSchema>;
 type Relation = z.infer<typeof RelationSchema>;
 
 /** An author's or an editor's line in a Markdown list. */
@@ -639,28 +613,6 @@ function contributorLine(a: Contributor): string {
     ? ` — ${a.affiliation.map(affiliationLabel).join(', ')}`
     : '';
   return `- ${displayName}${orcidPart}${seqPart}${affPart}`;
-}
-
-/**
- * Project one update link. `label` is dropped: it restates `type` in title case on every entry
- * Crossref deposits. The Retraction Watch record ID rides along where Crossref carries one.
- */
-function normalizeUpdate(u: CrossrefUpdate): Update {
-  const updated = parseDateParts(u.updated);
-  return {
-    doi: u.DOI,
-    type: u.type,
-    source: u.source,
-    ...(u['record-id'] !== undefined && { recordId: u['record-id'] }),
-    ...(updated !== undefined && { updated }),
-  };
-}
-
-/** An update link's line: the DOI a reader copies first, then what kind of update and whose. */
-function updateLine(u: Update): string {
-  const record = u.recordId !== undefined ? `, record ${u.recordId}` : '';
-  const date = u.updated ? `, ${formatDateParts(u.updated)}` : '';
-  return `- ${u.doi} — ${mdText(u.type)} (${mdText(u.source)}${record})${date}`;
 }
 
 /**

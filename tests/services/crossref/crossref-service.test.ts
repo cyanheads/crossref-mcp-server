@@ -619,6 +619,226 @@ describe('CrossrefService', () => {
     expect(result).toMatchObject({ DOI: '10.1038/nature12373' });
     expect(http.calls).toHaveLength(2);
   });
+
+  describe('getRegistrationAgency', () => {
+    const onRegistry = (request: Request) => new URL(request.url).hostname === 'doi.org';
+    const registry = (body: unknown, init?: ResponseInit) =>
+      http.route({ match: onRegistry, respond: () => Response.json(body, init) });
+    const registryRaw = (body: string, init?: ResponseInit) =>
+      http.route({ match: onRegistry, respond: () => new Response(body, init) });
+
+    it('names the agency the registry reports, from one request to doi.org/doiRA', async () => {
+      registry([{ DOI: '10.5281/zenodo.3242074', RA: 'DataCite' }]);
+
+      const result = await service.getRegistrationAgency(
+        '10.5281/zenodo.3242074',
+        createMockContext(),
+      );
+
+      expect(result).toEqual({ kind: 'registered', agency: 'DataCite' });
+      expect(http.calls).toHaveLength(1);
+      expect(requestedUrl()).toBe('https://doi.org/doiRA/10.5281%2Fzenodo.3242074');
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('reports Crossref as the agency when Crossref registered it', async () => {
+      registry([{ DOI: '10.13039/100000001', RA: 'Crossref' }]);
+
+      expect(
+        await service.getRegistrationAgency('10.13039/100000001', createMockContext()),
+      ).toEqual({ kind: 'registered', agency: 'Crossref' });
+    });
+
+    it('looks up a bare prefix as written', async () => {
+      registry([{ DOI: '10.5281', RA: 'DataCite' }]);
+
+      await service.getRegistrationAgency('10.5281', createMockContext());
+
+      expect(requestedUrl()).toBe('https://doi.org/doiRA/10.5281');
+    });
+
+    it.each([
+      'Crossref',
+      'DataCite',
+      'mEDRA',
+      'JaLC',
+      'KISTI',
+      'CNKI',
+      'ISTIC',
+      'Airiti',
+      'OP',
+      'EIDR',
+      'Public',
+    ])('names the agency %s as the registry spells it', async (agency) => {
+      registry([{ DOI: 'x', RA: agency }]);
+
+      expect(await service.getRegistrationAgency('10.1000/x', createMockContext())).toEqual({
+        kind: 'registered',
+        agency,
+      });
+    });
+
+    it('identifies the server to doi.org without the operator mailto Crossref requests carry', async () => {
+      serveRaw('Resource not found.', { status: 404 });
+      registry([{ DOI: '10.5281/zenodo.3242074', RA: 'DataCite' }]);
+
+      const ctx = createMockContext();
+      expect(await service.getWork('10.5281/zenodo.3242074', ctx)).toBeNull();
+      await service.getRegistrationAgency('10.5281/zenodo.3242074', ctx);
+
+      const [crossrefCall, registryCall] = http.calls;
+      expect(new URL(crossrefCall?.request.url ?? '').hostname).toBe('api.crossref.test');
+      expect(crossrefCall?.request.headers.get('User-Agent')).toContain('mailto:test@example.com');
+      expect(new URL(registryCall?.request.url ?? '').hostname).toBe('doi.org');
+      expect(registryCall?.request.headers.get('User-Agent')).toMatch(
+        /^crossref-mcp-server\/\d+\.\d+\.\d+$/,
+      );
+    });
+
+    it('reads "DOI does not exist" as unregistered', async () => {
+      registry([{ DOI: '10.99999', status: 'DOI does not exist' }]);
+
+      expect(await service.getRegistrationAgency('10.99999', createMockContext())).toEqual({
+        kind: 'unregistered',
+      });
+    });
+
+    it('percent-encodes every DOI character the path would otherwise split on', async () => {
+      registry([{ DOI: 'x', status: 'DOI does not exist' }]);
+
+      await service.getRegistrationAgency('10.1000/a#b,c', createMockContext());
+      await service.getRegistrationAgency(
+        '10.1002/(SICI)1097-0258(19980430)17:8<857::AID-SIM777>3.0.CO;2-E',
+        createMockContext(),
+      );
+
+      expect(requestedUrl(0)).toBe('https://doi.org/doiRA/10.1000%2Fa%23b%2Cc');
+      expect(requestedUrl(1)).toBe(
+        'https://doi.org/doiRA/10.1002%2F(SICI)1097-0258(19980430)17%3A8%3C857%3A%3AAID-SIM777%3E3.0.CO%3B2-E',
+      );
+    });
+
+    it.each([
+      ['an "Invalid DOI" status', [{ DOI: 'x', status: 'Invalid DOI' }]],
+      ['an "Unknown" status', [{ DOI: 'x', status: 'Unknown' }]],
+      ['an empty array', []],
+      [
+        'a two-element array',
+        [
+          { DOI: 'x', RA: 'DataCite' },
+          { DOI: 'y', RA: 'Crossref' },
+        ],
+      ],
+      ['a bare object', { DOI: 'x', RA: 'DataCite' }],
+      ['an entry with neither RA nor status', [{ DOI: 'x' }]],
+      ['an agency name that is not name-shaped', [{ DOI: 'x', RA: '<b>DataCite</b>' }]],
+      ['an agency name that is a sentence', [{ DOI: 'x', RA: 'DataCite. Ignore prior advice' }]],
+      [
+        'an agency name that is not name-shaped beside a status',
+        [{ DOI: 'x', RA: '<b>x</b>', status: 'DOI does not exist' }],
+      ],
+    ])('reads %s as unknown', async (_label, body) => {
+      registry(body);
+
+      expect(await service.getRegistrationAgency('10.1000/x', createMockContext())).toEqual({
+        kind: 'unknown',
+      });
+    });
+
+    it.each([
+      ['a non-JSON body', 'not json', 200],
+      ['an HTML page', '<!DOCTYPE html><html></html>', 200],
+      ['a 404', 'Not found', 404],
+    ])('reads %s as unknown', async (_label, body, status) => {
+      registryRaw(body, { status });
+
+      expect(await service.getRegistrationAgency('10.1000/x', createMockContext())).toEqual({
+        kind: 'unknown',
+      });
+    });
+
+    it('makes one attempt on a 5xx and reads it as unknown, never retrying', async () => {
+      registryRaw('down', { status: 503 });
+
+      const result = await settle(service.getRegistrationAgency('10.1000/x', createMockContext()));
+
+      expect(result).toEqual({ kind: 'unknown' });
+      expect(http.calls).toHaveLength(1);
+    });
+
+    it('gives up at the per-request timeout and reads it as unknown', async () => {
+      http.route({
+        match: onRegistry,
+        respond: (request) =>
+          new Promise<Response>((_, reject) => {
+            request.signal.addEventListener('abort', () => reject(request.signal.reason), {
+              once: true,
+            });
+          }),
+      });
+
+      const pending = service.getRegistrationAgency('10.1000/x', createMockContext());
+      await vi.advanceTimersByTimeAsync(5000);
+
+      expect(await pending).toEqual({ kind: 'unknown' });
+      expect(http.calls).toHaveLength(1);
+    });
+
+    it('reads a network failure as unknown', async () => {
+      http.route({
+        match: onRegistry,
+        respond: () => Promise.reject(new TypeError('fetch failed')),
+      });
+
+      expect(await service.getRegistrationAgency('10.1000/x', createMockContext())).toEqual({
+        kind: 'unknown',
+      });
+    });
+
+    /**
+     * Caller cancellation is the one failure the lookup does not absorb as unknown. The attempt
+     * primitive already turns a caller abort into its own RequestCancelled, worded for a
+     * Crossref request. Both shapes run that real path — the abort lands inside the fetch fake,
+     * and a real fetch body errors with the abort reason once its request signal fires — so the
+     * message pinned here is the one a caller actually receives.
+     */
+    it.each([
+      [
+        'while the request is in flight',
+        (controller: AbortController) => (request: Request) => {
+          controller.abort(new Error('caller cancelled'));
+          return Promise.reject(request.signal.reason);
+        },
+      ],
+      [
+        'while the answer is being read',
+        (controller: AbortController) => () =>
+          new Response(
+            new ReadableStream({
+              start(stream) {
+                stream.enqueue(new TextEncoder().encode('[{"DOI":"x",'));
+                controller.abort(new Error('caller cancelled'));
+                stream.error(controller.signal.reason);
+              },
+            }),
+            { status: 200 },
+          ),
+      ],
+    ])('names the registry lookup, not Crossref, when cancelled %s', async (_label, respond) => {
+      const controller = new AbortController();
+      http.route({ match: onRegistry, respond: respond(controller) });
+
+      await expect(
+        service.getRegistrationAgency(
+          '10.1000/x',
+          createMockContext({ signal: controller.signal }),
+        ),
+      ).rejects.toMatchObject({
+        code: JsonRpcErrorCode.RequestCancelled,
+        message: 'DOI registry lookup cancelled by caller.',
+      });
+    });
+  });
 });
 
 describe('service singleton', () => {

@@ -111,10 +111,15 @@ export type CrossrefReference = {
   year?: string;
   'journal-title'?: string;
   'article-title'?: string;
+  /** The title of a cited book or proceedings volume. */
+  'volume-title'?: string;
+  'series-title'?: string;
   volume?: string;
-  'first-page'?: string;
-  issn?: string;
   issue?: string;
+  'first-page'?: string;
+  edition?: string;
+  /** Deposited as a URI, `https://id.crossref.org/issn/0165-1633`, not a bare ISSN. */
+  ISSN?: string;
 };
 
 /** Raw upstream work shape from the Crossref REST API. All optional except DOI; type can be null. */
@@ -173,7 +178,9 @@ export type RawCrossrefWork = {
 /** Raw journal record from Crossref /journals endpoint. */
 export type RawCrossrefJournal = {
   ISSN?: string[];
-  /** Explicitly `null` — not absent — on a journal with no registered linking ISSN. */
+  /** Each ISSN with its form. `type` is `null` on some entries; the list is empty, not absent, on a journal with no ISSN. */
+  'issn-type'?: Array<{ value: string; type?: string | null }>;
+  /** Not carried by Crossref journal records; typed nullable so an explicit `null` is never projected. */
   'ISSN-L'?: string | null;
   title?: string;
   publisher?: string;

@@ -15,6 +15,7 @@ import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode, McpError } from '@cyanheads/mcp-ts-core/errors';
 import { isBlank, nonBlank } from '@/mcp-server/tools/blank-input.js';
 import { mdText } from '@/mcp-server/tools/markdown-text.js';
+import { clampPageSize, ROWS_CAP, ROWS_CEILING } from '@/mcp-server/tools/page-size.js';
 import {
   type FundersSearchOptions,
   formatDateParts,
@@ -160,10 +161,10 @@ export const searchFundersTool = tool('crossref_search_funders', {
       .number()
       .int()
       .min(1)
-      .max(100)
+      .max(ROWS_CEILING)
       .default(10)
       .describe(
-        'Maximum funders to return for name queries, or works when include_works is true (1–100, default 10)',
+        `Maximum funders to return for name queries, or works when include_works is true (1–${ROWS_CAP} per call, default 10). A larger value, up to ${ROWS_CEILING}, returns ${ROWS_CAP} and says so in notice; nextOffset and nextWorksOffset continue after the records returned.`,
       ),
     offset: z
       .number()
@@ -228,7 +229,7 @@ export const searchFundersTool = tool('crossref_search_funders', {
       .string()
       .optional()
       .describe(
-        'Guidance on a page that needs a caveat: a query nothing matched, an offset or works_offset past the end of a list that did match, a page that stops at one of the route offset ceilings with records still unretrieved, a returned funder that the Funder Registry has deprecated in favor of another entry, or a query or funder_doi supplied blank with nothing else to search by, so the page lists every funder unfiltered. Absent otherwise. A page needing more than one caveat carries them all in this one string.',
+        'Guidance on a page that needs a caveat: a query nothing matched, an offset or works_offset past the end of a list that did match, a page that stops at one of the route offset ceilings with records still unretrieved (naming the offset and smaller rows that reach the last records below the ceiling, when any remain), a returned funder that the Funder Registry has deprecated in favor of another entry, a query or funder_doi supplied blank with nothing else to search by, so the page lists every funder unfiltered, or a rows value above its per-call cap, naming the value requested and the cap applied. Absent otherwise. A page needing more than one caveat carries them all in this one string.',
       ),
   },
 
@@ -245,15 +246,32 @@ export const searchFundersTool = tool('crossref_search_funders', {
       query === undefined &&
       funderDoi === undefined &&
       (isBlank(input.query) || isBlank(input.funder_doi));
+    /**
+     * Clamped once, here, so both offset ceilings, both upstream requests, and both
+     * continuation offsets read the page size actually used.
+     */
+    const rowsClamp = clampPageSize('rows', input.rows, ROWS_CAP);
+    const rows = rowsClamp.value;
+    const clampSuffix = rowsClamp.notice ? ` ${rowsClamp.notice}` : '';
 
-    if (!funderDoi && input.offset + input.rows > NAME_SEARCH_OFFSET_CAP) {
+    /**
+     * Both ceilings are on offset + rows, so an offset below one still reaches the records up to
+     * it with a smaller page. Each throw names that request in its hint; past the ceiling, the
+     * contract recovery applies.
+     */
+    if (!funderDoi && input.offset + rows > NAME_SEARCH_OFFSET_CAP) {
       throw ctx.fail(
         'offset_too_large',
-        `offset ${input.offset} + rows ${input.rows} = ${input.offset + input.rows} exceeds the ${NAME_SEARCH_OFFSET_CAP}-record ceiling Crossref allows on funder name search.`,
+        `offset ${input.offset} + rows ${rows} = ${input.offset + rows} exceeds the ${NAME_SEARCH_OFFSET_CAP}-record ceiling Crossref allows on funder name search.${clampSuffix}`,
         {
           offset: input.offset,
-          rows: input.rows,
+          rows,
           cap: NAME_SEARCH_OFFSET_CAP,
+          ...(input.offset < NAME_SEARCH_OFFSET_CAP && {
+            recovery: {
+              hint: `Pass offset=${input.offset} with rows=${NAME_SEARCH_OFFSET_CAP - input.offset} to read the last funders offset paging reaches, or narrow the name query so the funders you want fall within the first ${NAME_SEARCH_OFFSET_CAP} matches.`,
+            },
+          }),
         },
       );
     }
@@ -281,15 +299,20 @@ export const searchFundersTool = tool('crossref_search_funders', {
       );
     }
     // Unconditional: the guard above leaves works_offset at 0 whenever a cursor is present,
-    // and 0 + rows is inside the cap for every rows the schema admits.
-    if (input.include_works && input.works_offset + input.rows > WORKS_OFFSET_CAP) {
+    // and 0 + rows is inside the cap for every rows the clamp lets through.
+    if (input.include_works && input.works_offset + rows > WORKS_OFFSET_CAP) {
       throw ctx.fail(
         'works_offset_too_large',
-        `works_offset ${input.works_offset} + rows ${input.rows} = ${input.works_offset + input.rows} exceeds the ${WORKS_OFFSET_CAP}-record ceiling Crossref allows on a funded-works list.`,
+        `works_offset ${input.works_offset} + rows ${rows} = ${input.works_offset + rows} exceeds the ${WORKS_OFFSET_CAP}-record ceiling Crossref allows on a funded-works list.${clampSuffix}`,
         {
           worksOffset: input.works_offset,
-          rows: input.rows,
+          rows,
           cap: WORKS_OFFSET_CAP,
+          ...(input.works_offset < WORKS_OFFSET_CAP && {
+            recovery: {
+              hint: `Pass works_offset=${input.works_offset} with rows=${WORKS_OFFSET_CAP - input.works_offset} to read the last funded works offset paging reaches, or restart the funded-works list with works_cursor="*" and chain the nextWorksCursor token from each response to read the whole list.`,
+            },
+          }),
         },
       );
     }
@@ -298,7 +321,7 @@ export const searchFundersTool = tool('crossref_search_funders', {
     const svc = getCrossrefService();
 
     const funderOpts: FundersSearchOptions = {
-      rows: input.rows,
+      rows,
       offset: input.offset,
       ...(query !== undefined && { query }),
       ...(funderDoi !== undefined && { funderDoi }),
@@ -320,7 +343,7 @@ export const searchFundersTool = tool('crossref_search_funders', {
       offset: input.offset,
       returned: rawFunders.length,
       total: fundersTotal,
-      rows: input.rows,
+      rows,
       cap: NAME_SEARCH_OFFSET_CAP,
     });
 
@@ -352,7 +375,7 @@ export const searchFundersTool = tool('crossref_search_funders', {
      * match on a page that also stops at an offset ceiling. Collected and emitted as a single
      * string so neither silently overwrites the other.
      */
-    const notices: string[] = [];
+    const notices: string[] = rowsClamp.notice ? [rowsClamp.notice] : [];
     const flushNotices = () => {
       if (notices.length > 0) ctx.enrich.notice(notices.join(' '));
     };
@@ -378,9 +401,13 @@ export const searchFundersTool = tool('crossref_search_funders', {
       } else if (listContinuation.kind === 'ceiling') {
         // A missing nextOffset here would be indistinguishable from the end of the list, and
         // withholding the offset also means the caller never trips offset_too_large and never
-        // reads its recovery. Say it on the page instead.
+        // reads its recovery. Say it on the page instead — with the smaller page that still
+        // fits when this one stopped short of the ceiling, which nextOffset cannot carry.
+        const next = input.offset + funders.length;
         notices.push(
-          `This is the last funder page reachable by offset — Crossref caps offset + rows at ${NAME_SEARCH_OFFSET_CAP} on funder search and ${fundersTotal} funders matched. Narrow the query to bring the rest into reach.`,
+          next < NAME_SEARCH_OFFSET_CAP
+            ? `Crossref caps offset + rows at ${NAME_SEARCH_OFFSET_CAP} on funder search and ${fundersTotal} funders matched, so a full page at offset ${next} is out of reach. Pass offset=${next} with rows=${NAME_SEARCH_OFFSET_CAP - next} for the last funder page reachable by offset, and narrow the query to bring the rest into reach.`
+            : `This is the last funder page reachable by offset — Crossref caps offset + rows at ${NAME_SEARCH_OFFSET_CAP} on funder search and ${fundersTotal} funders matched. Narrow the query to bring the rest into reach.`,
         );
       }
       flushNotices();
@@ -423,8 +450,8 @@ export const searchFundersTool = tool('crossref_search_funders', {
     const worksResult = await svc.getFunderWorks(
       funderId,
       worksCursor !== undefined
-        ? { rows: input.rows, cursor: worksCursor }
-        : { rows: input.rows, offset: input.works_offset },
+        ? { rows, cursor: worksCursor }
+        : { rows, offset: input.works_offset },
       ctx,
     );
     const fundedWorks = worksResult.items.map((raw) => {
@@ -459,7 +486,7 @@ export const searchFundersTool = tool('crossref_search_funders', {
         offset: input.works_offset,
         returned: fundedWorks.length,
         total: worksResult.totalResults,
-        rows: input.rows,
+        rows,
         cap: WORKS_OFFSET_CAP,
       });
 
@@ -476,8 +503,13 @@ export const searchFundersTool = tool('crossref_search_funders', {
       if (overshoot) {
         notices.push(overshoot);
       } else if (worksContinuation.kind === 'ceiling') {
+        const next = input.works_offset + fundedWorks.length;
+        const cursorRoute =
+          'chain nextWorksCursor to read the whole list; the walk restarts at the most recently registered work and runs by registration date, not publication date.';
         notices.push(
-          `This is the last works page reachable by works_offset — Crossref caps works_offset + rows at ${WORKS_OFFSET_CAP} on a funded-works list and ${worksResult.totalResults} works exist. Re-run with works_cursor="*" and chain nextWorksCursor to read the whole list; the walk restarts at the most recently registered work and runs by registration date, not publication date.`,
+          next < WORKS_OFFSET_CAP
+            ? `Crossref caps works_offset + rows at ${WORKS_OFFSET_CAP} on a funded-works list and ${worksResult.totalResults} works exist, so a full page at works_offset ${next} is out of reach. Pass works_offset=${next} with rows=${WORKS_OFFSET_CAP - next} for the last works page reachable by works_offset, or re-run with works_cursor="*" and ${cursorRoute}`
+            : `This is the last works page reachable by works_offset — Crossref caps works_offset + rows at ${WORKS_OFFSET_CAP} on a funded-works list and ${worksResult.totalResults} works exist. Re-run with works_cursor="*" and ${cursorRoute}`,
         );
       }
     }

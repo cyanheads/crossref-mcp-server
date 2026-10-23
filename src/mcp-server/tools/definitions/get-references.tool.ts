@@ -15,11 +15,29 @@ import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { mdText } from '@/mcp-server/tools/markdown-text.js';
 import {
+  clampPageSize,
+  ENTRY_LIMIT_CAP,
+  ENTRY_LIMIT_CEILING,
+} from '@/mcp-server/tools/page-size.js';
+import { notFoundDetail } from '@/mcp-server/tools/registration-agency.js';
+import {
   getCrossrefService,
   normalizeDoi,
   normalizeReferenceText,
 } from '@/services/crossref/crossref-service.js';
 import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
+
+/**
+ * Crossref deposits a reference's ISSN as `https://id.crossref.org/issn/<ISSN>`; the ISSN is what
+ * follows. Scheme and host are case-insensitive, so the match is too. A fully anchored literal
+ * prefix, so it is linear by construction.
+ */
+const ISSN_URI_PREFIX = /^https?:\/\/id\.crossref\.org\/issn\//i;
+
+/** The ISSN a reference deposits, less its URI and surrounding whitespace; absent when nothing is left. */
+function referenceIssn(deposited: string): string | undefined {
+  return deposited.trim().replace(ISSN_URI_PREFIX, '') || undefined;
+}
 
 const ReferenceSchema = z
   .object({
@@ -44,9 +62,29 @@ const ReferenceSchema = z
       .string()
       .optional()
       .describe('Article title of the referenced work, with inline formatting markup removed'),
+    volumeTitle: z
+      .string()
+      .optional()
+      .describe(
+        'Title of the cited book or proceedings volume, with inline formatting markup removed. The only title on many book and chapter citations.',
+      ),
+    seriesTitle: z
+      .string()
+      .optional()
+      .describe(
+        'Title of the series the cited work belongs to, with inline formatting markup removed',
+      ),
     volume: z.string().optional().describe('Volume'),
+    issue: z.string().optional().describe('Issue'),
     firstPage: z.string().optional().describe('First page'),
+    edition: z.string().optional().describe('Edition of the cited book, as deposited'),
     issn: z.string().optional().describe('ISSN of the referenced journal'),
+    doiAssertedBy: z
+      .string()
+      .optional()
+      .describe(
+        'Who supplied the DOI: "publisher" when the citing work\'s publisher deposited it, "crossref" when Crossref matched the citation to it.',
+      ),
   })
   .describe('Reference entry');
 
@@ -78,10 +116,10 @@ export const getReferencesTool = tool('crossref_get_references', {
       .number()
       .int()
       .min(1)
-      .max(500)
+      .max(ENTRY_LIMIT_CEILING)
       .default(100)
       .describe(
-        'Maximum number of references to return in one page (1–500, default 100). Most works fit in a single page; bibliography records can carry tens of thousands.',
+        `Maximum number of references to return in one page (1–${ENTRY_LIMIT_CAP} per call, default 100). A larger value, up to ${ENTRY_LIMIT_CEILING}, returns ${ENTRY_LIMIT_CAP} and says so in notice; nextOffset continues after the references returned. Most works fit in a single page; bibliography records can carry tens of thousands.`,
       ),
   }),
 
@@ -111,7 +149,7 @@ export const getReferencesTool = tool('crossref_get_references', {
       .string()
       .optional()
       .describe(
-        'Coverage guidance when no references are indexed, or a range explanation when the requested offset is past the end of the list. Absent on a normal page.',
+        'Coverage guidance when no references are indexed, a range explanation when the requested offset is past the end of the list, or which references this page covers and the offset that reaches the next ones. Leads with the value requested and the cap applied when limit was above its per-call cap. Absent on a page that holds the whole list with limit within its cap.',
       ),
   },
 
@@ -132,21 +170,34 @@ export const getReferencesTool = tool('crossref_get_references', {
      * not-found message all read the bare DOI, so the unwrap happens once, here.
      */
     const doi = normalizeDoi(input.doi);
+    /**
+     * Clamped once, here, so the slice, nextOffset, and the `cap` enrichment read the page size
+     * used. `notice` is last-wins, so the clamp disclosure leads whichever notice this page writes.
+     */
+    const limitClamp = clampPageSize('limit', input.limit, ENTRY_LIMIT_CAP);
+    const limit = limitClamp.value;
+    const withClamp = (text: string) => (limitClamp.notice ? `${limitClamp.notice} ${text}` : text);
     ctx.log.info('Fetching references', { doi });
     const svc = getCrossrefService();
     const raw = await svc.getWork(doi, ctx);
 
     if (!raw) {
-      throw ctx.fail('doi_not_found', `No Crossref record for DOI: ${doi}`, {
-        doi,
+      const detail = notFoundDetail({
+        subject: 'doi',
+        message: `No Crossref record for DOI: ${doi}`,
+        recovery: ctx.recoveryFor('doi_not_found').recovery.hint,
+        lookup: await svc.getRegistrationAgency(doi, ctx),
       });
+      throw ctx.fail('doi_not_found', detail.message, { doi, ...detail.data });
     }
 
     if (!raw.reference || raw.reference.length === 0) {
       ctx.enrich.notice(
-        'No reference list indexed for this work. Coverage varies by publisher and era; ' +
-          'pre-2000 works and non-participating publishers often have no indexed references. ' +
-          'Try OpenAlex for alternative reference data.',
+        withClamp(
+          'No reference list indexed for this work. Coverage varies by publisher and era; ' +
+            'pre-2000 works and non-participating publishers often have no indexed references. ' +
+            'Try OpenAlex for alternative reference data.',
+        ),
       );
       return { doi: raw.DOI, referenceCount: 0, offset: input.offset, references: [] };
     }
@@ -154,21 +205,27 @@ export const getReferencesTool = tool('crossref_get_references', {
     const total = raw.reference.length;
     if (input.offset >= total) {
       ctx.enrich.notice(
-        `Offset ${input.offset} is past the end of this reference list (${total} references). ` +
-          `Request an offset below ${total}.`,
+        withClamp(
+          `Offset ${input.offset} is past the end of this reference list (${total} references). ` +
+            `Request an offset below ${total}.`,
+        ),
       );
       return { doi: raw.DOI, referenceCount: total, offset: input.offset, references: [] };
     }
 
-    const page = raw.reference.slice(input.offset, input.offset + input.limit);
+    const page = raw.reference.slice(input.offset, input.offset + limit);
     const nextOffset = input.offset + page.length;
     if (nextOffset < total) {
       ctx.enrich({ nextOffset });
       ctx.enrich.truncated({
         shown: page.length,
-        cap: input.limit,
-        guidance: `Showing references ${input.offset + 1}–${nextOffset} of ${total}. Call again with offset=${nextOffset} for the next page.`,
+        cap: limit,
+        guidance: withClamp(
+          `Showing references ${input.offset + 1}–${nextOffset} of ${total}. Call again with offset=${nextOffset} for the next page.`,
+        ),
       });
+    } else if (limitClamp.notice) {
+      ctx.enrich.notice(limitClamp.notice);
     }
 
     /**
@@ -180,18 +237,26 @@ export const getReferencesTool = tool('crossref_get_references', {
      * often content as markup, and deleting a cited URL is a worse failure than leaving one
      * unrecognized tag in place.
      */
-    const references = page.map((r) => ({
-      ...(r.key && { key: r.key }),
-      ...(r.DOI && { doi: r.DOI }),
-      ...(r.unstructured && { unstructured: normalizeReferenceText(r.unstructured) }),
-      ...(r.author && { author: normalizeReferenceText(r.author) }),
-      ...(r.year && { year: r.year }),
-      ...(r['journal-title'] && { journalTitle: normalizeReferenceText(r['journal-title']) }),
-      ...(r['article-title'] && { articleTitle: normalizeReferenceText(r['article-title']) }),
-      ...(r.volume && { volume: r.volume }),
-      ...(r['first-page'] && { firstPage: r['first-page'] }),
-      ...(r.issn && { issn: r.issn }),
-    }));
+    const references = page.map((r) => {
+      const issn = r.ISSN ? referenceIssn(r.ISSN) : undefined;
+      return {
+        ...(r.key && { key: r.key }),
+        ...(r.DOI && { doi: r.DOI }),
+        ...(r.unstructured && { unstructured: normalizeReferenceText(r.unstructured) }),
+        ...(r.author && { author: normalizeReferenceText(r.author) }),
+        ...(r.year && { year: r.year }),
+        ...(r['journal-title'] && { journalTitle: normalizeReferenceText(r['journal-title']) }),
+        ...(r['article-title'] && { articleTitle: normalizeReferenceText(r['article-title']) }),
+        ...(r['volume-title'] && { volumeTitle: normalizeReferenceText(r['volume-title']) }),
+        ...(r['series-title'] && { seriesTitle: normalizeReferenceText(r['series-title']) }),
+        ...(r.volume && { volume: r.volume }),
+        ...(r.issue && { issue: r.issue }),
+        ...(r['first-page'] && { firstPage: r['first-page'] }),
+        ...(r.edition && { edition: r.edition }),
+        ...(issn && { issn }),
+        ...(r['doi-asserted-by'] && { doiAssertedBy: r['doi-asserted-by'] }),
+      };
+    });
 
     return {
       doi: raw.DOI,
@@ -210,20 +275,29 @@ export const getReferencesTool = tool('crossref_get_references', {
 
     for (const [i, r] of result.references.entries()) {
       const position = result.offset + i + 1;
-      const doi = r.doi ? ` — DOI: ${r.doi}` : '';
+      const assertedBy = r.doiAssertedBy ? ` (asserted by ${mdText(r.doiAssertedBy)})` : '';
+      const doi = r.doi ? ` — DOI: ${r.doi}${assertedBy}` : assertedBy;
       const year = r.year ? ` (${r.year})` : '';
       const journal = r.journalTitle ? ` *${mdText(r.journalTitle)}*` : '';
       const authorPart = r.author ? ` ${mdText(r.author)}` : '';
       const volPage =
-        r.volume || r.firstPage
-          ? ` ${mdText(r.volume ?? '')}${r.firstPage ? `:${mdText(r.firstPage)}` : ''}`
+        r.volume || r.issue || r.firstPage
+          ? ` ${mdText(r.volume ?? '')}${r.issue ? `(${mdText(r.issue)})` : ''}${r.firstPage ? `:${mdText(r.firstPage)}` : ''}`
           : '';
-      const issnPart = r.issn ? ` ISSN:${r.issn}` : '';
-      const title = r.articleTitle ? mdText(r.articleTitle) : `[${position}]`;
+      const series = r.seriesTitle ? ` series:${mdText(r.seriesTitle)}` : '';
+      const edition = r.edition ? ` edition:${mdText(r.edition)}` : '';
+      const issnPart = r.issn ? ` ISSN:${mdText(r.issn)}` : '';
+      // A cited book's title is often its only title; with an article title beside it, it names the volume the article is in.
+      const title = r.articleTitle
+        ? mdText(r.articleTitle)
+        : r.volumeTitle
+          ? mdText(r.volumeTitle)
+          : `[${position}]`;
+      const inVolume = r.articleTitle && r.volumeTitle ? ` In: *${mdText(r.volumeTitle)}*` : '';
       const keyPart = r.key ? ` key:${r.key}` : '';
       const rawPart = r.unstructured ? ` | ${mdText(r.unstructured)}` : '';
       lines.push(
-        `${position}.${authorPart} ${title}${year}${journal}${volPage}${issnPart}${doi}${keyPart}${rawPart}`,
+        `${position}.${authorPart} ${title}${inVolume}${year}${journal}${volPage}${series}${edition}${issnPart}${doi}${keyPart}${rawPart}`,
       );
     }
 

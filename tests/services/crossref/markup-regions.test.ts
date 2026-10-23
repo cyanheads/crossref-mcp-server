@@ -12,7 +12,7 @@ import {
   normalizeMarkupText,
   normalizeReferenceText,
 } from '@/services/crossref/crossref-service.js';
-import { measureScaling, repeatTo } from '../../helpers/scaling.js';
+import { expectLinearScaling, repeatTo } from '../../helpers/scaling.js';
 
 /** Both markup passes over one input, as `[JATS, reference]`. */
 function bothPasses(raw: string): [string, string] {
@@ -96,7 +96,7 @@ describe('markup region matching', () => {
 /**
  * An opener with no closer claims nothing, and a matcher that learns that by scanning to the
  * end of the field from every opener costs time quadratic in the field. Measured by growth, not
- * against a single budget: t(80k)/t(5k) is 16 for linear work and 256 for quadratic.
+ * against a single budget: t(320k)/t(5k) is 64 for linear work and 4096 for quadratic.
  */
 describe('markup region matching on openers that never close', () => {
   const shapes: Array<[string, string]> = [
@@ -112,15 +112,13 @@ describe('markup region matching on openers that never close', () => {
   it.each(shapes)(
     'stays linear on %s',
     (_name, unit) => {
-      const { ms, ratio } = measureScaling(
+      expectLinearScaling(
         (size) => repeatTo(unit, size),
         (raw) => {
           normalizeMarkupText(raw);
           normalizeReferenceText(raw);
         },
       );
-      expect(ratio, `t = ${ms.map((t) => t.toFixed(2)).join(' / ')} ms`).toBeLessThan(64);
-      expect(ms[2]).toBeLessThan(100);
     },
     60_000,
   );
@@ -229,12 +227,10 @@ describe('the text a link element is checked against, at scale', () => {
   it.each(shapes)(
     'stays linear on %s',
     (_name, make) => {
-      const { ms, ratio } = measureScaling(make, (raw) => {
+      expectLinearScaling(make, (raw) => {
         normalizeMarkupText(raw);
         normalizeReferenceText(raw);
       });
-      expect(ratio, `t = ${ms.map((t) => t.toFixed(2)).join(' / ')} ms`).toBeLessThan(64);
-      expect(ms[2]).toBeLessThan(100);
     },
     120_000,
   );

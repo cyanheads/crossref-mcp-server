@@ -3,7 +3,9 @@
  * per-request timeout, retry with exponential backoff, and pagination helpers. Offset paging is
  * honored on the name-search and works sub-resource routes, whose ceilings differ by an order of
  * magnitude — see NAME_SEARCH_OFFSET_CAP and WORKS_OFFSET_CAP. Cursor paging has no ceiling and
- * is available on `/works` and on both works sub-resources.
+ * is available on `/works` and on both works sub-resources. One request leaves Crossref: the DOI
+ * registry's agency lookup, made only after a Crossref 404 (`getRegistrationAgency`), to
+ * `https://doi.org` whatever `CROSSREF_BASE_URL` says and without the polite-pool `mailto`.
  *
  * Also home to the text normalization every tool projects free-text values through —
  * `normalizeText` for the baseline pass, `normalizeMarkupText` for the JATS-deposited fields,
@@ -35,7 +37,7 @@
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import type { Context } from '@cyanheads/mcp-ts-core';
+import { type Context, z } from '@cyanheads/mcp-ts-core';
 import {
   type ErrorContract,
   JsonRpcErrorCode,
@@ -841,18 +843,57 @@ export function nextPageOffset(args: {
   return { kind: 'next', offset: next };
 }
 
+/** The DOI registry's agency lookup; it takes a full DOI or a bare prefix after the slash. */
+const DOI_REGISTRY_URL = 'https://doi.org/doiRA';
+
+/**
+ * The registry answers with a one-element array: `[{ DOI, RA: "DataCite" }]` when an agency holds
+ * the identifier, `[{ DOI, status: "DOI does not exist" }]` (or another status) when none does.
+ *
+ * The agency name reaches error text, so it is held to the shape of one: a single token of
+ * letters and digits, as every agency the registry names is spelled (Crossref, DataCite, mEDRA,
+ * JaLC, KISTI, CNKI, ISTIC, Airiti, OP, EIDR, Public). No space or period, so a value carrying a
+ * sentence never reaches the message. The pattern is anchored and is one bounded character class
+ * with no nested quantifier, so it is linear in the value by construction.
+ *
+ * The status branch refuses an `RA` key outright. Without that, an entry whose agency name fails
+ * the shape would still parse as a status once the stricter branch rejected it, and an identifier
+ * the registry says an agency holds would read as one nobody registered.
+ */
+const RegistryAnswerSchema = z.tuple([
+  z.union([
+    z.object({ RA: z.string().regex(/^[\p{L}\p{N}][\p{L}\p{N}&-]{0,31}$/u) }),
+    z.object({ status: z.string(), RA: z.never().optional() }),
+  ]),
+]);
+
+/**
+ * What the DOI registry says about an identifier Crossref has no record for: an agency holds
+ * it (Crossref itself included), no agency has registered it, or no readable answer came back.
+ */
+export type RegistrationLookup =
+  | { kind: 'registered'; agency: string }
+  | { kind: 'unregistered' }
+  | { kind: 'unknown' };
+
 export class CrossrefService {
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
   private readonly userAgent: string;
+  /**
+   * What the DOI registry is told. The `mailto` is the operator's contact, given for Crossref's
+   * polite pool; doi.org is a second party with no pool to admit anyone to, so it hears the
+   * server and version and nothing else.
+   */
+  private readonly registryUserAgent = `crossref-mcp-server/${_packageVersion}`;
 
   constructor() {
     const cfg = getServerConfig();
     this.baseUrl = cfg.baseUrl;
     this.timeoutMs = cfg.timeoutMs;
     this.userAgent = cfg.mailto
-      ? `crossref-mcp-server/${_packageVersion} (mailto:${cfg.mailto})`
-      : `crossref-mcp-server/${_packageVersion}`;
+      ? `${this.registryUserAgent} (mailto:${cfg.mailto})`
+      : this.registryUserAgent;
   }
 
   /**
@@ -880,7 +921,7 @@ export class CrossrefService {
   private async request<T>(path: string, ctx: Context): Promise<T> {
     const url = `${this.baseUrl}${path}`;
     try {
-      return await withRetry(() => this.attempt<T>(url, ctx), {
+      return await withRetry(() => this.attempt<T>(url, this.userAgent, ctx), {
         operation: 'CrossrefService.request',
         baseDelayMs: 1_000,
         signal: ctx.signal,
@@ -901,8 +942,11 @@ export class CrossrefService {
    * from `JSON.parse` is retried to exhaustion and then surfaces as a caller
    * `ValidationError`, and a `TypeError` from `fetch` surfaces as an `InternalError`
    * — an upstream outage reported as a bug in this server.
+   *
+   * `userAgent` is passed rather than read off the instance because the one request that
+   * leaves Crossref must not carry the polite-pool `mailto` — see `registryUserAgent`.
    */
-  private async attempt<T>(url: string, ctx: Context): Promise<T> {
+  private async attempt<T>(url: string, userAgent: string, ctx: Context): Promise<T> {
     /**
      * An `AbortController` aborted with a `TimeoutError` DOMException rather than
      * `AbortSignal.timeout()`: the reason is then recognizable by identity below,
@@ -919,7 +963,7 @@ export class CrossrefService {
     try {
       let response: Response;
       try {
-        response = await fetch(url, { signal, headers: { 'User-Agent': this.userAgent } });
+        response = await fetch(url, { signal, headers: { 'User-Agent': userAgent } });
       } catch (err) {
         throw this.transportError(err, controller.signal.reason === timeoutReason, ctx);
       }
@@ -1096,6 +1140,38 @@ export class CrossrefService {
       if (err instanceof McpError && err.code === JsonRpcErrorCode.NotFound) return null;
       throw err;
     }
+  }
+
+  /**
+   * Ask the DOI registry which registration agency holds a DOI or a bare prefix — read only
+   * after Crossref has answered 404, to tell a DOI another agency registered from one nobody
+   * did. Best effort by design: one attempt with no retry, bounded by the same per-request
+   * timeout and caller signal as every Crossref call, and any failure to get a readable answer
+   * is `unknown`, which leaves the caller's not-found text as it was. Caller cancellation is
+   * the one failure that is not absorbed, and it is reworded here: `attempt` reports an abort as
+   * a cancelled Crossref request, and this request did not go to Crossref.
+   */
+  async getRegistrationAgency(id: string, ctx: Context): Promise<RegistrationLookup> {
+    let body: unknown;
+    try {
+      body = await this.attempt<unknown>(
+        `${DOI_REGISTRY_URL}/${encodeURIComponent(id)}`,
+        this.registryUserAgent,
+        ctx,
+      );
+    } catch (err) {
+      if (ctx.signal.aborted) {
+        throw requestCancelled('DOI registry lookup cancelled by caller.', undefined, {
+          cause: err,
+        });
+      }
+      return { kind: 'unknown' };
+    }
+    const parsed = RegistryAnswerSchema.safeParse(body);
+    if (!parsed.success) return { kind: 'unknown' };
+    const [answer] = parsed.data;
+    if (!('status' in answer)) return { kind: 'registered', agency: answer.RA };
+    return answer.status === 'DOI does not exist' ? { kind: 'unregistered' } : { kind: 'unknown' };
   }
 
   /** Search works with filter, field selection, and cursor/offset pagination. */

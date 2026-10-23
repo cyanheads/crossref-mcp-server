@@ -6,6 +6,7 @@
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { mdText } from '@/mcp-server/tools/markdown-text.js';
+import { notFoundDetail } from '@/mcp-server/tools/registration-agency.js';
 import { getCrossrefService, normalizeText } from '@/services/crossref/crossref-service.js';
 import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
 
@@ -57,9 +58,13 @@ export const getPrefixTool = tool('crossref_get_prefix', {
     const svc = getCrossrefService();
     const raw = await svc.getPrefix(input.prefix, ctx);
     if (!raw) {
-      throw ctx.fail('prefix_not_found', `No Crossref member owns prefix: ${input.prefix}`, {
-        prefix: input.prefix,
+      const detail = notFoundDetail({
+        subject: 'prefix',
+        message: `No Crossref member owns prefix: ${input.prefix}`,
+        recovery: ctx.recoveryFor('prefix_not_found').recovery.hint,
+        lookup: await svc.getRegistrationAgency(input.prefix, ctx),
       });
+      throw ctx.fail('prefix_not_found', detail.message, { prefix: input.prefix, ...detail.data });
     }
 
     const memberId = extractTrailingId(raw.member);

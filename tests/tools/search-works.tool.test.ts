@@ -3,7 +3,10 @@
  * @module tests/tools/search-works.tool.test
  */
 
+import { readFileSync } from 'node:fs';
+import { z } from '@cyanheads/mcp-ts-core';
 import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mcp-ts-core/testing';
+import { HtmlRenderer, Parser } from 'commonmark';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { searchWorksTool } from '@/mcp-server/tools/definitions/search-works.tool.js';
 import { blockText } from '../helpers/content.js';
@@ -435,12 +438,6 @@ describe('searchWorksTool', () => {
     expect(result.structuredContent).toMatchObject({ truncated: true, cap: 25 });
   });
 
-  it('rejects an authorLimit outside the 1–500 range', () => {
-    expect(() => searchWorksTool.input.parse({ query: 'test', authorLimit: 0 })).toThrow();
-    expect(() => searchWorksTool.input.parse({ query: 'test', authorLimit: 501 })).toThrow();
-    expect(() => searchWorksTool.input.parse({ query: 'test', authorLimit: 2.5 })).toThrow();
-  });
-
   it('succeeds end-to-end when fields omits DOI and upstream still returns it', async () => {
     const ctx = createMockContext({ errors: searchWorksTool.errors });
     // The service force-includes DOI in select=, so the projected record still carries it
@@ -565,11 +562,6 @@ describe('searchWorksTool', () => {
     expect(() => searchWorksTool.input.parse({ query: 'test', rows: 100 })).not.toThrow();
   });
 
-  it('rejects rows outside valid range', () => {
-    expect(() => searchWorksTool.input.parse({ query: 'test', rows: 0 })).toThrow();
-    expect(() => searchWorksTool.input.parse({ query: 'test', rows: 101 })).toThrow();
-  });
-
   it('allows cursor="*" for the initial deep-page call', async () => {
     const ctx = createMockContext({ errors: searchWorksTool.errors });
     mockSearchWorks.mockResolvedValue(makeSearchResult({ nextCursor: 'token123' }));
@@ -636,5 +628,519 @@ describe('searchWorksTool', () => {
       if (originalBase === undefined) delete process.env.CROSSREF_BASE_URL;
       else process.env.CROSSREF_BASE_URL = originalBase;
     }
+  });
+});
+
+/** `count` distinct work records, `10.5555/w<start>` onward. */
+function makeItems(count: number, start = 0) {
+  return Array.from({ length: count }, (_, i) => ({ DOI: `10.5555/w${start + i}` }));
+}
+
+describe('searchWorksTool page-size clamp', () => {
+  it('clamps rows above 100 and names the next offset on both surfaces', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ totalResults: 1500, items: makeItems(100) }),
+    );
+
+    const result = await runToolContract(searchWorksTool, { query: 'test', rows: 250 });
+
+    expect(mockSearchWorks).toHaveBeenCalledWith(
+      expect.objectContaining({ rows: 100 }),
+      expect.anything(),
+    );
+    const structured = result.structuredContent as { works: unknown[]; notice?: string };
+    expect(structured.works).toHaveLength(100);
+    const notice =
+      'rows 250 is above the per-call cap of 100, so 100 was applied. Pass offset=100 for the next page — the offset after the 100 records returned, not after the 250 requested.';
+    expect(structured.notice).toBe(notice);
+    expect(result.content.map(blockText).join('\n')).toContain(notice);
+  });
+
+  it('names offset + returned, not offset + requested, on a later offset page', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ totalResults: 1500, items: makeItems(100, 200) }),
+    );
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'test',
+      offset: 200,
+      rows: 250,
+    });
+
+    const notice = (result.structuredContent as { notice?: string }).notice;
+    expect(notice).toContain('Pass offset=300 for the next page');
+    expect(notice).not.toContain('offset=450');
+  });
+
+  it('accepts a numeric string and clamps it', async () => {
+    mockSearchWorks.mockResolvedValue(makeSearchResult({ items: makeItems(100) }));
+
+    const result = await runToolContract(searchWorksTool, { query: 'test', rows: '250' } as never);
+
+    expect(result.isError).toBeFalsy();
+    expect(mockSearchWorks).toHaveBeenCalledWith(
+      expect.objectContaining({ rows: 100 }),
+      expect.anything(),
+    );
+    expect((result.structuredContent as { notice?: string }).notice).toMatch(
+      /^rows 250 is above the per-call cap of 100, so 100 was applied\. /,
+    );
+  });
+
+  it('evaluates the offset ceiling on the clamped rows: offset 9900 + rows 250 succeeds', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ totalResults: 50_000, items: makeItems(100, 9900) }),
+    );
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'test',
+      offset: 9900,
+      rows: 250,
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(mockSearchWorks).toHaveBeenCalledWith(
+      expect.objectContaining({ rows: 100, offset: 9900 }),
+      expect.anything(),
+    );
+    // offset 10000 is unusable for any rows, so the page routes to the cursor alone.
+    expect((result.structuredContent as { notice?: string }).notice).toBe(
+      'rows 250 is above the per-call cap of 100, so 100 was applied. Records past offset 10000 are beyond the ~10000 offset limit; re-run with cursor="*" to reach them.',
+    );
+  });
+
+  it('rejects offset 9950 + rows 250 with offset_too_large evaluated on rows 100', async () => {
+    const result = await runToolContract(searchWorksTool, {
+      query: 'test',
+      offset: 9950,
+      rows: 250,
+    });
+
+    expect(result.isError).toBe(true);
+    const error = (
+      result.structuredContent as {
+        error?: { message?: string; data?: { reason?: string; rows?: number } };
+      }
+    ).error;
+    expect(error?.data).toMatchObject({ reason: 'offset_too_large', rows: 100 });
+    expect(error?.message).toContain('Offset 9950 + rows 100 = 10050');
+    expect(error?.message).toContain('rows 250 is above the per-call cap of 100');
+    expect(mockSearchWorks).not.toHaveBeenCalled();
+  });
+
+  it('omits the next offset on a cursor page and on a page that ends the list', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ totalResults: 1500, items: makeItems(100), nextCursor: 'AoE=' }),
+    );
+    const cursorPage = await runToolContract(searchWorksTool, {
+      query: 'test',
+      cursor: '*',
+      rows: 250,
+    });
+    const cursorNotice = (cursorPage.structuredContent as { notice?: string }).notice;
+    expect(cursorNotice).toBe('rows 250 is above the per-call cap of 100, so 100 was applied.');
+
+    mockSearchWorks.mockResolvedValue(makeSearchResult({ totalResults: 60, items: makeItems(60) }));
+    const lastPage = await runToolContract(searchWorksTool, { query: 'test', rows: 250 });
+    expect((lastPage.structuredContent as { notice?: string }).notice).toBe(
+      'rows 250 is above the per-call cap of 100, so 100 was applied.',
+    );
+  });
+
+  it('clamps authorLimit above 500: slices 500, reports cap 500, and names the clamp', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        items: [{ DOI: '10.1234/consortium', type: 'journal-article', author: makeAuthors(600) }],
+      }),
+    );
+
+    const result = await runToolContract(searchWorksTool, { query: 'test', authorLimit: 1000 });
+
+    const structured = result.structuredContent as {
+      works: Array<{ authors?: unknown[]; authorCount?: number }>;
+      cap?: number;
+      truncated?: boolean;
+      notice?: string;
+    };
+    expect(structured.works[0]?.authors).toHaveLength(500);
+    expect(structured.works[0]?.authorCount).toBe(600);
+    expect(structured).toMatchObject({ truncated: true, cap: 500 });
+    expect(structured.notice).toContain('authorLimit 1000 is above the per-call cap of 500');
+    expect(structured.notice).toContain('capped at 500 per work');
+    const text = result.content.map(blockText).join('\n');
+    expect(text).toContain('authorLimit 1000 is above the per-call cap of 500');
+    expect(text).toContain('showing 500 of 600');
+  });
+
+  it('leaves every in-cap value untouched and notice-free', async () => {
+    mockSearchWorks.mockResolvedValue(makeSearchResult({ items: makeItems(100) }));
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'test',
+      rows: 100,
+      authorLimit: 500,
+    });
+
+    expect(mockSearchWorks).toHaveBeenCalledWith(
+      expect.objectContaining({ rows: 100 }),
+      expect.anything(),
+    );
+    expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
+  });
+});
+
+/**
+ * Crossref accepts `offset + rows` up to exactly 10000 on `/works` (9950 + 50 → 200, 9950 + 51 →
+ * 400). Every request a page or a rejection tells the caller to make next has to be one the next
+ * call accepts — so each recipe here is executed, not just read.
+ */
+describe('searchWorksTool offset-ceiling recipes', () => {
+  type ErrorShape = { error?: { data?: { reason?: string; recovery?: { hint?: string } } } };
+  const hintOf = (result: { structuredContent?: unknown }) =>
+    (result.structuredContent as ErrorShape).error?.data?.recovery?.hint ?? '';
+
+  it('names a request the next call accepts when the clamped page ends 50 short of the ceiling', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ totalResults: 371_635, items: makeItems(100, 9850) }),
+    );
+
+    const page = await runToolContract(searchWorksTool, {
+      filter: { issn: '0028-0836' },
+      offset: 9850,
+      rows: 250,
+    });
+
+    const notice =
+      'rows 250 is above the per-call cap of 100, so 100 was applied. Pass offset=9950 with rows=50 for the last page offset paging reaches — offset + rows cannot pass ~10000; re-run with cursor="*" to reach the records after it.';
+    expect((page.structuredContent as { notice?: string }).notice).toBe(notice);
+    expect(page.content.map(blockText).join('\n')).toContain(notice);
+
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ totalResults: 371_635, items: makeItems(50, 9950) }),
+    );
+    const next = await runToolContract(searchWorksTool, {
+      filter: { issn: '0028-0836' },
+      offset: 9950,
+      rows: 50,
+    });
+    expect(next.isError).toBeFalsy();
+    expect(mockSearchWorks).toHaveBeenLastCalledWith(
+      expect.objectContaining({ offset: 9950, rows: 50 }),
+      expect.anything(),
+    );
+  });
+
+  it('names the rows that still fit when an unclamped offset page passes the ceiling', async () => {
+    const rejected = await runToolContract(searchWorksTool, {
+      query: 'test',
+      offset: 9950,
+      rows: 100,
+    });
+
+    expect(rejected.isError).toBe(true);
+    expect((rejected.structuredContent as ErrorShape).error?.data?.reason).toBe('offset_too_large');
+    const hint = hintOf(rejected);
+    expect(hint).toBe(
+      'Pass offset=9950 with rows=50 to read the last records offset paging reaches, or switch to cursor-based paging with cursor="*" and chain the nextCursor token from each response to reach the records after them.',
+    );
+    expect(rejected.content.map(blockText).join('\n')).toContain(hint);
+    expect(mockSearchWorks).not.toHaveBeenCalled();
+
+    mockSearchWorks.mockResolvedValue(makeSearchResult({ items: makeItems(50, 9950) }));
+    const next = await runToolContract(searchWorksTool, { query: 'test', offset: 9950, rows: 50 });
+    expect(next.isError).toBeFalsy();
+  });
+
+  it('names rows=1 at offset 9999, the last offset any page reaches', async () => {
+    const rejected = await runToolContract(searchWorksTool, {
+      query: 'test',
+      offset: 9999,
+      rows: 2,
+    });
+    expect(hintOf(rejected)).toMatch(/^Pass offset=9999 with rows=1 to read /);
+  });
+
+  it('routes only to the cursor once the offset itself reaches the ceiling', async () => {
+    const rejected = await runToolContract(searchWorksTool, {
+      query: 'test',
+      offset: 10_000,
+      rows: 1,
+    });
+
+    expect((rejected.structuredContent as ErrorShape).error?.data?.reason).toBe('offset_too_large');
+    const hint = hintOf(rejected);
+    expect(hint).toContain('cursor="*"');
+    expect(hint).not.toContain('with rows=');
+  });
+});
+
+describe('searchWorksTool author-cap guidance', () => {
+  const noticeFor = async (authorLimit: number) => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        items: [{ DOI: '10.1234/consortium', type: 'journal-article', author: makeAuthors(2932) }],
+      }),
+    );
+    const result = await runToolContract(searchWorksTool, { query: 'test', authorLimit });
+    return {
+      notice: (result.structuredContent as { notice?: string }).notice ?? '',
+      text: result.content.map(blockText).join('\n'),
+    };
+  };
+
+  it('suggests raising authorLimit while the cap applied is below 500', async () => {
+    for (const authorLimit of [25, 499]) {
+      const { notice, text } = await noticeFor(authorLimit);
+      expect(notice).toContain('raise authorLimit');
+      expect(notice).toContain('crossref_get_work');
+      expect(text).toContain('raise authorLimit');
+    }
+  });
+
+  it('points only to crossref_get_work at the 500 cap, requested or clamped', async () => {
+    for (const authorLimit of [500, 1000]) {
+      const { notice, text } = await noticeFor(authorLimit);
+      expect(notice).toContain('capped at 500 per work');
+      expect(notice).toContain('crossref_get_work');
+      expect(notice).not.toContain('raise authorLimit');
+      expect(notice).toContain('500 is the most authorLimit applies');
+      expect(text).not.toContain('raise authorLimit');
+    }
+  });
+});
+
+/**
+ * Crossref walks a cursor in registration order unless the request names a sort, and ignores
+ * `order` without one — so a query walk left to upstream order loses relevance entirely, and
+ * `sort=score&order=asc` puts the least relevant records first.
+ */
+describe('searchWorksTool cursor walk order', () => {
+  /** The options the one service call carried. */
+  async function sentOptions(input: Record<string, unknown>): Promise<Record<string, unknown>> {
+    mockSearchWorks.mockResolvedValue(makeSearchResult({ nextCursor: 'AoE=' }));
+    const result = await runToolContract(searchWorksTool, input);
+    expect(result.isError).toBeFalsy();
+    expect(mockSearchWorks).toHaveBeenCalledTimes(1);
+    return mockSearchWorks.mock.calls[0]?.[0] as Record<string, unknown>;
+  }
+
+  const QUERY_FIELDS = [
+    'query',
+    'queryBibliographic',
+    'queryTitle',
+    'queryAuthor',
+    'queryContainerTitle',
+  ] as const;
+
+  it.each(QUERY_FIELDS)('ranks a %s walk with no sort by score', async (field) => {
+    const opts = await sentOptions({ [field]: 'thermometry', cursor: '*' });
+    expect(opts.sort).toBe('score');
+    expect(opts).not.toHaveProperty('order');
+  });
+
+  it.each(QUERY_FIELDS)('ranks a later page of a %s walk by score too', async (field) => {
+    const opts = await sentOptions({ [field]: 'thermometry', cursor: 'AoE=' });
+    expect(opts).toMatchObject({ cursor: 'AoE=', sort: 'score' });
+  });
+
+  it('reads sort:"" as omitted on a query walk', async () => {
+    const opts = await sentOptions({ queryTitle: 'thermometry', cursor: '*', sort: '' });
+    expect(opts.sort).toBe('score');
+  });
+
+  it.each(['asc', 'desc'])(
+    'does not forward order %s without a sort on a query walk',
+    async (order) => {
+      const opts = await sentOptions({ query: 'thermometry', cursor: '*', order });
+      expect(opts.sort).toBe('score');
+      expect(opts).not.toHaveProperty('order');
+    },
+  );
+
+  it.each([
+    ['relevance', 'asc'],
+    ['created', 'desc'],
+    ['score', 'asc'],
+  ])('passes an explicit sort %s and order %s through on a query walk', async (sort, order) => {
+    const opts = await sentOptions({ query: 'thermometry', cursor: '*', sort, order });
+    expect(opts).toMatchObject({ sort, order });
+  });
+
+  it('sends no sort on a filter-only walk', async () => {
+    const opts = await sentOptions({ filter: { type: 'journal-article' }, cursor: '*' });
+    expect(opts).not.toHaveProperty('sort');
+    expect(opts).not.toHaveProperty('order');
+  });
+
+  it('sends no sort on a walk whose every query term is blank', async () => {
+    const opts = await sentOptions({ query: '  ', filter: { type: 'dataset' }, cursor: '*' });
+    expect(opts).not.toHaveProperty('sort');
+  });
+
+  it('sends no sort on an offset page with a query term, and passes order as given', async () => {
+    const first = await sentOptions({ queryTitle: 'thermometry' });
+    expect(first).not.toHaveProperty('sort');
+
+    mockSearchWorks.mockClear();
+    const later = await sentOptions({ queryTitle: 'thermometry', offset: 20, order: 'asc' });
+    expect(later).not.toHaveProperty('sort');
+    expect(later.order).toBe('asc');
+  });
+
+  it('describes the order a cursor walk follows', () => {
+    const schema = z.toJSONSchema(searchWorksTool.input, { io: 'input' }) as {
+      properties?: Record<string, { description?: string }>;
+    };
+    const description = schema.properties?.cursor?.description ?? '';
+    expect(description).toMatch(/query term runs by relevance unless sort is set/);
+    expect(description).toMatch(/registration order/);
+    expect(description).toMatch(/repeat or skip a record at a page boundary/);
+    expect(description).toContain('sort:"created"');
+  });
+});
+
+/** The live `/works/10.1016/S0140-6736(20)31180-6` record — 7 `updated-by`, 4 `update-to`. */
+function lancetRecord(): Record<string, unknown> {
+  const file = new URL('../fixtures/works/10.1016_s0140-6736_20_31180-6.json', import.meta.url);
+  return (JSON.parse(readFileSync(file, 'utf8')) as { message: Record<string, unknown> }).message;
+}
+
+describe('searchWorksTool update notices', () => {
+  it('relays every updatedBy and updateTo entry in deposited order, never merged', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ totalResults: 1, items: [lancetRecord()] }),
+    );
+
+    const result = await runToolContract(searchWorksTool, {
+      filter: { doi: '10.1016/S0140-6736(20)31180-6' },
+    });
+
+    const work = (
+      result.structuredContent as {
+        works: Array<{
+          updatedBy?: Array<Record<string, unknown>>;
+          updateTo?: Array<Record<string, unknown>>;
+        }>;
+      }
+    ).works[0];
+    expect(work?.updatedBy?.map((u) => [u.doi, u.type, u.source])).toEqual([
+      ['10.1016/s0140-6736(20)31290-3', 'expression_of_concern', 'retraction-watch'],
+      ['10.1016/s0140-6736(20)31249-6', 'correction', 'retraction-watch'],
+      ['10.1016/s0140-6736(20)31324-6', 'retraction', 'retraction-watch'],
+      ['10.1016/s0140-6736(20)31174-0', 'retraction', 'publisher'],
+      ['10.1016/s0140-6736(20)31324-6', 'erratum', 'publisher'],
+      ['10.1016/s0140-6736(20)31528-2', 'erratum', 'publisher'],
+      ['10.1016/s0140-6736(20)31249-6', 'erratum', 'publisher'],
+    ]);
+    expect(work?.updatedBy?.[2]).toEqual({
+      doi: '10.1016/s0140-6736(20)31324-6',
+      type: 'retraction',
+      source: 'retraction-watch',
+      recordId: '23529',
+      updated: { year: 2020, month: 6, day: 5 },
+    });
+    expect(JSON.stringify(work?.updatedBy)).not.toContain('label');
+    expect(work?.updateTo?.map((u) => u.doi)).toEqual([
+      '10.1016/s0140-6736(20)31174-0',
+      '10.1016/s0140-6736(20)31290-3',
+      '10.1016/s0140-6736(20)31324-6',
+      '10.1016/s0140-6736(20)31528-2',
+    ]);
+    expect(work?.updateTo?.[0]).toEqual({
+      doi: '10.1016/s0140-6736(20)31174-0',
+      type: 'retraction',
+      source: 'publisher',
+      updated: { year: 2020, month: 5, day: 22 },
+    });
+  });
+
+  it('renders every entry field on content[], one line per entry, under both labels', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ totalResults: 1, items: [lancetRecord()] }),
+    );
+
+    const result = await runToolContract(searchWorksTool, { query: 'hydroxychloroquine' });
+    const text = result.content.map(blockText).join('\n');
+
+    expect(text).toContain(
+      [
+        '',
+        '**Updated by:**',
+        '- 10.1016/s0140-6736(20)31290-3 — expression_of_concern (retraction-watch, record 23527), 2020-06-03',
+        '- 10.1016/s0140-6736(20)31249-6 — correction (retraction-watch, record 23528), 2020-05-30',
+        '- 10.1016/s0140-6736(20)31324-6 — retraction (retraction-watch, record 23529), 2020-06-05',
+        '- 10.1016/s0140-6736(20)31174-0 — retraction (publisher), 2020-05-22',
+        '- 10.1016/s0140-6736(20)31324-6 — erratum (publisher), 2020-06-13',
+        '- 10.1016/s0140-6736(20)31528-2 — erratum (publisher), 2020-07-18',
+        '- 10.1016/s0140-6736(20)31249-6 — erratum (publisher), 2020-05-30',
+        '',
+        '**Update notice for:**',
+        '- 10.1016/s0140-6736(20)31174-0 — retraction (publisher), 2020-05-22',
+        '- 10.1016/s0140-6736(20)31290-3 — retraction (publisher), 2020-05-22',
+        '- 10.1016/s0140-6736(20)31324-6 — retraction (publisher), 2020-05-22',
+        '- 10.1016/s0140-6736(20)31528-2 — retraction (publisher), 2020-05-22',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('closes the update lists so the next field is not read into the last entry', () => {
+    const blocks = searchWorksTool.format!({
+      works: [
+        {
+          doi: '10.1000/a',
+          title: 'Retracted',
+          publisher: 'Elsevier BV',
+          updatedBy: [{ doi: '10.1000/notice', type: 'retraction', source: 'publisher' }],
+          authors: [{ given: 'Ada', family: 'Lovelace' }],
+          isReferencedByCount: 3,
+        },
+        {
+          doi: '10.1000/b',
+          updateTo: [{ doi: '10.1000/a', type: 'retraction', source: 'publisher' }],
+        },
+      ],
+    });
+    const html = new HtmlRenderer().render(new Parser().parse(blockText(blocks[0])));
+
+    expect(html).toContain('<li>10.1000/notice — retraction (publisher)</li>');
+    expect(html).toContain('<li>10.1000/a — retraction (publisher)</li>');
+    expect(html).toMatch(
+      /<p><strong>Authors:<\/strong> Ada Lovelace\n<strong>Cited by:<\/strong> 3<\/p>/,
+    );
+    expect(html).toContain('<h3>10.1000/b</h3>');
+  });
+
+  it('omits both keys, and adds no line, for a work recording neither', async () => {
+    mockSearchWorks.mockResolvedValue(makeSearchResult());
+
+    const result = await runToolContract(searchWorksTool, { query: 'CRISPR' });
+
+    const work = (result.structuredContent as { works: Array<Record<string, unknown>> }).works[0];
+    expect(work).not.toHaveProperty('updatedBy');
+    expect(work).not.toHaveProperty('updateTo');
+    expect(blockText(result.content[0])).toBe(
+      [
+        '### Cas9 in mammals',
+        '**DOI:** 10.1038/nature12373 | **Type:** journal-article',
+        '**Published:** 2013-08',
+        '**Journal:** Nature',
+        '**Authors:** Le Cong',
+        '**Cited by:** 1500',
+        '**Score:** 99.5',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('treats an update list deposited as [] as no update at all', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ items: [{ DOI: '10.1000/x', 'updated-by': [], 'update-to': [] }] }),
+    );
+
+    const result = await runToolContract(searchWorksTool, { query: 'x' });
+
+    const work = (result.structuredContent as { works: Array<Record<string, unknown>> }).works[0];
+    expect(work).toEqual({ doi: '10.1000/x' });
   });
 });

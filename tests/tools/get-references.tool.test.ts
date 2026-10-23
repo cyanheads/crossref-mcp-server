@@ -3,6 +3,7 @@
  * @module tests/tools/get-references.tool.test
  */
 
+import { JsonRpcErrorCode, requestCancelled } from '@cyanheads/mcp-ts-core/errors';
 import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import { HtmlRenderer, Parser } from 'commonmark';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -21,12 +22,16 @@ vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
 import { getCrossrefService } from '@/services/crossref/crossref-service.js';
 
 const mockGetWork = vi.fn();
+const mockLookup = vi.fn();
 
 beforeEach(() => {
-  vi.mocked(getCrossrefService).mockReturnValue({ getWork: mockGetWork } as unknown as ReturnType<
-    typeof getCrossrefService
-  >);
+  vi.mocked(getCrossrefService).mockReturnValue({
+    getWork: mockGetWork,
+    getRegistrationAgency: mockLookup,
+  } as unknown as ReturnType<typeof getCrossrefService>);
   mockGetWork.mockReset();
+  mockLookup.mockReset();
+  mockLookup.mockResolvedValue({ kind: 'unknown' });
 });
 
 /** What a CommonMark reader shows for a Markdown document, as HTML. */
@@ -45,7 +50,8 @@ const REF_LIST = [
     'journal-title': 'Nature',
     volume: '42',
     'first-page': '100',
-    issn: '1234-5678',
+    ISSN: 'https://id.crossref.org/issn/1234-5678',
+    'issn-type': 'print',
   },
   { key: 'ref2', unstructured: 'Jones B. 2015. Another paper.' },
 ];
@@ -435,6 +441,92 @@ describe('getReferencesTool', () => {
     });
   });
 
+  /**
+   * The message, hint, and agency for each registry answer are tabled once in
+   * registration-agency.test.ts; these pin that this tool's not-found branch asks, with the
+   * unwrapped DOI, and keeps its own declared recovery when the answer is unreadable.
+   */
+  describe('not-found answer, by registration agency', () => {
+    const RECOVERY =
+      'Verify the DOI is correct or use crossref_search_works to find the work by title or author.';
+
+    async function notFound(doi: string) {
+      mockGetWork.mockResolvedValue(null);
+      const result = await runToolContract(getReferencesTool, { doi });
+      const { error } = result.structuredContent as {
+        error: { code: number; message: string; data: Record<string, unknown> };
+      };
+      return { error, text: result.content.map(blockText).join('\n') };
+    }
+
+    it('keeps the message and recovery exactly as before when the registry gives no readable answer', async () => {
+      const { error, text } = await notFound('10.9999/nonexistent');
+
+      expect(error.message).toBe('No Crossref record for DOI: 10.9999/nonexistent');
+      expect(error.data).toMatchObject({
+        reason: 'doi_not_found',
+        doi: '10.9999/nonexistent',
+        recovery: { hint: RECOVERY },
+      });
+      expect(error.data).not.toHaveProperty('registrationAgency');
+      expect(text).toContain(
+        `Error: No Crossref record for DOI: 10.9999/nonexistent\n\nRecovery: ${RECOVERY}`,
+      );
+    });
+
+    it('names the agency that holds a DOI Crossref does not, looking up the unwrapped DOI', async () => {
+      mockLookup.mockResolvedValue({ kind: 'registered', agency: 'DataCite' });
+      const { error, text } = await notFound('doi:10.5281/zenodo.3242074');
+
+      const message =
+        'No Crossref record for DOI: 10.5281/zenodo.3242074 — it is registered with DataCite, not Crossref.';
+      const hint =
+        "No Crossref tool can return a DOI registered with DataCite; query DataCite's metadata service for it.";
+      expect(mockLookup).toHaveBeenCalledWith('10.5281/zenodo.3242074', expect.anything());
+      expect(error.message).toBe(message);
+      expect(error.data).toMatchObject({
+        reason: 'doi_not_found',
+        doi: '10.5281/zenodo.3242074',
+        registrationAgency: 'DataCite',
+        recovery: { hint },
+      });
+      expect(text).toContain(`Error: ${message}\n\nRecovery: ${hint}`);
+    });
+
+    it('keeps its own declared advice ahead of the Funder Registry pointer for a Crossref DOI', async () => {
+      mockLookup.mockResolvedValue({ kind: 'registered', agency: 'Crossref' });
+      const { error } = await notFound('10.13039/100000001');
+
+      expect(error.data).toMatchObject({
+        registrationAgency: 'Crossref',
+        recovery: {
+          hint: `${RECOVERY} A Funder Registry DOI (10.13039/…) is looked up with crossref_search_funders funder_doi.`,
+        },
+      });
+    });
+
+    it('propagates caller cancellation during the lookup instead of the not-found answer', async () => {
+      mockGetWork.mockResolvedValue(null);
+      mockLookup.mockRejectedValue(requestCancelled('DOI registry lookup cancelled by caller.'));
+      const ctx = createMockContext({ errors: getReferencesTool.errors });
+
+      await expect(
+        getReferencesTool.handler(
+          getReferencesTool.input.parse({ doi: '10.5281/zenodo.3242074' }),
+          ctx,
+        ),
+      ).rejects.toMatchObject({ code: JsonRpcErrorCode.RequestCancelled });
+    });
+
+    it('asks the registry nothing when Crossref returns the work', async () => {
+      mockGetWork.mockResolvedValue({ DOI: '10.1038/nature12373', reference: REF_LIST });
+
+      await runToolContract(getReferencesTool, { doi: '10.1038/nature12373' });
+
+      expect(mockLookup).not.toHaveBeenCalled();
+    });
+  });
+
   it('returns empty reference list and notice when record has empty reference array', async () => {
     const ctx = createMockContext({ errors: getReferencesTool.errors });
     mockGetWork.mockResolvedValue({
@@ -608,8 +700,7 @@ describe('getReferencesTool', () => {
     expect(getEnrichment(ctx).notice).toMatch(/past the end/);
   });
 
-  it('rejects a limit above the 500 page ceiling', () => {
-    expect(() => getReferencesTool.input.parse({ doi: '10.1038/x1', limit: 501 })).toThrow();
+  it('rejects a negative offset', () => {
     expect(() => getReferencesTool.input.parse({ doi: '10.1038/x1', offset: -1 })).toThrow();
   });
 
@@ -680,5 +771,327 @@ describe('getReferencesTool', () => {
     // Asserted as the composed segment — a bare '5' matches the year on any fixture.
     expect(text).toContain('12:5');
     expect(text).toContain('*Nature*');
+  });
+});
+
+describe('getReferencesTool book, series, issue, edition, and DOI-provenance fields', () => {
+  /** The content[] line for the single reference on a one-entry page. */
+  async function referenceLine(reference: Record<string, unknown>[], offset = 0) {
+    mockGetWork.mockResolvedValue({ DOI: '10.1000/citing', reference });
+    const result = await runToolContract(getReferencesTool, { doi: '10.1000/citing', offset });
+    const lines = result.content
+      .map((block) => blockText(block))
+      .join('\n')
+      .split('\n');
+    return { result, line: lines.find((l) => /^\d+\./.test(l)) };
+  }
+
+  it('renders an entry carrying none of the new keys exactly as before', async () => {
+    const { result, line } = await referenceLine([
+      {
+        key: 'ref1',
+        DOI: '10.1000/ref1',
+        unstructured: 'Smith J. 2010. A paper. Nature.',
+        author: 'Smith',
+        year: '2010',
+        'article-title': 'A paper',
+        'journal-title': 'Nature',
+        volume: '42',
+        'first-page': '100',
+      },
+    ]);
+    expect(line).toBe(
+      '1. Smith A paper (2010) *Nature* 42:100 — DOI: 10.1000/ref1 key:ref1 | Smith J. 2010. A paper. Nature.',
+    );
+    expect(result.structuredContent).toMatchObject({
+      references: [
+        {
+          key: 'ref1',
+          doi: '10.1000/ref1',
+          unstructured: 'Smith J. 2010. A paper. Nature.',
+          author: 'Smith',
+          year: '2010',
+          articleTitle: 'A paper',
+          journalTitle: 'Nature',
+          volume: '42',
+          firstPage: '100',
+        },
+      ],
+    });
+  });
+
+  it('fills the title slot from volume-title when article-title is absent, and an empty author renders nothing', async () => {
+    const { result, line } = await referenceLine(
+      [
+        {
+          key: '2024010422244115800_oxfordhb-9780190064570-e-1-bibItem-214',
+          'volume-title': 'Beyond boredom and anxiety: Experiencing flow in work and play.',
+          author: '',
+          year: '2000',
+        },
+      ],
+      0,
+    );
+    expect(result.structuredContent).toMatchObject({
+      references: [
+        { volumeTitle: 'Beyond boredom and anxiety: Experiencing flow in work and play.' },
+      ],
+    });
+    expect(line).toBe(
+      '1. Beyond boredom and anxiety: Experiencing flow in work and play. (2000) key:2024010422244115800_oxfordhb-9780190064570-e-1-bibItem-214',
+    );
+  });
+
+  it('falls back to volume-title when the deposited article-title is empty', async () => {
+    const { line } = await referenceLine([
+      { key: 'r1', 'article-title': '', 'volume-title': 'Handbook of Flow', year: '2001' },
+    ]);
+    expect(line).toBe('1. Handbook of Flow (2001) key:r1');
+  });
+
+  it('keeps article-title as the title and follows it with the volume title', async () => {
+    const { result, line } = await referenceLine([
+      {
+        key: 'r1',
+        author: 'Doe',
+        'article-title': 'A chapter',
+        'volume-title': 'The <i>Big</i> Book',
+        year: '2005',
+      },
+    ]);
+    expect(result.structuredContent).toMatchObject({
+      references: [{ articleTitle: 'A chapter', volumeTitle: 'The Big Book' }],
+    });
+    expect(line).toBe('1. Doe A chapter In: *The Big Book* (2005) key:r1');
+  });
+
+  it('fills issn from the deposited ISSN URI and carries doi-asserted-by on both surfaces', async () => {
+    const { result, line } = await referenceLine(
+      [
+        { key: 'skip0' },
+        { key: 'skip1' },
+        { key: 'skip2' },
+        {
+          key: '10.1149/1.2083227_r4',
+          'doi-asserted-by': 'crossref',
+          'first-page': '123',
+          DOI: '10.1016/0165-1633(82)90014-4',
+          volume: '6',
+          author: 'Elwell',
+          year: '1982',
+          'journal-title': 'Sol. Energy Mater.',
+          ISSN: 'https://id.crossref.org/issn/0165-1633',
+          'issn-type': 'print',
+        },
+      ],
+      3,
+    );
+    expect(result.structuredContent).toMatchObject({
+      references: [{ issn: '0165-1633', doiAssertedBy: 'crossref' }],
+    });
+    expect(line).toBe(
+      '4. Elwell [4] (1982) *Sol. Energy Mater.* 6:123 ISSN:0165-1633 — DOI: 10.1016/0165-1633(82)90014-4 (asserted by crossref) key:10.1149/1.2083227_r4',
+    );
+  });
+
+  it('strips the http resolver form of the ISSN URI and keeps a bare deposited ISSN as written', async () => {
+    mockGetWork.mockResolvedValue({
+      DOI: '10.1000/citing',
+      reference: [
+        { key: 'a', ISSN: 'http://id.crossref.org/issn/1234-5679' },
+        { key: 'b', ISSN: '2049-3630' },
+      ],
+    });
+    const result = await runToolContract(getReferencesTool, { doi: '10.1000/citing' });
+    expect(result.structuredContent).toMatchObject({
+      references: [
+        { key: 'a', issn: '1234-5679' },
+        { key: 'b', issn: '2049-3630' },
+      ],
+    });
+  });
+
+  it('strips the ISSN URI in any letter case and trims the surrounding whitespace', async () => {
+    const { result, line } = await referenceLine([
+      { key: 'a', ISSN: 'HTTPS://ID.CROSSREF.ORG/ISSN/0165-1633 ' },
+      { key: 'b', ISSN: ' 2049-3630\n' },
+      { key: 'c', ISSN: '   ' },
+    ]);
+    const references = (result.structuredContent as { references: Array<Record<string, unknown>> })
+      .references;
+    expect(references).toEqual([
+      { key: 'a', issn: '0165-1633' },
+      { key: 'b', issn: '2049-3630' },
+      { key: 'c' },
+    ]);
+    expect(line).toBe('1. [1] ISSN:0165-1633 key:a');
+  });
+
+  it('renders issue, series, and edition beside the volume and first page', async () => {
+    const { result, line } = await referenceLine([
+      {
+        key: 'r1',
+        'volume-title': 'Quantum Fields',
+        'series-title': 'Lecture Notes in <i>Physics</i>',
+        volume: '12',
+        issue: '3',
+        'first-page': '45',
+        edition: '2nd',
+        year: '1999',
+      },
+    ]);
+    expect(result.structuredContent).toMatchObject({
+      references: [
+        {
+          volumeTitle: 'Quantum Fields',
+          seriesTitle: 'Lecture Notes in Physics',
+          volume: '12',
+          issue: '3',
+          firstPage: '45',
+          edition: '2nd',
+        },
+      ],
+    });
+    expect(line).toBe(
+      '1. Quantum Fields (1999) 12(3):45 series:Lecture Notes in Physics edition:2nd key:r1',
+    );
+  });
+
+  it('renders an issue deposited without a volume', async () => {
+    const { line } = await referenceLine([{ key: 'r1', issue: 'S1', 'first-page': '9' }]);
+    expect(line).toBe('1. [1] (S1):9 key:r1');
+  });
+
+  it('escapes deposited metacharacters in the new fields on content[] only', async () => {
+    const { result, line } = await referenceLine([
+      {
+        key: 'r1',
+        'article-title': 'Main',
+        'volume-title': 'Book *one*',
+        'series-title': 'Series_',
+        issue: '2*',
+        edition: '`3`',
+        DOI: '10.1000/x',
+        'doi-asserted-by': 'pub*lisher',
+      },
+    ]);
+    expect(result.structuredContent).toMatchObject({
+      references: [
+        {
+          volumeTitle: 'Book *one*',
+          seriesTitle: 'Series_',
+          issue: '2*',
+          edition: '`3`',
+          doiAssertedBy: 'pub*lisher',
+        },
+      ],
+    });
+    expect(line).toBe(
+      '1. Main In: *Book \\*one\\** (2\\*) series:Series\\_ edition:\\`3\\` — DOI: 10.1000/x (asserted by pub\\*lisher) key:r1',
+    );
+    // A CommonMark reader sees every deposited character, and only the volume title emphasized.
+    expect(commonmark(line ?? '')).toBe(
+      '<ol>\n<li>Main In: <em>Book *one*</em> (2*) series:Series_ edition:`3` — DOI: 10.1000/x (asserted by pub*lisher) key:r1</li>\n</ol>\n',
+    );
+  });
+
+  it('adds no isbn, component, or issn-type field', async () => {
+    mockGetWork.mockResolvedValue({
+      DOI: '10.1000/citing',
+      reference: [
+        {
+          key: 'r1',
+          ISBN: 'http://id.crossref.org/isbn/9780000000002',
+          'isbn-type': 'print',
+          component: 'c1',
+          ISSN: 'https://id.crossref.org/issn/1234-5679',
+          'issn-type': 'electronic',
+        },
+      ],
+    });
+    const result = await runToolContract(getReferencesTool, { doi: '10.1000/citing' });
+    expect((result.structuredContent as { references: unknown[] }).references).toEqual([
+      { key: 'r1', issn: '1234-5679' },
+    ]);
+  });
+});
+
+describe('getReferencesTool page-size clamp', () => {
+  const CLAMP = 'limit 1000 is above the per-call cap of 500, so 500 was applied.';
+  const refs = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({ key: `r${i}`, unstructured: `Ref ${i}.` }));
+
+  it('clamps limit above 500: pages 500 references, reports cap 500, and advances nextOffset by the page', async () => {
+    mockGetWork.mockResolvedValue({ DOI: '10.1038/nature12373', reference: refs(1200) });
+
+    const result = await runToolContract(getReferencesTool, {
+      doi: '10.1038/nature12373',
+      offset: 500,
+      limit: 1000,
+    });
+
+    const structured = result.structuredContent as {
+      references: Array<{ key?: string }>;
+      notice?: string;
+    };
+    expect(structured.references).toHaveLength(500);
+    expect(structured.references[0]?.key).toBe('r500');
+    expect(structured.references.at(-1)?.key).toBe('r999');
+    expect(result.structuredContent).toMatchObject({
+      truncated: true,
+      shown: 500,
+      cap: 500,
+      nextOffset: 1000,
+    });
+    expect(structured.notice).toBe(
+      `${CLAMP} Showing references 501–1000 of 1200. Call again with offset=1000 for the next page.`,
+    );
+    expect(result.content.map(blockText).join('\n')).toContain(CLAMP);
+  });
+
+  it('discloses the clamp alone on a page that holds the rest of the list', async () => {
+    mockGetWork.mockResolvedValue({ DOI: '10.1038/nature12373', reference: refs(300) });
+
+    const result = await runToolContract(getReferencesTool, {
+      doi: '10.1038/nature12373',
+      limit: 1000,
+    });
+
+    expect((result.structuredContent as { references: unknown[] }).references).toHaveLength(300);
+    expect(result.structuredContent).not.toHaveProperty('nextOffset');
+    expect((result.structuredContent as { notice?: string }).notice).toBe(CLAMP);
+  });
+
+  it('leads the empty-list and past-the-end notices with the clamp', async () => {
+    mockGetWork.mockResolvedValue({ DOI: '10.1038/nature12373', reference: [] });
+    const empty = await runToolContract(getReferencesTool, {
+      doi: '10.1038/nature12373',
+      limit: 1000,
+    });
+    expect((empty.structuredContent as { notice?: string }).notice).toBe(
+      `${CLAMP} No reference list indexed for this work. Coverage varies by publisher and era; pre-2000 works and non-participating publishers often have no indexed references. Try OpenAlex for alternative reference data.`,
+    );
+
+    mockGetWork.mockResolvedValue({ DOI: '10.1038/nature12373', reference: refs(10) });
+    const past = await runToolContract(getReferencesTool, {
+      doi: '10.1038/nature12373',
+      offset: 50,
+      limit: 1000,
+    });
+    expect((past.structuredContent as { notice?: string }).notice).toBe(
+      `${CLAMP} Offset 50 is past the end of this reference list (10 references). Request an offset below 10.`,
+    );
+  });
+
+  it('leaves limit 500 untouched and notice-free', async () => {
+    mockGetWork.mockResolvedValue({ DOI: '10.1038/nature12373', reference: refs(400) });
+
+    const result = await runToolContract(getReferencesTool, {
+      doi: '10.1038/nature12373',
+      limit: 500,
+    });
+
+    expect((result.structuredContent as { references: unknown[] }).references).toHaveLength(400);
+    expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
   });
 });

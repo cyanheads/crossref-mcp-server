@@ -83,6 +83,8 @@ function probeWork() {
         author: DEPOSITED,
         'journal-title': DEPOSITED,
         'article-title': DEPOSITED,
+        'volume-title': DEPOSITED,
+        'series-title': DEPOSITED,
       },
     ],
   };

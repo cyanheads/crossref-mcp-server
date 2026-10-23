@@ -14,7 +14,7 @@ import {
   normalizeMarkupText,
   normalizeReferenceText,
 } from '@/services/crossref/crossref-service.js';
-import { measureScaling, nestTo, repeatTo } from '../../helpers/scaling.js';
+import { expectLinearScaling, nestTo, repeatTo } from '../../helpers/scaling.js';
 
 /** A work's abstract as Crossref deposits it, from a captured `/works/{doi}` response. */
 function depositedAbstract(doi: string): string {
@@ -318,8 +318,8 @@ describe('a MathML region in the sentence around it', () => {
 /**
  * The conversion walks a tree the deposit shapes, so its cost has to be linear in the region
  * and its depth has to cost nothing on the call stack: a region nested deep enough overflows a
- * recursive walk under Node long before it slows one down. t(80k)/t(5k) is 16 for linear work
- * and 256 for quadratic.
+ * recursive walk under Node long before it slows one down. t(320k)/t(5k) is 64 for linear work
+ * and 4096 for quadratic.
  */
 describe('MathML conversion on large regions', () => {
   const inMath = (inner: (size: number) => string) => (size: number) =>
@@ -374,12 +374,10 @@ describe('MathML conversion on large regions', () => {
   it.each(shapes)(
     'stays linear and stack-safe on %s',
     (_name, make) => {
-      const { ms, ratio } = measureScaling(make, (raw) => {
+      expectLinearScaling(make, (raw) => {
         normalizeMarkupText(raw);
         normalizeReferenceText(raw);
       });
-      expect(ratio, `t = ${ms.map((t) => t.toFixed(2)).join(' / ')} ms`).toBeLessThan(64);
-      expect(ms[2]).toBeLessThan(100);
     },
     60_000,
   );

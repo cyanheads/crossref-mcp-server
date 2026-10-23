@@ -251,12 +251,84 @@ describe('upstream failure classification', () => {
       match: WORKS_ROUTE,
       respond: () => new Response('Resource not found.', { status: 404 }),
     });
+    http.route({
+      match: (request) => new URL(request.url).hostname === 'doi.org',
+      respond: () => Response.json([{ DOI: DOI, status: 'Unknown' }]),
+    });
 
     const result = await getWork();
 
     expect(errorOf(result).code).toBe(JsonRpcErrorCode.NotFound);
     expect(errorOf(result).data).toMatchObject({ reason: 'doi_not_found' });
-    expect(http.calls).toHaveLength(1);
+    const hosts = http.calls.map((call) => new URL(call.request.url).hostname);
+    // One Crossref request, never retried, then the one registry lookup a not-found answer makes.
+    expect(hosts).toEqual(['api.crossref.test', 'doi.org']);
+  });
+
+  /**
+   * The registry lookup rides the same attempt primitive as every Crossref call, so its
+   * answer, its single attempt, and its silence on success are asserted through the real
+   * service and the real tool rather than a stubbed lookup.
+   */
+  it('names the agency the DOI registry reports, through the real service and tool', async () => {
+    http.route({
+      match: WORKS_ROUTE,
+      respond: () => new Response('Resource not found.', { status: 404 }),
+    });
+    http.route({
+      match: (request) => new URL(request.url).hostname === 'doi.org',
+      respond: () => Response.json([{ DOI: DOI, RA: 'DataCite' }]),
+    });
+
+    const result = await getWork();
+
+    const message = `No Crossref record for DOI: ${DOI} — it is registered with DataCite, not Crossref.`;
+    expect(errorOf(result).message).toBe(message);
+    expect(errorOf(result).data).toMatchObject({
+      reason: 'doi_not_found',
+      doi: DOI,
+      registrationAgency: 'DataCite',
+    });
+    expect(textOf(result)).toContain(`Error: ${message}\n`);
+    expect(http.calls.map((call) => call.request.url)).toEqual([
+      `${BASE_URL}/works/10.1038%2Fnature12373`,
+      'https://doi.org/doiRA/10.1038%2Fnature12373',
+    ]);
+  });
+
+  it('keeps the declared not-found text when the registry answers 503, without retrying it', async () => {
+    http.route({
+      match: WORKS_ROUTE,
+      respond: () => new Response('Resource not found.', { status: 404 }),
+    });
+    http.route({
+      match: (request) => new URL(request.url).hostname === 'doi.org',
+      respond: () => new Response('down', { status: 503 }),
+    });
+
+    const result = await getWork();
+
+    expect(errorOf(result).message).toBe(`No Crossref record for DOI: ${DOI}`);
+    expect(errorOf(result).data).not.toHaveProperty('registrationAgency');
+    expect(http.calls.map((call) => new URL(call.request.url).hostname)).toEqual([
+      'api.crossref.test',
+      'doi.org',
+    ]);
+  });
+
+  it('sends no registry request when the work resolves', async () => {
+    http.route({
+      match: WORKS_ROUTE,
+      respond: () =>
+        Response.json({ status: 'ok', message: { DOI, type: 'journal-article', title: ['T'] } }),
+    });
+
+    const result = await getWork();
+
+    expect(result.isError).toBeFalsy();
+    expect(http.calls.map((call) => new URL(call.request.url).hostname)).toEqual([
+      'api.crossref.test',
+    ]);
   });
 
   /**

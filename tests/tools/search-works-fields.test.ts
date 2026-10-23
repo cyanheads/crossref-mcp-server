@@ -7,6 +7,7 @@
  * @module tests/tools/search-works-fields.test
  */
 
+import { readFileSync } from 'node:fs';
 import { z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { createFetchMock, runToolContract } from '@cyanheads/mcp-ts-core/testing';
@@ -45,6 +46,8 @@ const ACCEPTED = [
   'page',
   'article-number',
   'ISSN',
+  'updated-by',
+  'update-to',
 ];
 
 /** The live record for 10.1038/s41586-020-2649-2 under `select=DOI,ISSN,volume,issue,page`. */
@@ -190,6 +193,85 @@ describe('crossref_search_works fields', () => {
 
     expect(selected()).toEqual(['DOI', 'title']);
     expect(firstWork(result)).toEqual({ doi: '10.5555/t', title: 'T' });
+  });
+
+  /** Answer with the captured Lancet record cut to the `select=` names, as Crossref does. */
+  function selectFromLancet(request: Request): Response {
+    const file = new URL('../fixtures/works/10.1016_s0140-6736_20_31180-6.json', import.meta.url);
+    const record = (JSON.parse(readFileSync(file, 'utf8')) as { message: Record<string, unknown> })
+      .message;
+    const names = new URL(request.url).searchParams.get('select')?.split(',');
+    const item = names
+      ? Object.fromEntries(Object.entries(record).filter(([key]) => names.includes(key)))
+      : record;
+    return workList([item]);
+  }
+
+  it('returns doi and updatedBy alone under fields ["updated-by"]', async () => {
+    http.route({ match: WORKS, respond: selectFromLancet });
+
+    const result = await runToolContract(searchWorksTool, {
+      filter: { doi: '10.1016/S0140-6736(20)31180-6' },
+      fields: ['updated-by'],
+      rows: 1,
+    });
+
+    expect(selected()).toEqual(['DOI', 'updated-by']);
+    const work = firstWork(result) as { doi: string; updatedBy: Array<{ recordId?: string }> };
+    expect(Object.keys(work)).toEqual(['doi', 'updatedBy']);
+    expect(work.doi).toBe('10.1016/s0140-6736(20)31180-6');
+    expect(work.updatedBy).toHaveLength(7);
+    expect(work.updatedBy.map((u) => u.recordId)).toEqual([
+      '23527',
+      '23528',
+      '23529',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ]);
+    const text = textOf(result);
+    expect(text).toContain('**Updated by:**');
+    expect(text).toContain(
+      '- 10.1016/s0140-6736(20)31324-6 — retraction (retraction-watch, record 23529), 2020-06-05',
+    );
+    expect(text).not.toContain('**Update notice for:**');
+  });
+
+  it('returns updateTo under fields ["update-to"]', async () => {
+    http.route({ match: WORKS, respond: selectFromLancet });
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'hydroxychloroquine',
+      fields: ['update-to'],
+      rows: 1,
+    });
+
+    expect(selected()).toEqual(['DOI', 'update-to']);
+    const work = firstWork(result) as { updateTo: Array<{ doi: string }> };
+    expect(Object.keys(work)).toEqual(['doi', 'updateTo']);
+    expect(work.updateTo.map((u) => u.doi)).toEqual([
+      '10.1016/s0140-6736(20)31174-0',
+      '10.1016/s0140-6736(20)31290-3',
+      '10.1016/s0140-6736(20)31324-6',
+      '10.1016/s0140-6736(20)31528-2',
+    ]);
+    expect(textOf(result)).toContain(
+      '**Update notice for:**\n- 10.1016/s0140-6736(20)31174-0 — retraction (publisher), 2020-05-22',
+    );
+  });
+
+  it('returns no update keys when the selection leaves them out', async () => {
+    http.route({ match: WORKS, respond: selectFromLancet });
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'hydroxychloroquine',
+      fields: ['title'],
+      rows: 1,
+    });
+
+    expect(Object.keys(firstWork(result))).toEqual(['doi', 'title']);
+    expect(textOf(result)).not.toMatch(/Updated by|Update notice for/);
   });
 
   it.each([[['license']], [['doi']], [['title', 'ISBN']]])(

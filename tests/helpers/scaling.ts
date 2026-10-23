@@ -1,48 +1,80 @@
 /**
- * @fileoverview Scaling measurement for the normalization passes. A single timing against a
- * budget cannot tell linear from quadratic — the defect only shows as growth — so a case is
- * measured at three sizes and judged on the full-span ratio t(80k)/t(5k): 16 when the work is
- * linear, 256 when it is quadratic.
+ * @fileoverview Scaling assertion for the normalization passes. A single timing against a budget
+ * cannot tell linear from quadratic — the defect only shows as growth — so a case is measured at
+ * every doubling from 5k to 320k characters and judged on the full-span ratio t(320k)/t(5k): 64
+ * when the work is linear, 4096 when it is quadratic. Time is the calling thread's CPU time,
+ * never wall clock, so other work on the machine does not move the ratio.
  * @module tests/helpers/scaling
  */
 
-/** The input sizes, in characters, every scaling case is measured at. */
-export const SCALING_SIZES = [5_000, 20_000, 80_000] as const;
+import { expect } from 'vitest';
 
-/** Per-call time at each of `SCALING_SIZES`, and the full-span ratio between the ends. */
-export interface Scaling {
-  /** Best per-call milliseconds at 5k, 20k, and 80k characters. */
-  readonly ms: readonly [number, number, number];
-  /** t(80k) / t(5k). */
-  readonly ratio: number;
+/** The input sizes, in characters: each double the last, a 64× span from end to end. */
+const SIZES = [5_000, 10_000, 20_000, 40_000, 80_000, 160_000, 320_000] as const;
+
+/** Upper bound on t(320k)/t(5k): four times the linear 64, a sixteenth of the quadratic 4096. */
+const RATIO_LIMIT = 256;
+
+/**
+ * Upper bound on one call's CPU milliseconds at any size, checked before the next size runs, so
+ * a quadratic fails at the first size it overruns instead of spending seconds per call at the
+ * top of the ladder. The linear cases stay under 40 ms at 320k on both runtimes.
+ */
+const CAP_MS = 250;
+
+/** CPU milliseconds a sample spends before its total is divided by its calls. */
+const SAMPLE_MS = 20;
+
+/** Samples per size; the cheapest is kept, so one collection pause cannot decide the ratio. */
+const SAMPLES = 3;
+
+/** The calling thread's user plus system CPU time, in milliseconds. */
+function threadCpuMs(): number {
+  const { user, system } = process.threadCpuUsage();
+  return (user + system) / 1000;
+}
+
+/** Cheapest per-call CPU milliseconds of `run(input)`, after one warm-up call. */
+function perCallMs(run: (input: string) => unknown, input: string): number {
+  run(input);
+  let best = Number.POSITIVE_INFINITY;
+  for (let sample = 0; sample < SAMPLES; sample++) {
+    const started = threadCpuMs();
+    let calls = 0;
+    let spent = 0;
+    do {
+      run(input);
+      calls++;
+      spent = threadCpuMs() - started;
+    } while (spent < SAMPLE_MS);
+    best = Math.min(best, spent / calls);
+  }
+  return best;
 }
 
 /**
- * Time `run` over inputs `make` builds at each size. Every sample spends the same number of
- * characters — 16 calls at 5k, 4 at 20k, 1 at 80k — so the small sizes are not measured at the
- * timer's resolution, and the best of five samples is kept so one collection pause cannot
- * decide the ratio.
+ * Assert that `run` costs time linear in the size of the inputs `make` builds: every size under
+ * `CAP_MS` of CPU per call, checked as each size finishes, and t(320k)/t(5k) under `RATIO_LIMIT`.
+ * Throws through `expect` at the first bound broken.
  */
-export function measureScaling(
+export function expectLinearScaling(
   make: (size: number) => string,
   run: (input: string) => unknown,
-): Scaling {
-  const ms = SCALING_SIZES.map((size) => {
+): void {
+  const ms: number[] = [];
+  const ladder = () => `CPU ms per call = ${ms.map((t) => t.toFixed(3)).join(' / ')}`;
+  for (const size of SIZES) {
     const input = make(size);
     if (input.length > size || input.length < size * 0.9) {
       throw new Error(`input built for ${size} characters has ${input.length}`);
     }
-    const calls = SCALING_SIZES[2] / size;
-    run(input);
-    let best = Number.POSITIVE_INFINITY;
-    for (let sample = 0; sample < 5; sample++) {
-      const started = performance.now();
-      for (let call = 0; call < calls; call++) run(input);
-      best = Math.min(best, (performance.now() - started) / calls);
-    }
-    return best;
-  }) as unknown as [number, number, number];
-  return { ms, ratio: ms[2] / ms[0] };
+    const t = perCallMs(run, input);
+    ms.push(t);
+    expect(t, `${size} characters, ${ladder()}`).toBeLessThan(CAP_MS);
+  }
+  const [first = 0] = ms;
+  const last = ms.at(-1) ?? 0;
+  expect(last / first, ladder()).toBeLessThan(RATIO_LIMIT);
 }
 
 /** `unit` repeated and cut to exactly `size` characters. */
