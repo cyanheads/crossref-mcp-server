@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 title: crossref-mcp-server
-abstract: "Resolve DOIs, search ~155M scholarly works, and fetch references via the Crossref REST API. STDIO or Streamable HTTP."
+abstract: "Resolve DOIs, search ~188M scholarly works, and fetch references via the Crossref REST API. STDIO or Streamable HTTP."
 type: software
 authors:
   - family-names: Hand

@@ -4,7 +4,7 @@ Pre-design seed. Feeds into `design-mcp-server` to produce `docs/design.md`.
 
 ## Domain
 
-Crossref — the largest DOI registration agency. Canonical metadata for ~155M scholarly works: journal articles, books, book chapters, conference papers, preprints, datasets, components. Each work carries title, authors, affiliations, abstract (when deposited), references (outgoing citations), funders, license info, and links to full text.
+Crossref — the largest DOI registration agency. Canonical metadata for ~188M scholarly works: journal articles, books, book chapters, conference papers, preprints, datasets, components. Each work carries title, authors, affiliations, abstract (when deposited), references (outgoing citations), funders, license info, and links to full text.
 
 ## Data source
 
