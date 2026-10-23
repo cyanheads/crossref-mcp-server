@@ -2,10 +2,10 @@
 
 **Server:** @cyanheads/crossref-mcp-server
 **Version:** 0.4.2
-**Framework:** [@cyanheads/mcp-ts-core](https://www.npmjs.com/package/@cyanheads/mcp-ts-core) `^0.13.14`
+**Framework:** [@cyanheads/mcp-ts-core](https://www.npmjs.com/package/@cyanheads/mcp-ts-core) `^0.13.15`
 **Engines:** Bun ≥1.4.0, Node ≥24.0.0
-**MCP SDK:** `@modelcontextprotocol/server` ^2.2.0
-**Zod:** ^4.6.5
+**MCP SDK:** `@modelcontextprotocol/server` ^2.3.1
+**Zod:** ^4.6.7
 
 > **Read the framework docs first:** `node_modules/@cyanheads/mcp-ts-core/CLAUDE.md` contains the full API reference — builders, Context, error codes, exports, patterns. This file covers server-specific conventions only.
 
@@ -32,19 +32,19 @@ Tailor suggestions to what's actually missing or stale — don't recite the full
 
 ## Domain
 
-crossref-mcp-server wraps the [Crossref REST API](https://api.crossref.org/) to expose canonical scholarly metadata for ~155 million registered works (journal articles, books, book chapters, conference papers, preprints, datasets, components). It is the authoritative source for DOI-registered metadata — titles, authors, affiliations, abstracts (where deposited), licenses, full-text links, funder acknowledgements, and outgoing reference lists.
+crossref-mcp-server wraps the [Crossref REST API](https://api.crossref.org/) to expose canonical scholarly metadata for ~188 million registered works (journal articles, books, book chapters, conference papers, preprints, datasets, components). It is the authoritative source for DOI-registered metadata — titles, authors, affiliations, abstracts (where deposited), licenses, full-text links, funder acknowledgements, and outgoing reference lists.
 
 **Pairs with:** pubmed-mcp-server (biomedical abstracts/MeSH), openalex-mcp-server (citation graphs, topics, analytics), arxiv-mcp-server (preprints — their DOIs resolve through Crossref), biorxiv-mcp-server (preprints — same).
 
 ### Key domain constraints
 
-- **Polite-pool `mailto` is optional but recommended.** Every request includes `User-Agent: crossref-mcp-server/0.4.2 (mailto:<CROSSREF_MAILTO>)` when set. Without it, the server starts but logs a warning and uses the anonymous pool with stricter rate limits. Polite-pool access requires no token — just the email in the header.
+- **Polite-pool `mailto` is optional but recommended.** Every Crossref request includes `User-Agent: crossref-mcp-server/<version> (mailto:<CROSSREF_MAILTO>)` when set; the not-found registry lookup to `https://doi.org` sends the bare `crossref-mcp-server/<version>` without the mailto. Without it, the server starts but logs a warning and uses the anonymous pool with stricter rate limits. Polite-pool access requires no token — just the email in the header.
 - **No incoming citations.** Crossref does not expose which works cite a given DOI. Redirect to OpenAlex for citation counts or citation graphs.
 - **Abstract coverage is incomplete.** Abstracts are deposited voluntarily; many records — especially older works and books — have none.
 - **Reference list coverage varies.** Outgoing references are only present for publisher participants; pre-2000 literature has low coverage.
 - **Offset paging is capped at ~10K** on `/works` and on both works sub-resources (100K on the `/journals` and `/funders` name searches). Deep paging requires `cursor=*` on the first request, then chaining `next-cursor` tokens; the name-search routes do not accept a cursor. Cursor and offset cannot be combined.
 - **A cursor walk is ended by an empty page, never by upstream.** Crossref's `next-cursor` is a search-after key (it decodes to `<sort-value>,<DOI>` and changes on every page), and the last partial page of a list still carries one, so a token's presence never means more records remain. Every cursor surface withholds its continuation token once a page comes back empty — Crossref currently sends none on that page, but has handed back the token that produced it before.
-- **A cursor cannot carry a publication-date sort.** Crossref refuses `published`, `published-print`, `published-online`, and `issued` beside `cursor` (`sort-criteria-incompatible-with-cursor`), and a walk with no sort runs oldest-registered first. The journal and funder works lists therefore walk a `works_cursor` by `sort=created&order=desc` (newest registered first) and keep `sort=published&order=desc` on offset pages; `crossref_search_works` passes the caller's `sort` through, and a refusal comes back as `sort_cursor_conflict`.
+- **A cursor cannot carry a publication-date sort.** Crossref refuses `published`, `published-print`, `published-online`, and `issued` beside `cursor` (`sort-criteria-incompatible-with-cursor`), and a walk with no sort runs oldest-registered first. The journal and funder works lists therefore walk a `works_cursor` by `sort=created&order=desc` (newest registered first) and keep `sort=published&order=desc` on offset pages; `crossref_search_works` passes the caller's `sort` and `order` through — a refusal comes back as `sort_cursor_conflict` — except on a cursor walk with a query term and no `sort`, which it sends as `sort=score` without `order` (a no-sort walk carries no ranking, Crossref ignores `order` without `sort`, and `score&order=asc` inverts the ranking). A filter-only walk and offset pages get no default sort.
 - **`select=` works on `/works` (search) only.** It is not supported on `/works/{doi}` (single-fetch). `crossref_get_references` fetches the full record and extracts `reference[]` client-side.
 - **Filter keys use hyphens.** e.g. `has-abstract`, `has-references`, `has-full-text`, `from-pub-date`. No `is_open_access` filter exists — use `license.url` with a Creative Commons license URL for open-access content. `directory:DOAJ` passes Crossref's validator but every request carrying it is answered with HTTP 500, so no surface recommends it.
 - **A DOI is accepted wrapped in its resolver.** `https://doi.org/…`, `https://dx.doi.org/…`, and `doi:…` each name exactly one DOI, so `normalizeDoi` in the service unwraps them and every DOI-bearing input admits them. Crossref's own paths take the bare DOI, so the unwrap happens at the head of the handler and everything below it — request path, logs, `doi_not_found` message and `data.doi` — reads the bare form.
@@ -236,7 +236,11 @@ src/
     tools/
       blank-input.ts                    # nonBlank / isBlank — a blank optional string reads as omitted
       markdown-text.ts                  # mdText / mdTextAtLineStart — the content[] escape
+      metadata-coverage.ts              # Coverage schema, projection, and renderer — member and journal tools
+      page-size.ts                      # clampPageSize — a page size above its per-call cap is clamped with a notice
+      registration-agency.ts            # notFoundDetail — not-found text branched on the DOI registry's answer
       work-locators.ts                  # volume / issue / page / articleNumber — fields, projection, line
+      work-updates.ts                   # updatedBy / updateTo — fields, projection, line
     tools/definitions/
       get-work.tool.ts                  # crossref_get_work
       get-references.tool.ts            # crossref_get_references

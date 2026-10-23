@@ -1,13 +1,13 @@
 <div align="center">
   <h1>@cyanheads/crossref-mcp-server</h1>
-  <p><b>Resolve DOIs, search ~155M scholarly works, fetch references, and look up publishers via the Crossref REST API. STDIO or Streamable HTTP.</b>
+  <p><b>Resolve DOIs, search ~188M scholarly works, fetch references, and look up publishers via the Crossref REST API. STDIO or Streamable HTTP.</b>
   <div>7 Tools</div>
   </p>
 </div>
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/Version-0.4.2-blue.svg?style=flat-square)](./CHANGELOG.md) [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg?style=flat-square)](./LICENSE) [![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/users/cyanheads/packages/container/package/crossref-mcp-server) [![MCP SDK](https://img.shields.io/badge/MCP%20SDK-^2.2.0-green.svg?style=flat-square)](https://modelcontextprotocol.io/) [![npm](https://img.shields.io/npm/v/@cyanheads/crossref-mcp-server?style=flat-square&logo=npm&logoColor=white)](https://www.npmjs.com/package/@cyanheads/crossref-mcp-server) [![TypeScript](https://img.shields.io/badge/TypeScript-^7.0.2-3178C6.svg?style=flat-square)](https://www.typescriptlang.org/) [![Bun](https://img.shields.io/badge/Bun-v1.4.2-blueviolet.svg?style=flat-square)](https://bun.sh/)
+[![Version](https://img.shields.io/badge/Version-0.4.2-blue.svg?style=flat-square)](./CHANGELOG.md) [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg?style=flat-square)](./LICENSE) [![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/users/cyanheads/packages/container/package/crossref-mcp-server) [![MCP SDK](https://img.shields.io/badge/MCP%20SDK-^2.3.1-green.svg?style=flat-square)](https://modelcontextprotocol.io/) [![npm](https://img.shields.io/npm/v/@cyanheads/crossref-mcp-server?style=flat-square&logo=npm&logoColor=white)](https://www.npmjs.com/package/@cyanheads/crossref-mcp-server) [![TypeScript](https://img.shields.io/badge/TypeScript-^7.0.2-3178C6.svg?style=flat-square)](https://www.typescriptlang.org/) [![Bun](https://img.shields.io/badge/Bun-v1.4.4-blueviolet.svg?style=flat-square)](https://bun.sh/)
 
 </div>
 
@@ -29,7 +29,7 @@
 
 ## Overview
 
-Scholarly metadata from the Crossref REST API. Resolve DOIs to full metadata records, search across ~155 million scholarly works by free text or structured filters, fetch outgoing reference lists, and look up journals, funders, and publishers. Runs as a stdio process, a local Streamable HTTP server, or the public hosted endpoint above.
+Scholarly metadata from the Crossref REST API. Resolve DOIs to full metadata records, search across ~188 million scholarly works by free text or structured filters, fetch outgoing reference lists, and look up journals, funders, and publishers.
 
 ### Tools
 
@@ -51,12 +51,13 @@ Scholarly metadata from the Crossref REST API. Resolve DOIs to full metadata rec
 - Returns title, authors with affiliations, abstract (when deposited), container/journal, publication date, work type, ISSN, license URLs, full-text link URLs, and funder acknowledgements
 - Citation locators `volume`, `issue`, `page`, and `articleNumber` under the same names and on the same rendered line as `crossref_search_works`, plus `isbn` — each as deposited, omitted when absent
 - `editors` in the author entry shape, returned whole and never counted in `authorCount`
-- Author list paged by `offset`/`limit` (default 25, max 500); `authorCount` reports the full deposited total and a `nextOffset` continues when authors remain — every other field is returned in full on every page
+- Author list paged by `offset`/`limit` (default 25, up to 500 per call — a larger `limit` is clamped to 500 with a `notice`); `authorCount` reports the full deposited total and a `nextOffset` continues when authors remain — every other field is returned in full on every page
 - `updatedBy` lists the corrections, retractions, expressions of concern, and new versions Crossref records against the work — notice DOI, type, source (`publisher` or `retraction-watch`, with its record ID), and date, entry for entry — and `updateTo` the works this record is a notice for; when `updatedBy` is present, `notice` names each update type with its sources. An absent `updatedBy` does not mean the work was never updated
 - `relations` groups related identifiers (preprint ↔ published version, versions, reviews, supplements) by relation type, identifier type, and asserting party, returned whole; only Crossref-registered DOIs among them resolve through this tool
 - A funder or affiliation asserted only through the ROR registry (no name deposited) carries `ror` in place of `name`, never as a blank entry
 - Publication date is the first of `published`, `published-print`, `published-online`, and `issued` (this tool only) that names a value; a date component Crossref records as unknown is omitted, along with everything less precise below it
 - Outgoing references are reported as a count (`referencesCount`) — entries come from `crossref_get_references`; incoming citation count (`isReferencedByCount`) is included, but citing works are not exposed by Crossref — use OpenAlex for citation graphs
+- A DOI Crossref holds no record for returns `doi_not_found` naming the agency the DOI registry says holds it (`registrationAgency` — DataCite, JaLC, mEDRA, …), a Funder Registry pointer when Crossref registered it, or that no agency registered it at all
 
 ---
 
@@ -64,11 +65,12 @@ Scholarly metadata from the Crossref REST API. Resolve DOIs to full metadata rec
 
 - Free-text `query` plus a structured `filter` object using Crossref's hyphenated keys (`from-pub-date`, `type`, `funder`, `issn`, `has-abstract`, `license.url`, etc.)
 - Field-scoped parameters `queryTitle`, `queryAuthor`, `queryContainerTitle`, and `queryBibliographic` combine with `query` and with each other
-- Sort by `relevance`, `score`, `is-referenced-by-count`, `published`, `deposited`, or other listed fields — the publication-date sorts page by `offset` only, since Crossref refuses them with a cursor
-- `fields` narrows the payload to any of the 17 select names the summary projects — including the citation locators `volume`, `issue`, `page`, `article-number`, and `ISSN` — and refuses any other name; `DOI` is always returned, and `crossref_get_work` carries the rest of the record
+- Sort by `relevance`, `score`, `is-referenced-by-count`, `published`, `deposited`, or other listed fields — the publication-date sorts page by `offset` only, since Crossref refuses them with a cursor. A cursor walk with a query term and no `sort` runs by relevance (sent as `sort=score`, without `order`) and can repeat or skip a record at a page boundary; `sort: "created"` walks without repeats. A filter-only walk runs in Crossref registration order
+- `fields` narrows the payload to any of the 19 select names the summary projects — including the citation locators `volume`, `issue`, `page`, `article-number`, and `ISSN`, and the update links `updated-by` and `update-to` — and refuses any other name; `DOI` is always returned, and `crossref_get_work` carries the rest of the record
+- Each work carries `updatedBy` (corrections, retractions, expressions of concern, new versions recorded against it) and `updateTo` (the works it is a notice for) in the entry shape and rendered line `crossref_get_work` uses, so a page of results can be screened for retractions without a call per DOI
 - A blank or whitespace-only query term or filter value, and an empty `sort` or `order`, is read as omitted; when that leaves nothing to search by, the `notice` says the page is an unfiltered listing
-- `authorLimit` caps authors per work (default 25, max 500); `authorCount` reports the full deposited total — chain a cut work's DOI into `crossref_get_work` for the rest
-- Offset paging is capped at ~10K; `cursor="*"` starts deep paging via chained `nextCursor` tokens — cursor and offset cannot be combined
+- `rows` returns up to 100 works per call and `authorLimit` caps authors per work (default 25, up to 500); a larger value of either is clamped to its cap with a `notice`, which on an offset page also names the offset that continues after the records returned (and, near the ~10K ceiling, the smaller `rows` that still fits beside it); `authorCount` reports the full deposited total — chain a cut work's DOI into `crossref_get_work` for the rest
+- Offset paging is capped at `offset + rows ≤ 10,000`; a rejected offset below the cap names the `rows` that still fit, and `cursor="*"` starts deep paging via chained `nextCursor` tokens — cursor and offset cannot be combined
 - A cursor walk ends on the page that omits `nextCursor` — an empty page never carries one; every empty page's `notice` names which of the three causes applies
 
 ---
@@ -76,19 +78,22 @@ Scholarly metadata from the Crossref REST API. Resolve DOIs to full metadata rec
 ### `crossref_get_references` <sub>tool</sub>
 
 - Takes the citing work's DOI bare or resolver-wrapped, the same forms `crossref_get_work` accepts
-- Each reference carries its deposited citation string and, when Crossref has resolved it, a DOI for `crossref_get_work`
+- Each reference carries its deposited citation string and, when Crossref has resolved it, a DOI for `crossref_get_work`, with `doiAssertedBy` saying whether the publisher deposited that DOI or Crossref matched it
+- Structured parts as deposited: author, year, article title, journal title, the title of a cited book or volume (`volumeTitle`, which stands in as the title when there is no article title), series title, volume, issue, first page, edition, and ISSN
 - Citation strings have formatting markup stripped and character references decoded; a bracketed span that isn't a recognized tag (a cited URL, a Miller index, a DOI fragment) is left exactly as deposited
-- Paged by `offset`/`limit` (default 100, max 500); `referenceCount` is the full deposited total and `nextOffset` continues when more remain
+- Paged by `offset`/`limit` (default 100, up to 500 per call — a larger `limit` is clamped to 500 with a `notice`); `referenceCount` is the full deposited total and `nextOffset` continues when more remain
 - Coverage varies by publisher — pre-2000 works and non-participating publishers often have no indexed references
 - Single-hop only; incoming citations are not available through Crossref — use OpenAlex for citation graphs
+- A DOI Crossref holds no record for returns `doi_not_found` naming its registration agency (`registrationAgency`), or saying no agency registered it, the same way `crossref_get_work` does
 
 ---
 
 ### `crossref_search_journals` <sub>tool</sub>
 
 - `include_works: true` also returns a page of the journal's most recent works — newest published first by `works_offset`, newest registered first on a `works_cursor` walk; requires an unambiguous journal — a title query matching more than one returns `ambiguous_journal`, naming candidates and ISSNs
-- Returns journal title, publisher, ISSN-L, subject areas, and total DOI count
-- Title-query results page by `offset` (ceiling `offset + rows ≤ 100,000`); the works list pages separately by `works_offset` (ceiling `≤ 10,000`) — a page that stalls at either ceiling, or an offset past the end of either list, carries a `notice` naming it
+- Returns journal title, publisher, ISSNs with their print/electronic form, subject areas, DOI counts (total/current/backfile), and per-category metadata deposit coverage (abstracts, references, ORCIDs, funders, licenses, and more) as current/backfile fractions — the same breakdown `crossref_get_member` gives per publisher
+- An `issn` lookup also returns DOI counts by issued year, ascending; title-query results omit them
+- Title-query results page by `offset` (ceiling `offset + rows ≤ 100,000`); the works list pages separately by `works_offset` (ceiling `≤ 10,000`) — an offset past the end of either list carries a `notice` naming it, and so does a page that stalls at either ceiling, along with the offset and smaller `rows` that reach the last records below it
 - `works_cursor="*"` pages the works list with no ceiling via chained `nextWorksCursor` tokens; a cursor walk runs by Crossref registration date, newest first (Crossref does not walk a publication-date sort by cursor), and cannot combine with `works_offset > 0` (`works_cursor_offset_conflict`)
 - A matched journal with no ISSN registered has no addressable works list — `include_works` is skipped with a `notice` rather than returning an empty list
 
@@ -99,7 +104,7 @@ Scholarly metadata from the Crossref REST API. Resolve DOIs to full metadata rec
 - Accepts a name `query`, a bare registry ID (`100000001`), or a full funder DOI (`10.13039/100000001`, optionally behind a `doi:`/`https://doi.org/` prefix)
 - `include_works: true` also returns a page of funded works; requires an unambiguous funder — a name query matching more than one returns `ambiguous_funder`, naming candidates and registry IDs
 - Returns funder name, registry ID, country, and alternate names
-- Name-query results page by `offset` (ceiling `≤ 100,000`); the funded-works list pages separately by `works_offset` (ceiling `≤ 10,000`) or, with no ceiling, `works_cursor="*"` chaining `nextWorksCursor` — offset pages run newest published first, a cursor walk newest registered first, and the two cannot combine (`works_offset > 0`); an offset past the end of either list carries a `notice` naming it
+- Name-query results page by `offset` (ceiling `≤ 100,000`); the funded-works list pages separately by `works_offset` (ceiling `≤ 10,000`) or, with no ceiling, `works_cursor="*"` chaining `nextWorksCursor` — offset pages run newest published first, a cursor walk newest registered first, and the two cannot combine (`works_offset > 0`); an offset past the end of either list carries a `notice` naming it, and a page that stalls at either ceiling names the offset and smaller `rows` that reach the last records below it
 - The funded-works list also counts works funded by the funder's registry descendants, which a `crossref_search_works` filter on `{"funder": "10.13039/<id>"}` does not
 - A deprecated registry entry answers to its successor's name while counting only its own works — the response's `notice` names the superseding ID via `replacedBy`; the replacement is never followed automatically
 
@@ -118,6 +123,7 @@ Scholarly metadata from the Crossref REST API. Resolve DOIs to full metadata rec
 - Accepts the registrant prefix of a DOI (e.g. `10.1038`, no `/suffix`)
 - Returns the publisher name and numeric member ID — the ID chains directly into `crossref_get_member` for the full record
 - The Crossref prefix record is thin by design (owner name and member link only); richer publisher data lives on the member record
+- A prefix with no Crossref member returns `prefix_not_found` naming the agency that registered it (`registrationAgency`, e.g. DataCite for `10.5281`), or saying no agency registered it
 
 ## Features
 
@@ -125,7 +131,7 @@ Built on [`@cyanheads/mcp-ts-core`](https://github.com/cyanheads/mcp-ts-core): s
 
 Crossref-specific:
 
-- Polite-pool `User-Agent` header injected on every request — priority access via `CROSSREF_MAILTO`, keyless otherwise; no API token required
+- Polite-pool `User-Agent` header injected on every Crossref request — priority access via `CROSSREF_MAILTO`, keyless otherwise; no API token required
 - Retry with exponential backoff on 429 (honoring `Retry-After`), 5xx, HTTP 408/504, and network failures; a malformed response body and a request that hits `CROSSREF_TIMEOUT_MS` are not retried
 - Cursor-based deep paging on the works search and on both works sub-resources, for result sets beyond the offset cap
 - Crossref's rejections of a request come back as declared reasons — `unknown_filter` (with the hyphenated key when Crossref lists one), `invalid_parameter`, `sort_cursor_conflict`, `invalid_cursor` — carrying the rejected inputs and a recovery hint; a malformed `issn` filter value is refused before the request, and no upstream error relays Crossref's raw response body
@@ -259,8 +265,8 @@ All configuration is validated at startup via Zod schemas in `src/config/server-
 
 | Variable | Description | Default |
 |:---------|:------------|:--------|
-| `CROSSREF_MAILTO` | Email address embedded in the polite-pool `User-Agent` header. Optional — server starts without it but logs a warning and uses the anonymous pool with stricter rate limits. | — |
-| `CROSSREF_BASE_URL` | Crossref API base URL. Override for testing against a local proxy. | `https://api.crossref.org` |
+| `CROSSREF_MAILTO` | Email address embedded in the polite-pool `User-Agent` header of every Crossref request. Optional — server starts without it but logs a warning and uses the anonymous pool with stricter rate limits. Never sent to the DOI registry: the agency lookup after a Crossref not-found identifies the server and version only. | — |
+| `CROSSREF_BASE_URL` | Crossref API base URL. Override for testing against a local proxy. The agency lookup after a Crossref not-found always goes to `https://doi.org`, whatever this is set to. | `https://api.crossref.org` |
 | `CROSSREF_TIMEOUT_MS` | Per-request timeout in milliseconds. Also the worst-case wait against an unresponsive upstream — a request that hits the deadline is not retried. | `10000` |
 | `MCP_TRANSPORT_TYPE` | Transport: `stdio` or `http`. | `stdio` |
 | `MCP_SESSION_MODE` | HTTP session mode: `auto`, `stateful`, or `stateless`. This server needs no multi-round input, so `src/index.ts` declares `stateless`; Docker and `.env.example` pin the same value, and setting this variable overrides the declaration. | `stateless` (declared in `src/`) |
