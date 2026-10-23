@@ -7,6 +7,7 @@
 import { HtmlRenderer, Parser } from 'commonmark';
 import { describe, expect, it } from 'vitest';
 import { mdText, mdTextAtLineStart } from '@/mcp-server/tools/markdown-text.js';
+import { expectLinearScaling, repeatTo } from '../helpers/scaling.js';
 
 describe('mdText', () => {
   /**
@@ -168,22 +169,21 @@ describe('mdText', () => {
    * so an entity-dense or bracket-dense deposit costs a fixed amount of work per character. Two
    * performance defects of exactly this shape have shipped in this module before.
    */
-  it('stays linear on adversarial input', () => {
-    const adversarial = [
-      `&${'a'.repeat(100_000)}`,
-      '&'.repeat(50_000) + 'a'.repeat(50_000),
-      `<${'a'.repeat(100_000)}`,
-      '\\'.repeat(100_000),
-      ']'.repeat(100_000),
-      '_'.repeat(100_000),
-      'a_'.repeat(50_000),
-    ];
-    for (const value of adversarial) {
-      const started = performance.now();
-      mdText(value);
-      expect(performance.now() - started, value.slice(0, 12)).toBeLessThan(500);
-    }
-  });
+  it.each([
+    ['an unterminated entity name', (size: number) => `&${'a'.repeat(size - 1)}`],
+    ['ampersands before a name', (size: number) => '&'.repeat(size / 2) + 'a'.repeat(size / 2)],
+    ['an unterminated tag name', (size: number) => `<${'a'.repeat(size - 1)}`],
+    ['backslashes', (size: number) => '\\'.repeat(size)],
+    ['closing brackets', (size: number) => ']'.repeat(size)],
+    ['underscores', (size: number) => '_'.repeat(size)],
+    ['intraword underscores', (size: number) => repeatTo('a_', size)],
+  ])(
+    'stays linear on %s',
+    (_name, make) => {
+      expectLinearScaling(make, mdText);
+    },
+    60_000,
+  );
 });
 
 /**
@@ -274,11 +274,15 @@ describe('mdTextAtLineStart', () => {
   });
 
   /** Anchored and bounded: the marker match costs the same whatever follows it. */
-  it('stays linear on adversarial input', () => {
-    for (const value of ['9'.repeat(100_000), '-'.repeat(100_000), `#${'>'.repeat(100_000)}`]) {
-      const started = performance.now();
-      mdTextAtLineStart(value);
-      expect(performance.now() - started, value.slice(0, 12)).toBeLessThan(500);
-    }
-  });
+  it.each([
+    ['a run of digits', (size: number) => '9'.repeat(size)],
+    ['a run of hyphens', (size: number) => '-'.repeat(size)],
+    ['a heading marker before quote markers', (size: number) => `#${'>'.repeat(size - 1)}`],
+  ])(
+    'stays linear on %s',
+    (_name, make) => {
+      expectLinearScaling(make, mdTextAtLineStart);
+    },
+    60_000,
+  );
 });

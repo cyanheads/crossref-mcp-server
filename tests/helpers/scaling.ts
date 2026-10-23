@@ -82,6 +82,11 @@ export function repeatTo(unit: string, size: number): string {
   return unit.repeat(Math.ceil(size / unit.length)).slice(0, size);
 }
 
+/** `unit` repeated as many whole times as fit in `size` characters, never cut mid-unit. */
+export function repeatWhole(unit: string, size: number): string {
+  return unit.repeat(Math.floor(size / unit.length));
+}
+
 /** `open` repeated as deep as `size` allows around `core`, closed by `close` as many times. */
 export function nestTo(open: string, core: string, close: string, size: number): string {
   const depth = Math.floor((size - core.length) / (open.length + close.length));

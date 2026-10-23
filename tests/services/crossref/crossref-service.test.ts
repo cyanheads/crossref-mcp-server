@@ -46,6 +46,7 @@ import {
   WORKS_OFFSET_CAP,
 } from '@/services/crossref/crossref-service.js';
 import { decodeHtmlEntities } from '@/services/crossref/html-entities.js';
+import { expectLinearScaling, nestTo, repeatWhole } from '../../helpers/scaling.js';
 
 /** Every route this service calls lives under the configured base URL. */
 const CROSSREF = /^https:\/\/api\.crossref\.test\//;
@@ -1325,32 +1326,62 @@ describe('stripReferenceMarkup', () => {
     );
   });
 
-  /** A deeply nested or bracket-heavy field must not send the matcher exponential. */
-  it('returns promptly on adversarial bracket input', () => {
-    const adversarial = [
-      `${'<i><b><sub>'.repeat(400)}x${'</sub></b></i>'.repeat(400)}`,
-      // A tag the deposit never terminated: the attribute tail has to reject it without
-      // exploring a parse per attribute. A budget of seconds hides exactly that blowup, so
-      // the bound is tight enough to fail on it — the shape costs under a millisecond.
-      `<p class="a" ${'x = "y" '.repeat(600)}`,
-      `${'<math><mi>'.repeat(400)}z`,
-      `${'<mixed-citation><surname>A</surname>'.repeat(400)}`,
-      '</i>'.repeat(20_000),
-      // Link elements are the one class that scans forward from a tag for its own closing
-      // tag, so a field packed with openers that never close is what makes that scan
-      // quadratic if it is written carelessly.
-      `${'<ext-link xlink:href="https://example.org/a">'.repeat(2_000)}x`,
-      `${'<a href="https://example.org/a">text</a>'.repeat(2_000)}`,
-      // A link whose href is a long unterminated attribute run: the href matcher has to
-      // reject it without exploring a parse per space.
-      `<ext-link ${'href = "y" '.repeat(600)}`,
+  /**
+   * A deeply nested or bracket-heavy field must not send the matcher superlinear. Measured by
+   * growth, not against a single budget: t(320k)/t(5k) is 64 for linear work and 4096 for
+   * quadratic.
+   */
+  describe('on adversarial bracket input', () => {
+    const shapes: Array<[string, (size: number) => string]> = [
+      ['nested inline tags', (size) => nestTo('<i><b><sub>', 'x', '</sub></b></i>', size)],
+      /**
+       * A tag the deposit never terminated: the attribute tail has to reject it without
+       * exploring a parse per attribute. Here and in the href run below, each attribute is long
+       * enough that the largest input holds fewer than about 28,000 of them. Past that count
+       * JavaScriptCore's regex engine switches to a slower mode for the repeated attribute
+       * group. The work stays linear on both sides of the switch, but measured across it the
+       * step reads as growth.
+       */
+      [
+        'an unterminated attribute run',
+        (size) => `<p class="a" ${repeatWhole('x = "yyyyyyyyyyyyyyyyy" ', size - 13)}`,
+      ],
+      ['MathML openers', (size) => `${repeatWhole('<math><mi>', size - 1)}z`],
+      [
+        'closed citation parts',
+        (size) => repeatWhole('<mixed-citation><surname>A</surname>', size),
+      ],
+      ['closers with no opener', (size) => repeatWhole('</i>', size)],
+      /**
+       * Link elements are the one class that scans forward from a tag for its own closing tag,
+       * so a field packed with openers that never close is what makes that scan quadratic if
+       * it is written carelessly.
+       */
+      [
+        'link openers that never close',
+        (size) => `${repeatWhole('<ext-link xlink:href="https://example.org/a">', size - 1)}x`,
+      ],
+      ['closed links', (size) => repeatWhole('<a href="https://example.org/a">text</a>', size)],
+      /**
+       * A link whose href is a long unterminated attribute run: the href matcher has to reject
+       * it without exploring a parse per space.
+       */
+      [
+        'an unterminated href run',
+        (size) => `<ext-link ${repeatWhole('href = "yyyyyyyyyyyyyy" ', size - 10)}`,
+      ],
     ];
-    const started = Date.now();
-    for (const raw of adversarial) {
-      stripReferenceMarkup(raw);
-      stripJats(raw);
-    }
-    expect(Date.now() - started).toBeLessThan(500);
+
+    it.each(shapes)(
+      'stays linear on %s',
+      (_name, make) => {
+        expectLinearScaling(make, (raw) => {
+          stripReferenceMarkup(raw);
+          stripJats(raw);
+        });
+      },
+      60_000,
+    );
   });
 
   /**
@@ -1707,11 +1738,11 @@ describe('an <alternatives> wrapper', () => {
 
   /** Deeply nested children cost work proportional to the input, not exponential in its depth. */
   it('stays linear on an adversarially nested wrapper', () => {
-    const deep = `<alternatives>${'<a-child>'.repeat(4000)}x${'</a-child>'.repeat(4000)}</alternatives>`;
-    const started = performance.now();
-    normalizeReferenceText(deep);
-    expect(performance.now() - started).toBeLessThan(500);
-  });
+    expectLinearScaling(
+      (size) => `<alternatives>${nestTo('<a-child>', 'x', '</a-child>', size - 29)}</alternatives>`,
+      normalizeReferenceText,
+    );
+  }, 60_000);
 });
 
 /**
@@ -2166,14 +2197,29 @@ describe('decodeHtmlEntities', () => {
    * never terminate it, are both linear for this matcher — no nested quantifier to send it
    * exponential.
    */
-  it('returns promptly on entity-dense and unterminated-reference input', () => {
+  describe('on entity-dense and unterminated-reference input', () => {
     const unit = '&alpha;&beta;&#160;&amp;&notaname;&#x1F600;';
-    const dense = unit.repeat(20_000);
-    const unterminated = `${'&amp'.repeat(20_000)}&${'a'.repeat(50_000)}`;
-    const started = Date.now();
-    expect(decodeHtmlEntities(dense)).toBe(decodeHtmlEntities(unit).repeat(20_000));
-    expect(decodeHtmlEntities(unterminated)).toBe(unterminated);
-    expect(Date.now() - started).toBeLessThan(2_000);
+    const dense = (size: number) => repeatWhole(unit, size);
+    const unterminated = (size: number) =>
+      `${repeatWhole('&amp', size / 2)}&${'a'.repeat(size / 2 - 1)}`;
+
+    it('decodes each reference in a dense run and leaves an unterminated run as written', () => {
+      expect(decodeHtmlEntities(dense(80_000))).toBe(
+        decodeHtmlEntities(unit).repeat(dense(80_000).length / unit.length),
+      );
+      expect(decodeHtmlEntities(unterminated(80_000))).toBe(unterminated(80_000));
+    });
+
+    it.each([
+      ['an entity-dense run', dense],
+      ['an unterminated reference run', unterminated],
+    ])(
+      'stays linear on %s',
+      (_name, make) => {
+        expectLinearScaling(make, decodeHtmlEntities);
+      },
+      60_000,
+    );
   });
 });
 
