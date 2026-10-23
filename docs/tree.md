@@ -1,6 +1,6 @@
 # crossref-mcp-server - Directory Structure
 
-Generated on: 2026-10-08 11:19:03
+Generated on: 2026-10-23 04:48:17
 
 ```text
 crossref-mcp-server/
@@ -158,7 +158,11 @@ crossref-mcp-server/
 │   │       │   └── search-works.tool.ts
 │   │       ├── blank-input.ts
 │   │       ├── markdown-text.ts
-│   │       └── work-locators.ts
+│   │       ├── metadata-coverage.ts
+│   │       ├── page-size.ts
+│   │       ├── registration-agency.ts
+│   │       ├── work-locators.ts
+│   │       └── work-updates.ts
 │   ├── services/
 │   │   └── crossref/
 │   │       ├── crossref-service.ts
@@ -217,6 +221,8 @@ crossref-mcp-server/
 │       ├── markdown-surface.test.ts
 │       ├── markdown-text.test.ts
 │       ├── mathml-surface.test.ts
+│       ├── page-size.test.ts
+│       ├── registration-agency.test.ts
 │       ├── search-blank-inputs.test.ts
 │       ├── search-empty-pages.test.ts
 │       ├── search-funders.tool.test.ts

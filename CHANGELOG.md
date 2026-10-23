@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.4.3](changelog/0.4.x/0.4.3.md) — 2026-10-22
+
+A not-found DOI or prefix names the registration agency that holds it, page sizes above the per-call cap are clamped with a notice instead of rejected, and reference, search-result, and journal records carry more fields.
+
 ## [0.4.2](changelog/0.4.x/0.4.2.md) — 2026-10-08
 
 Framework update to @cyanheads/mcp-ts-core 0.13.14: tool error results carry a request ID and no longer expose server internals in their data, and numeric or boolean strings and null optional values in tool arguments are repaired instead of rejected.
