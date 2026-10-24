@@ -103,6 +103,7 @@ const LicenseSchema = z
     url: z.string().describe('License URL'),
     contentVersion: z.string().optional().describe('Content version (vor, am, tdm, unspecified)'),
     delayInDays: z.number().optional().describe('Embargo delay in days from publication date'),
+    start: z.string().optional().describe('License start date-time as deposited by the publisher'),
   })
   .describe('License entry');
 
@@ -110,6 +111,10 @@ const LinkSchema = z
   .object({
     url: z.string().describe('Full-text URL'),
     contentType: z.string().optional().describe('MIME type of linked content'),
+    contentVersion: z
+      .string()
+      .optional()
+      .describe('Content version of the linked manuscript as deposited (e.g. vor, am)'),
     intendedApplication: z
       .string()
       .optional()
@@ -224,7 +229,7 @@ export const getWorkTool = tool('crossref_get_work', {
       .string()
       .optional()
       .describe(
-        'Abstract when deposited by the publisher. Many records lack abstracts. Publishers deposit it as JATS XML, so this is the text of that deposit with markup removed and character references decoded; a link keeps its tag only where its href holds an address the text it wraps does not already carry, and each formula appears once — MathML as the TeX annotation it carries, otherwise written out linearly (x_i, A^{−1}, √(m), (a+b)/c), and TeX deposited beside MathML in whichever notation comes first.',
+        'Abstract when deposited by the publisher. Many records lack abstracts. Publishers deposit it as JATS XML, so this is the text of that deposit with markup removed and character references decoded; numeric JATS superscripts retain caret notation (10^{16}, GeV^2), a link keeps its tag only where its href holds an address the text it wraps does not already carry, and each formula appears once — MathML as the TeX annotation it carries, otherwise written out linearly (x_i, A^{−1}, √(m), (a+b)/c), and TeX deposited beside MathML in whichever notation comes first.',
       ),
     isReferencedByCount: z
       .number()
@@ -404,12 +409,14 @@ export const getWorkTool = tool('crossref_get_work', {
           url: l.URL,
           ...(l['content-version'] && { contentVersion: l['content-version'] }),
           ...(l['delay-in-days'] !== undefined && { delayInDays: l['delay-in-days'] }),
+          ...(l.start?.['date-time'] !== undefined && { start: l.start['date-time'] }),
         })),
       }),
       ...(raw.link && {
         links: raw.link.map((l) => ({
           url: l.URL,
           ...(l['content-type'] && { contentType: l['content-type'] }),
+          ...(l['content-version'] !== undefined && { contentVersion: l['content-version'] }),
           ...(l['intended-application'] && {
             intendedApplication: l['intended-application'],
           }),
@@ -506,7 +513,8 @@ export const getWorkTool = tool('crossref_get_work', {
       lines.push('**Licenses:**');
       for (const l of result.licenses) {
         const delay = l.delayInDays !== undefined ? ` (${l.delayInDays}d embargo)` : '';
-        lines.push(`- ${l.url}${l.contentVersion ? ` [${l.contentVersion}]` : ''}${delay}`);
+        const start = l.start !== undefined ? ` — starts ${mdText(l.start)}` : '';
+        lines.push(`- ${l.url}${l.contentVersion ? ` [${l.contentVersion}]` : ''}${delay}${start}`);
       }
     }
 
@@ -516,7 +524,8 @@ export const getWorkTool = tool('crossref_get_work', {
       for (const l of result.links) {
         const ct = l.contentType ? ` (${l.contentType})` : '';
         const app = l.intendedApplication ? ` [${l.intendedApplication}]` : '';
-        lines.push(`- ${l.url}${ct}${app}`);
+        const version = l.contentVersion !== undefined ? ` [${mdText(l.contentVersion)}]` : '';
+        lines.push(`- ${l.url}${ct}${app}${version}`);
       }
     }
 

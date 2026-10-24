@@ -463,6 +463,60 @@ function readMathml(inner: string): string {
 }
 
 /**
+ * Read closed numeric superscripts before stripping tags. A single token scan counts text
+ * incompatible with a numeric script; nested scripts invalidate their parent, so accepted
+ * spans never overlap and no nested body is rescanned or recursively rendered.
+ */
+function readNumericSuperscripts(text: string): string {
+  if (!text.includes('<')) return text;
+  const openers = new Map<string, Array<{ start: number; content: number; invalid: number }>>();
+  const edits: Array<{ start: number; end: number; from: number; to: number }> = [];
+  const parts: string[] = [];
+  let length = 0;
+  let invalid = 0;
+  let previous = 0;
+  for (const match of text.matchAll(TAG)) {
+    const [tag, close, rawName, selfClose] = match as RegExpExecArray &
+      [string, string, string, string];
+    const offset = match.index;
+    const plain = decodeHtmlEntities(text.slice(previous, offset));
+    parts.push(plain);
+    length += plain.length;
+    if (/[^0-9+.−-]/.test(plain)) invalid++;
+    const name = rawName.toLowerCase();
+    if (name === 'sup' || name === 'superscript') {
+      const stack = openers.get(name) ?? [];
+      if (close) {
+        const opener = stack.pop();
+        if (opener && opener.invalid === invalid && length > opener.content) {
+          let start = opener.start;
+          while (start > 0 && /\s/.test(text.charAt(start - 1))) start--;
+          edits.push({ start, end: offset + tag.length, from: opener.content, to: length });
+        }
+      } else if (!selfClose) {
+        stack.push({ start: offset, content: length, invalid: invalid + 1 });
+        openers.set(name, stack);
+      }
+      invalid++;
+    } else if (!INLINE_ELEMENTS.includes(name)) {
+      invalid++;
+    }
+    previous = offset + tag.length;
+  }
+  if (!edits.length) return text;
+  const content = parts.join('');
+  const output: string[] = [];
+  previous = 0;
+  for (const edit of edits) {
+    const value = content.slice(edit.from, edit.to);
+    output.push(text.slice(previous, edit.start), value.length === 1 ? `^${value}` : `^{${value}}`);
+    previous = edit.end;
+  }
+  output.push(text.slice(previous));
+  return output.join('');
+}
+
+/**
  * Classify every well-formed tag in a string and remove the ones this surface recognizes as
  * markup, leaving the separator its class calls for. `unlisted` is the verdict for a name on
  * none of the class lists, and it is the only thing that varies between surfaces.
@@ -480,6 +534,7 @@ function readMathml(inner: string): string {
  * link wraps no text at all, so nothing there can carry the address.
  */
 function stripTags(text: string, unlisted: Verdict): string {
+  text = readNumericSuperscripts(text);
   const removed: string[] = [];
   /**
    * Link names whose closing tag is already known to be absent from the rest of the string.
@@ -549,7 +604,8 @@ function stripTags(text: string, unlisted: Verdict): string {
  *    formula-bearing regions leave a block boundary on their outer edge, because a formula
  *    stands as its own token in the sentence rather than continuing the word beside it.
  * 3. **Name.** Everywhere else the element name decides, on three shared classes plus a
- *    per-surface default. Scripts and inline formula wrappers leave nothing — `O<sub>2</sub>` is
+ *    per-surface default. Numeric superscripts retain a caret marker; other scripts and inline
+ *    formula wrappers leave nothing — `O<sub>2</sub>` is
  *    one formula and a space there splits it, `T<inf>c</inf>` is one symbol. Inline emphasis and
  *    the bare JATS citation fields are a word boundary and leave a space only where the text
  *    would otherwise run together — between two word characters, or where a sentence ends and

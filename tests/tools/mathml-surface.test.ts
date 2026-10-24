@@ -123,6 +123,32 @@ describe('crossref_get_work on a MathML abstract', () => {
 });
 
 describe('crossref_search_works on a MathML abstract', () => {
+  it('preserves numeric JATS superscripts on both tools and both surfaces', async () => {
+    const doi = '10.1142/S0217751X12600032';
+    const abstract = '10<jats:sup>16</jats:sup> Tesla and 0.6 GeV <jats:sup>2</jats:sup>';
+    http.route({
+      match: /^https:\/\/api\.crossref\.test\/works\//,
+      respond: () => Response.json({ message: { DOI: doi, abstract } }),
+    });
+    http.route({
+      match: /^https:\/\/api\.crossref\.test\/works\?/,
+      respond: () => workList([{ DOI: doi, abstract }]),
+    });
+    const single = await runToolContract(getWorkTool, { doi });
+    const search = await runToolContract(searchWorksTool, {
+      filter: { doi },
+      fields: ['abstract'],
+    });
+    expect(single.isError).toBeFalsy();
+    expect(search.isError).toBeFalsy();
+    expect(single.structuredContent).toMatchObject({ abstract: '10^{16} Tesla and 0.6 GeV^2' });
+    expect(search.structuredContent).toMatchObject({
+      works: [{ abstract: '10^{16} Tesla and 0.6 GeV^2' }],
+    });
+    for (const result of [single, search]) {
+      expect(commonmark(textOf(result))).toContain('10^{16} Tesla and 0.6 GeV^2');
+    }
+  });
   it('returns the same abstract crossref_get_work does', async () => {
     const doi = '10.1090/s0002-9939-05-08007-x';
     const { abstract } = captured(doi).message;

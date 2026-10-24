@@ -244,11 +244,11 @@ describe('getMemberTool', () => {
     expect(text).toContain('18727584');
     expect(text).toContain('journal-article');
     expect(text).toContain('references');
-    expect(text).toContain('86%');
+    expect(text).toContain('0.86 / 0.7');
     expect(text).toContain('Yes');
   });
 
-  it('keeps sub-0.5% coverage fractions distinguishable from a genuine zero', () => {
+  it('keeps small coverage fractions distinguishable from a genuine zero', () => {
     const result = {
       id: 297,
       primaryName: 'Springer Science and Business Media LLC',
@@ -259,8 +259,8 @@ describe('getMemberTool', () => {
     };
     const text = blockText(getMemberTool.format!(result)[0]);
 
-    expect(text).toContain('- ror-ids: 0.38% / 0.0014%');
-    expect(text).toContain('- similarity-checking: 0% / 0%');
+    expect(text).toContain('- ror-ids: 0.003784271010819736 / 0.00001384254375974146');
+    expect(text).toContain('- similarity-checking: 0 / 0');
   });
 
   /**
@@ -308,11 +308,11 @@ describe('getMemberTool', () => {
         '- book: 370941',
         '- posted-content: 351969',
         '',
-        '**Metadata coverage (current / backfile):**',
-        '- abstracts: 25% / 7.0%',
-        '- funders: 0% / n/a',
-        '- references: 87% / 70%',
-        '- ror-ids: n/a / 0.0014%',
+        '**Metadata coverage (0–1 fractions, current / backfile):**',
+        '- abstracts: 0.2459951193510236 / 0.07027088377353202',
+        '- funders: 0 / n/a',
+        '- references: 0.8656243232888579 / 0.7042172661179557',
+        '- ror-ids: n/a / 0.00001384254375974146',
       ].join('\n'),
     );
   });

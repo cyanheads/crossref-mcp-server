@@ -76,6 +76,120 @@ function makeAuthors(count: number) {
 const wireSchema = getWorkTool.output.extend(getWorkTool.enrichment!);
 
 describe('getWorkTool', () => {
+  it('preserves raw license starts and unknown link versions when Markdown renders them', async () => {
+    mockGetWork.mockResolvedValue(
+      makeRawWork({
+        license: [{ URL: 'https://example.com/license', start: { 'date-time': '*deposited*' } }],
+        link: [{ URL: 'https://example.com/text', 'content-version': '*accepted*' }],
+      }),
+    );
+    const result = await runToolContract(getWorkTool, { doi: '10.1038/nature12373' });
+    expect(result.structuredContent).toMatchObject({
+      licenses: [{ start: '*deposited*' }],
+      links: [{ contentVersion: '*accepted*' }],
+    });
+    const html = commonmark(result.content.map(blockText).join('\n'));
+    expect(html).toContain('starts *deposited*');
+    expect(html).toContain('[*accepted*]');
+    expect(html).not.toContain('<em>deposited</em>');
+    expect(html).not.toContain('<em>accepted</em>');
+  });
+  it('relays deposited license starts and full-text versions on both result surfaces', async () => {
+    mockGetWork.mockResolvedValue(
+      makeRawWork({
+        DOI: '10.1038/s41586-020-2649-2',
+        license: ['tdm', 'vor'].map((version) => ({
+          URL: 'https://creativecommons.org/licenses/by/4.0',
+          'content-version': version,
+          'delay-in-days': 0,
+          start: { 'date-time': '2020-09-16T00:00:00Z' },
+        })),
+        link: [
+          {
+            URL: 'https://www.nature.com/articles/s41586-020-2649-2.pdf',
+            'content-type': 'application/pdf',
+            'content-version': 'vor',
+            'intended-application': 'text-mining',
+          },
+          {
+            URL: 'https://www.nature.com/articles/s41586-020-2649-2',
+            'content-type': 'text/html',
+            'content-version': 'vor',
+            'intended-application': 'text-mining',
+          },
+          {
+            URL: 'https://www.nature.com/articles/s41586-020-2649-2.pdf',
+            'content-type': 'application/pdf',
+            'content-version': 'vor',
+            'intended-application': 'similarity-checking',
+          },
+        ],
+      }),
+    );
+    const result = await runToolContract(getWorkTool, { doi: '10.1038/s41586-020-2649-2' });
+    expect(result.isError).toBeFalsy();
+    expect(result.structuredContent).toMatchObject({
+      licenses: [
+        {
+          url: 'https://creativecommons.org/licenses/by/4.0',
+          contentVersion: 'tdm',
+          delayInDays: 0,
+          start: '2020-09-16T00:00:00Z',
+        },
+        {
+          url: 'https://creativecommons.org/licenses/by/4.0',
+          contentVersion: 'vor',
+          delayInDays: 0,
+          start: '2020-09-16T00:00:00Z',
+        },
+      ],
+      links: [
+        {
+          contentVersion: 'vor',
+          contentType: 'application/pdf',
+          intendedApplication: 'text-mining',
+        },
+        { contentVersion: 'vor', contentType: 'text/html', intendedApplication: 'text-mining' },
+        {
+          contentVersion: 'vor',
+          contentType: 'application/pdf',
+          intendedApplication: 'similarity-checking',
+        },
+      ],
+    });
+    const text = result.content.map(blockText).join('\n');
+    expect(text).toContain(
+      '- https://creativecommons.org/licenses/by/4.0 [tdm] (0d embargo) — starts 2020-09-16T00:00:00Z',
+    );
+    expect(text).toContain(
+      '- https://creativecommons.org/licenses/by/4.0 [vor] (0d embargo) — starts 2020-09-16T00:00:00Z',
+    );
+    expect(text).toContain(
+      '- https://www.nature.com/articles/s41586-020-2649-2.pdf (application/pdf) [text-mining] [vor]',
+    );
+    expect(text).toContain(
+      '- https://www.nature.com/articles/s41586-020-2649-2 (text/html) [text-mining] [vor]',
+    );
+    expect(text).toContain(
+      '- https://www.nature.com/articles/s41586-020-2649-2.pdf (application/pdf) [similarity-checking] [vor]',
+    );
+  });
+  it('preserves sparse license and link entries without inferred metadata', async () => {
+    mockGetWork.mockResolvedValue(
+      makeRawWork({
+        license: [{ URL: 'https://example.com/license', start: {} }],
+        link: [{ URL: 'https://example.com/text' }],
+      }),
+    );
+    const result = await runToolContract(getWorkTool, { doi: '10.1038/nature12373' });
+    expect(result.isError).toBeFalsy();
+    const output = wireSchema.parse(result.structuredContent);
+    expect(output.licenses).toEqual([{ url: 'https://example.com/license' }]);
+    expect(output.links).toEqual([{ url: 'https://example.com/text' }]);
+    expect(result.content.map(blockText).join('\n')).toContain(
+      '**Licenses:**\n- https://example.com/license\n\n**Full-text links:**\n- https://example.com/text',
+    );
+  });
   it('returns full metadata for a valid DOI', async () => {
     const ctx = createMockContext({ errors: getWorkTool.errors });
     mockGetWork.mockResolvedValue(makeRawWork());

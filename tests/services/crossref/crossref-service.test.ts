@@ -1055,7 +1055,7 @@ describe('normalizeMarkupText', () => {
       'CO2 uptake in E. coli & yeast',
     );
     expect(normalizeMarkupText('Adsorption of Co<sup>2+</sup> by Oxides')).toBe(
-      'Adsorption of Co2+ by Oxides',
+      'Adsorption of Co^{2+} by Oxides',
     );
     expect(normalizeMarkupText('Fe<jats:sub>3</jats:sub>O<jats:sub>4</jats:sub> Core')).toBe(
       'Fe3O4 Core',
@@ -1591,7 +1591,7 @@ describe('stripReferenceMarkup', () => {
     expect(stripReferenceMarkup('H<sub>2</sub>O<sub>2</sub>')).toBe('H2O2');
     expect(
       stripReferenceMarkup('O<Stack><Subscript>2</Subscript><Superscript>-</Superscript></Stack>'),
-    ).toBe('O2-');
+    ).toBe('O2^-');
   });
 
   /**
@@ -1764,7 +1764,7 @@ describe('the JATS pass and the reference pass', () => {
       // Scripts and formula wrappers join tight, in every spelling.
       ['Uptake of CO<sub>2</sub> and H<sub>2</sub>O', 'Uptake of CO2 and H2O'],
       ['high T<inf>c</inf>-dc-SQUID gradiometers', 'high Tc-dc-SQUID gradiometers'],
-      ['O<Stack><Subscript>2</Subscript><Superscript>-</Superscript></Stack>', 'O2-'],
+      ['O<Stack><Subscript>2</Subscript><Superscript>-</Superscript></Stack>', 'O2^-'],
       ['Ni/<inline-formula><tex-math>$x$</tex-math></inline-formula>/TiN', 'Ni/$x$/TiN'],
       [
         'Correlation of <ref_formula><tex>$1/f$</tex></ref_formula> noise',

@@ -16,6 +16,7 @@
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { isBlank, nonBlank } from '@/mcp-server/tools/blank-input.js';
+import { cursorNotice } from '@/mcp-server/tools/cursor-notice.js';
 import { mdText } from '@/mcp-server/tools/markdown-text.js';
 import {
   clampPageSize,
@@ -118,7 +119,7 @@ const WorkSummarySchema = z
       .string()
       .optional()
       .describe(
-        'Abstract when present in the indexed record — the text of the publisher’s JATS deposit, with markup removed and character references decoded; a link keeps its tag only where its href holds an address the text it wraps does not already carry, and each formula appears once — MathML as the TeX annotation it carries, otherwise written out linearly (x_i, A^{−1}, √(m), (a+b)/c), and TeX deposited beside MathML in whichever notation comes first',
+        'Abstract when present in the indexed record — the text of the publisher’s JATS deposit, with markup removed and character references decoded; numeric JATS superscripts retain caret notation (10^{16}, GeV^2), a link keeps its tag only where its href holds an address the text it wraps does not already carry, and each formula appears once — MathML as the TeX annotation it carries, otherwise written out linearly (x_i, A^{−1}, √(m), (a+b)/c), and TeX deposited beside MathML in whichever notation comes first',
       ),
   })
   .describe('Work summary');
@@ -468,6 +469,8 @@ export const searchWorksTool = tool('crossref_search_works', {
      * silently overwrites another.
      */
     const notices: string[] = [];
+    const restart = cursorNotice(cursor);
+    if (restart) notices.push(restart);
     if (rowsClamp.notice) {
       /**
        * This tool has no nextOffset field, so a caller continuing an offset walk adds what it

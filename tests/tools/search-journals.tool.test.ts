@@ -1169,10 +1169,10 @@ describe('searchJournalsTool coverage, ISSN types, and DOI counts', () => {
     expect(text).toContain('**Backfile DOIs:** 435113');
     expect(text).toContain(
       [
-        '**Metadata coverage (current / backfile):**',
-        '- abstracts: 12% / 0.28%',
-        '- funders: 0% / 0.0021%',
-        '- references: 64% / 39%',
+        '**Metadata coverage (0–1 fractions, current / backfile):**',
+        '- abstracts: 0.1172408318780759 / 0.002803869339688771',
+        '- funders: 0 / 0.00002068428201409749',
+        '- references: 0.6393872043181457 / 0.3926060586560273',
       ].join('\n'),
     );
     expect(text).toContain('**DOIs by issued year:** 1869: 12, 1950: 900, 2025: 4550, 2026: 3661');
@@ -1208,9 +1208,9 @@ describe('searchJournalsTool coverage, ISSN types, and DOI counts', () => {
     }
 
     expect(items).toEqual([
-      'abstracts: 12% / 0.28%',
-      'funders: 0% / 0.0021%',
-      'references: 64% / 39%',
+      'abstracts: 0.1172408318780759 / 0.002803869339688771',
+      'funders: 0 / 0.00002068428201409749',
+      'references: 0.6393872043181457 / 0.3926060586560273',
     ]);
     expect(items.some((item) => item.includes('DOIs by issued year'))).toBe(false);
     expect(paragraphs.some((p) => p.includes('DOIs by issued year: 1869: 12'))).toBe(true);
@@ -1234,7 +1234,9 @@ describe('searchJournalsTool coverage, ISSN types, and DOI counts', () => {
       expect(journal).not.toHaveProperty('doisByYear');
     }
     const text = textOf(result);
-    expect(text.match(/\*\*Metadata coverage \(current \/ backfile\):\*\*/g)).toHaveLength(2);
+    expect(
+      text.match(/\*\*Metadata coverage \(0–1 fractions, current \/ backfile\):\*\*/g),
+    ).toHaveLength(2);
     expect(text).not.toContain('DOIs by issued year');
   });
 

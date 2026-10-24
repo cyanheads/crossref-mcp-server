@@ -54,24 +54,15 @@ export function normalizeCoverage(coverage?: Record<string, number>): CoverageEn
     .sort((a, b) => a.category.localeCompare(b.category));
 }
 
-/**
- * Render a 0–1 coverage fraction as a percentage, scaling precision to magnitude so a
- * small nonzero fraction never renders as a flat `0%`. Crossref coverage values run the
- * full range — a category can sit at 0.86 or at 0.0000138, and collapsing the latter to
- * zero would report "this publisher deposits none" when it deposits some.
- */
+/** Render the deposited fraction without scaling or rounding away precision. */
 export function formatCoverage(fraction: number): string {
-  const pct = fraction * 100;
-  if (pct === 0) return '0%';
-  if (pct >= 10) return `${pct.toFixed(0)}%`;
-  if (pct >= 1) return `${pct.toFixed(1)}%`;
-  return `${pct.toPrecision(2)}%`;
+  return String(fraction);
 }
 
 /** Markdown lines for a coverage list: a heading line, then one `- category: current / backfile` per entry. */
 export function coverageLines(coverage: CoverageEntry[]): string[] {
   return [
-    '**Metadata coverage (current / backfile):**',
+    '**Metadata coverage (0–1 fractions, current / backfile):**',
     ...coverage.map((c) => {
       const cur = c.current !== undefined ? formatCoverage(c.current) : 'n/a';
       const back = c.backfile !== undefined ? formatCoverage(c.backfile) : 'n/a';

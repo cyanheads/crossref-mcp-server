@@ -14,6 +14,7 @@
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode, McpError } from '@cyanheads/mcp-ts-core/errors';
 import { isBlank, nonBlank } from '@/mcp-server/tools/blank-input.js';
+import { cursorNotice } from '@/mcp-server/tools/cursor-notice.js';
 import { mdText } from '@/mcp-server/tools/markdown-text.js';
 import { clampPageSize, ROWS_CAP, ROWS_CEILING } from '@/mcp-server/tools/page-size.js';
 import {
@@ -470,6 +471,8 @@ export const searchFundersTool = tool('crossref_search_funders', {
     });
 
     if (worksCursor !== undefined) {
+      const restart = cursorNotice(worksCursor);
+      if (restart) notices.push(restart);
       // A cursor walk has no offset ceiling and no offset position, so neither
       // nextWorksOffset nor the ceiling notice applies. Any token an empty page carries is
       // withheld — Crossref's last partial page still carries one, and a token has come back

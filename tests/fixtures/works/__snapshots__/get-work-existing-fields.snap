@@ -141,7 +141,7 @@
     ],
     "authorCount": 26,
     "offset": 0,
-    "abstract": "Abstract Array programming provides a powerful, compact and expressive syntax for accessing, manipulating and operating on data in vectors, matrices and higher-dimensional arrays. NumPy is the primary array programming library for the Python language. It has an essential role in research analysis pipelines in fields as diverse as physics, chemistry, astronomy, geoscience, biology, psychology, materials science, engineering, finance and economics. For example, in astronomy, NumPy was an important part of the software stack used in the discovery of gravitational waves 1 and in the first imaging of a black hole 2 . Here we review how a few fundamental array concepts lead to a simple and powerful programming paradigm for organizing, exploring and analysing scientific data. NumPy is the foundation upon which the scientific Python ecosystem is constructed. It is so pervasive that several projects, targeting audiences with specialized needs, have developed their own NumPy-like interfaces and array objects. Owing to its central position in the ecosystem, NumPy increasingly acts as an interoperability layer between such array computation libraries and, together with its application programming interface (API), provides a flexible framework to support the next decade of scientific and industrial analysis.",
+    "abstract": "Abstract Array programming provides a powerful, compact and expressive syntax for accessing, manipulating and operating on data in vectors, matrices and higher-dimensional arrays. NumPy is the primary array programming library for the Python language. It has an essential role in research analysis pipelines in fields as diverse as physics, chemistry, astronomy, geoscience, biology, psychology, materials science, engineering, finance and economics. For example, in astronomy, NumPy was an important part of the software stack used in the discovery of gravitational waves^1 and in the first imaging of a black hole^2 . Here we review how a few fundamental array concepts lead to a simple and powerful programming paradigm for organizing, exploring and analysing scientific data. NumPy is the foundation upon which the scientific Python ecosystem is constructed. It is so pervasive that several projects, targeting audiences with specialized needs, have developed their own NumPy-like interfaces and array objects. Owing to its central position in the ecosystem, NumPy increasingly acts as an interoperability layer between such array computation libraries and, together with its application programming interface (API), provides a flexible framework to support the next decade of scientific and industrial analysis.",
     "isReferencedByCount": 24518,
     "referencesCount": 57,
     "containerTitle": "Nature",
@@ -159,28 +159,33 @@
       {
         "url": "https://creativecommons.org/licenses/by/4.0",
         "contentVersion": "tdm",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2020-09-16T00:00:00Z"
       },
       {
         "url": "https://creativecommons.org/licenses/by/4.0",
         "contentVersion": "vor",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2020-09-16T00:00:00Z"
       }
     ],
     "links": [
       {
         "url": "https://www.nature.com/articles/s41586-020-2649-2.pdf",
         "contentType": "application/pdf",
+        "contentVersion": "vor",
         "intendedApplication": "text-mining"
       },
       {
         "url": "https://www.nature.com/articles/s41586-020-2649-2",
         "contentType": "text/html",
+        "contentVersion": "vor",
         "intendedApplication": "text-mining"
       },
       {
         "url": "https://www.nature.com/articles/s41586-020-2649-2.pdf",
         "contentType": "application/pdf",
+        "contentVersion": "vor",
         "intendedApplication": "similarity-checking"
       }
     ],
@@ -376,38 +381,45 @@
       {
         "url": "http://creativecommons.org/licenses/by/4.0/",
         "contentVersion": "vor",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2014-10-13T00:00:00Z"
       },
       {
         "url": "http://creativecommons.org/licenses/by/4.0/",
         "contentVersion": "am",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2014-10-13T00:00:00Z"
       },
       {
         "url": "http://creativecommons.org/licenses/by/4.0/",
         "contentVersion": "tdm",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2014-10-13T00:00:00Z"
       }
     ],
     "links": [
       {
         "url": "http://elifesciences.org/lookup/doi/10.7554/eLife.03714",
         "contentType": "application/pdf",
+        "contentVersion": "vor",
         "intendedApplication": "text-mining"
       },
       {
         "url": "https://cdn.elifesciences.org/articles/03714/elife-03714-v2.pdf",
         "contentType": "application/pdf",
+        "contentVersion": "vor",
         "intendedApplication": "text-mining"
       },
       {
         "url": "https://cdn.elifesciences.org/articles/03714/elife-03714-v2.xml",
         "contentType": "application/xml",
+        "contentVersion": "vor",
         "intendedApplication": "text-mining"
       },
       {
         "url": "https://elifesciences.org/articles/03714",
         "contentType": "unspecified",
+        "contentVersion": "vor",
         "intendedApplication": "similarity-checking"
       }
     ],
@@ -493,48 +505,57 @@
       {
         "url": "https://www.elsevier.com/tdm/userlicense/1.0/",
         "contentVersion": "tdm",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2021-08-01T00:00:00Z"
       },
       {
         "url": "https://www.elsevier.com/legal/tdmrep-license",
         "contentVersion": "tdm",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2021-08-01T00:00:00Z"
       },
       {
         "url": "https://doi.org/10.15223/policy-017",
         "contentVersion": "stm-asf",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2021-08-01T00:00:00Z"
       },
       {
         "url": "https://doi.org/10.15223/policy-037",
         "contentVersion": "stm-asf",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2021-08-01T00:00:00Z"
       },
       {
         "url": "https://doi.org/10.15223/policy-012",
         "contentVersion": "stm-asf",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2021-08-01T00:00:00Z"
       },
       {
         "url": "https://doi.org/10.15223/policy-029",
         "contentVersion": "stm-asf",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2021-08-01T00:00:00Z"
       },
       {
         "url": "https://doi.org/10.15223/policy-004",
         "contentVersion": "stm-asf",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2021-08-01T00:00:00Z"
       }
     ],
     "links": [
       {
         "url": "https://api.elsevier.com/content/article/PII:S0045653521006810?httpAccept=text/xml",
         "contentType": "text/xml",
+        "contentVersion": "vor",
         "intendedApplication": "text-mining"
       },
       {
         "url": "https://api.elsevier.com/content/article/PII:S0045653521006810?httpAccept=text/plain",
         "contentType": "text/plain",
+        "contentVersion": "vor",
         "intendedApplication": "text-mining"
       }
     ],
@@ -605,23 +626,27 @@
       {
         "url": "https://www.elsevier.com/tdm/userlicense/1.0/",
         "contentVersion": "tdm",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2020-05-01T00:00:00Z"
       },
       {
         "url": "https://www.elsevier.com/legal/tdmrep-license",
         "contentVersion": "tdm",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2020-05-01T00:00:00Z"
       }
     ],
     "links": [
       {
         "url": "https://api.elsevier.com/content/article/PII:S0140673620311806?httpAccept=text/xml",
         "contentType": "text/xml",
+        "contentVersion": "vor",
         "intendedApplication": "text-mining"
       },
       {
         "url": "https://api.elsevier.com/content/article/PII:S0140673620311806?httpAccept=text/plain",
         "contentType": "text/plain",
+        "contentVersion": "vor",
         "intendedApplication": "text-mining"
       }
     ],
@@ -672,23 +697,27 @@
       {
         "url": "https://www.elsevier.com/tdm/userlicense/1.0/",
         "contentVersion": "tdm",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2020-06-01T00:00:00Z"
       },
       {
         "url": "https://www.elsevier.com/legal/tdmrep-license",
         "contentVersion": "tdm",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2020-06-01T00:00:00Z"
       }
     ],
     "links": [
       {
         "url": "https://api.elsevier.com/content/article/PII:S0140673620313246?httpAccept=text/xml",
         "contentType": "text/xml",
+        "contentVersion": "vor",
         "intendedApplication": "text-mining"
       },
       {
         "url": "https://api.elsevier.com/content/article/PII:S0140673620313246?httpAccept=text/plain",
         "contentType": "text/plain",
+        "contentVersion": "vor",
         "intendedApplication": "text-mining"
       }
     ],
@@ -738,18 +767,21 @@
       {
         "url": "https://www.elsevier.com/tdm/userlicense/1.0/",
         "contentVersion": "tdm",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2007-06-01T00:00:00Z"
       }
     ],
     "links": [
       {
         "url": "https://api.elsevier.com/content/article/PII:S016943320700205X?httpAccept=text/xml",
         "contentType": "text/xml",
+        "contentVersion": "vor",
         "intendedApplication": "text-mining"
       },
       {
         "url": "https://api.elsevier.com/content/article/PII:S016943320700205X?httpAccept=text/plain",
         "contentType": "text/plain",
+        "contentVersion": "vor",
         "intendedApplication": "text-mining"
       }
     ],
@@ -865,18 +897,21 @@
       {
         "url": "https://link.aps.org/licenses/aps-default-license",
         "contentVersion": "vor",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2024-01-19T00:00:00Z"
       }
     ],
     "links": [
       {
         "url": "https://link.aps.org/article/10.1103/PhysRevD.109.023023",
         "contentType": "unspecified",
+        "contentVersion": "vor",
         "intendedApplication": "syndication"
       },
       {
         "url": "http://harvest.aps.org/v2/journals/articles/10.1103/PhysRevD.109.023023/fulltext",
         "contentType": "unspecified",
+        "contentVersion": "vor",
         "intendedApplication": "similarity-checking"
       }
     ],
@@ -908,6 +943,7 @@
       {
         "url": "http://xplorestaging.ieee.org/ielx5/5765754/5774181/05774727.pdf?arnumber=5774727",
         "contentType": "unspecified",
+        "contentVersion": "vor",
         "intendedApplication": "similarity-checking"
       }
     ],
@@ -964,13 +1000,15 @@
       {
         "url": "https://doi.org/10.1364/OA_License_v2#OPG-OO",
         "contentVersion": "unspecified",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2025-07-03T00:00:00Z"
       }
     ],
     "links": [
       {
         "url": "https://ndownloader.figshare.com/files/55929341",
         "contentType": "unspecified",
+        "contentVersion": "vor",
         "intendedApplication": "similarity-checking"
       }
     ],
@@ -1099,18 +1137,21 @@
       {
         "url": "https://creativecommons.org/licenses/by/4.0/",
         "contentVersion": "vor",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2025-09-12T00:00:00Z"
       },
       {
         "url": "https://opg.optica.org/policies/opg-tdm-policy.json",
         "contentVersion": "tdm",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2025-09-12T00:00:00Z"
       }
     ],
     "links": [
       {
         "url": "https://opg.optica.org/viewmedia.cfm?URI=oe-33-19-39991&seq=0",
         "contentType": "unspecified",
+        "contentVersion": "vor",
         "intendedApplication": "similarity-checking"
       }
     ],
@@ -1144,7 +1185,8 @@
       {
         "url": "http://creativecommons.org/licenses/by/4.0",
         "contentVersion": "unspecified",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2023-11-08T00:00:00Z"
       }
     ],
     "url": "https://doi.org/10.20944/preprints202302.0051.v34"
@@ -1211,13 +1253,15 @@
       {
         "url": "http://creativecommons.org/licenses/by/4.0/",
         "contentVersion": "vor",
-        "delayInDays": 0
+        "delayInDays": 0,
+        "start": "2025-11-11T00:00:00Z"
       }
     ],
     "links": [
       {
         "url": "https://syndication.highwire.org/content/doi/10.1101/2025.11.10.687519",
         "contentType": "unspecified",
+        "contentVersion": "vor",
         "intendedApplication": "similarity-checking"
       }
     ],

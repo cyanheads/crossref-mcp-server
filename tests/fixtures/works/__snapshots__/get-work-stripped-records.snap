@@ -142,7 +142,7 @@
       ],
       "authorCount": 26,
       "offset": 0,
-      "abstract": "Abstract Array programming provides a powerful, compact and expressive syntax for accessing, manipulating and operating on data in vectors, matrices and higher-dimensional arrays. NumPy is the primary array programming library for the Python language. It has an essential role in research analysis pipelines in fields as diverse as physics, chemistry, astronomy, geoscience, biology, psychology, materials science, engineering, finance and economics. For example, in astronomy, NumPy was an important part of the software stack used in the discovery of gravitational waves 1 and in the first imaging of a black hole 2 . Here we review how a few fundamental array concepts lead to a simple and powerful programming paradigm for organizing, exploring and analysing scientific data. NumPy is the foundation upon which the scientific Python ecosystem is constructed. It is so pervasive that several projects, targeting audiences with specialized needs, have developed their own NumPy-like interfaces and array objects. Owing to its central position in the ecosystem, NumPy increasingly acts as an interoperability layer between such array computation libraries and, together with its application programming interface (API), provides a flexible framework to support the next decade of scientific and industrial analysis.",
+      "abstract": "Abstract Array programming provides a powerful, compact and expressive syntax for accessing, manipulating and operating on data in vectors, matrices and higher-dimensional arrays. NumPy is the primary array programming library for the Python language. It has an essential role in research analysis pipelines in fields as diverse as physics, chemistry, astronomy, geoscience, biology, psychology, materials science, engineering, finance and economics. For example, in astronomy, NumPy was an important part of the software stack used in the discovery of gravitational waves^1 and in the first imaging of a black hole^2 . Here we review how a few fundamental array concepts lead to a simple and powerful programming paradigm for organizing, exploring and analysing scientific data. NumPy is the foundation upon which the scientific Python ecosystem is constructed. It is so pervasive that several projects, targeting audiences with specialized needs, have developed their own NumPy-like interfaces and array objects. Owing to its central position in the ecosystem, NumPy increasingly acts as an interoperability layer between such array computation libraries and, together with its application programming interface (API), provides a flexible framework to support the next decade of scientific and industrial analysis.",
       "isReferencedByCount": 24518,
       "referencesCount": 57,
       "containerTitle": "Nature",
@@ -160,28 +160,33 @@
         {
           "url": "https://creativecommons.org/licenses/by/4.0",
           "contentVersion": "tdm",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2020-09-16T00:00:00Z"
         },
         {
           "url": "https://creativecommons.org/licenses/by/4.0",
           "contentVersion": "vor",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2020-09-16T00:00:00Z"
         }
       ],
       "links": [
         {
           "url": "https://www.nature.com/articles/s41586-020-2649-2.pdf",
           "contentType": "application/pdf",
+          "contentVersion": "vor",
           "intendedApplication": "text-mining"
         },
         {
           "url": "https://www.nature.com/articles/s41586-020-2649-2",
           "contentType": "text/html",
+          "contentVersion": "vor",
           "intendedApplication": "text-mining"
         },
         {
           "url": "https://www.nature.com/articles/s41586-020-2649-2.pdf",
           "contentType": "application/pdf",
+          "contentVersion": "vor",
           "intendedApplication": "similarity-checking"
         }
       ],
@@ -193,7 +198,7 @@
       "cap": 25,
       "notice": "Showing authors 1–25 of 26. Call again with offset=25 for the next page."
     },
-    "text": "## Array programming with NumPy\n\n**DOI:** 10.1038/s41586-020-2649-2 | **Type:** journal-article\n**Publisher:** Springer Science and Business Media LLC\n**Journal/Container:** Nature\n**ISSN:** 0028-0836, 1476-4687\n**Published:** 2020-09-16\n**Language:** en\n**Cited by:** 24518\n**References:** 57\n**Authors:** showing 25 of 26, starting at index 0\n- Charles R. Harris (first)\n- K. Jarrod Millman [ORCID: https://orcid.org/0000-0002-5263-5070] (additional)\n- Stéfan J. van der Walt [ORCID: https://orcid.org/0000-0001-9276-1891] (additional)\n- Ralf Gommers [ORCID: https://orcid.org/0000-0002-0300-3333] (additional)\n- Pauli Virtanen (additional)\n- David Cournapeau (additional)\n- Eric Wieser (additional)\n- Julian Taylor (additional)\n- Sebastian Berg (additional)\n- Nathaniel J. Smith (additional)\n- Robert Kern (additional)\n- Matti Picus [ORCID: https://orcid.org/0000-0002-1771-9949] (additional)\n- Stephan Hoyer [ORCID: https://orcid.org/0000-0002-5207-0380] (additional)\n- Marten H. van Kerkwijk (additional)\n- Matthew Brett (additional)\n- Allan Haldane (additional)\n- Jaime Fernández del Río (additional)\n- Mark Wiebe [ORCID: https://orcid.org/0000-0003-3603-8038] (additional)\n- Pearu Peterson [ORCID: https://orcid.org/0000-0001-7328-4305] (additional)\n- Pierre Gérard-Marchant (additional)\n- Kevin Sheppard [ORCID: https://orcid.org/0000-0001-8700-2292] (additional)\n- Tyler Reddy (additional)\n- Warren Weckesser (additional)\n- Hameer Abbasi (additional)\n- Christoph Gohlke [ORCID: https://orcid.org/0000-0001-8108-7707] (additional)\n\n**Abstract:**\nAbstract Array programming provides a powerful, compact and expressive syntax for accessing, manipulating and operating on data in vectors, matrices and higher-dimensional arrays. NumPy is the primary array programming library for the Python language. It has an essential role in research analysis pipelines in fields as diverse as physics, chemistry, astronomy, geoscience, biology, psychology, materials science, engineering, finance and economics. For example, in astronomy, NumPy was an important part of the software stack used in the discovery of gravitational waves 1 and in the first imaging of a black hole 2 . Here we review how a few fundamental array concepts lead to a simple and powerful programming paradigm for organizing, exploring and analysing scientific data. NumPy is the foundation upon which the scientific Python ecosystem is constructed. It is so pervasive that several projects, targeting audiences with specialized needs, have developed their own NumPy-like interfaces and array objects. Owing to its central position in the ecosystem, NumPy increasingly acts as an interoperability layer between such array computation libraries and, together with its application programming interface (API), provides a flexible framework to support the next decade of scientific and industrial analysis.\n\n**Licenses:**\n- https://creativecommons.org/licenses/by/4.0 [tdm] (0d embargo)\n- https://creativecommons.org/licenses/by/4.0 [vor] (0d embargo)\n\n**Full-text links:**\n- https://www.nature.com/articles/s41586-020-2649-2.pdf (application/pdf) [text-mining]\n- https://www.nature.com/articles/s41586-020-2649-2 (text/html) [text-mining]\n- https://www.nature.com/articles/s41586-020-2649-2.pdf (application/pdf) [similarity-checking]\n\n**URL:** https://doi.org/10.1038/s41586-020-2649-2\n\n\n**nextOffset:** 25\n**truncated:** true\n**shown:** 25\n**cap:** 25\n> Showing authors 1–25 of 26. Call again with offset=25 for the next page."
+    "text": "## Array programming with NumPy\n\n**DOI:** 10.1038/s41586-020-2649-2 | **Type:** journal-article\n**Publisher:** Springer Science and Business Media LLC\n**Journal/Container:** Nature\n**ISSN:** 0028-0836, 1476-4687\n**Published:** 2020-09-16\n**Language:** en\n**Cited by:** 24518\n**References:** 57\n**Authors:** showing 25 of 26, starting at index 0\n- Charles R. Harris (first)\n- K. Jarrod Millman [ORCID: https://orcid.org/0000-0002-5263-5070] (additional)\n- Stéfan J. van der Walt [ORCID: https://orcid.org/0000-0001-9276-1891] (additional)\n- Ralf Gommers [ORCID: https://orcid.org/0000-0002-0300-3333] (additional)\n- Pauli Virtanen (additional)\n- David Cournapeau (additional)\n- Eric Wieser (additional)\n- Julian Taylor (additional)\n- Sebastian Berg (additional)\n- Nathaniel J. Smith (additional)\n- Robert Kern (additional)\n- Matti Picus [ORCID: https://orcid.org/0000-0002-1771-9949] (additional)\n- Stephan Hoyer [ORCID: https://orcid.org/0000-0002-5207-0380] (additional)\n- Marten H. van Kerkwijk (additional)\n- Matthew Brett (additional)\n- Allan Haldane (additional)\n- Jaime Fernández del Río (additional)\n- Mark Wiebe [ORCID: https://orcid.org/0000-0003-3603-8038] (additional)\n- Pearu Peterson [ORCID: https://orcid.org/0000-0001-7328-4305] (additional)\n- Pierre Gérard-Marchant (additional)\n- Kevin Sheppard [ORCID: https://orcid.org/0000-0001-8700-2292] (additional)\n- Tyler Reddy (additional)\n- Warren Weckesser (additional)\n- Hameer Abbasi (additional)\n- Christoph Gohlke [ORCID: https://orcid.org/0000-0001-8108-7707] (additional)\n\n**Abstract:**\nAbstract Array programming provides a powerful, compact and expressive syntax for accessing, manipulating and operating on data in vectors, matrices and higher-dimensional arrays. NumPy is the primary array programming library for the Python language. It has an essential role in research analysis pipelines in fields as diverse as physics, chemistry, astronomy, geoscience, biology, psychology, materials science, engineering, finance and economics. For example, in astronomy, NumPy was an important part of the software stack used in the discovery of gravitational waves^1 and in the first imaging of a black hole^2 . Here we review how a few fundamental array concepts lead to a simple and powerful programming paradigm for organizing, exploring and analysing scientific data. NumPy is the foundation upon which the scientific Python ecosystem is constructed. It is so pervasive that several projects, targeting audiences with specialized needs, have developed their own NumPy-like interfaces and array objects. Owing to its central position in the ecosystem, NumPy increasingly acts as an interoperability layer between such array computation libraries and, together with its application programming interface (API), provides a flexible framework to support the next decade of scientific and industrial analysis.\n\n**Licenses:**\n- https://creativecommons.org/licenses/by/4.0 [tdm] (0d embargo) — starts 2020-09-16T00:00:00Z\n- https://creativecommons.org/licenses/by/4.0 [vor] (0d embargo) — starts 2020-09-16T00:00:00Z\n\n**Full-text links:**\n- https://www.nature.com/articles/s41586-020-2649-2.pdf (application/pdf) [text-mining] [vor]\n- https://www.nature.com/articles/s41586-020-2649-2 (text/html) [text-mining] [vor]\n- https://www.nature.com/articles/s41586-020-2649-2.pdf (application/pdf) [similarity-checking] [vor]\n\n**URL:** https://doi.org/10.1038/s41586-020-2649-2\n\n\n**nextOffset:** 25\n**truncated:** true\n**shown:** 25\n**cap:** 25\n> Showing authors 1–25 of 26. Call again with offset=25 for the next page."
   },
   "10.7554/elife.03714": {
     "structuredContent": {
@@ -380,45 +385,52 @@
         {
           "url": "http://creativecommons.org/licenses/by/4.0/",
           "contentVersion": "vor",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2014-10-13T00:00:00Z"
         },
         {
           "url": "http://creativecommons.org/licenses/by/4.0/",
           "contentVersion": "am",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2014-10-13T00:00:00Z"
         },
         {
           "url": "http://creativecommons.org/licenses/by/4.0/",
           "contentVersion": "tdm",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2014-10-13T00:00:00Z"
         }
       ],
       "links": [
         {
           "url": "http://elifesciences.org/lookup/doi/10.7554/eLife.03714",
           "contentType": "application/pdf",
+          "contentVersion": "vor",
           "intendedApplication": "text-mining"
         },
         {
           "url": "https://cdn.elifesciences.org/articles/03714/elife-03714-v2.pdf",
           "contentType": "application/pdf",
+          "contentVersion": "vor",
           "intendedApplication": "text-mining"
         },
         {
           "url": "https://cdn.elifesciences.org/articles/03714/elife-03714-v2.xml",
           "contentType": "application/xml",
+          "contentVersion": "vor",
           "intendedApplication": "text-mining"
         },
         {
           "url": "https://elifesciences.org/articles/03714",
           "contentType": "unspecified",
+          "contentVersion": "vor",
           "intendedApplication": "similarity-checking"
         }
       ],
       "url": "https://doi.org/10.7554/elife.03714",
       "language": "en"
     },
-    "text": "## A structural mechanism for bacterial autotransporter glycosylation by a dodecameric heptosyltransferase family\n\n**DOI:** 10.7554/elife.03714 | **Type:** journal-article\n**Publisher:** eLife Sciences Publications, Ltd\n**Journal/Container:** eLife\n**ISSN:** 2050-084X\n**Published:** 2014-10-13\n**Language:** en\n**Cited by:** 34\n**References:** 64\n**Authors:** showing 11 of 11, starting at index 0\n- Qing Yao (first) — Dr Feng Shao's Laboratory, National Institute of Biological Sciences, Beijing, China\n- Qiuhe Lu (additional) — Dr Feng Shao's Laboratory, National Institute of Biological Sciences, Beijing, China\n- Xiaobo Wan (additional) — Dr Niu Huang's Laboratory, National Institute of Biological Sciences, Beijing, China\n- Feng Song (additional) — National Laboratory of Biomacromolecules, Institute of Biophysics, Chinese Academy of Sciences, Beijing, China, Shandong Provincial Key Laboratory of Functional Macromolecular Biophysics, Institute of Biophysics, Dezhou University, Dezhou, China\n- Yue Xu (additional) — Dr Feng Shao's Laboratory, National Institute of Biological Sciences, Beijing, China\n- Mo Hu (additional) — Institute of Analytic Chemistry, College of Chemistry and Molecular Engineering, Peking University, Beijing, China, Synthetic Functional Biomolecules Center, College of Chemistry and Molecular Engineering, Peking University, Beijing, China\n- Alla Zamyatina (additional) — Department of Chemistry, University of Natural Resources and Life Sciences, Vienna, Austria\n- Xiaoyun Liu (additional) — Institute of Analytic Chemistry, College of Chemistry and Molecular Engineering, Peking University, Beijing, China, Synthetic Functional Biomolecules Center, College of Chemistry and Molecular Engineering, Peking University, Beijing, China\n- Niu Huang (additional) — Dr Niu Huang's Laboratory, National Institute of Biological Sciences, Beijing, China\n- Ping Zhu (additional) — National Laboratory of Biomacromolecules, Institute of Biophysics, Chinese Academy of Sciences, Beijing, China\n- Feng Shao (additional) — Dr Feng Shao's Laboratory, National Institute of Biological Sciences, Beijing, China, National Laboratory of Biomacromolecules, Institute of Biophysics, Chinese Academy of Sciences, Beijing, China\n\n**Abstract:**\nA large group of bacterial virulence autotransporters including AIDA-I from diffusely adhering E. coli (DAEC) and TibA from enterotoxigenic E. coli (ETEC) require hyperglycosylation for functioning. Here we demonstrate that TibC from ETEC harbors a heptosyltransferase activity on TibA and AIDA-I, defining a large family of bacterial autotransporter heptosyltransferases (BAHTs). The crystal structure of TibC reveals a characteristic ring-shape dodecamer. The protomer features an N-terminal β-barrel, a catalytic domain, a β-hairpin thumb, and a unique iron-finger motif. The iron-finger motif contributes to back-to-back dimerization; six dimers form the ring through β-hairpin thumb-mediated hand-in-hand contact. The structure of ADP-D-glycero-β-D-manno-heptose (ADP-D,D-heptose)-bound TibC reveals a sugar transfer mechanism and also the ligand stereoselectivity determinant. Electron-cryomicroscopy analyses uncover a TibC–TibA dodecamer/hexamer assembly with two enzyme molecules binding to one TibA substrate. The complex structure also highlights a high efficient hyperglycosylation of six autotransporter substrates simultaneously by the dodecamer enzyme complex.\n\n**Funders:**\n- Howard Hughes Medical Institute — 10.13039/100000011 (55007431)\n- Ministry of Science and Technology of the People's Republic of China — 10.13039/501100002855 (2012CB518700 and 2014CB849602)\n- National Natural Science Foundation of China — 10.13039/501100001809 (Program for Distinguished Young Scholars 31225002)\n- Chinese Academy of Sciences — 10.13039/501100002367 (XDB08020202)\n- National Natural Science Foundation of China — 10.13039/501100001809 (Program for Distinguished Young Scholars 31230018)\n\n**Licenses:**\n- http://creativecommons.org/licenses/by/4.0/ [vor] (0d embargo)\n- http://creativecommons.org/licenses/by/4.0/ [am] (0d embargo)\n- http://creativecommons.org/licenses/by/4.0/ [tdm] (0d embargo)\n\n**Full-text links:**\n- http://elifesciences.org/lookup/doi/10.7554/eLife.03714 (application/pdf) [text-mining]\n- https://cdn.elifesciences.org/articles/03714/elife-03714-v2.pdf (application/pdf) [text-mining]\n- https://cdn.elifesciences.org/articles/03714/elife-03714-v2.xml (application/xml) [text-mining]\n- https://elifesciences.org/articles/03714 (unspecified) [similarity-checking]\n\n**URL:** https://doi.org/10.7554/elife.03714"
+    "text": "## A structural mechanism for bacterial autotransporter glycosylation by a dodecameric heptosyltransferase family\n\n**DOI:** 10.7554/elife.03714 | **Type:** journal-article\n**Publisher:** eLife Sciences Publications, Ltd\n**Journal/Container:** eLife\n**ISSN:** 2050-084X\n**Published:** 2014-10-13\n**Language:** en\n**Cited by:** 34\n**References:** 64\n**Authors:** showing 11 of 11, starting at index 0\n- Qing Yao (first) — Dr Feng Shao's Laboratory, National Institute of Biological Sciences, Beijing, China\n- Qiuhe Lu (additional) — Dr Feng Shao's Laboratory, National Institute of Biological Sciences, Beijing, China\n- Xiaobo Wan (additional) — Dr Niu Huang's Laboratory, National Institute of Biological Sciences, Beijing, China\n- Feng Song (additional) — National Laboratory of Biomacromolecules, Institute of Biophysics, Chinese Academy of Sciences, Beijing, China, Shandong Provincial Key Laboratory of Functional Macromolecular Biophysics, Institute of Biophysics, Dezhou University, Dezhou, China\n- Yue Xu (additional) — Dr Feng Shao's Laboratory, National Institute of Biological Sciences, Beijing, China\n- Mo Hu (additional) — Institute of Analytic Chemistry, College of Chemistry and Molecular Engineering, Peking University, Beijing, China, Synthetic Functional Biomolecules Center, College of Chemistry and Molecular Engineering, Peking University, Beijing, China\n- Alla Zamyatina (additional) — Department of Chemistry, University of Natural Resources and Life Sciences, Vienna, Austria\n- Xiaoyun Liu (additional) — Institute of Analytic Chemistry, College of Chemistry and Molecular Engineering, Peking University, Beijing, China, Synthetic Functional Biomolecules Center, College of Chemistry and Molecular Engineering, Peking University, Beijing, China\n- Niu Huang (additional) — Dr Niu Huang's Laboratory, National Institute of Biological Sciences, Beijing, China\n- Ping Zhu (additional) — National Laboratory of Biomacromolecules, Institute of Biophysics, Chinese Academy of Sciences, Beijing, China\n- Feng Shao (additional) — Dr Feng Shao's Laboratory, National Institute of Biological Sciences, Beijing, China, National Laboratory of Biomacromolecules, Institute of Biophysics, Chinese Academy of Sciences, Beijing, China\n\n**Abstract:**\nA large group of bacterial virulence autotransporters including AIDA-I from diffusely adhering E. coli (DAEC) and TibA from enterotoxigenic E. coli (ETEC) require hyperglycosylation for functioning. Here we demonstrate that TibC from ETEC harbors a heptosyltransferase activity on TibA and AIDA-I, defining a large family of bacterial autotransporter heptosyltransferases (BAHTs). The crystal structure of TibC reveals a characteristic ring-shape dodecamer. The protomer features an N-terminal β-barrel, a catalytic domain, a β-hairpin thumb, and a unique iron-finger motif. The iron-finger motif contributes to back-to-back dimerization; six dimers form the ring through β-hairpin thumb-mediated hand-in-hand contact. The structure of ADP-D-glycero-β-D-manno-heptose (ADP-D,D-heptose)-bound TibC reveals a sugar transfer mechanism and also the ligand stereoselectivity determinant. Electron-cryomicroscopy analyses uncover a TibC–TibA dodecamer/hexamer assembly with two enzyme molecules binding to one TibA substrate. The complex structure also highlights a high efficient hyperglycosylation of six autotransporter substrates simultaneously by the dodecamer enzyme complex.\n\n**Funders:**\n- Howard Hughes Medical Institute — 10.13039/100000011 (55007431)\n- Ministry of Science and Technology of the People's Republic of China — 10.13039/501100002855 (2012CB518700 and 2014CB849602)\n- National Natural Science Foundation of China — 10.13039/501100001809 (Program for Distinguished Young Scholars 31225002)\n- Chinese Academy of Sciences — 10.13039/501100002367 (XDB08020202)\n- National Natural Science Foundation of China — 10.13039/501100001809 (Program for Distinguished Young Scholars 31230018)\n\n**Licenses:**\n- http://creativecommons.org/licenses/by/4.0/ [vor] (0d embargo) — starts 2014-10-13T00:00:00Z\n- http://creativecommons.org/licenses/by/4.0/ [am] (0d embargo) — starts 2014-10-13T00:00:00Z\n- http://creativecommons.org/licenses/by/4.0/ [tdm] (0d embargo) — starts 2014-10-13T00:00:00Z\n\n**Full-text links:**\n- http://elifesciences.org/lookup/doi/10.7554/eLife.03714 (application/pdf) [text-mining] [vor]\n- https://cdn.elifesciences.org/articles/03714/elife-03714-v2.pdf (application/pdf) [text-mining] [vor]\n- https://cdn.elifesciences.org/articles/03714/elife-03714-v2.xml (application/xml) [text-mining] [vor]\n- https://elifesciences.org/articles/03714 (unspecified) [similarity-checking] [vor]\n\n**URL:** https://doi.org/10.7554/elife.03714"
   },
   "10.1016/j.chemosphere.2021.130212": {
     "structuredContent": {
@@ -500,55 +512,64 @@
         {
           "url": "https://www.elsevier.com/tdm/userlicense/1.0/",
           "contentVersion": "tdm",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2021-08-01T00:00:00Z"
         },
         {
           "url": "https://www.elsevier.com/legal/tdmrep-license",
           "contentVersion": "tdm",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2021-08-01T00:00:00Z"
         },
         {
           "url": "https://doi.org/10.15223/policy-017",
           "contentVersion": "stm-asf",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2021-08-01T00:00:00Z"
         },
         {
           "url": "https://doi.org/10.15223/policy-037",
           "contentVersion": "stm-asf",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2021-08-01T00:00:00Z"
         },
         {
           "url": "https://doi.org/10.15223/policy-012",
           "contentVersion": "stm-asf",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2021-08-01T00:00:00Z"
         },
         {
           "url": "https://doi.org/10.15223/policy-029",
           "contentVersion": "stm-asf",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2021-08-01T00:00:00Z"
         },
         {
           "url": "https://doi.org/10.15223/policy-004",
           "contentVersion": "stm-asf",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2021-08-01T00:00:00Z"
         }
       ],
       "links": [
         {
           "url": "https://api.elsevier.com/content/article/PII:S0045653521006810?httpAccept=text/xml",
           "contentType": "text/xml",
+          "contentVersion": "vor",
           "intendedApplication": "text-mining"
         },
         {
           "url": "https://api.elsevier.com/content/article/PII:S0045653521006810?httpAccept=text/plain",
           "contentType": "text/plain",
+          "contentVersion": "vor",
           "intendedApplication": "text-mining"
         }
       ],
       "url": "https://doi.org/10.1016/j.chemosphere.2021.130212",
       "language": "en"
     },
-    "text": "## Nano-Fe3O4-modified biochar promotes the formation of iron plaque and cadmium immobilization in rice root\n\n**DOI:** 10.1016/j.chemosphere.2021.130212 | **Type:** journal-article\n**Publisher:** Elsevier BV\n**Journal/Container:** Chemosphere\n**ISSN:** 0045-6535\n**Published:** 2021-08\n**Language:** en\n**Cited by:** 80\n**References:** 34\n**Authors:** showing 10 of 10, starting at index 0\n- Jing-Yi Zhang (first)\n- Hang Zhou (additional)\n- Peng Zeng (additional)\n- Shi-Long Wang (additional)\n- Wen-Jun Yang (additional)\n- Fang Huang (additional)\n- Yang Huo (additional)\n- Shu-Ning Yu (additional)\n- Jiao-Feng Gu (additional)\n- Bo-Han Liao (additional)\n\n**Abstract:**\n*Not deposited*\n\n**Funders:**\n- Foundation for Innovative Research Groups of the National Natural Science Foundation of China — 10.13039/501100012659\n\n**Licenses:**\n- https://www.elsevier.com/tdm/userlicense/1.0/ [tdm] (0d embargo)\n- https://www.elsevier.com/legal/tdmrep-license [tdm] (0d embargo)\n- https://doi.org/10.15223/policy-017 [stm-asf] (0d embargo)\n- https://doi.org/10.15223/policy-037 [stm-asf] (0d embargo)\n- https://doi.org/10.15223/policy-012 [stm-asf] (0d embargo)\n- https://doi.org/10.15223/policy-029 [stm-asf] (0d embargo)\n- https://doi.org/10.15223/policy-004 [stm-asf] (0d embargo)\n\n**Full-text links:**\n- https://api.elsevier.com/content/article/PII:S0045653521006810?httpAccept=text/xml (text/xml) [text-mining]\n- https://api.elsevier.com/content/article/PII:S0045653521006810?httpAccept=text/plain (text/plain) [text-mining]\n\n**URL:** https://doi.org/10.1016/j.chemosphere.2021.130212"
+    "text": "## Nano-Fe3O4-modified biochar promotes the formation of iron plaque and cadmium immobilization in rice root\n\n**DOI:** 10.1016/j.chemosphere.2021.130212 | **Type:** journal-article\n**Publisher:** Elsevier BV\n**Journal/Container:** Chemosphere\n**ISSN:** 0045-6535\n**Published:** 2021-08\n**Language:** en\n**Cited by:** 80\n**References:** 34\n**Authors:** showing 10 of 10, starting at index 0\n- Jing-Yi Zhang (first)\n- Hang Zhou (additional)\n- Peng Zeng (additional)\n- Shi-Long Wang (additional)\n- Wen-Jun Yang (additional)\n- Fang Huang (additional)\n- Yang Huo (additional)\n- Shu-Ning Yu (additional)\n- Jiao-Feng Gu (additional)\n- Bo-Han Liao (additional)\n\n**Abstract:**\n*Not deposited*\n\n**Funders:**\n- Foundation for Innovative Research Groups of the National Natural Science Foundation of China — 10.13039/501100012659\n\n**Licenses:**\n- https://www.elsevier.com/tdm/userlicense/1.0/ [tdm] (0d embargo) — starts 2021-08-01T00:00:00Z\n- https://www.elsevier.com/legal/tdmrep-license [tdm] (0d embargo) — starts 2021-08-01T00:00:00Z\n- https://doi.org/10.15223/policy-017 [stm-asf] (0d embargo) — starts 2021-08-01T00:00:00Z\n- https://doi.org/10.15223/policy-037 [stm-asf] (0d embargo) — starts 2021-08-01T00:00:00Z\n- https://doi.org/10.15223/policy-012 [stm-asf] (0d embargo) — starts 2021-08-01T00:00:00Z\n- https://doi.org/10.15223/policy-029 [stm-asf] (0d embargo) — starts 2021-08-01T00:00:00Z\n- https://doi.org/10.15223/policy-004 [stm-asf] (0d embargo) — starts 2021-08-01T00:00:00Z\n\n**Full-text links:**\n- https://api.elsevier.com/content/article/PII:S0045653521006810?httpAccept=text/xml (text/xml) [text-mining] [vor]\n- https://api.elsevier.com/content/article/PII:S0045653521006810?httpAccept=text/plain (text/plain) [text-mining] [vor]\n\n**URL:** https://doi.org/10.1016/j.chemosphere.2021.130212"
   },
   "10.47094/978-65-6036-545-2": {
     "structuredContent": {
@@ -618,30 +639,34 @@
         {
           "url": "https://www.elsevier.com/tdm/userlicense/1.0/",
           "contentVersion": "tdm",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2020-05-01T00:00:00Z"
         },
         {
           "url": "https://www.elsevier.com/legal/tdmrep-license",
           "contentVersion": "tdm",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2020-05-01T00:00:00Z"
         }
       ],
       "links": [
         {
           "url": "https://api.elsevier.com/content/article/PII:S0140673620311806?httpAccept=text/xml",
           "contentType": "text/xml",
+          "contentVersion": "vor",
           "intendedApplication": "text-mining"
         },
         {
           "url": "https://api.elsevier.com/content/article/PII:S0140673620311806?httpAccept=text/plain",
           "contentType": "text/plain",
+          "contentVersion": "vor",
           "intendedApplication": "text-mining"
         }
       ],
       "url": "https://doi.org/10.1016/s0140-6736(20)31180-6",
       "language": "en"
     },
-    "text": "## RETRACTED: Hydroxychloroquine or chloroquine with or without a macrolide for treatment of COVID-19: a multinational registry analysis\n\n**DOI:** 10.1016/s0140-6736(20)31180-6 | **Type:** journal-article\n**Publisher:** Elsevier BV\n**Journal/Container:** The Lancet\n**ISSN:** 0140-6736\n**Published:** 2020-05\n**Language:** en\n**Cited by:** 416\n**References:** 26\n**Authors:** showing 4 of 4, starting at index 0\n- Mandeep R Mehra (first)\n- Sapan S Desai (additional)\n- Frank Ruschitzka (additional)\n- Amit N Patel (additional)\n\n**Abstract:**\n*Not deposited*\n\n**Licenses:**\n- https://www.elsevier.com/tdm/userlicense/1.0/ [tdm] (0d embargo)\n- https://www.elsevier.com/legal/tdmrep-license [tdm] (0d embargo)\n\n**Full-text links:**\n- https://api.elsevier.com/content/article/PII:S0140673620311806?httpAccept=text/xml (text/xml) [text-mining]\n- https://api.elsevier.com/content/article/PII:S0140673620311806?httpAccept=text/plain (text/plain) [text-mining]\n\n**URL:** https://doi.org/10.1016/s0140-6736(20)31180-6"
+    "text": "## RETRACTED: Hydroxychloroquine or chloroquine with or without a macrolide for treatment of COVID-19: a multinational registry analysis\n\n**DOI:** 10.1016/s0140-6736(20)31180-6 | **Type:** journal-article\n**Publisher:** Elsevier BV\n**Journal/Container:** The Lancet\n**ISSN:** 0140-6736\n**Published:** 2020-05\n**Language:** en\n**Cited by:** 416\n**References:** 26\n**Authors:** showing 4 of 4, starting at index 0\n- Mandeep R Mehra (first)\n- Sapan S Desai (additional)\n- Frank Ruschitzka (additional)\n- Amit N Patel (additional)\n\n**Abstract:**\n*Not deposited*\n\n**Licenses:**\n- https://www.elsevier.com/tdm/userlicense/1.0/ [tdm] (0d embargo) — starts 2020-05-01T00:00:00Z\n- https://www.elsevier.com/legal/tdmrep-license [tdm] (0d embargo) — starts 2020-05-01T00:00:00Z\n\n**Full-text links:**\n- https://api.elsevier.com/content/article/PII:S0140673620311806?httpAccept=text/xml (text/xml) [text-mining] [vor]\n- https://api.elsevier.com/content/article/PII:S0140673620311806?httpAccept=text/plain (text/plain) [text-mining] [vor]\n\n**URL:** https://doi.org/10.1016/s0140-6736(20)31180-6"
   },
   "10.1016/s0140-6736(20)31324-6": {
     "structuredContent": {
@@ -688,30 +713,34 @@
         {
           "url": "https://www.elsevier.com/tdm/userlicense/1.0/",
           "contentVersion": "tdm",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2020-06-01T00:00:00Z"
         },
         {
           "url": "https://www.elsevier.com/legal/tdmrep-license",
           "contentVersion": "tdm",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2020-06-01T00:00:00Z"
         }
       ],
       "links": [
         {
           "url": "https://api.elsevier.com/content/article/PII:S0140673620313246?httpAccept=text/xml",
           "contentType": "text/xml",
+          "contentVersion": "vor",
           "intendedApplication": "text-mining"
         },
         {
           "url": "https://api.elsevier.com/content/article/PII:S0140673620313246?httpAccept=text/plain",
           "contentType": "text/plain",
+          "contentVersion": "vor",
           "intendedApplication": "text-mining"
         }
       ],
       "url": "https://doi.org/10.1016/s0140-6736(20)31324-6",
       "language": "en"
     },
-    "text": "## Retraction—Hydroxychloroquine or chloroquine with or without a macrolide for treatment of COVID-19: a multinational registry analysis\n\n**DOI:** 10.1016/s0140-6736(20)31324-6 | **Type:** journal-article\n**Publisher:** Elsevier BV\n**Journal/Container:** The Lancet\n**ISSN:** 0140-6736\n**Published:** 2020-06\n**Language:** en\n**Cited by:** 366\n**References:** 1\n**Authors:** showing 3 of 3, starting at index 0\n- Mandeep R Mehra (first)\n- Frank Ruschitzka (additional)\n- Amit N Patel (additional)\n\n**Abstract:**\n*Not deposited*\n\n**Funders:**\n- Roche — 10.13039/100004337\n\n**Licenses:**\n- https://www.elsevier.com/tdm/userlicense/1.0/ [tdm] (0d embargo)\n- https://www.elsevier.com/legal/tdmrep-license [tdm] (0d embargo)\n\n**Full-text links:**\n- https://api.elsevier.com/content/article/PII:S0140673620313246?httpAccept=text/xml (text/xml) [text-mining]\n- https://api.elsevier.com/content/article/PII:S0140673620313246?httpAccept=text/plain (text/plain) [text-mining]\n\n**URL:** https://doi.org/10.1016/s0140-6736(20)31324-6"
+    "text": "## Retraction—Hydroxychloroquine or chloroquine with or without a macrolide for treatment of COVID-19: a multinational registry analysis\n\n**DOI:** 10.1016/s0140-6736(20)31324-6 | **Type:** journal-article\n**Publisher:** Elsevier BV\n**Journal/Container:** The Lancet\n**ISSN:** 0140-6736\n**Published:** 2020-06\n**Language:** en\n**Cited by:** 366\n**References:** 1\n**Authors:** showing 3 of 3, starting at index 0\n- Mandeep R Mehra (first)\n- Frank Ruschitzka (additional)\n- Amit N Patel (additional)\n\n**Abstract:**\n*Not deposited*\n\n**Funders:**\n- Roche — 10.13039/100004337\n\n**Licenses:**\n- https://www.elsevier.com/tdm/userlicense/1.0/ [tdm] (0d embargo) — starts 2020-06-01T00:00:00Z\n- https://www.elsevier.com/legal/tdmrep-license [tdm] (0d embargo) — starts 2020-06-01T00:00:00Z\n\n**Full-text links:**\n- https://api.elsevier.com/content/article/PII:S0140673620313246?httpAccept=text/xml (text/xml) [text-mining] [vor]\n- https://api.elsevier.com/content/article/PII:S0140673620313246?httpAccept=text/plain (text/plain) [text-mining] [vor]\n\n**URL:** https://doi.org/10.1016/s0140-6736(20)31324-6"
   },
   "10.1016/j.apsusc.2007.01.131": {
     "structuredContent": {
@@ -757,25 +786,28 @@
         {
           "url": "https://www.elsevier.com/tdm/userlicense/1.0/",
           "contentVersion": "tdm",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2007-06-01T00:00:00Z"
         }
       ],
       "links": [
         {
           "url": "https://api.elsevier.com/content/article/PII:S016943320700205X?httpAccept=text/xml",
           "contentType": "text/xml",
+          "contentVersion": "vor",
           "intendedApplication": "text-mining"
         },
         {
           "url": "https://api.elsevier.com/content/article/PII:S016943320700205X?httpAccept=text/plain",
           "contentType": "text/plain",
+          "contentVersion": "vor",
           "intendedApplication": "text-mining"
         }
       ],
       "url": "https://doi.org/10.1016/j.apsusc.2007.01.131",
       "language": "en"
     },
-    "text": "## RETRACTED: Relative performances of effective medium formulations in interpreting specific composite thin films optical properties\n\n**DOI:** 10.1016/j.apsusc.2007.01.131 | **Type:** journal-article\n**Publisher:** Elsevier BV\n**Journal/Container:** Applied Surface Science\n**ISSN:** 0169-4332\n**Published:** 2007-06\n**Language:** en\n**Cited by:** 18\n**References:** 43\n**Authors:** showing 4 of 4, starting at index 0\n- N.K. Sahoo (first)\n- S. Thakur (additional)\n- R.B. Tokas (additional)\n- N.M. Kamble (additional)\n\n**Abstract:**\n*Not deposited*\n\n**Licenses:**\n- https://www.elsevier.com/tdm/userlicense/1.0/ [tdm] (0d embargo)\n\n**Full-text links:**\n- https://api.elsevier.com/content/article/PII:S016943320700205X?httpAccept=text/xml (text/xml) [text-mining]\n- https://api.elsevier.com/content/article/PII:S016943320700205X?httpAccept=text/plain (text/plain) [text-mining]\n\n**URL:** https://doi.org/10.1016/j.apsusc.2007.01.131"
+    "text": "## RETRACTED: Relative performances of effective medium formulations in interpreting specific composite thin films optical properties\n\n**DOI:** 10.1016/j.apsusc.2007.01.131 | **Type:** journal-article\n**Publisher:** Elsevier BV\n**Journal/Container:** Applied Surface Science\n**ISSN:** 0169-4332\n**Published:** 2007-06\n**Language:** en\n**Cited by:** 18\n**References:** 43\n**Authors:** showing 4 of 4, starting at index 0\n- N.K. Sahoo (first)\n- S. Thakur (additional)\n- R.B. Tokas (additional)\n- N.M. Kamble (additional)\n\n**Abstract:**\n*Not deposited*\n\n**Licenses:**\n- https://www.elsevier.com/tdm/userlicense/1.0/ [tdm] (0d embargo) — starts 2007-06-01T00:00:00Z\n\n**Full-text links:**\n- https://api.elsevier.com/content/article/PII:S016943320700205X?httpAccept=text/xml (text/xml) [text-mining] [vor]\n- https://api.elsevier.com/content/article/PII:S016943320700205X?httpAccept=text/plain (text/plain) [text-mining] [vor]\n\n**URL:** https://doi.org/10.1016/j.apsusc.2007.01.131"
   },
   "10.1103/physrevd.109.023023": {
     "structuredContent": {
@@ -887,25 +919,28 @@
         {
           "url": "https://link.aps.org/licenses/aps-default-license",
           "contentVersion": "vor",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2024-01-19T00:00:00Z"
         }
       ],
       "links": [
         {
           "url": "https://link.aps.org/article/10.1103/PhysRevD.109.023023",
           "contentType": "unspecified",
+          "contentVersion": "vor",
           "intendedApplication": "syndication"
         },
         {
           "url": "http://harvest.aps.org/v2/journals/articles/10.1103/PhysRevD.109.023023/fulltext",
           "contentType": "unspecified",
+          "contentVersion": "vor",
           "intendedApplication": "similarity-checking"
         }
       ],
       "url": "https://doi.org/10.1103/physrevd.109.023023",
       "language": "en"
     },
-    "text": "## Reexamining the dark matter scenario accounting for the positron excess in a new cosmic ray propagation model\n\n**DOI:** 10.1103/physrevd.109.023023 | **Type:** journal-article\n**Publisher:** American Physical Society (APS)\n**Journal/Container:** Physical Review D\n**ISSN:** 2470-0010, 2470-0029\n**Published:** 2024-01-19\n**Language:** en\n**Cited by:** 2\n**References:** 115\n**Authors:** showing 5 of 5, starting at index 0\n- Xing-Jian Lv [ORCID: https://orcid.org/0000-0002-5197-3393] (first) — Key Laboratory of Particle Astrophysics, Institute of High Energy Physics, Chinese Academy of Sciences, Beijing 100049, China, University of Chinese Academy of Sciences, Beijing 100049, China\n- Xiao-Jun Bi (additional) — Key Laboratory of Particle Astrophysics, Institute of High Energy Physics, Chinese Academy of Sciences, Beijing 100049, China, University of Chinese Academy of Sciences, Beijing 100049, China\n- Kun Fang (additional) — Key Laboratory of Particle Astrophysics, Institute of High Energy Physics, Chinese Academy of Sciences, Beijing 100049, China\n- Peng-Fei Yin (additional) — Key Laboratory of Particle Astrophysics, Institute of High Energy Physics, Chinese Academy of Sciences, Beijing 100049, China\n- Meng-Jie Zhao [ORCID: https://orcid.org/0000-0001-6844-1409] (additional) — Key Laboratory of Particle Astrophysics, Institute of High Energy Physics, Chinese Academy of Sciences, Beijing 100049, China, University of Chinese Academy of Sciences, Beijing 100049, China\n\n**Abstract:**\n*Not deposited*\n\n**Funders:**\n- National Key Research and Development Program of China — 10.13039/501100012166 (2022YFA1604802)\n- National Natural Science Foundation of China — 10.13039/501100001809 (12175248)\n- National Natural Science Foundation of China — 10.13039/501100001809 (12105292)\n\n**Licenses:**\n- https://link.aps.org/licenses/aps-default-license [vor] (0d embargo)\n\n**Full-text links:**\n- https://link.aps.org/article/10.1103/PhysRevD.109.023023 (unspecified) [syndication]\n- http://harvest.aps.org/v2/journals/articles/10.1103/PhysRevD.109.023023/fulltext (unspecified) [similarity-checking]\n\n**URL:** https://doi.org/10.1103/physrevd.109.023023"
+    "text": "## Reexamining the dark matter scenario accounting for the positron excess in a new cosmic ray propagation model\n\n**DOI:** 10.1103/physrevd.109.023023 | **Type:** journal-article\n**Publisher:** American Physical Society (APS)\n**Journal/Container:** Physical Review D\n**ISSN:** 2470-0010, 2470-0029\n**Published:** 2024-01-19\n**Language:** en\n**Cited by:** 2\n**References:** 115\n**Authors:** showing 5 of 5, starting at index 0\n- Xing-Jian Lv [ORCID: https://orcid.org/0000-0002-5197-3393] (first) — Key Laboratory of Particle Astrophysics, Institute of High Energy Physics, Chinese Academy of Sciences, Beijing 100049, China, University of Chinese Academy of Sciences, Beijing 100049, China\n- Xiao-Jun Bi (additional) — Key Laboratory of Particle Astrophysics, Institute of High Energy Physics, Chinese Academy of Sciences, Beijing 100049, China, University of Chinese Academy of Sciences, Beijing 100049, China\n- Kun Fang (additional) — Key Laboratory of Particle Astrophysics, Institute of High Energy Physics, Chinese Academy of Sciences, Beijing 100049, China\n- Peng-Fei Yin (additional) — Key Laboratory of Particle Astrophysics, Institute of High Energy Physics, Chinese Academy of Sciences, Beijing 100049, China\n- Meng-Jie Zhao [ORCID: https://orcid.org/0000-0001-6844-1409] (additional) — Key Laboratory of Particle Astrophysics, Institute of High Energy Physics, Chinese Academy of Sciences, Beijing 100049, China, University of Chinese Academy of Sciences, Beijing 100049, China\n\n**Abstract:**\n*Not deposited*\n\n**Funders:**\n- National Key Research and Development Program of China — 10.13039/501100012166 (2022YFA1604802)\n- National Natural Science Foundation of China — 10.13039/501100001809 (12175248)\n- National Natural Science Foundation of China — 10.13039/501100001809 (12105292)\n\n**Licenses:**\n- https://link.aps.org/licenses/aps-default-license [vor] (0d embargo) — starts 2024-01-19T00:00:00Z\n\n**Full-text links:**\n- https://link.aps.org/article/10.1103/PhysRevD.109.023023 (unspecified) [syndication] [vor]\n- http://harvest.aps.org/v2/journals/articles/10.1103/PhysRevD.109.023023/fulltext (unspecified) [similarity-checking] [vor]\n\n**URL:** https://doi.org/10.1103/physrevd.109.023023"
   },
   "10.1109/icetce.2011.5774727": {
     "structuredContent": {
@@ -933,12 +968,13 @@
         {
           "url": "http://xplorestaging.ieee.org/ielx5/5765754/5774181/05774727.pdf?arnumber=5774727",
           "contentType": "unspecified",
+          "contentVersion": "vor",
           "intendedApplication": "similarity-checking"
         }
       ],
       "url": "https://doi.org/10.1109/icetce.2011.5774727"
     },
-    "text": "## Notice of Retraction: World-class city under globalization\n\n**DOI:** 10.1109/icetce.2011.5774727 | **Type:** proceedings-article\n**Publisher:** IEEE\n**Journal/Container:** 2011 International Conference on Electric Technology and Civil Engineering (ICETCE)\n**Published:** 2011-04\n**Cited by:** 0\n**References:** 7\n**Authors:** showing 1 of 1, starting at index 0\n- Jiayu Hu (first)\n\n**Abstract:**\n*Not deposited*\n\n**Full-text links:**\n- http://xplorestaging.ieee.org/ielx5/5765754/5774181/05774727.pdf?arnumber=5774727 (unspecified) [similarity-checking]\n\n**URL:** https://doi.org/10.1109/icetce.2011.5774727"
+    "text": "## Notice of Retraction: World-class city under globalization\n\n**DOI:** 10.1109/icetce.2011.5774727 | **Type:** proceedings-article\n**Publisher:** IEEE\n**Journal/Container:** 2011 International Conference on Electric Technology and Civil Engineering (ICETCE)\n**Published:** 2011-04\n**Cited by:** 0\n**References:** 7\n**Authors:** showing 1 of 1, starting at index 0\n- Jiayu Hu (first)\n\n**Abstract:**\n*Not deposited*\n\n**Full-text links:**\n- http://xplorestaging.ieee.org/ielx5/5765754/5774181/05774727.pdf?arnumber=5774727 (unspecified) [similarity-checking] [vor]\n\n**URL:** https://doi.org/10.1109/icetce.2011.5774727"
   },
   "10.1364/opticaopen.29459153.v1": {
     "structuredContent": {
@@ -992,19 +1028,21 @@
         {
           "url": "https://doi.org/10.1364/OA_License_v2#OPG-OO",
           "contentVersion": "unspecified",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2025-07-03T00:00:00Z"
         }
       ],
       "links": [
         {
           "url": "https://ndownloader.figshare.com/files/55929341",
           "contentType": "unspecified",
+          "contentVersion": "vor",
           "intendedApplication": "similarity-checking"
         }
       ],
       "url": "https://doi.org/10.1364/opticaopen.29459153.v1"
     },
-    "text": "## Optical Frequency Comb Bandwidth Enhancement of a Monolithically Integrated Gain Switched Device\n\n**DOI:** 10.1364/opticaopen.29459153.v1 | **Type:** posted-content\n**Publisher:** Optica Publishing Group\n**Published:** 2025-07-03\n**Cited by:** 0\n**References:** 0\n**Authors:** showing 6 of 6, starting at index 0\n- Diarmuid O' Sullivan (first)\n- John McCarthy (first)\n- Eoin Russell (first)\n- Zhengkai Jia (first)\n- Bryan Kelleher (first)\n- Frank Peters (first)\n\n**Abstract:**\nWe demonstrate bandwidth enhancement of optical frequency combs (OFCs) generated by a monolithically integrated gain switched laser using mutual optical coupling. Traditionally, gain switched comb sources rely on asymmetrically biased configurations to maintain phase coherence. In this work, we implement a bidirectionally coupled system comprising a two-section discrete mode laser (DML) and a Fabry-P\\\\'erot gain switched laser (GSL) integrated on an InP epistructure. By transitioning to a mutually coupled regime with symmetric biasing, we achieve significantly broader and flatter optical spectra. Experimental characterisation reveals that the comb bandwidth and power increase significantly across regimes, with stable phase locking preserved. A delay-differential rate equation model, incorporating nonlinear carrier dynamics and modulation, is developed to replicate the observed comb behaviour. Numerical analysis highlights the role of modulation depth, bias current, injection strength, and frequency detuning in determining comb bandwidth. The results indicate that mutual coupling provides a robust, scalable route for OFC generation with spectral performance enhanced by a factor of 3.4 compared to the asymmetric regime, suitable for high-capacity optical communications and integrated photonic systems.\n\n**Licenses:**\n- https://doi.org/10.1364/OA_License_v2#OPG-OO [unspecified] (0d embargo)\n\n**Full-text links:**\n- https://ndownloader.figshare.com/files/55929341 (unspecified) [similarity-checking]\n\n**URL:** https://doi.org/10.1364/opticaopen.29459153.v1"
+    "text": "## Optical Frequency Comb Bandwidth Enhancement of a Monolithically Integrated Gain Switched Device\n\n**DOI:** 10.1364/opticaopen.29459153.v1 | **Type:** posted-content\n**Publisher:** Optica Publishing Group\n**Published:** 2025-07-03\n**Cited by:** 0\n**References:** 0\n**Authors:** showing 6 of 6, starting at index 0\n- Diarmuid O' Sullivan (first)\n- John McCarthy (first)\n- Eoin Russell (first)\n- Zhengkai Jia (first)\n- Bryan Kelleher (first)\n- Frank Peters (first)\n\n**Abstract:**\nWe demonstrate bandwidth enhancement of optical frequency combs (OFCs) generated by a monolithically integrated gain switched laser using mutual optical coupling. Traditionally, gain switched comb sources rely on asymmetrically biased configurations to maintain phase coherence. In this work, we implement a bidirectionally coupled system comprising a two-section discrete mode laser (DML) and a Fabry-P\\\\'erot gain switched laser (GSL) integrated on an InP epistructure. By transitioning to a mutually coupled regime with symmetric biasing, we achieve significantly broader and flatter optical spectra. Experimental characterisation reveals that the comb bandwidth and power increase significantly across regimes, with stable phase locking preserved. A delay-differential rate equation model, incorporating nonlinear carrier dynamics and modulation, is developed to replicate the observed comb behaviour. Numerical analysis highlights the role of modulation depth, bias current, injection strength, and frequency detuning in determining comb bandwidth. The results indicate that mutual coupling provides a robust, scalable route for OFC generation with spectral performance enhanced by a factor of 3.4 compared to the asymmetric regime, suitable for high-capacity optical communications and integrated photonic systems.\n\n**Licenses:**\n- https://doi.org/10.1364/OA_License_v2#OPG-OO [unspecified] (0d embargo) — starts 2025-07-03T00:00:00Z\n\n**Full-text links:**\n- https://ndownloader.figshare.com/files/55929341 (unspecified) [similarity-checking] [vor]\n\n**URL:** https://doi.org/10.1364/opticaopen.29459153.v1"
   },
   "10.1364/OE.572415": {
     "structuredContent": {
@@ -1130,25 +1168,28 @@
         {
           "url": "https://creativecommons.org/licenses/by/4.0/",
           "contentVersion": "vor",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2025-09-12T00:00:00Z"
         },
         {
           "url": "https://opg.optica.org/policies/opg-tdm-policy.json",
           "contentVersion": "tdm",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2025-09-12T00:00:00Z"
         }
       ],
       "links": [
         {
           "url": "https://opg.optica.org/viewmedia.cfm?URI=oe-33-19-39991&seq=0",
           "contentType": "unspecified",
+          "contentVersion": "vor",
           "intendedApplication": "similarity-checking"
         }
       ],
       "url": "https://doi.org/10.1364/oe.572415",
       "language": "en"
     },
-    "text": "## Optical frequency comb bandwidth enhancement of a monolithically integrated gain switched device\n\n**DOI:** 10.1364/oe.572415 | **Type:** journal-article\n**Publisher:** Optica Publishing Group\n**Journal/Container:** Optics Express\n**ISSN:** 1094-4087\n**Published:** 2025-09-12\n**Language:** en\n**Cited by:** 4\n**References:** 25\n**Authors:** showing 6 of 6, starting at index 0\n- Diarmuid O’Sullivan (first) — https://ror.org/007ecwd34, https://ror.org/03265fv13\n- John McCarthy [ORCID: https://orcid.org/0000-0001-8935-6289] (additional) — https://ror.org/007ecwd34, https://ror.org/03265fv13\n- Eoin Russell [ORCID: https://orcid.org/0000-0003-4423-7088] (additional) — https://ror.org/007ecwd34\n- Zhengkai Jia [ORCID: https://orcid.org/0000-0001-7604-207X] (additional) — Chinese Academy of Sciences, University of Chinese Academy of Sciences\n- Frank H. Peters [ORCID: https://orcid.org/0000-0001-8116-7811] (additional) — https://ror.org/007ecwd34, https://ror.org/03265fv13\n- Bryan Kelleher [ORCID: https://orcid.org/0000-0003-3806-9874] (additional) — https://ror.org/007ecwd34, https://ror.org/03265fv13\n\n**Abstract:**\nWe demonstrate bandwidth enhancement of optical frequency combs generated by a monolithically integrated gain switched laser using symmetric optical coupling. Traditionally, gain switched comb sources rely on asymmetrically biased configurations to maintain phase coherence. In this work, we implement a bidirectionally coupled system comprising a two-section discrete mode laser and a Fabry-Pérot gain switched laser integrated on an InP epistructure. By transitioning to a symmetrically coupled regime with symmetric biasing, we achieve significantly broader and flatter optical spectra. Experimental characterisation reveals that the comb bandwidth and power increase significantly across regimes, with stable phase locking preserved. A delay-differential rate equation model, incorporating nonlinear carrier dynamics and modulation, is developed to replicate the observed comb behaviour. Numerical analysis highlights the role of modulation depth, bias current, injection strength, and frequency detuning in determining comb bandwidth. The results indicate that symmetric coupling provides a robust, scalable route for frequency comb generation with spectral performance enhanced by a factor of 4 compared to the asymmetric regime, suitable for high-capacity optical communications and integrated photonic systems.\n\n**Funders:**\n- Research Ireland (GOIPG/2024/4599)\n- Research Ireland (12/RC/2276)\n- Irish Research eLibrary — 10.13039/100018998\n\n**Licenses:**\n- https://creativecommons.org/licenses/by/4.0/ [vor] (0d embargo)\n- https://opg.optica.org/policies/opg-tdm-policy.json [tdm] (0d embargo)\n\n**Full-text links:**\n- https://opg.optica.org/viewmedia.cfm?URI=oe-33-19-39991&seq=0 (unspecified) [similarity-checking]\n\n**URL:** https://doi.org/10.1364/oe.572415"
+    "text": "## Optical frequency comb bandwidth enhancement of a monolithically integrated gain switched device\n\n**DOI:** 10.1364/oe.572415 | **Type:** journal-article\n**Publisher:** Optica Publishing Group\n**Journal/Container:** Optics Express\n**ISSN:** 1094-4087\n**Published:** 2025-09-12\n**Language:** en\n**Cited by:** 4\n**References:** 25\n**Authors:** showing 6 of 6, starting at index 0\n- Diarmuid O’Sullivan (first) — https://ror.org/007ecwd34, https://ror.org/03265fv13\n- John McCarthy [ORCID: https://orcid.org/0000-0001-8935-6289] (additional) — https://ror.org/007ecwd34, https://ror.org/03265fv13\n- Eoin Russell [ORCID: https://orcid.org/0000-0003-4423-7088] (additional) — https://ror.org/007ecwd34\n- Zhengkai Jia [ORCID: https://orcid.org/0000-0001-7604-207X] (additional) — Chinese Academy of Sciences, University of Chinese Academy of Sciences\n- Frank H. Peters [ORCID: https://orcid.org/0000-0001-8116-7811] (additional) — https://ror.org/007ecwd34, https://ror.org/03265fv13\n- Bryan Kelleher [ORCID: https://orcid.org/0000-0003-3806-9874] (additional) — https://ror.org/007ecwd34, https://ror.org/03265fv13\n\n**Abstract:**\nWe demonstrate bandwidth enhancement of optical frequency combs generated by a monolithically integrated gain switched laser using symmetric optical coupling. Traditionally, gain switched comb sources rely on asymmetrically biased configurations to maintain phase coherence. In this work, we implement a bidirectionally coupled system comprising a two-section discrete mode laser and a Fabry-Pérot gain switched laser integrated on an InP epistructure. By transitioning to a symmetrically coupled regime with symmetric biasing, we achieve significantly broader and flatter optical spectra. Experimental characterisation reveals that the comb bandwidth and power increase significantly across regimes, with stable phase locking preserved. A delay-differential rate equation model, incorporating nonlinear carrier dynamics and modulation, is developed to replicate the observed comb behaviour. Numerical analysis highlights the role of modulation depth, bias current, injection strength, and frequency detuning in determining comb bandwidth. The results indicate that symmetric coupling provides a robust, scalable route for frequency comb generation with spectral performance enhanced by a factor of 4 compared to the asymmetric regime, suitable for high-capacity optical communications and integrated photonic systems.\n\n**Funders:**\n- Research Ireland (GOIPG/2024/4599)\n- Research Ireland (12/RC/2276)\n- Irish Research eLibrary — 10.13039/100018998\n\n**Licenses:**\n- https://creativecommons.org/licenses/by/4.0/ [vor] (0d embargo) — starts 2025-09-12T00:00:00Z\n- https://opg.optica.org/policies/opg-tdm-policy.json [tdm] (0d embargo) — starts 2025-09-12T00:00:00Z\n\n**Full-text links:**\n- https://opg.optica.org/viewmedia.cfm?URI=oe-33-19-39991&seq=0 (unspecified) [similarity-checking] [vor]\n\n**URL:** https://doi.org/10.1364/oe.572415"
   },
   "10.20944/preprints202302.0051.v34": {
     "structuredContent": {
@@ -1178,12 +1219,13 @@
         {
           "url": "http://creativecommons.org/licenses/by/4.0",
           "contentVersion": "unspecified",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2023-11-08T00:00:00Z"
         }
       ],
       "url": "https://doi.org/10.20944/preprints202302.0051.v34"
     },
-    "text": "## Duality Principles and Numerical Procedures for a Large Class of Non-convex Models in the Calculus of Variations\n\n**DOI:** 10.20944/preprints202302.0051.v34 | **Type:** posted-content\n**Publisher:** MDPI AG\n**Published:** 2023-11-08\n**Cited by:** 0\n**References:** 0\n**Authors:** showing 1 of 1, starting at index 0\n- Fabio Botelho [ORCID: https://orcid.org/0000-0002-3890-8263] (first)\n\n**Abstract:**\nThis article develops duality principles and numerical results for a large class of non-convex variational models. The main results are based on fundamental tools of convex analysis, duality theory and calculus of variations. More specifically the approach is established for a class of non-convex functionals similar as those found in some models in phase transition. Finally, in some sections we present concerning numerical examples and the respective softwares.\n\n**Licenses:**\n- http://creativecommons.org/licenses/by/4.0 [unspecified] (0d embargo)\n\n**URL:** https://doi.org/10.20944/preprints202302.0051.v34"
+    "text": "## Duality Principles and Numerical Procedures for a Large Class of Non-convex Models in the Calculus of Variations\n\n**DOI:** 10.20944/preprints202302.0051.v34 | **Type:** posted-content\n**Publisher:** MDPI AG\n**Published:** 2023-11-08\n**Cited by:** 0\n**References:** 0\n**Authors:** showing 1 of 1, starting at index 0\n- Fabio Botelho [ORCID: https://orcid.org/0000-0002-3890-8263] (first)\n\n**Abstract:**\nThis article develops duality principles and numerical results for a large class of non-convex variational models. The main results are based on fundamental tools of convex analysis, duality theory and calculus of variations. More specifically the approach is established for a class of non-convex functionals similar as those found in some models in phase transition. Finally, in some sections we present concerning numerical examples and the respective softwares.\n\n**Licenses:**\n- http://creativecommons.org/licenses/by/4.0 [unspecified] (0d embargo) — starts 2023-11-08T00:00:00Z\n\n**URL:** https://doi.org/10.20944/preprints202302.0051.v34"
   },
   "10.1101/2025.11.10.687519": {
     "structuredContent": {
@@ -1248,19 +1290,21 @@
         {
           "url": "http://creativecommons.org/licenses/by/4.0/",
           "contentVersion": "vor",
-          "delayInDays": 0
+          "delayInDays": 0,
+          "start": "2025-11-11T00:00:00Z"
         }
       ],
       "links": [
         {
           "url": "https://syndication.highwire.org/content/doi/10.1101/2025.11.10.687519",
           "contentType": "unspecified",
+          "contentVersion": "vor",
           "intendedApplication": "similarity-checking"
         }
       ],
       "url": "https://doi.org/10.1101/2025.11.10.687519"
     },
-    "text": "## Counterconditioning Alcohol Cues: Neural and Behavioral Modulation of Automatic Tendencies and Pavlovian-to-Instrumental Transfer in Male Alcohol Users\n\n**DOI:** 10.1101/2025.11.10.687519 | **Type:** posted-content\n**Publisher:** openRxiv\n**Published:** 2025-11-11\n**Cited by:** 0\n**References:** 61\n**Authors:** showing 4 of 4, starting at index 0\n- Adarsh K. Verma [ORCID: https://orcid.org/0000-0003-0249-6989] (first) — Department of Psychology, University of Hyderabad, India\n- Usha Chivukula (additional) — Department of Psychology, University of Hyderabad, India\n- Maria Garbusow (additional) — Department of Psychology, Medical School Berlin, Germany\n- Neeraj Kumar (additional) — Department of Liberal Arts, Indian Institute of Technology Hyderabad, India\n\n**Abstract:**\nAbstract Objective Repeated alcohol-cue pairings with rewarding experiences establish automatic response tendencies that bias instrumental behavior through Pavlovian-to-instrumental transfer (PIT). How individual differences in approach and avoidance tendencies shape PIT and intervention responsiveness remains poorly understood. This study examined whether automatic tendencies differentially modulate PIT, and whether counterconditioning (CC) combined with retrieval cues can attenuate approach biases and cue-driven instrumental interference. Method Thirty-nine male alcohol users completed an Alcohol Approach-Avoidance Task and PIT task before and after CC, classified into approach or avoidance groups based on their baseline Alcohol Approach Index. Alcohol cues were paired with monetary loss during CC, with retrieval cues introduced to facilitate reactivation of newly formed aversive associations. Right frontal N2 and centroparietal P3 were examined as indices of early evaluative and attentional processing. Results Despite comparable behavioral PIT performance, approach-oriented individuals showed attenuated right frontal N2 during push actions at baseline, reflecting reduced frontal regulatory engagement during cue-incongruent responding. CC selectively reduced approach biases in the approach group, with retrieval cues producing additional reductions, accompanied by N2 and P3 restoration. CC recalibrated PIT interference by reducing push and increasing pull interference, particularly with retrieval cues. CC-induced changes in approach bias did not predict PIT interference, suggesting modulation through partially dissociable pathways. Conclusions CC with retrieval cues selectively reduced approach biases and recalibrated cue-driven instrumental interference in approach-oriented individuals, providing proof-of-concept for retrieval cue-integrated CC as a targeted associative intervention and highlighting the importance of individual tendency profiles in intervention responsiveness.\n\n**Licenses:**\n- http://creativecommons.org/licenses/by/4.0/ [vor] (0d embargo)\n\n**Full-text links:**\n- https://syndication.highwire.org/content/doi/10.1101/2025.11.10.687519 (unspecified) [similarity-checking]\n\n**URL:** https://doi.org/10.1101/2025.11.10.687519"
+    "text": "## Counterconditioning Alcohol Cues: Neural and Behavioral Modulation of Automatic Tendencies and Pavlovian-to-Instrumental Transfer in Male Alcohol Users\n\n**DOI:** 10.1101/2025.11.10.687519 | **Type:** posted-content\n**Publisher:** openRxiv\n**Published:** 2025-11-11\n**Cited by:** 0\n**References:** 61\n**Authors:** showing 4 of 4, starting at index 0\n- Adarsh K. Verma [ORCID: https://orcid.org/0000-0003-0249-6989] (first) — Department of Psychology, University of Hyderabad, India\n- Usha Chivukula (additional) — Department of Psychology, University of Hyderabad, India\n- Maria Garbusow (additional) — Department of Psychology, Medical School Berlin, Germany\n- Neeraj Kumar (additional) — Department of Liberal Arts, Indian Institute of Technology Hyderabad, India\n\n**Abstract:**\nAbstract Objective Repeated alcohol-cue pairings with rewarding experiences establish automatic response tendencies that bias instrumental behavior through Pavlovian-to-instrumental transfer (PIT). How individual differences in approach and avoidance tendencies shape PIT and intervention responsiveness remains poorly understood. This study examined whether automatic tendencies differentially modulate PIT, and whether counterconditioning (CC) combined with retrieval cues can attenuate approach biases and cue-driven instrumental interference. Method Thirty-nine male alcohol users completed an Alcohol Approach-Avoidance Task and PIT task before and after CC, classified into approach or avoidance groups based on their baseline Alcohol Approach Index. Alcohol cues were paired with monetary loss during CC, with retrieval cues introduced to facilitate reactivation of newly formed aversive associations. Right frontal N2 and centroparietal P3 were examined as indices of early evaluative and attentional processing. Results Despite comparable behavioral PIT performance, approach-oriented individuals showed attenuated right frontal N2 during push actions at baseline, reflecting reduced frontal regulatory engagement during cue-incongruent responding. CC selectively reduced approach biases in the approach group, with retrieval cues producing additional reductions, accompanied by N2 and P3 restoration. CC recalibrated PIT interference by reducing push and increasing pull interference, particularly with retrieval cues. CC-induced changes in approach bias did not predict PIT interference, suggesting modulation through partially dissociable pathways. Conclusions CC with retrieval cues selectively reduced approach biases and recalibrated cue-driven instrumental interference in approach-oriented individuals, providing proof-of-concept for retrieval cue-integrated CC as a targeted associative intervention and highlighting the importance of individual tendency profiles in intervention responsiveness.\n\n**Licenses:**\n- http://creativecommons.org/licenses/by/4.0/ [vor] (0d embargo) — starts 2025-11-11T00:00:00Z\n\n**Full-text links:**\n- https://syndication.highwire.org/content/doi/10.1101/2025.11.10.687519 (unspecified) [similarity-checking] [vor]\n\n**URL:** https://doi.org/10.1101/2025.11.10.687519"
   },
   "10.2139/ssrn.4944457": {
     "structuredContent": {

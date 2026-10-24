@@ -114,6 +114,108 @@ const SUB_RESOURCES = [
   },
 ] as const;
 
+describe('advisory cursor restart notices', () => {
+  const targets = [
+    ...SUB_RESOURCES.map((target) => ({ ...target, cursorKey: 'works_cursor' })),
+    {
+      name: 'crossref_search_works',
+      definition: searchWorksTool,
+      input: { query: 'science', rows: 2 },
+      worksRoute: /\/works\?/,
+      recordRoute: /never-matches/,
+      record: {},
+      worksKey: 'works',
+      cursorKey: 'cursor',
+    },
+  ];
+  it.each(targets)('composes clamp and empty-page notices on $name', async (target) => {
+    http.route({
+      match: target.recordRoute,
+      respond: () => Response.json({ message: target.record }),
+    });
+    http.route({
+      match: target.worksRoute,
+      respond: () =>
+        Response.json({ message: { 'total-results': 2, items: [], 'next-cursor': 'next' } }),
+    });
+    const result = await runToolContract(target.definition, {
+      ...target.input,
+      rows: 501,
+      [target.cursorKey]: 'bogus',
+    });
+    expect(result.isError).toBeFalsy();
+    expect(result.structuredContent).not.toHaveProperty('nextWorksCursor');
+    expect(result.structuredContent).not.toHaveProperty('nextCursor');
+    const notice = (result.structuredContent as { notice: string }).notice;
+    expect(notice).toContain('may have restarted');
+    expect(notice).toContain('501');
+    expect(textOf(result)).toContain(notice);
+    if (target.cursorKey === 'works_cursor') expect(notice).not.toContain('walk is complete');
+  });
+  it.each(targets)('warns only after success and preserves the token on $name', async (target) => {
+    http.route({
+      match: target.recordRoute,
+      respond: () => Response.json({ message: target.record }),
+    });
+    http.route({
+      match: target.worksRoute,
+      respond: (request) => {
+        const cursor = new URL(request.url).searchParams.get('cursor');
+        if (cursor === 'garbage')
+          return Response.json(
+            {
+              status: 'failed',
+              'message-type': 'resource-failure',
+              message: [
+                {
+                  type: 'cursor-invalid',
+                  value: 'garbage',
+                  message: 'Cursor specified but it is invalid',
+                },
+              ],
+            },
+            { status: 404 },
+          );
+        return Response.json({
+          message: { 'total-results': 1, items: [{ DOI: '10.5555/w1' }], 'next-cursor': 'next' },
+        });
+      },
+    });
+    for (const cursor of ['bogus', 'MTAyNzU2OTAwNTAwMCwx', btoa('123,10.5555%ZZ/w1')]) {
+      const result = await runToolContract(target.definition, {
+        ...target.input,
+        [target.cursorKey]: cursor,
+      });
+      expect(result.isError).toBeFalsy();
+      expect(result.structuredContent).toMatchObject({
+        [target.worksKey]: [{ doi: '10.5555/w1' }],
+        notice: expect.stringContaining('may have restarted'),
+      });
+      expect(textOf(result)).toContain('may have restarted');
+      expect(new URL(http.calls.at(-1)!.request.url).searchParams.get('cursor')).toBe(cursor);
+    }
+    for (const cursor of ['*', btoa('123,10.5555%2Fw1,part')]) {
+      const result = await runToolContract(target.definition, {
+        ...target.input,
+        [target.cursorKey]: cursor,
+      });
+      expect(result.isError).toBeFalsy();
+      expect(result.structuredContent).not.toHaveProperty('notice');
+      expect(textOf(result)).not.toContain('may have restarted');
+    }
+    const rejected = await runToolContract(target.definition, {
+      ...target.input,
+      [target.cursorKey]: 'garbage',
+    });
+    expect(rejected.isError).toBe(true);
+    expect(rejected.structuredContent).toMatchObject({
+      error: { data: { reason: 'invalid_cursor', recovery: { hint: expect.any(String) } } },
+    });
+    expect(textOf(rejected)).toContain('invalid_cursor');
+    expect(textOf(rejected)).not.toContain('may have restarted');
+  });
+});
+
 describe.each(SUB_RESOURCES)('a works_cursor walk on $name', (target) => {
   beforeEach(() => {
     http.route({ match: target.worksRoute, respond: worksPage });
