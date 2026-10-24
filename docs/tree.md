@@ -157,6 +157,7 @@ crossref-mcp-server/
 │   │       │   ├── search-journals.tool.ts
 │   │       │   └── search-works.tool.ts
 │   │       ├── blank-input.ts
+│   │       ├── cursor-notice.ts
 │   │       ├── markdown-text.ts
 │   │       ├── metadata-coverage.ts
 │   │       ├── page-size.ts
@@ -209,8 +210,10 @@ crossref-mcp-server/
 │   │       ├── crossref-service.test.ts
 │   │       ├── markup-regions.test.ts
 │   │       ├── mathml.test.ts
+│   │       ├── numeric-superscripts.test.ts
 │   │       └── upstream-classification.test.ts
 │   └── tools/
+│       ├── cursor-notice.test.ts
 │       ├── date-surface.test.ts
 │       ├── get-member.tool.test.ts
 │       ├── get-prefix.tool.test.ts
@@ -221,6 +224,7 @@ crossref-mcp-server/
 │       ├── markdown-surface.test.ts
 │       ├── markdown-text.test.ts
 │       ├── mathml-surface.test.ts
+│       ├── metadata-coverage.test.ts
 │       ├── page-size.test.ts
 │       ├── registration-agency.test.ts
 │       ├── search-blank-inputs.test.ts

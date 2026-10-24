@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.4.4](changelog/0.4.x/0.4.4.md) — 2026-10-24
+
+Preserve deposited metadata and scientific notation, and flag suspect cursor responses.
+
 ## [0.4.3](changelog/0.4.x/0.4.3.md) — 2026-10-22
 
 A not-found DOI or prefix names the registration agency that holds it, page sizes above the per-call cap are clamped with a notice instead of rejected, and reference, search-result, and journal records carry more fields.
