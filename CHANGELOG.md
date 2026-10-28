@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.5.0](changelog/0.5.x/0.5.0.md) — 2026-10-28
+
+Publishes the crossref-guide Agent Skill as an MCP resource and moves to mcp-ts-core 0.13.18: error text in content[] escapes Markdown, and string trailer values such as nextWorksCursor render as inline code.
+
 ## [0.4.4](changelog/0.4.x/0.4.4.md) — 2026-10-24
 
 Preserve deposited metadata and scientific notation, and flag suspect cursor responses.

@@ -1,6 +1,6 @@
 # crossref-mcp-server - Directory Structure
 
-Generated on: 2026-10-23 04:48:17
+Generated on: 2026-10-28 18:24:41
 
 ```text
 crossref-mcp-server/
@@ -28,6 +28,7 @@ crossref-mcp-server/
 │   ├── 0.2.x/
 │   ├── 0.3.x/
 │   ├── 0.4.x/
+│   ├── 0.5.x/
 │   └── template.md
 ├── docs/
 │   ├── design.md
@@ -40,6 +41,8 @@ crossref-mcp-server/
 │   ├── add-resource/
 │   │   └── SKILL.md
 │   ├── add-service/
+│   │   └── SKILL.md
+│   ├── add-skill/
 │   │   └── SKILL.md
 │   ├── add-test/
 │   │   └── SKILL.md
@@ -138,6 +141,9 @@ crossref-mcp-server/
 │   ├── release-github.ts
 │   ├── split-changelog.ts
 │   └── tree.ts
+├── skills/
+│   └── crossref-guide/
+│       └── SKILL.md
 ├── src/
 │   ├── config/
 │   │   └── server-config.ts
@@ -205,6 +211,8 @@ crossref-mcp-server/
 │   │   └── scaling.ts
 │   ├── prompts/
 │   ├── resources/
+│   ├── scripts/
+│   │   └── agent-doc-entry.test.ts
 │   ├── services/
 │   │   └── crossref/
 │   │       ├── crossref-service.test.ts
@@ -250,7 +258,9 @@ crossref-mcp-server/
 ├── Dockerfile
 ├── LICENSE
 ├── manifest.json
+├── mcp.json
 ├── package.json
+├── plugin.json
 ├── README.md
 ├── server.json
 ├── tsconfig.build.json
