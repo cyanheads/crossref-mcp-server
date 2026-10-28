@@ -4,8 +4,6 @@ Thanks for using `crossref-mcp-server`. Bugs, feature requests, and documentatio
 
 Open a [Bug Report](https://github.com/cyanheads/crossref-mcp-server/issues/new?template=bug_report.yml) or [Feature Request](https://github.com/cyanheads/crossref-mcp-server/issues/new?template=feature_request.yml). Both are structured, and filling in the fields is what makes an issue actionable.
 
-PRs are welcome; open an issue first for anything larger than a typo.
-
 ## Server bug or framework bug?
 
 `crossref-mcp-server` is built on [@cyanheads/mcp-ts-core](https://github.com/cyanheads/mcp-ts-core), which handles transports, auth, config, logging, and telemetry. Sorting out which layer broke saves everyone a round-trip:
