@@ -1,13 +1,13 @@
 <div align="center">
   <h1>@cyanheads/crossref-mcp-server</h1>
   <p><b>Resolve DOIs, search ~188M scholarly works, fetch references, and look up publishers via the Crossref REST API. STDIO or Streamable HTTP.</b>
-  <div>7 Tools</div>
+  <div>7 Tools • 1 Resource</div>
   </p>
 </div>
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/Version-0.4.4-blue.svg?style=flat-square)](./CHANGELOG.md) [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg?style=flat-square)](./LICENSE) [![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/users/cyanheads/packages/container/package/crossref-mcp-server) [![MCP SDK](https://img.shields.io/badge/MCP%20SDK-^2.3.1-green.svg?style=flat-square)](https://modelcontextprotocol.io/) [![npm](https://img.shields.io/npm/v/@cyanheads/crossref-mcp-server?style=flat-square&logo=npm&logoColor=white)](https://www.npmjs.com/package/@cyanheads/crossref-mcp-server) [![TypeScript](https://img.shields.io/badge/TypeScript-^7.0.2-3178C6.svg?style=flat-square)](https://www.typescriptlang.org/) [![Bun](https://img.shields.io/badge/Bun-v1.4.4-blueviolet.svg?style=flat-square)](https://bun.sh/)
+[![Version](https://img.shields.io/badge/Version-0.4.4-blue.svg?style=flat-square)](./CHANGELOG.md) [![License](https://img.shields.io/badge/License-Apache%202.0-orange.svg?style=flat-square)](./LICENSE) [![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/users/cyanheads/packages/container/package/crossref-mcp-server) [![MCP SDK](https://img.shields.io/badge/MCP%20SDK-^2.4.0-green.svg?style=flat-square)](https://modelcontextprotocol.io/) [![npm](https://img.shields.io/npm/v/@cyanheads/crossref-mcp-server?style=flat-square&logo=npm&logoColor=white)](https://www.npmjs.com/package/@cyanheads/crossref-mcp-server) [![TypeScript](https://img.shields.io/badge/TypeScript-^7.0.2-3178C6.svg?style=flat-square)](https://www.typescriptlang.org/) [![Bun](https://img.shields.io/badge/Bun-v1.4.4-blueviolet.svg?style=flat-square)](https://bun.sh/)
 
 </div>
 
@@ -42,6 +42,14 @@ Scholarly metadata from the Crossref REST API. Resolve DOIs to full metadata rec
 | `crossref_search_funders` | Find funders in the Crossref Funder Registry by name, registry ID, or funder DOI; optionally retrieve a page of funded works |
 | `crossref_get_member` | Resolve a Crossref member ID to its publisher record — name, owned DOI prefixes, DOI counts, and per-category metadata deposit coverage |
 | `crossref_get_prefix` | Resolve a DOI prefix (e.g. `10.1038`) to its owning publisher, chaining into `crossref_get_member` |
+
+### Resources
+
+| Resource | Description |
+|:---|:---|
+| `skill://crossref-guide/SKILL.md` | Agent Skill `crossref-guide`: judgment for the `crossref_*` tools — confirming a citation match, choosing between the journal/funder works lists and a filtered works search, Crossref filter syntax, DOI prefix versus current publisher, and deposit-dependent coverage |
+
+The skill is also served through the `skill://{+path}` template and ships as `skills/crossref-guide/SKILL.md` in the npm package, the Docker image, the `.mcpb` bundle, and plugin installs. The tools do not depend on it.
 
 ## Capability reference
 
@@ -146,118 +154,32 @@ Agent-friendly output:
 
 ## Getting started
 
-### Public Hosted Instance
+Connect to the hosted instance, no install:
 
-A public instance is available at `https://crossref.caseyjhand.com/mcp` — no installation required. Point any MCP client at it via Streamable HTTP:
-
-```json
-{
-  "mcpServers": {
-    "crossref-mcp-server": {
-      "type": "streamable-http",
-      "url": "https://crossref.caseyjhand.com/mcp"
-    }
-  }
-}
+```sh
+claude mcp add --transport http crossref-mcp-server https://crossref.caseyjhand.com/mcp
 ```
 
-### Self-Hosted / Local
+Or run it locally:
 
-Add the following to your MCP client configuration file. `CROSSREF_MAILTO` is optional but recommended — without it the server uses Crossref's anonymous pool with stricter rate limits.
-
-```json
-{
-  "mcpServers": {
-    "crossref-mcp-server": {
-      "type": "stdio",
-      "command": "bunx",
-      "args": ["@cyanheads/crossref-mcp-server@latest"],
-      "env": {
-        "MCP_TRANSPORT_TYPE": "stdio",
-        "MCP_LOG_LEVEL": "info",
-        "CROSSREF_MAILTO": "your-email@example.com"
-      }
-    }
-  }
-}
+```sh
+claude mcp add crossref-mcp-server -- npx -y @cyanheads/crossref-mcp-server
 ```
 
-Or with npx (no Bun required):
+For other clients, add this to the MCP config file:
 
 ```json
 {
   "mcpServers": {
     "crossref-mcp-server": {
-      "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@cyanheads/crossref-mcp-server@latest"],
-      "env": {
-        "MCP_TRANSPORT_TYPE": "stdio",
-        "MCP_LOG_LEVEL": "info",
-        "CROSSREF_MAILTO": "your-email@example.com"
-      }
+      "args": ["-y", "@cyanheads/crossref-mcp-server"]
     }
   }
 }
 ```
 
-Or with Docker:
-
-```json
-{
-  "mcpServers": {
-    "crossref-mcp-server": {
-      "type": "stdio",
-      "command": "docker",
-      "args": [
-        "run", "-i", "--rm",
-        "-e", "MCP_TRANSPORT_TYPE=stdio",
-        "-e", "CROSSREF_MAILTO=your-email@example.com",
-        "ghcr.io/cyanheads/crossref-mcp-server:latest"
-      ]
-    }
-  }
-}
-```
-
-For Streamable HTTP, set the transport and start the server:
-
-```sh
-MCP_TRANSPORT_TYPE=http MCP_HTTP_PORT=3010 CROSSREF_MAILTO=your-email@example.com bun run start:http
-# Server listens at http://localhost:3010/mcp
-```
-
-### Prerequisites
-
-- [Bun v1.4.0](https://bun.sh/) or higher (or Node.js v24+).
-- An email address for `CROSSREF_MAILTO` is optional but recommended — Crossref's polite pool grants priority access to clients that identify themselves. No account or token is required.
-
-### Installation
-
-1. **Clone the repository:**
-
-```sh
-git clone https://github.com/cyanheads/crossref-mcp-server.git
-```
-
-2. **Navigate into the directory:**
-
-```sh
-cd crossref-mcp-server
-```
-
-3. **Install dependencies:**
-
-```sh
-bun install
-```
-
-4. **Configure environment:**
-
-```sh
-cp .env.example .env
-# edit .env and optionally set CROSSREF_MAILTO for polite-pool access
-```
+Setting `CROSSREF_MAILTO` to your email moves requests into Crossref's polite pool, which has higher rate limits than the anonymous pool; no account or token is needed. For Docker or a source build, see [Running the server](#running-the-server).
 
 ## Configuration
 
@@ -283,6 +205,16 @@ See [`.env.example`](./.env.example) for the full list of optional overrides.
 
 ### Local development
 
+Requires [Bun v1.4.0](https://bun.sh/) or higher (or Node.js v24+).
+
+- **Clone and install:**
+
+  ```sh
+  git clone https://github.com/cyanheads/crossref-mcp-server.git
+  cd crossref-mcp-server && bun install
+  cp .env.example .env   # optionally set CROSSREF_MAILTO
+  ```
+
 - **Build and run:**
 
   ```sh
@@ -303,6 +235,14 @@ See [`.env.example`](./.env.example) for the full list of optional overrides.
   bun run lint:mcp   # Validate MCP definitions against spec
   ```
 
+### Docker
+
+```sh
+docker run --rm -e CROSSREF_MAILTO=your-email@example.com -p 3010:3010 ghcr.io/cyanheads/crossref-mcp-server:latest
+```
+
+The image defaults to HTTP transport, stateless session mode, and logs to `/var/log/crossref-mcp-server`. To run it over stdio from an MCP client, use `"command": "docker"` with `"args": ["run", "-i", "--rm", "-e", "MCP_TRANSPORT_TYPE=stdio", "ghcr.io/cyanheads/crossref-mcp-server:latest"]`. To build locally, `docker build -t crossref-mcp-server .`; OpenTelemetry peer dependencies are installed by default — build with `--build-arg OTEL_ENABLED=false` to omit them.
+
 ## Project structure
 
 | Directory | Purpose |
@@ -311,6 +251,7 @@ See [`.env.example`](./.env.example) for the full list of optional overrides.
 | `src/config` | Server-specific environment variable parsing and validation with Zod. |
 | `src/mcp-server/tools` | Tool definitions (`*.tool.ts`). |
 | `src/services/crossref` | CrossrefService — HTTP client, polite-pool header, retry, pagination helpers. |
+| `skills/` | Published Agent Skill (`crossref-guide`), served over MCP and shipped with the package. |
 | `tests/` | Unit and integration tests mirroring `src/`. |
 
 ## Development guide
