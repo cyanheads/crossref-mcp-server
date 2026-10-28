@@ -7,7 +7,7 @@ import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mc
 import { type Node, Parser } from 'commonmark';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { searchJournalsTool } from '@/mcp-server/tools/definitions/search-journals.tool.js';
-import { blockText } from '../helpers/content.js';
+import { blockText, contentText, renderedText } from '../helpers/content.js';
 
 vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/services/crossref/crossref-service.js')>();
@@ -1007,7 +1007,7 @@ describe('searchJournalsTool offset-ceiling recipes', () => {
     expect(hint).toBe(
       'Pass works_offset=9950 with rows=50 to read the last works offset paging reaches, or restart the works list with works_cursor="*" and chain the nextWorksCursor token from each response to read the whole list.',
     );
-    expect(rejected.content.map(blockText).join('\n')).toContain(hint);
+    expect(renderedText(contentText(rejected.content))).toContain(hint);
 
     mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
     mockGetJournalWorks.mockResolvedValue({ totalResults: 90_000, items: works(50) });

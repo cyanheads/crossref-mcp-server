@@ -20,7 +20,7 @@ import {
 } from '@cyanheads/mcp-ts-core/testing';
 import { logger } from '@cyanheads/mcp-ts-core/utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { blockText } from '../../helpers/content.js';
+import { blockText, renderedText } from '../../helpers/content.js';
 
 /** The SDK's `CallToolResult`, reached through the runner so the SDK stays a transitive dep. */
 type ToolResult = Awaited<ReturnType<typeof runToolContract>>;
@@ -696,8 +696,9 @@ function expectRejection(result: ToolResult, reason: string, recovery: string) {
   const error = errorOf(result);
   expect(error.code).toBe(JsonRpcErrorCode.ValidationError);
   expect(error.data).toMatchObject({ reason, recovery: { hint: recovery } });
-  expect(textOf(result)).toContain(`Recovery: ${recovery}`);
-  expect(textOf(result)).toContain(`reason ${reason}`);
+  const rendered = renderedText(textOf(result));
+  expect(rendered).toContain(`Recovery: ${recovery}`);
+  expect(rendered).toContain(`reason ${reason}`);
   for (const key of UPSTREAM_RESPONSE_KEYS) expect(error.data).not.toHaveProperty(key);
   return error;
 }

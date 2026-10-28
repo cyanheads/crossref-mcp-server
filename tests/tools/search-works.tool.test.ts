@@ -9,7 +9,7 @@ import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mc
 import { HtmlRenderer, Parser } from 'commonmark';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { searchWorksTool } from '@/mcp-server/tools/definitions/search-works.tool.js';
-import { blockText } from '../helpers/content.js';
+import { blockText, contentText, renderedText } from '../helpers/content.js';
 
 vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/services/crossref/crossref-service.js')>();
@@ -843,7 +843,7 @@ describe('searchWorksTool offset-ceiling recipes', () => {
     expect(hint).toBe(
       'Pass offset=9950 with rows=50 to read the last records offset paging reaches, or switch to cursor-based paging with cursor="*" and chain the nextCursor token from each response to reach the records after them.',
     );
-    expect(rejected.content.map(blockText).join('\n')).toContain(hint);
+    expect(renderedText(contentText(rejected.content))).toContain(hint);
     expect(mockSearchWorks).not.toHaveBeenCalled();
 
     mockSearchWorks.mockResolvedValue(makeSearchResult({ items: makeItems(50, 9950) }));

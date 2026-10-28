@@ -6,7 +6,7 @@
 import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { searchFundersTool } from '@/mcp-server/tools/definitions/search-funders.tool.js';
-import { blockText } from '../helpers/content.js';
+import { blockText, contentText, renderedText } from '../helpers/content.js';
 
 vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/services/crossref/crossref-service.js')>();
@@ -1118,7 +1118,7 @@ describe('searchFundersTool offset-ceiling recipes', () => {
     expect(hint).toBe(
       'Pass works_offset=9950 with rows=50 to read the last funded works offset paging reaches, or restart the funded-works list with works_cursor="*" and chain the nextWorksCursor token from each response to read the whole list.',
     );
-    expect(rejected.content.map(blockText).join('\n')).toContain(hint);
+    expect(renderedText(contentText(rejected.content))).toContain(hint);
 
     mockSearchFunders.mockResolvedValue({ totalResults: 1, items: [RAW_FUNDER] });
     mockGetFunderWorks.mockResolvedValue({ totalResults: 250_000, items: works(50) });
