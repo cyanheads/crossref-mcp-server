@@ -1,6 +1,6 @@
 # crossref-mcp-server - Directory Structure
 
-Generated on: 2026-10-28 18:24:41
+Generated on: 2026-11-04 04:50:54
 
 ```text
 crossref-mcp-server/
@@ -183,6 +183,11 @@ crossref-mcp-server/
 │   ├── config/
 │   │   └── server-config.test.ts
 │   ├── fixtures/
+│   │   ├── funders/
+│   │   │   ├── 100000002.json
+│   │   │   ├── 100000054.json
+│   │   │   ├── 501100000780.json
+│   │   │   └── 501100001659.json
 │   │   ├── mathml/
 │   │   │   ├── 10.1090-s0002-9939-05-08007-x.json
 │   │   │   ├── 10.1090-s0025-5718-00-01296-5.json
@@ -191,6 +196,7 @@ crossref-mcp-server/
 │   │       ├── __snapshots__/
 │   │       │   ├── get-work-existing-fields.snap
 │   │       │   └── get-work-stripped-records.snap
+│   │       ├── 10.1007_978-3-030-58452-8_1.json
 │   │       ├── 10.1016_j.apsusc.2007.01.131.json
 │   │       ├── 10.1016_j.chemosphere.2021.130212.json
 │   │       ├── 10.1016_s0140-6736_20_31180-6.json
@@ -199,6 +205,7 @@ crossref-mcp-server/
 │   │       ├── 10.1101_2025.11.10.687519.json
 │   │       ├── 10.1103_physrevd.109.023023.json
 │   │       ├── 10.1109_icetce.2011.5774727.json
+│   │       ├── 10.1155_2024_9760680.json
 │   │       ├── 10.1364_oe.572415.json
 │   │       ├── 10.1364_opticaopen.29459153.v1.json
 │   │       ├── 10.20944_preprints202302.0051.v34.json

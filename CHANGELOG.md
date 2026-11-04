@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.5.1](changelog/0.5.x/0.5.1.md) — 2026-11-03
+
+Journal works lists read every ISSN on the matched record, content[] keeps a trailing # run in a heading and a trailing backslash at line end, works carry containerTitles and memberId, funder lookups list descendants, page-size caps are set per input, a page near an offset ceiling returns the rows that fit, and every works list sends select=.
+
 ## [0.5.0](changelog/0.5.x/0.5.0.md) — 2026-10-28
 
 Publishes the crossref-guide Agent Skill as an MCP resource and moves to mcp-ts-core 0.13.18: error text in content[] escapes Markdown, and string trailer values such as nextWorksCursor render as inline code.
