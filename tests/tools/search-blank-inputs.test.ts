@@ -35,6 +35,11 @@ import {
 import { initCrossrefService } from '@/services/crossref/crossref-service.js';
 
 const WORKS = /^https:\/\/api\.crossref\.test\/works\?/;
+/**
+ * The `select=` every works search carries — not a search criterion, so these cases hold only
+ * that it is there; `search-works-fields.test.ts` pins the names.
+ */
+const ANY_SELECT = { select: expect.any(String) };
 const JOURNALS = /^https:\/\/api\.crossref\.test\/journals(?:\?|$)/;
 const FUNDERS = /^https:\/\/api\.crossref\.test\/funders(?:\?|$)/;
 
@@ -136,7 +141,7 @@ describe('crossref_search_works blank query terms', () => {
     it.each(['', '   '])('sends no %j and says the listing is unfiltered', async (blank) => {
       const result = await runToolContract(searchWorksTool, { [field]: blank, rows: 1 });
 
-      expect(sent().params).toEqual({ rows: '1' });
+      expect(sent().params).toEqual({ rows: '1', ...ANY_SELECT });
       expect(param in sent().params).toBe(false);
       expectBlankNotice(result);
     });
@@ -171,7 +176,7 @@ describe('crossref_search_works blank filter values', () => {
       rows: 1,
     });
 
-    expect(sent().params).toEqual({ rows: '1' });
+    expect(sent().params).toEqual({ rows: '1', ...ANY_SELECT });
     const notice = expectBlankNotice(result);
     // content[] carries the same notice a structuredContent reader gets.
     expect(textOf(result)).toContain(notice);
@@ -185,7 +190,7 @@ describe('crossref_search_works blank filter values', () => {
     });
 
     expect(result.isError).toBeFalsy();
-    expect(sent().params).toEqual({ query: 'crispr', rows: '1' });
+    expect(sent().params).toEqual({ query: 'crispr', rows: '1', ...ANY_SELECT });
   });
 });
 
@@ -204,7 +209,7 @@ describe('crossref_search_works form-blank payload', () => {
     });
 
     expect(result.isError).toBeFalsy();
-    expect(sent().params).toEqual({ filter: 'type:journal-article', rows: '20' });
+    expect(sent().params).toEqual({ filter: 'type:journal-article', rows: '20', ...ANY_SELECT });
     expect(noticeOf(result)).toBeUndefined();
   });
 

@@ -1,0 +1,231 @@
+{
+  "status": "ok",
+  "message-type": "funder",
+  "message-version": "1.0.0",
+  "message": {
+    "hierarchy-names": {
+      "100000058": "Substance Abuse and Mental Health Services Administration",
+      "100000070": "National Institute of Biomedical Imaging and Bioengineering",
+      "100000056": "National Institute of Nursing Research",
+      "100000049": "National Institute on Aging",
+      "100007197": "U.S. Public Health Service",
+      "100000055": "National Institute on Deafness and Other Communication Disorders",
+      "100000097": "National Center for Research Resources",
+      "100000038": "U.S. Food and Drug Administration",
+      "100000026": "National Institute on Drug Abuse",
+      "100012893": "Division of Loan Repayment",
+      "100006438": "Office of the Assistant Secretary for Health",
+      "100000098": "Clinical Center",
+      "100015338": "Cancer Moonshot",
+      "100006307": "Administration for Community Living",
+      "100023015": "Advanced Research Projects Agency for Health",
+      "100000027": "National Institute on Alcohol Abuse and Alcoholism",
+      "100000030": "Centers for Disease Control and Prevention",
+      "100012399": "Biomedical Advanced Research and Development Authority",
+      "100005239": "Indian Health Service",
+      "100000052": "NIH Office of the Director",
+      "100005234": "Office of Public Health and Science",
+      "100000066": "National Institute of Environmental Health Sciences",
+      "100023835": "BRAIN Initiative",
+      "100021336": "Office of Minority Health",
+      "100024054": "Network of the National Library of Medicine",
+      "100000071": "National Institute of Child Health and Human Development",
+      "100005440": "Center for Scientific Review",
+      "100000064": "National Center for Complementary and Alternative Medicine",
+      "100005227": "Centers for Medicare and Medicaid Services",
+      "100009633": "Eunice Kennedy Shriver National Institute of Child Health and Human Development",
+      "100000061": "Fogarty International Center",
+      "100000062": "National Institute of Diabetes and Digestive and Kidney Diseases",
+      "100007316": "Division of Cancer Prevention, National Cancer Institute",
+      "100000135": "NIH Blueprint for Neuroscience Research",
+      "100000096": "National Center on Minority Health and Health Disparities",
+      "100000072": "National Institute of Dental and Craniofacial Research",
+      "100006674": "Office of Human Development Services",
+      "100000016": "U.S. Department of Health and Human Services",
+      "100008460": "National Center for Complementary and Integrative Health",
+      "100000051": "National Human Genome Research Institute",
+      "100000065": "National Institute of Neurological Disorders and Stroke",
+      "100031022": "Center for Cancer Research",
+      "100006545": "National Institute on Minority Health and Health Disparities",
+      "100000060": "National Institute of Allergy and Infectious Diseases",
+      "100011541": "Division of Cancer Epidemiology and Genetics",
+      "100024033": "Artificial Intelligence/Machine Learning Consortium to Advance Health Equity and Researcher Diversity",
+      "100005240": "Administration for Children and Families",
+      "100023790": "Advancing Science and Practice in the Retail Environment",
+      "100000102": "Health Resources and Services Administration",
+      "100006108": "National Center for Advancing Translational Sciences",
+      "100000093": "Center for Information Technology",
+      "100000054": "National Cancer Institute",
+      "100000002": "National Institutes of Health",
+      "100005821": "DHHS Office of the Secretary",
+      "100000069": "National Institute of Arthritis and Musculoskeletal and Skin Diseases",
+      "100005982": "Office of the National Coordinator for Health Information Technology",
+      "100020082": "Center for Biomedical Informatics and Information Technology",
+      "100000057": "National Institute of General Medical Sciences",
+      "100000025": "National Institute of Mental Health",
+      "100021704": "Administration for Strategic Preparedness and Response",
+      "100023583": "Office on Women's Health",
+      "100000053": "National Eye Institute",
+      "100000050": "National Heart, Lung, and Blood Institute",
+      "100000092": "U.S. National Library of Medicine",
+      "100023885": "All of Us Research Program"
+    },
+    "replaced-by": [],
+    "work-count": 83567,
+    "name": "National Cancer Institute",
+    "descendants": [
+      "100007316",
+      "100011541",
+      "100015338",
+      "100016229",
+      "100020082",
+      "100023790",
+      "100031022"
+    ],
+    "descendant-work-count": 86432,
+    "id": "100000054",
+    "tokens": [
+      "national",
+      "cancer",
+      "institute",
+      "instituto",
+      "nacional",
+      "del",
+      "cáncer",
+      "de",
+      "los",
+      "institutos",
+      "nacionales",
+      "de",
+      "la",
+      "salud",
+      "nci",
+      "national",
+      "cancer",
+      "institute",
+      "at",
+      "the",
+      "national",
+      "institutes",
+      "of",
+      "health",
+      "instituto",
+      "nacional",
+      "del",
+      "cáncer"
+    ],
+    "replaces": [],
+    "uri": "https://doi.org/10.13039/100000054",
+    "hierarchy": {
+      "100000016": {
+        "100000058": {
+          "more": true
+        },
+        "100007197": {
+          "more": true
+        },
+        "100000038": {
+          "more": true
+        },
+        "100006438": {
+          "more": true
+        },
+        "100006307": {
+          "more": true
+        },
+        "100000030": {
+          "more": true
+        },
+        "100012399": {},
+        "100005239": {},
+        "100005234": {},
+        "100021336": {},
+        "100005227": {},
+        "100006674": {},
+        "100005240": {
+          "more": true
+        },
+        "100000102": {
+          "more": true
+        },
+        "100000002": {
+          "100000070": {},
+          "100000056": {},
+          "100000049": {},
+          "100000055": {},
+          "100000097": {},
+          "100000026": {
+            "more": true
+          },
+          "100012893": {},
+          "100000098": {
+            "more": true
+          },
+          "100023015": {},
+          "100000027": {},
+          "100000052": {},
+          "100000066": {},
+          "100023835": {},
+          "100024054": {},
+          "100000071": {},
+          "100005440": {},
+          "100000064": {},
+          "100009633": {
+            "more": true
+          },
+          "100000061": {},
+          "100000062": {
+            "more": true
+          },
+          "100000135": {},
+          "100000096": {},
+          "100000072": {},
+          "100008460": {},
+          "100000051": {},
+          "100000065": {},
+          "100006545": {},
+          "100000060": {
+            "more": true
+          },
+          "100024033": {},
+          "100006108": {},
+          "100000093": {},
+          "100000054": {
+            "100011541": {},
+            "100015338": {},
+            "100023790": {},
+            "100007316": {},
+            "100020082": {},
+            "100031022": {
+              "more": true
+            }
+          },
+          "100000069": {},
+          "100000057": {
+            "more": true
+          },
+          "100000025": {},
+          "100000053": {},
+          "100000050": {
+            "more": true
+          },
+          "100000092": {
+            "more": true
+          },
+          "100023885": {}
+        },
+        "100005821": {},
+        "100005982": {},
+        "100021704": {},
+        "100023583": {}
+      }
+    },
+    "alt-names": [
+      "Instituto Nacional del Cáncer de los Institutos Nacionales de la Salud",
+      "NCI",
+      "National Cancer Institute at the National Institutes of Health",
+      "Instituto Nacional del Cáncer"
+    ],
+    "location": "United States"
+  }
+}

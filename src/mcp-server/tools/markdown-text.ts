@@ -17,10 +17,11 @@
  * itself would reach `structuredContent`, whose contract is the deposited text; written here it
  * reaches only the surface that needs it, and the two surfaces then agree on every character.
  *
- * Two entry points, because one class of construct depends on where the value is placed rather
- * than on what it contains: `mdText` for a value rendered inside a line, `mdTextAtLineStart` for
- * one rendered at column zero, where a leading `#`, `>`, `-`, or `19.` opens a block and the
- * renderer eats the marker.
+ * Three entry points, because two classes of construct depend on where the value is placed
+ * rather than on what it contains: `mdText` for a value rendered inside a line,
+ * `mdTextAtLineStart` for one rendered at column zero, where a leading `#`, `>`, `-`, or `19.`
+ * opens a block and the renderer eats the marker, and `mdTextInHeading` for one that ends a
+ * heading line, where a trailing `#` run closes the heading and the renderer eats the run.
  * @module mcp-server/tools/markdown-text
  */
 
@@ -44,8 +45,13 @@ const ESCAPABLE_PUNCTUATION = '[!-\\/:-@\\[-`{-~]';
  */
 const MARKDOWN_ACTIVE = new RegExp(
   [
-    /** A backslash, in front of the punctuation a Markdown reader would let it escape. */
-    String.raw`\\(?=${ESCAPABLE_PUNCTUATION})`,
+    /**
+     * A backslash, in front of the punctuation a Markdown reader would let it escape, or ending
+     * the value. What follows a value is whatever `format()` writes after it: a line break, which
+     * a backslash in front of it turns into a hard break and is consumed doing it, or the `*`
+     * closing the emphasis around a subtitle, which it escapes instead of letting it close.
+     */
+    String.raw`\\(?=${ESCAPABLE_PUNCTUATION}|$)`,
     /**
      * The emphasis, code, and strikethrough markers this server writes into its own lines. A
      * deposited one pairs with the server's — `format()` wraps a journal title in `*…*`, so an
@@ -103,7 +109,8 @@ const MARKDOWN_ACTIVE = new RegExp(
  * the same characters are inert. Escaping them unconditionally would put a backslash in front of
  * the leading hyphen of every title that starts with one and protect nothing: 1,201 of 328,920
  * sampled values open on one of these characters and nearly all of them are rendered mid-line.
- * A value that is the first thing on its line goes through `mdTextAtLineStart` instead.
+ * A value that is the first thing on its line goes through `mdTextAtLineStart` instead, and one
+ * that is the text of a heading through `mdTextInHeading`.
  */
 export function mdText(value: string): string {
   return value.replace(MARKDOWN_ACTIVE, '\\$&');
@@ -157,4 +164,27 @@ export function mdTextAtLineStart(value: string): string {
     BLOCK_OPENER,
     (opener) => `${opener.slice(0, -1)}\\${opener.slice(-1)}`,
   );
+}
+
+/**
+ * An ATX heading's closing sequence: a run of `#` that ends the line and either starts the text
+ * after the opening marker or follows a space or tab. The lookbehind tests the one character
+ * before the run's first `#`, never the run itself, so a value dense with `#` costs a fixed amount
+ * of work per character.
+ */
+const HEADING_CLOSER = /(?<![^ \t])(#*)#$/;
+
+/**
+ * Escape a deposited string for the text of a heading line, the one place a `#` run at the end of
+ * a value is markup. The renderer drops the run as the heading's closing sequence, so a title
+ * deposited as `Programming in F #` reaches the reader as `Programming in F`, and one made only of
+ * `#` as an empty heading.
+ *
+ * The escape lands on the run's last `#`, which leaves the run ending in `\#` — no longer a
+ * closing sequence, and every `#` of it shown. A run something follows, or that no space precedes
+ * (`C#`, `Issue # 3`), closes nothing and is left as the inline pass leaves it. The inline pass
+ * runs first, for the reason `mdTextAtLineStart` gives.
+ */
+export function mdTextInHeading(value: string): string {
+  return mdText(value).replace(HEADING_CLOSER, '$1\\#');
 }

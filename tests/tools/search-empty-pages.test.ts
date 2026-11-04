@@ -220,7 +220,14 @@ describe.each([
     definition: searchJournalsTool,
     input: { issn: '1079-5146', include_works: true },
     recordRoute: /\/journals\/1079-5146$/,
-    worksRoute: /\/journals\/1079-5146\/works\?/,
+    worksRoute: (request: Request) => {
+      const url = new URL(request.url);
+      return (
+        url.origin === 'https://api.crossref.test' &&
+        url.pathname === '/works' &&
+        url.searchParams.get('filter') === 'issn:1079-5146'
+      );
+    },
     record: JOURNAL,
     worksKey: 'recentWorks',
     totalKey: 'worksTotal',

@@ -791,7 +791,14 @@ describe('Crossref rejections of caller input', () => {
       'crossref_search_journals',
       searchJournalsTool,
       { issn: '0028-0836', include_works: true, works_cursor: 'garbage', rows: 2 },
-      /\/journals\/0028-0836\/works/,
+      (request: Request) => {
+        const url = new URL(request.url);
+        return (
+          url.origin === BASE_URL &&
+          url.pathname === '/works' &&
+          url.searchParams.get('filter') === 'issn:0028-0836'
+        );
+      },
       /\/journals\/0028-0836(?:\?|$)/,
       { title: 'Nature', 'ISSN-L': '0028-0836', ISSN: ['0028-0836'] },
     ],

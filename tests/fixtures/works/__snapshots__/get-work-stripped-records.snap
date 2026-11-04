@@ -146,6 +146,9 @@
       "isReferencedByCount": 24518,
       "referencesCount": 57,
       "containerTitle": "Nature",
+      "containerTitles": [
+        "Nature"
+      ],
       "issn": [
         "0028-0836",
         "1476-4687"
@@ -335,6 +338,9 @@
       "isReferencedByCount": 34,
       "referencesCount": 64,
       "containerTitle": "eLife",
+      "containerTitles": [
+        "eLife"
+      ],
       "issn": [
         "2050-084X"
       ],
@@ -494,6 +500,9 @@
       "isReferencedByCount": 80,
       "referencesCount": 34,
       "containerTitle": "Chemosphere",
+      "containerTitles": [
+        "Chemosphere"
+      ],
       "issn": [
         "0045-6535"
       ],
@@ -627,6 +636,9 @@
       "isReferencedByCount": 416,
       "referencesCount": 26,
       "containerTitle": "The Lancet",
+      "containerTitles": [
+        "The Lancet"
+      ],
       "issn": [
         "0140-6736"
       ],
@@ -695,6 +707,9 @@
       "isReferencedByCount": 366,
       "referencesCount": 1,
       "containerTitle": "The Lancet",
+      "containerTitles": [
+        "The Lancet"
+      ],
       "issn": [
         "0140-6736"
       ],
@@ -774,6 +789,9 @@
       "isReferencedByCount": 18,
       "referencesCount": 43,
       "containerTitle": "Applied Surface Science",
+      "containerTitles": [
+        "Applied Surface Science"
+      ],
       "issn": [
         "0169-4332"
       ],
@@ -882,6 +900,9 @@
       "isReferencedByCount": 2,
       "referencesCount": 115,
       "containerTitle": "Physical Review D",
+      "containerTitles": [
+        "Physical Review D"
+      ],
       "issn": [
         "2470-0010",
         "2470-0029"
@@ -959,6 +980,9 @@
       "isReferencedByCount": 0,
       "referencesCount": 7,
       "containerTitle": "2011 International Conference on Electric Technology and Civil Engineering (ICETCE)",
+      "containerTitles": [
+        "2011 International Conference on Electric Technology and Civil Engineering (ICETCE)"
+      ],
       "publisher": "IEEE",
       "published": {
         "year": 2011,
@@ -1137,6 +1161,9 @@
       "isReferencedByCount": 4,
       "referencesCount": 25,
       "containerTitle": "Optics Express",
+      "containerTitles": [
+        "Optics Express"
+      ],
       "issn": [
         "1094-4087"
       ],

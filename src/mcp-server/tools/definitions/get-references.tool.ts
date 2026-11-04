@@ -16,8 +16,8 @@ import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { mdText } from '@/mcp-server/tools/markdown-text.js';
 import {
   clampPageSize,
-  ENTRY_LIMIT_CAP,
   ENTRY_LIMIT_CEILING,
+  GET_REFERENCES_LIMIT_CAP,
 } from '@/mcp-server/tools/page-size.js';
 import { notFoundDetail } from '@/mcp-server/tools/registration-agency.js';
 import {
@@ -119,7 +119,7 @@ export const getReferencesTool = tool('crossref_get_references', {
       .max(ENTRY_LIMIT_CEILING)
       .default(100)
       .describe(
-        `Maximum number of references to return in one page (1–${ENTRY_LIMIT_CAP} per call, default 100). A larger value, up to ${ENTRY_LIMIT_CEILING}, returns ${ENTRY_LIMIT_CAP} and says so in notice; nextOffset continues after the references returned. Most works fit in a single page; bibliography records can carry tens of thousands.`,
+        `Maximum number of references to return in one page (1–${GET_REFERENCES_LIMIT_CAP} per call, default 100). A larger value, up to ${ENTRY_LIMIT_CEILING}, returns ${GET_REFERENCES_LIMIT_CAP} and says so in notice; nextOffset continues after the references returned. Most works fit in a single page; bibliography records can carry tens of thousands.`,
       ),
   }),
 
@@ -174,7 +174,7 @@ export const getReferencesTool = tool('crossref_get_references', {
      * Clamped once, here, so the slice, nextOffset, and the `cap` enrichment read the page size
      * used. `notice` is last-wins, so the clamp disclosure leads whichever notice this page writes.
      */
-    const limitClamp = clampPageSize('limit', input.limit, ENTRY_LIMIT_CAP);
+    const limitClamp = clampPageSize('limit', input.limit, GET_REFERENCES_LIMIT_CAP);
     const limit = limitClamp.value;
     const withClamp = (text: string) => (limitClamp.notice ? `${limitClamp.notice} ${text}` : text);
     ctx.log.info('Fetching references', { doi });

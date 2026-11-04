@@ -9,7 +9,7 @@ import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mc
 import { HtmlRenderer, Parser } from 'commonmark';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getWorkTool } from '@/mcp-server/tools/definitions/get-work.tool.js';
-import { blockText } from '../helpers/content.js';
+import { blockText, renderedText } from '../helpers/content.js';
 
 // Mock the service module so tests never hit the network
 vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
@@ -243,6 +243,64 @@ describe('getWorkTool', () => {
     expect(result.containerTitle).toBeUndefined();
     expect(result.publisher).toBeUndefined();
     expect(result.published).toBeUndefined();
+  });
+
+  /**
+   * Every container title goes through the normalization and the escape the first one does,
+   * whatever its position in the deposit.
+   */
+  it('normalizes and escapes every container title the way it does the first', async () => {
+    mockGetWork.mockResolvedValue(
+      makeRawWork({
+        'container-title': ['<i>Chem.</i> Soc. Rev.', 'Proceedings &amp; Notes', 'Vol. *2*'],
+      }),
+    );
+
+    const result = await runToolContract(getWorkTool, { doi: '10.1038/nature12373' });
+    const text = result.content.map(blockText).join('\n');
+
+    expect(result.structuredContent).toMatchObject({
+      containerTitle: 'Chem. Soc. Rev.',
+      containerTitles: ['Chem. Soc. Rev.', 'Proceedings & Notes', 'Vol. *2*'],
+    });
+    expect(text.split('\n')).toContain(
+      '**Journal/Container:** Chem. Soc. Rev. | Proceedings & Notes | Vol. \\*2\\*',
+    );
+    expect(renderedText(text).split('\n')).toContain(
+      'Journal/Container: Chem. Soc. Rev. | Proceedings & Notes | Vol. *2*',
+    );
+  });
+
+  /**
+   * Crossref deposits `member` as a digit string. A value that does not read as one is no member
+   * ID a caller could pass to crossref_get_member, so none is returned rather than a guess.
+   */
+  it.each([
+    ['311', 311],
+    ['', undefined],
+    ['n/a', undefined],
+    ['311a', undefined],
+  ])('reads member %j as memberId %j', async (member, memberId) => {
+    mockGetWork.mockResolvedValue(makeRawWork({ member }));
+
+    const result = await runToolContract(getWorkTool, { doi: '10.1038/nature12373' });
+    const lines = result.content.map(blockText).join('\n').split('\n');
+
+    expect(result.isError).toBeFalsy();
+    expect((result.structuredContent as { memberId?: number }).memberId).toBe(memberId);
+    expect(lines.filter((line) => line.startsWith('**Member ID:**'))).toEqual(
+      memberId === undefined ? [] : [`**Member ID:** ${memberId}`],
+    );
+  });
+
+  it('returns neither container field for a container title deposited as []', async () => {
+    mockGetWork.mockResolvedValue(makeRawWork({ 'container-title': [] }));
+
+    const result = await runToolContract(getWorkTool, { doi: '10.1038/nature12373' });
+
+    expect(result.structuredContent).not.toHaveProperty('containerTitle');
+    expect(result.structuredContent).not.toHaveProperty('containerTitles');
+    expect(result.content.map(blockText).join('\n')).not.toContain('Journal/Container');
   });
 
   it('normalizes funders, licenses, and links fields', async () => {
@@ -1329,34 +1387,60 @@ describe('getWorkTool', () => {
 });
 
 describe('getWorkTool page-size clamp', () => {
-  const CLAMP = 'limit 1000 is above the per-call cap of 500, so 500 was applied.';
+  const CLAMP = 'limit 10001 is above the per-call cap of 10000, so 10000 was applied.';
 
-  it('clamps limit above 500: pages 500 authors, reports cap 500, and advances nextOffset by the page', async () => {
-    mockGetWork.mockResolvedValue(makeRawWork({ author: makeAuthors(1200) }));
+  it('clamps limit above 10000: pages 10000 authors, reports cap 10000, and advances nextOffset by the page', async () => {
+    mockGetWork.mockResolvedValue(makeRawWork({ author: makeAuthors(12_000) }));
 
     const result = await runToolContract(getWorkTool, {
       doi: '10.1038/nature12373',
       offset: 100,
-      limit: 1000,
+      limit: 10_001,
     });
 
     const structured = result.structuredContent as {
       authors?: Array<{ given?: string }>;
       notice?: string;
     };
-    expect(structured.authors).toHaveLength(500);
+    expect(structured.authors).toHaveLength(10_000);
     expect(structured.authors?.[0]?.given).toBe('G100');
-    expect(structured.authors?.at(-1)?.given).toBe('G599');
+    expect(structured.authors?.at(-1)?.given).toBe('G10099');
     expect(result.structuredContent).toMatchObject({
       truncated: true,
-      shown: 500,
-      cap: 500,
-      nextOffset: 600,
+      shown: 10_000,
+      cap: 10_000,
+      nextOffset: 10_100,
     });
     expect(structured.notice).toBe(
-      `${CLAMP} Showing authors 101–600 of 1200. Call again with offset=600 for the next page.`,
+      `${CLAMP} Showing authors 101–10100 of 12000. Call again with offset=10100 for the next page.`,
     );
-    expect(result.content.map(blockText).join('\n')).toContain(CLAMP);
+    const text = result.content.map(blockText).join('\n');
+    expect(text).toContain(CLAMP);
+    expect(text).toContain('G10099 F10099');
+    expect(text).not.toContain('G10100 F10100');
+  });
+
+  it('returns a 5,156-author list whole at limit 10000, with no notice and no nextOffset', async () => {
+    mockGetWork.mockResolvedValue(
+      makeRawWork({ DOI: '10.1103/PhysRevLett.114.191803', author: makeAuthors(5156) }),
+    );
+
+    const result = await runToolContract(getWorkTool, {
+      doi: '10.1103/PhysRevLett.114.191803',
+      limit: 10_000,
+    });
+
+    const structured = result.structuredContent as {
+      authors?: Array<{ given?: string }>;
+      authorCount?: number;
+    };
+    expect(structured.authors).toHaveLength(5156);
+    expect(structured.authors?.at(-1)?.given).toBe('G5155');
+    expect(structured.authorCount).toBe(5156);
+    expect(result.structuredContent).not.toHaveProperty('nextOffset');
+    expect(result.structuredContent).not.toHaveProperty('truncated');
+    expect(result.structuredContent).not.toHaveProperty('notice');
+    expect(result.content.map(blockText).join('\n')).toContain('G5155 F5155');
   });
 
   it('joins the clamp to the update notice and discloses it when the whole list fits', async () => {
@@ -1376,7 +1460,7 @@ describe('getWorkTool page-size clamp', () => {
 
     const result = await runToolContract(getWorkTool, {
       doi: '10.1038/nature12373',
-      limit: 1000,
+      limit: 10_001,
     });
 
     const structured = result.structuredContent as { notice?: string; truncated?: boolean };

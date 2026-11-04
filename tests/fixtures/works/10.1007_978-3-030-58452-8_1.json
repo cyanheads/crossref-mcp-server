@@ -1,0 +1,931 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2026, 9, 29]],
+      "date-time": "2026-09-29T01:49:56Z",
+      "timestamp": 1790646596111,
+      "version": "4.1.0"
+    },
+    "publisher-location": "Cham",
+    "reference-count": 83,
+    "publisher": "Springer International Publishing",
+    "isbn-type": [
+      {
+        "value": "9783030584511",
+        "type": "print"
+      },
+      {
+        "value": "9783030584528",
+        "type": "electronic"
+      }
+    ],
+    "license": [
+      {
+        "start": {
+          "date-parts": [[2020, 1, 1]],
+          "date-time": "2020-01-01T00:00:00Z",
+          "timestamp": 1577836800000
+        },
+        "content-version": "tdm",
+        "delay-in-days": 0,
+        "URL": "https://www.springernature.com/gp/researchers/text-and-data-mining"
+      },
+      {
+        "start": {
+          "date-parts": [[2020, 1, 1]],
+          "date-time": "2020-01-01T00:00:00Z",
+          "timestamp": 1577836800000
+        },
+        "content-version": "vor",
+        "delay-in-days": 0,
+        "URL": "https://www.springernature.com/gp/researchers/text-and-data-mining"
+      }
+    ],
+    "content-domain": {
+      "domain": ["link.springer.com"],
+      "crossmark-restriction": false
+    },
+    "short-container-title": [],
+    "published-print": {
+      "date-parts": [[2020]]
+    },
+    "DOI": "10.1007/978-3-030-58452-8_1",
+    "type": "book-chapter",
+    "created": {
+      "date-parts": [[2020, 11, 3]],
+      "date-time": "2020-11-03T00:34:03Z",
+      "timestamp": 1604363643000
+    },
+    "page": "1-19",
+    "update-policy": "https://doi.org/10.1007/springer_crossmark_policy",
+    "source": "Crossref",
+    "is-referenced-by-count": 54,
+    "title": ["Quaternion Equivariant Capsule Networks for 3D Point Clouds"],
+    "prefix": "10.1007",
+    "author": [
+      {
+        "ORCID": "https://orcid.org/0000-0001-8775-9746",
+        "authenticated-orcid": false,
+        "given": "Yongheng",
+        "family": "Zhao",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0001-7915-7964",
+        "authenticated-orcid": false,
+        "given": "Tolga",
+        "family": "Birdal",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0003-4093-9840",
+        "authenticated-orcid": false,
+        "given": "Jan Eric",
+        "family": "Lenssen",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "Emanuele",
+        "family": "Menegatti",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0002-8315-4886",
+        "authenticated-orcid": false,
+        "given": "Leonidas",
+        "family": "Guibas",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "ORCID": "https://orcid.org/0000-0001-5598-5212",
+        "authenticated-orcid": false,
+        "given": "Federico",
+        "family": "Tombari",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "member": "297",
+    "published-online": {
+      "date-parts": [[2020, 11, 3]]
+    },
+    "reference": [
+      {
+        "key": "1_CR1",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Afshar, P., Mohammadi, A., Plataniotis, K.N.: Brain tumor type classification via capsule networks. In: 2018 25th IEEE International Conference on Image Processing (ICIP) (2018)",
+        "DOI": "10.1109/ICIP.2018.8451379"
+      },
+      {
+        "key": "1_CR2",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Aftab, K., Hartley, R.: Convergence of iteratively re-weighted least squares to robust m-estimators. In: Winter Conference on Applications of Computer Vision. IEEE (2015)",
+        "DOI": "10.1109/WACV.2015.70"
+      },
+      {
+        "issue": "4",
+        "key": "1_CR3",
+        "doi-asserted-by": "publisher",
+        "first-page": "728",
+        "DOI": "10.1109/TPAMI.2014.2353625",
+        "volume": "37",
+        "author": "K Aftab",
+        "year": "2014",
+        "unstructured": "Aftab, K., Hartley, R., Trumpf, J.: Generalized Weiszfeld algorithms for Lq optimization. IEEE Trans. Pattern Anal. Mach. Intell. 37(4), 728–745 (2014)",
+        "journal-title": "IEEE Trans. Pattern Anal. Mach. Intell."
+      },
+      {
+        "key": "1_CR4",
+        "doi-asserted-by": "publisher",
+        "first-page": "1",
+        "DOI": "10.1007/s11263-014-0791-8",
+        "volume": "114",
+        "author": "K Aftab",
+        "year": "2015",
+        "unstructured": "Aftab, K., Hartley, R., Trumpf, J.: $$l_q$$ closest-point to affine subspaces using the generalized Weiszfeld algorithm. Int. J. Comput. Vis. 114, 1–15 (2015)",
+        "journal-title": "Int. J. Comput. Vis."
+      },
+      {
+        "key": "1_CR5",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Aoki, Y., Goforth, H., Srivatsan, R.A., Lucey, S.: PointNetLK: robust & efficient point cloud registration using PointNet. In: Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, pp. 7163–7172 (2019)",
+        "DOI": "10.1109/CVPR.2019.00733"
+      },
+      {
+        "key": "1_CR6",
+        "unstructured": "Bao, E., Song, L.: Equivariant neural networks and equivarification. arXiv preprint arXiv:1906.07172 (2019)"
+      },
+      {
+        "key": "1_CR7",
+        "unstructured": "Becigneul, G., Ganea, O.E.: Riemannian adaptive optimization methods. In: International Conference on Learning Representations (2019)"
+      },
+      {
+        "key": "1_CR8",
+        "unstructured": "Besl, P.J., McKay, N.D.: Method for registration of 3-D shapes. In: Sensor Fusion IV: Control Paradigms and Data Structures, vol. 1611, pp. 586–606. International Society for Optics and Photonics (1992)"
+      },
+      {
+        "key": "1_CR9",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Birdal, T., Arbel, M., Simsekli, U., Guibas, L.J.: Synchronizing probability measures on rotations via optimal transport. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 1569–1579 (2020)",
+        "DOI": "10.1109/CVPR42600.2020.00164"
+      },
+      {
+        "key": "1_CR10",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Birdal, T., Ilic, S.: Point pair features based object detection and pose estimation revisited. In: 2015 International Conference on 3D Vision, pp. 527–535. IEEE (2015)",
+        "DOI": "10.1109/3DV.2015.65"
+      },
+      {
+        "key": "1_CR11",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Birdal, T., Ilic, S.: A point sampling algorithm for 3D matching of irregular geometries. In: IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS). IEEE (2017)",
+        "DOI": "10.1109/IROS.2017.8206609"
+      },
+      {
+        "key": "1_CR12",
+        "unstructured": "Birdal, T., Simsekli, U., Eken, M.O., Ilic, S.: Bayesian pose graph optimization via Bingham distributions and tempered geodesic MCMC. In: Advances in Neural Information Processing Systems, pp. 308–319 (2018)"
+      },
+      {
+        "key": "1_CR13",
+        "unstructured": "Boomsma, W., Frellsen, J.: Spherical convolutions and their application in molecular modelling. In: Advances in Neural Information Processing Systems, vol. 30, pp. 3433–3443 (2017)"
+      },
+      {
+        "key": "1_CR14",
+        "unstructured": "Burrus, C.S.: Iterative reweighted least squares. OpenStax CNX (2012). http://cnx.org/contents/92b90377-2b34-49e4-b26f-7fe572db78a1"
+      },
+      {
+        "key": "1_CR15",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Busam, B., Birdal, T., Navab, N.: Camera pose filtering with local regression geodesics on the Riemannian manifold of dual quaternions. In: IEEE International Conference on Computer Vision Workshop (ICCVW) (October 2017)",
+        "DOI": "10.1109/ICCVW.2017.287"
+      },
+      {
+        "key": "1_CR16",
+        "unstructured": "Chakraborty, R., Banerjee, M., Vemuri, B.C.: H-CNNs: convolutional neural networks for Riemannian homogeneous spaces. arXiv preprint arXiv:1805.05487 (2018)"
+      },
+      {
+        "key": "1_CR17",
+        "unstructured": "Cohen, T., Weiler, M., Kicanaoglu, B., Welling, M.: Gauge equivariant convolutional networks and the icosahedral CNN. In: Proceedings of the 36th International Conference on Machine Learning, pp. 1321–1330 (2019)"
+      },
+      {
+        "key": "1_CR18",
+        "unstructured": "Cohen, T., Welling, M.: Group equivariant convolutional networks. In: International Conference on Machine Learning, pp. 2990–2999 (2016)"
+      },
+      {
+        "key": "1_CR19",
+        "unstructured": "Cohen, T.S., Geiger, M., Köhler, J., Welling, M.: Spherical CNNs. In: 6th International Conference on Learning Representations (ICLR) (2018)"
+      },
+      {
+        "key": "1_CR20",
+        "unstructured": "Cohen, T.S., Geiger, M., Weiler, M.: A general theory of equivariant CNNs on homogeneous spaces. In: Advances in Neural Information Processing Systems, pp. 9145–9156 (2019)"
+      },
+      {
+        "key": "1_CR21",
+        "unstructured": "Cohen, T.S., Welling, M.: Steerable CNNs. In: International Conference on Learning Representations (ICLR) (2017)"
+      },
+      {
+        "issue": "2",
+        "key": "1_CR22",
+        "doi-asserted-by": "publisher",
+        "first-page": "217",
+        "DOI": "10.1007/s11263-011-0505-4",
+        "volume": "98",
+        "author": "J Cruz-Mota",
+        "year": "2012",
+        "unstructured": "Cruz-Mota, J., Bogdanova, I., Paquier, B., Bierlaire, M., Thiran, J.P.: Scale invariant feature transform on the sphere: theory and applications. Int. J. Comput. Vis. 98(2), 217–241 (2012)",
+        "journal-title": "Int. J. Comput. Vis."
+      },
+      {
+        "key": "1_CR23",
+        "series-title": "Lecture Notes in Computer Science",
+        "doi-asserted-by": "publisher",
+        "first-page": "620",
+        "DOI": "10.1007/978-3-030-01228-1_37",
+        "volume-title": "Computer Vision – ECCV 2018",
+        "author": "H Deng",
+        "year": "2018",
+        "unstructured": "Deng, H., Birdal, T., Ilic, S.: PPF-FoldNet: unsupervised learning of rotation invariant 3D local descriptors. In: Ferrari, V., Hebert, M., Sminchisescu, C., Weiss, Y. (eds.) ECCV 2018. LNCS, vol. 11209, pp. 620–638. Springer, Cham (2018). https://doi.org/10.1007/978-3-030-01228-1_37"
+      },
+      {
+        "key": "1_CR24",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Deng, H., Birdal, T., Ilic, S.: PPFNet: global context aware local features for robust 3D point matching. In: Conference on Computer Vision and Pattern Recognition (2018)",
+        "DOI": "10.1109/CVPR.2018.00028"
+      },
+      {
+        "key": "1_CR25",
+        "series-title": "Lecture Notes in Computer Science",
+        "doi-asserted-by": "publisher",
+        "first-page": "54",
+        "DOI": "10.1007/978-3-030-01261-8_4",
+        "volume-title": "Computer Vision – ECCV 2018",
+        "author": "C Esteves",
+        "year": "2018",
+        "unstructured": "Esteves, C., Allen-Blanchette, C., Makadia, A., Daniilidis, K.: Learning SO(3) equivariant representations with spherical CNNs. In: Ferrari, V., Hebert, M., Sminchisescu, C., Weiss, Y. (eds.) ECCV 2018. LNCS, vol. 11217, pp. 54–70. Springer, Cham (2018). https://doi.org/10.1007/978-3-030-01261-8_4"
+      },
+      {
+        "key": "1_CR26",
+        "unstructured": "Esteves, C., Sud, A., Luo, Z., Daniilidis, K., Makadia, A.: Cross-domain 3D equivariant image embeddings. In: International Conference on Machine Learning (ICML) (2019)"
+      },
+      {
+        "key": "1_CR27",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Esteves, C., Xu, Y., Allen-Blanchette, C., Daniilidis, K.: Equivariant multi-view networks. In: Proceedings of the IEEE International Conference on Computer Vision, pp. 1568–1577 (2019)",
+        "DOI": "10.1109/ICCV.2019.00165"
+      },
+      {
+        "key": "1_CR28",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Fey, M., Eric Lenssen, J., Weichert, F., Müller, H.: SplineCNN: fast geometric deep learning with continuous B-spline kernels. In: The IEEE Conference on Computer Vision and Pattern Recognition (CVPR) (June 2018)",
+        "DOI": "10.1109/CVPR.2018.00097"
+      },
+      {
+        "issue": "23",
+        "key": "1_CR29",
+        "doi-asserted-by": "publisher",
+        "first-page": "4972",
+        "DOI": "10.1364/AO.26.004972",
+        "volume": "26",
+        "author": "CL Giles",
+        "year": "1987",
+        "unstructured": "Giles, C.L., Maxwell, T.: Learning, invariance, and generalization in high-order neural networks. Appl. Opt. 26(23), 4972–4978 (1987)",
+        "journal-title": "Appl. Opt."
+      },
+      {
+        "key": "1_CR30",
+        "series-title": "Lecture Notes in Computer Science",
+        "doi-asserted-by": "publisher",
+        "first-page": "44",
+        "DOI": "10.1007/978-3-642-21735-7_6",
+        "volume-title": "Artificial Neural Networks and Machine Learning – ICANN 2011",
+        "author": "GE Hinton",
+        "year": "2011",
+        "unstructured": "Hinton, G.E., Krizhevsky, A., Wang, S.D.: Transforming auto-encoders. In: Honkela, T., Duch, W., Girolami, M., Kaski, S. (eds.) ICANN 2011. LNCS, vol. 6791, pp. 44–51. Springer, Heidelberg (2011). https://doi.org/10.1007/978-3-642-21735-7_6"
+      },
+      {
+        "issue": "2",
+        "key": "1_CR31",
+        "doi-asserted-by": "publisher",
+        "first-page": "71",
+        "DOI": "10.1145/142920.134011",
+        "volume": "26",
+        "author": "H Hoppe",
+        "year": "1992",
+        "unstructured": "Hoppe, H., DeRose, T., Duchamp, T., McDonald, J., Stuetzle, W.: Surface reconstruction from unorganized points. SIGGRAPH Comput. Graph. 26(2), 71–78 (1992)",
+        "journal-title": "SIGGRAPH Comput. Graph."
+      },
+      {
+        "key": "1_CR32",
+        "series-title": "Lecture Notes in Computer Science",
+        "doi-asserted-by": "publisher",
+        "first-page": "526",
+        "DOI": "10.1007/978-3-030-11015-4_38",
+        "volume-title": "Computer Vision – ECCV 2018 Workshops",
+        "author": "A Jaiswal",
+        "year": "2019",
+        "unstructured": "Jaiswal, A., AbdAlmageed, W., Wu, Y., Natarajan, P.: CapsuleGAN: generative adversarial capsule network. In: Leal-Taixé, L., Roth, S. (eds.) ECCV 2018. LNCS, vol. 11131, pp. 526–535. Springer, Cham (2019). https://doi.org/10.1007/978-3-030-11015-4_38"
+      },
+      {
+        "key": "1_CR33",
+        "unstructured": "Jiang, C.M., Huang, J., Kashinath, K., Prabhat, Marcus, P., Niessner, M.: Spherical CNNs on unstructured grids. In: International Conference on Learning Representations (2019)"
+      },
+      {
+        "key": "1_CR34",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Khoury, M., Zhou, Q.Y., Koltun, V.: Learning compact geometric features. In: Proceedings of the IEEE International Conference on Computer Vision, pp. 153–161 (2017)",
+        "DOI": "10.1109/ICCV.2017.26"
+      },
+      {
+        "key": "1_CR35",
+        "unstructured": "Kingma, D.P., Ba, J.: Adam: a method for stochastic optimization. arXiv preprint arXiv:1412.6980 (2014)"
+      },
+      {
+        "key": "1_CR36",
+        "unstructured": "Kondor, R., Lin, Z., Trivedi, S.: Clebsch-Gordan Nets: a fully Fourier space spherical convolutional neural network. In: Advances in Neural Information Processing Systems (2018)"
+      },
+      {
+        "key": "1_CR37",
+        "unstructured": "Kondor, R., Trivedi, S.: On the generalization of equivariance and convolution in neural networks to the action of compact groups. In: International Conference on Machine Learning, pp. 2747–2755 (2018)"
+      },
+      {
+        "key": "1_CR38",
+        "unstructured": "Kosiorek, A., Sabour, S., Teh, Y.W., Hinton, G.E.: Stacked capsule autoencoders. In: Advances in Neural Information Processing Systems, pp. 15512–15522 (2019)"
+      },
+      {
+        "key": "1_CR39",
+        "unstructured": "Laue, S., Mitterreiter, M., Giesen, J.: Computing higher order derivatives of matrix and tensor expressions. In: Advances in Neural Information Processing Systems (2018)"
+      },
+      {
+        "key": "1_CR40",
+        "unstructured": "Lenssen, J.E., Fey, M., Libuschewski, P.: Group equivariant capsule networks. In: Advances in Neural Information Processing Systems, pp. 8844–8853 (2018)"
+      },
+      {
+        "key": "1_CR41",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Li, J., Chen, B.M., Hee Lee, G.: SO-Net: self-organizing network for point cloud analysis. In: Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (2018)",
+        "DOI": "10.1109/CVPR.2018.00979"
+      },
+      {
+        "key": "1_CR42",
+        "unstructured": "Li, Y., Bu, R., Sun, M., Wu, W., Di, X., Chen, B.: PointCNN: convolution on X-transformed points. In: Advances in Neural Information Processing Systems (2018)"
+      },
+      {
+        "key": "1_CR43",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Liao, S., Gavves, E., Snoek, C.G.: Spherical regression: learning viewpoints, surface normals and 3D rotations on n-spheres. In: Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. pp. 9759–9767 (2019)",
+        "DOI": "10.1109/CVPR.2019.00999"
+      },
+      {
+        "key": "1_CR44",
+        "unstructured": "Liu, M., Yao, F., Choi, C., Ayan, S., Ramani, K.: Deep learning 3D shapes using alt-az anisotropic 2-sphere convolution. In: International Conference on Learning Representations (ICLR) (2019)"
+      },
+      {
+        "key": "1_CR45",
+        "first-page": "8778",
+        "volume": "33",
+        "author": "X Liu",
+        "year": "2019",
+        "unstructured": "Liu, X., Han, Z., Liu, Y.S., Zwicker, M.: Point2Sequence: learning the shape representation of 3D point clouds with an attention-based sequence to sequence network. Proc. AAAI Conf. Artif. Intell. 33, 8778–8785 (2019)",
+        "journal-title": "Proc. AAAI Conf. Artif. Intell."
+      },
+      {
+        "issue": "2",
+        "key": "1_CR46",
+        "doi-asserted-by": "publisher",
+        "first-page": "179",
+        "DOI": "10.1017/S0266466600011129",
+        "volume": "1",
+        "author": "JR Magnus",
+        "year": "1985",
+        "unstructured": "Magnus, J.R.: On differentiating eigenvalues and eigenvectors. Econom. Theor. 1(2), 179–191 (1985)",
+        "journal-title": "Econom. Theor."
+      },
+      {
+        "key": "1_CR47",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Marcos, D., Volpi, M., Komodakis, N., Tuia, D.: Rotation equivariant vector field networks. In: The IEEE International Conference on Computer Vision (ICCV) (October 2017)",
+        "DOI": "10.1109/ICCV.2017.540"
+      },
+      {
+        "issue": "4",
+        "key": "1_CR48",
+        "doi-asserted-by": "publisher",
+        "first-page": "1193",
+        "DOI": "10.2514/1.28949",
+        "volume": "30",
+        "author": "FL Markley",
+        "year": "2007",
+        "unstructured": "Markley, F.L., Cheng, Y., Crassidis, J.L., Oshman, Y.: Averaging quaternions. J. Guid. Control Dyn. 30(4), 1193–1197 (2007)",
+        "journal-title": "J. Guid. Control Dyn."
+      },
+      {
+        "key": "1_CR49",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Maturana, D., Scherer, S.: VoxNet: A 3D convolutional neural network for real-time object recognition. In: Intelligent Robots and Systems (IROS). IEEE (2015)",
+        "DOI": "10.1109/IROS.2015.7353481"
+      },
+      {
+        "key": "1_CR50",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Mehr, E., Lieutier, A., Sanchez Bermudez, F., Guitteny, V., Thome, N., Cord, M.: Manifold learning in quotient spaces. In: Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, pp. 9165–9174 (2018)",
+        "DOI": "10.1109/CVPR.2018.00955"
+      },
+      {
+        "key": "1_CR51",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Melzi, S., Spezialetti, R., Tombari, F., Bronstein, M.M., Stefano, L.D., Rodola, E.: GFrames: gradient-based local reference frame for 3D shape matching. In: The IEEE Conference on Computer Vision and Pattern Recognition (CVPR) (June 2019)",
+        "DOI": "10.1109/CVPR.2019.00476"
+      },
+      {
+        "key": "1_CR52",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Petrelli, A., Di Stefano, L.: On the repeatability of the local reference frame for partial shape matching. In: 2011 International Conference on Computer Vision. IEEE (2011)",
+        "DOI": "10.1109/ICCV.2011.6126503"
+      },
+      {
+        "key": "1_CR53",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Petrelli, A., Di Stefano, L.: A repeatable and efficient canonical reference for surface matching. In: 2012 2nd International Conference on 3D Imaging, Modeling, Processing, Visualization & Transmission, pp. 403–410. IEEE (2012)",
+        "DOI": "10.1109/3DIMPVT.2012.51"
+      },
+      {
+        "key": "1_CR54",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Poulenard, A., Ovsjanikov, M.: Multi-directional geodesic neural networks via equivariant convolution. In: SIGGRAPH Asia 2018 Technical Papers, p. 236. ACM (2018)",
+        "DOI": "10.1145/3272127.3275102"
+      },
+      {
+        "key": "1_CR55",
+        "unstructured": "Qi, C.R., Su, H., Mo, K., Guibas, L.J.: PointNet: deep learning on point sets for 3D classification and segmentation. In: Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, pp. 652–660 (2017)"
+      },
+      {
+        "key": "1_CR56",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Qi, C.R., Su, H., Nießner, M., Dai, A., Yan, M., Guibas, L.J.: Volumetric and multi-view CNNs for object classification on 3D data. In: Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, pp. 5648–5656 (2016)",
+        "DOI": "10.1109/CVPR.2016.609"
+      },
+      {
+        "key": "1_CR57",
+        "unstructured": "Qi, C.R., Yi, L., Su, H., Guibas, L.J.: PointNet++: deep hierarchical feature learning on point sets in a metric space. In: Advances in Neural Information Processing Systems, pp. 5099–5108 (2017)"
+      },
+      {
+        "key": "1_CR58",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Rezatofighi, S.H., Milan, A., Abbasnejad, E., Dick, A., Reid, I., et al.: DeepSetNet: predicting sets with deep neural networks. In: 2017 IEEE International Conference on Computer Vision (ICCV), pp. 5257–5266. IEEE (2017)",
+        "DOI": "10.1109/ICCV.2017.561"
+      },
+      {
+        "key": "1_CR59",
+        "unstructured": "Sabour, S., Frosst, N., Hinton, G.: Matrix capsules with EM routing. In: 6th International Conference on Learning Representations (ICLR) (2018)"
+      },
+      {
+        "key": "1_CR60",
+        "unstructured": "Sabour, S., Frosst, N., Hinton, G.E.: Dynamic routing between capsules. In: Advances in Neural Information Processing Systems, pp. 3856–3866 (2017)"
+      },
+      {
+        "key": "1_CR61",
+        "unstructured": "Schütt, K., Kindermans, P.J., Sauceda Felix, H.E., Chmiela, S., Tkatchenko, A., Müller, K.R.: SchNet: a continuous-filter convolutional neural network for modeling quantum interactions. In: Advances in Neural Information Processing Systems (2017)"
+      },
+      {
+        "key": "1_CR62",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Shen, Y., Feng, C., Yang, Y., Tian, D.: Mining point cloud local structures by kernel correlation and graph pooling. In: Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, pp. 4548–4557 (2018)",
+        "DOI": "10.1109/CVPR.2018.00478"
+      },
+      {
+        "key": "1_CR63",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Spezialetti, R., Salti, S., Stefano, L.D.: Learning an effective equivariant 3D descriptor without supervision. In: Proceedings of the IEEE International Conference on Computer Vision, pp. 6401–6410 (2019)",
+        "DOI": "10.1109/ICCV.2019.00650"
+      },
+      {
+        "key": "1_CR64",
+        "unstructured": "Srivastava, N., Goh, H., Salakhutdinov, R.: Geometric capsule autoencoders for 3D point clouds. arXiv preprint arXiv:1912.03310 (2019)"
+      },
+      {
+        "key": "1_CR65",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1515/9781400883875",
+        "volume-title": "The Topology of Fibre Bundles",
+        "author": "NE Steenrod",
+        "year": "1951",
+        "unstructured": "Steenrod, N.E.: The Topology of Fibre Bundles, vol. 14. Princeton University Press, Princeton (1951)"
+      },
+      {
+        "key": "1_CR66",
+        "unstructured": "Thomas, N., et al.: Tensor field networks: rotation-and translation-equivariant neural networks for 3D point clouds. arXiv preprint arXiv:1802.08219 (2018)"
+      },
+      {
+        "key": "1_CR67",
+        "series-title": "Lecture Notes in Computer Science",
+        "volume-title": "Computer Vision - ECCV 2010",
+        "author": "F Tombari",
+        "year": "2010",
+        "unstructured": "Tombari, F., Salti, S., Di Stefano, L.: Unique signatures of histograms for local surface description. In: Daniilidis, K., Maragos, P., Paragios, N. (eds.) ECCV 2010. Lecture Notes in Computer Science, vol. 6313. Springer, Heidelberg (2010)"
+      },
+      {
+        "key": "1_CR68",
+        "unstructured": "Wang, D., Liu, Q.: An optimization view on dynamic routing between capsules (2018). https://openreview.net/forum?id=HJjtFYJDf"
+      },
+      {
+        "key": "1_CR69",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Wang, H., Sridhar, S., Huang, J., Valentin, J., Song, S., Guibas, L.J.: Normalized object coordinate space for category-level 6D object pose and size estimation. In: Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, pp. 2642–2651 (2019)",
+        "DOI": "10.1109/CVPR.2019.00275"
+      },
+      {
+        "key": "1_CR70",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Wang, S., Suo, S., Ma, W.C., Pokrovsky, A., Urtasun, R.: Deep parametric continuous convolutional neural networks. In: The IEEE Conference on Computer Vision and Pattern Recognition (CVPR) (June 2018)",
+        "DOI": "10.1109/CVPR.2018.00274"
+      },
+      {
+        "issue": "5",
+        "key": "1_CR71",
+        "doi-asserted-by": "publisher",
+        "first-page": "1",
+        "DOI": "10.1145/3326362",
+        "volume": "38",
+        "author": "Y Wang",
+        "year": "2019",
+        "unstructured": "Wang, Y., Sun, Y., Liu, Z., Sarma, S.E., Bronstein, M.M., Solomon, J.M.: Dynamic graph CNN for learning on point clouds. ACM Trans. Graph. (TOG) 38(5), 1–2 (2019)",
+        "journal-title": "ACM Trans. Graph. (TOG)"
+      },
+      {
+        "issue": "5",
+        "key": "1_CR72",
+        "doi-asserted-by": "publisher",
+        "first-page": "1",
+        "DOI": "10.1145/3326362",
+        "volume": "38",
+        "author": "Y Wang",
+        "year": "2019",
+        "unstructured": "Wang, Y., Sun, Y., Liu, Z., Sarma, S.E., Bronstein, M.M., Solomon, J.M.: Dynamic graph CNN for learning on point clouds. ACM Trans. Graph. (TOG) 38(5), 1–12 (2019)",
+        "journal-title": "ACM Trans. Graph. (TOG)"
+      },
+      {
+        "key": "1_CR73",
+        "unstructured": "Weiler, M., Geiger, M., Welling, M., Boomsma, W., Cohen, T.: 3D Steerable CNNs: learning rotationally equivariant features in volumetric data. In: Advances in Neural Information Processing Systems, pp. 10381–10392 (2018)"
+      },
+      {
+        "key": "1_CR74",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Weiler, M., Hamprecht, F.A., Storath, M.: Learning steerable filters for rotation equivariant CNNs. In: The IEEE Conference on Computer Vision and Pattern Recognition (CVPR) (June 2018)",
+        "DOI": "10.1109/CVPR.2018.00095"
+      },
+      {
+        "key": "1_CR75",
+        "series-title": "Lecture Notes in Computer Science",
+        "doi-asserted-by": "publisher",
+        "first-page": "585",
+        "DOI": "10.1007/978-3-030-01228-1_35",
+        "volume-title": "Computer Vision – ECCV 2018",
+        "author": "D Worrall",
+        "year": "2018",
+        "unstructured": "Worrall, D., Brostow, G.: CubeNet: equivariance to 3D rotation and translation. In: Ferrari, V., Hebert, M., Sminchisescu, C., Weiss, Y. (eds.) ECCV 2018. LNCS, vol. 11209, pp. 585–602. Springer, Cham (2018). https://doi.org/10.1007/978-3-030-01228-1_35"
+      },
+      {
+        "key": "1_CR76",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Worrall, D.E., Garbin, S.J., Turmukhambetov, D., Brostow, G.J.: Harmonic networks: deep translation and rotation equivariance. In: The IEEE Conference on Computer Vision and Pattern Recognition (CVPR) (July 2017)",
+        "DOI": "10.1109/CVPR.2017.758"
+      },
+      {
+        "key": "1_CR77",
+        "unstructured": "Wu, Z., et al.: 3D ShapeNets: a deep representation for volumetric shapes. In: Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, pp. 1912–1920 (2015)"
+      },
+      {
+        "key": "1_CR78",
+        "unstructured": "Xinyi, Z., Chen, L.: Capsule graph neural network. In: International Conference on Learning Representations (ICLR) (2019). openreview.net/forum?id=Byl8BnRcYm"
+      },
+      {
+        "key": "1_CR79",
+        "doi-asserted-by": "crossref",
+        "unstructured": "You, Y., Lou, Y., Liu, Q., Tai, Y.W., Ma, L., Lu, C., Wang, W.: Pointwise rotation-invariant network with adaptive sampling and 3D spherical voxel convolution. In: AAAI. pp. 12717–12724 (2020)",
+        "DOI": "10.1609/aaai.v34i07.6965"
+      },
+      {
+        "key": "1_CR80",
+        "unstructured": "Yuan, W., Held, D., Mertz, C., Hebert, M.: Iterative transformer network for 3D point cloud. arXiv preprint arXiv:1811.11209 (2018)"
+      },
+      {
+        "key": "1_CR81",
+        "unstructured": "Zaheer, M., Kottur, S., Ravanbakhsh, S., Poczos, B., Salakhutdinov, R.R., Smola, A.J.: Deep sets. In: Advances in Neural Information Processing Systems (2017)"
+      },
+      {
+        "key": "1_CR82",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Zhang, X., Qin, S., Xu, Y., Xu, H.: Quaternion product units for deep learning on 3D rotation groups. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 7304–7313 (2020)",
+        "DOI": "10.1109/CVPR42600.2020.00733"
+      },
+      {
+        "key": "1_CR83",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Zhao, Y., Birdal, T., Deng, H., Tombari, F.: 3D point capsule networks. In: Conference on Computer Vision and Pattern Recognition (CVPR) (2019)",
+        "DOI": "10.1109/CVPR.2019.00110"
+      }
+    ],
+    "container-title": ["Lecture Notes in Computer Science", "Computer Vision – ECCV 2020"],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "https://link.springer.com/content/pdf/10.1007/978-3-030-58452-8_1",
+        "content-type": "unspecified",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2024, 11, 3]],
+      "date-time": "2024-11-03T00:03:42Z",
+      "timestamp": 1730592222000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://link.springer.com/10.1007/978-3-030-58452-8_1"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [[2020]]
+    },
+    "ISBN": ["9783030584511", "9783030584528"],
+    "references-count": 83,
+    "URL": "https://doi.org/10.1007/978-3-030-58452-8_1",
+    "relation": {},
+    "ISSN": ["0302-9743", "1611-3349"],
+    "issn-type": [
+      {
+        "value": "0302-9743",
+        "type": "print"
+      },
+      {
+        "value": "1611-3349",
+        "type": "electronic"
+      }
+    ],
+    "subject": [],
+    "published": {
+      "date-parts": [[2020]]
+    },
+    "assertion": [
+      {
+        "value": "3 November 2020",
+        "order": 1,
+        "name": "first_online",
+        "label": "First Online",
+        "group": {
+          "name": "ChapterHistory",
+          "label": "Chapter History"
+        }
+      },
+      {
+        "value": "ECCV",
+        "order": 1,
+        "name": "conference_acronym",
+        "label": "Conference Acronym",
+        "group": {
+          "name": "ConferenceInfo",
+          "label": "Conference Information"
+        }
+      },
+      {
+        "value": "European Conference on Computer Vision",
+        "order": 2,
+        "name": "conference_name",
+        "label": "Conference Name",
+        "group": {
+          "name": "ConferenceInfo",
+          "label": "Conference Information"
+        }
+      },
+      {
+        "value": "Glasgow",
+        "order": 3,
+        "name": "conference_city",
+        "label": "Conference City",
+        "group": {
+          "name": "ConferenceInfo",
+          "label": "Conference Information"
+        }
+      },
+      {
+        "value": "United Kingdom",
+        "order": 4,
+        "name": "conference_country",
+        "label": "Conference Country",
+        "group": {
+          "name": "ConferenceInfo",
+          "label": "Conference Information"
+        }
+      },
+      {
+        "value": "2020",
+        "order": 5,
+        "name": "conference_year",
+        "label": "Conference Year",
+        "group": {
+          "name": "ConferenceInfo",
+          "label": "Conference Information"
+        }
+      },
+      {
+        "value": "23 August 2020",
+        "order": 7,
+        "name": "conference_start_date",
+        "label": "Conference Start Date",
+        "group": {
+          "name": "ConferenceInfo",
+          "label": "Conference Information"
+        }
+      },
+      {
+        "value": "28 August 2020",
+        "order": 8,
+        "name": "conference_end_date",
+        "label": "Conference End Date",
+        "group": {
+          "name": "ConferenceInfo",
+          "label": "Conference Information"
+        }
+      },
+      {
+        "value": "16",
+        "order": 9,
+        "name": "conference_number",
+        "label": "Conference Number",
+        "group": {
+          "name": "ConferenceInfo",
+          "label": "Conference Information"
+        }
+      },
+      {
+        "value": "eccv2020",
+        "order": 10,
+        "name": "conference_id",
+        "label": "Conference ID",
+        "group": {
+          "name": "ConferenceInfo",
+          "label": "Conference Information"
+        }
+      },
+      {
+        "value": "https://eccv2020.eu/",
+        "order": 11,
+        "name": "conference_url",
+        "label": "Conference URL",
+        "group": {
+          "name": "ConferenceInfo",
+          "label": "Conference Information"
+        }
+      },
+      {
+        "value": "Double-blind",
+        "order": 1,
+        "name": "type",
+        "label": "Type",
+        "group": {
+          "name": "ConfEventPeerReviewInformation",
+          "label": "Peer Review Information (provided by the conference organizers)"
+        }
+      },
+      {
+        "value": "OpenReview",
+        "order": 2,
+        "name": "conference_management_system",
+        "label": "Conference Management System",
+        "group": {
+          "name": "ConfEventPeerReviewInformation",
+          "label": "Peer Review Information (provided by the conference organizers)"
+        }
+      },
+      {
+        "value": "5025",
+        "order": 3,
+        "name": "number_of_submissions_sent_for_review",
+        "label": "Number of Submissions Sent for Review",
+        "group": {
+          "name": "ConfEventPeerReviewInformation",
+          "label": "Peer Review Information (provided by the conference organizers)"
+        }
+      },
+      {
+        "value": "1360",
+        "order": 4,
+        "name": "number_of_full_papers_accepted",
+        "label": "Number of Full Papers Accepted",
+        "group": {
+          "name": "ConfEventPeerReviewInformation",
+          "label": "Peer Review Information (provided by the conference organizers)"
+        }
+      },
+      {
+        "value": "0",
+        "order": 5,
+        "name": "number_of_short_papers_accepted",
+        "label": "Number of Short Papers Accepted",
+        "group": {
+          "name": "ConfEventPeerReviewInformation",
+          "label": "Peer Review Information (provided by the conference organizers)"
+        }
+      },
+      {
+        "value": "27% - The value is computed by the equation \"Number of Full Papers Accepted / Number of Submissions Sent for Review * 100\" and then rounded to a whole number.",
+        "order": 6,
+        "name": "acceptance_rate_of_full_papers",
+        "label": "Acceptance Rate of Full Papers",
+        "group": {
+          "name": "ConfEventPeerReviewInformation",
+          "label": "Peer Review Information (provided by the conference organizers)"
+        }
+      },
+      {
+        "value": "3",
+        "order": 7,
+        "name": "average_number_of_reviews_per_paper",
+        "label": "Average Number of Reviews per Paper",
+        "group": {
+          "name": "ConfEventPeerReviewInformation",
+          "label": "Peer Review Information (provided by the conference organizers)"
+        }
+      },
+      {
+        "value": "7",
+        "order": 8,
+        "name": "average_number_of_papers_per_reviewer",
+        "label": "Average Number of Papers per Reviewer",
+        "group": {
+          "name": "ConfEventPeerReviewInformation",
+          "label": "Peer Review Information (provided by the conference organizers)"
+        }
+      },
+      {
+        "value": "Yes",
+        "order": 9,
+        "name": "external_reviewers_involved",
+        "label": "External Reviewers Involved",
+        "group": {
+          "name": "ConfEventPeerReviewInformation",
+          "label": "Peer Review Information (provided by the conference organizers)"
+        }
+      },
+      {
+        "value": "The conference was held virtually due to the COVID-19 pandemic.",
+        "order": 10,
+        "name": "additional_info_on_review_process",
+        "label": "Additional Info on Review Process",
+        "group": {
+          "name": "ConfEventPeerReviewInformation",
+          "label": "Peer Review Information (provided by the conference organizers)"
+        }
+      }
+    ]
+  }
+}

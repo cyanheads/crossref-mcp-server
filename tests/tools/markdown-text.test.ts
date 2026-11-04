@@ -6,8 +6,18 @@
 
 import { HtmlRenderer, Parser } from 'commonmark';
 import { describe, expect, it } from 'vitest';
-import { mdText, mdTextAtLineStart } from '@/mcp-server/tools/markdown-text.js';
+import { mdText, mdTextAtLineStart, mdTextInHeading } from '@/mcp-server/tools/markdown-text.js';
+import { renderedText } from '../helpers/content.js';
 import { expectLinearScaling, repeatTo } from '../helpers/scaling.js';
+
+/**
+ * The two line-break shapes every timing suite here carries: one long line ending in a break,
+ * and breaks throughout.
+ */
+const LINE_BREAK_SHAPES: Array<[string, (size: number) => string]> = [
+  ['one long line ending in a break', (size) => `${repeatTo('x #', size - 2)}\ny`],
+  ['breaks throughout', (size) => repeatTo('  \r\n', size)],
+];
 
 describe('mdText', () => {
   /**
@@ -127,6 +137,37 @@ describe('mdText', () => {
   });
 
   /**
+   * A value is followed by whatever `format()` writes after it: a line break, where a backslash
+   * ending the value is read as a hard line break and dropped, or the `*` closing the emphasis
+   * around a subtitle, which the backslash escapes instead of letting it close.
+   */
+  it('escapes a backslash that ends the value, whatever follows it on the line', () => {
+    expect(mdText('Foo\\')).toBe('Foo\\\\');
+    expect(mdText('Foo\\\\')).toBe('Foo\\\\\\\\');
+    expect(renderedText(`**Publisher:** ${mdText('Foo\\')}\n**Journal:** Bar`)).toBe(
+      'Publisher: Foo\\\nJournal: Bar\n',
+    );
+    expect(renderedText(`**Publisher:** ${mdText('Foo\\\\')}\n**Journal:** Bar`)).toBe(
+      'Publisher: Foo\\\\\nJournal: Bar\n',
+    );
+    expect(new HtmlRenderer().render(new Parser().parse(`*${mdText('Foo\\')}*`))).toBe(
+      '<p><em>Foo\\</em></p>\n',
+    );
+  });
+
+  /**
+   * `#` is inert inside a line, so the inline escape leaves it alone wherever it sits. The
+   * heading entry point below renders these values exactly this way.
+   */
+  it('leaves a # alone wherever it sits in the value', () => {
+    expect(mdText('C#')).toBe('C#');
+    expect(mdText('a # b')).toBe('a # b');
+    expect(mdText('Issue # 3')).toBe('Issue # 3');
+    expect(mdText('Programming in F #')).toBe('Programming in F #');
+    expect(mdText('Use \\#')).toBe('Use \\\\#');
+  });
+
+  /**
    * The escape only ever inserts a backslash. Nothing a deposit carried is removed, reordered,
    * or replaced — which is the whole point of doing this at the render boundary rather than in
    * the value.
@@ -177,6 +218,8 @@ describe('mdText', () => {
     ['closing brackets', (size: number) => ']'.repeat(size)],
     ['underscores', (size: number) => '_'.repeat(size)],
     ['intraword underscores', (size: number) => repeatTo('a_', size)],
+    ['letters ending in a backslash', (size: number) => `${'a'.repeat(size - 1)}\\`],
+    ...LINE_BREAK_SHAPES,
   ])(
     'stays linear on %s',
     (_name, make) => {
@@ -282,6 +325,77 @@ describe('mdTextAtLineStart', () => {
     'stays linear on %s',
     (_name, make) => {
       expectLinearScaling(make, mdTextAtLineStart);
+    },
+    60_000,
+  );
+});
+
+/**
+ * The same escape for a value that ends a heading line. A run of `#` that ends the line and
+ * follows a space is the heading's optional closing sequence, which the renderer drops — and a
+ * value made only of `#` is all closing sequence, so the heading renders empty.
+ */
+describe('mdTextInHeading', () => {
+  /** Read back the way a CommonMark client reads it, at both heading levels the tools write. */
+  it.each([
+    ['Programming in F #', 'Programming in F \\#'],
+    ['Notes ##', 'Notes #\\#'],
+    ['#', '\\#'],
+    ['##', '#\\#'],
+    ['#######', '######\\#'],
+    ['F\t#', 'F\t\\#'],
+  ])('keeps the trailing # run of %j in the heading text', (value, escaped) => {
+    expect(mdTextInHeading(value)).toBe(escaped);
+    expect(renderedText(`## ${mdTextInHeading(value)}`)).toBe(`${value}\n`);
+    expect(renderedText(`### ${mdTextInHeading(value)}`)).toBe(`${value}\n`);
+  });
+
+  /**
+   * A `#` run that no space precedes, or that something follows, closes nothing, and the value
+   * renders exactly as the inline escape renders it.
+   */
+  it.each([
+    ['C#', 'C#'],
+    ['a # b', 'a # b'],
+    ['Issue # 3', 'Issue # 3'],
+    ['Use \\#', 'Use \\\\#'],
+    ['x \\##', 'x \\\\##'],
+    ['F #\\', 'F #\\\\'],
+  ])('renders %j exactly as the inline escape does', (value, escaped) => {
+    expect(mdTextInHeading(value)).toBe(escaped);
+    expect(mdTextInHeading(value)).toBe(mdText(value));
+    expect(renderedText(`## ${mdTextInHeading(value)}`)).toBe(`${value}\n`);
+  });
+
+  /** The inline pass runs first, so the escape it adds composes with the heading one. */
+  it('composes with the inline escape', () => {
+    expect(mdTextInHeading('*Starred* <i>tag</i> #')).toBe('\\*Starred\\* \\<i>tag\\</i> \\#');
+    expect(renderedText(`## ${mdTextInHeading('*Starred* <i>tag</i> #')}`)).toBe(
+      '*Starred* <i>tag</i> #\n',
+    );
+  });
+
+  /** The escape only ever inserts a backslash — no deposit loses a character to it. */
+  it('never costs the deposit a character', () => {
+    for (const value of ['Programming in F #', '#######', 'Notes ## *x* ##', 'Use \\# #']) {
+      expect(mdTextInHeading(value).replaceAll('\\', '')).toBe(value.replaceAll('\\', ''));
+    }
+  });
+
+  /**
+   * The closing run is matched from its first `#` alone: the character before it is tested once,
+   * never the run, so a value dense with `#` costs a fixed amount of work per character.
+   */
+  it.each([
+    ['a run of # after a space, ending in a letter', (size: number) => ` ${'#'.repeat(size - 2)}x`],
+    ['a run of # after a space, ending the value', (size: number) => ` ${'#'.repeat(size - 1)}`],
+    ['a run of # with nothing before it', (size: number) => '#'.repeat(size)],
+    ['spaced # runs', (size: number) => repeatTo(' ##', size)],
+    ...LINE_BREAK_SHAPES,
+  ])(
+    'stays linear on %s',
+    (_name, make) => {
+      expectLinearScaling(make, mdTextInHeading);
     },
     60_000,
   );

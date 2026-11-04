@@ -41,7 +41,7 @@ Scholarly metadata from the Crossref REST API. Resolve DOIs to full metadata rec
 | `crossref_search_journals` | Find Crossref journal records by ISSN or title query; optionally retrieve a page of the journal's most recent works |
 | `crossref_search_funders` | Find funders in the Crossref Funder Registry by name, registry ID, or funder DOI; optionally retrieve a page of funded works |
 | `crossref_get_member` | Resolve a Crossref member ID to its publisher record — name, owned DOI prefixes, DOI counts, and per-category metadata deposit coverage |
-| `crossref_get_prefix` | Resolve a DOI prefix (e.g. `10.1038`) to its owning publisher, chaining into `crossref_get_member` |
+| `crossref_get_prefix` | Resolve a DOI prefix (e.g. `10.1038`) to the publisher that registered it, chaining into `crossref_get_member` |
 
 ### Resources
 
@@ -57,9 +57,11 @@ The skill is also served through the `skill://{+path}` template and ships as `sk
 
 - DOI validated against the `10.NNNN/suffix` regex before the upstream call, accepted either bare or wrapped in its resolver (`https://doi.org/…`, `https://dx.doi.org/…`, `doi:…`) and unwrapped before the lookup
 - Returns title, authors with affiliations, abstract (when deposited), container/journal, publication date, work type, ISSN, license URLs, full-text link URLs, and funder acknowledgements
+- `containerTitles` lists every container title the record deposits, in deposited order — a book chapter or proceedings paper often deposits its series and then its book or volume — beside `containerTitle`, which keeps the first; `crossref_search_works` returns both, and its `container-title` select name fills both
 - Citation locators `volume`, `issue`, `page`, and `articleNumber` under the same names and on the same rendered line as `crossref_search_works`, plus `isbn` — each as deposited, omitted when absent
+- `memberId` is the Crossref member that holds the DOI now — pass it to `crossref_get_member` for the publisher record. For a title transferred to another publisher it differs from the member the DOI's prefix names through `crossref_get_prefix`
 - `editors` in the author entry shape, returned whole and never counted in `authorCount`
-- Author list paged by `offset`/`limit` (default 25, up to 500 per call — a larger `limit` is clamped to 500 with a `notice`); `authorCount` reports the full deposited total and a `nextOffset` continues when authors remain — every other field is returned in full on every page
+- Author list paged by `offset`/`limit` (default 25, up to 10,000 per call — a larger `limit` is clamped to 10,000 with a `notice`); `authorCount` reports the full deposited total and a `nextOffset` continues when authors remain — every other field is returned in full on every page
 - `updatedBy` lists the corrections, retractions, expressions of concern, and new versions Crossref records against the work — notice DOI, type, source (`publisher` or `retraction-watch`, with its record ID), and date, entry for entry — and `updateTo` the works this record is a notice for; when `updatedBy` is present, `notice` names each update type with its sources. An absent `updatedBy` does not mean the work was never updated
 - `relations` groups related identifiers (preprint ↔ published version, versions, reviews, supplements) by relation type, identifier type, and asserting party, returned whole; only Crossref-registered DOIs among them resolve through this tool
 - A funder or affiliation asserted only through the ROR registry (no name deposited) carries `ror` in place of `name`, never as a blank entry
@@ -74,11 +76,11 @@ The skill is also served through the `skill://{+path}` template and ships as `sk
 - Free-text `query` plus a structured `filter` object using Crossref's hyphenated keys (`from-pub-date`, `type`, `funder`, `issn`, `has-abstract`, `license.url`, etc.)
 - Field-scoped parameters `queryTitle`, `queryAuthor`, `queryContainerTitle`, and `queryBibliographic` combine with `query` and with each other
 - Sort by `relevance`, `score`, `is-referenced-by-count`, `published`, `deposited`, or other listed fields — the publication-date sorts page by `offset` only, since Crossref refuses them with a cursor. A cursor walk with a query term and no `sort` runs by relevance (sent as `sort=score`, without `order`) and can repeat or skip a record at a page boundary; `sort: "created"` walks without repeats. A filter-only walk runs in Crossref registration order
-- `fields` narrows the payload to any of the 19 select names the summary projects — including the citation locators `volume`, `issue`, `page`, `article-number`, and `ISSN`, and the update links `updated-by` and `update-to` — and refuses any other name; `DOI` is always returned, and `crossref_get_work` carries the rest of the record
+- `fields` narrows the payload to any of the 20 select names the summary projects — including the citation locators `volume`, `issue`, `page`, `article-number`, and `ISSN`, the update links `updated-by` and `update-to`, and `member` for `memberId`, which every work also carries when `fields` is omitted — and refuses any other name; `DOI` is always returned, and `crossref_get_work` carries the rest of the record
 - Each work carries `updatedBy` (corrections, retractions, expressions of concern, new versions recorded against it) and `updateTo` (the works it is a notice for) in the entry shape and rendered line `crossref_get_work` uses, so a page of results can be screened for retractions without a call per DOI
 - A blank or whitespace-only query term or filter value, and an empty `sort` or `order`, is read as omitted; when that leaves nothing to search by, the `notice` says the page is an unfiltered listing
-- `rows` returns up to 100 works per call and `authorLimit` caps authors per work (default 25, up to 500); a larger value of either is clamped to its cap with a `notice`, which on an offset page also names the offset that continues after the records returned (and, near the ~10K ceiling, the smaller `rows` that still fits beside it); `authorCount` reports the full deposited total — chain a cut work's DOI into `crossref_get_work` for the rest
-- Offset paging is capped at `offset + rows ≤ 10,000`; a rejected offset below the cap names the `rows` that still fit, and `cursor="*"` starts deep paging via chained `nextCursor` tokens — cursor and offset cannot be combined
+- `rows` returns up to 250 works per call and `authorLimit` caps authors per work (default 25, up to 500); a larger value of either is clamped to its cap with a `notice`, which on an offset page also names the offset that continues after the records returned; `authorCount` reports the full deposited total — chain a cut work's DOI into `crossref_get_work` for the rest
+- Offset paging is capped at `offset + rows ≤ 10,000`: a page that would pass it returns the `rows` that fit, with a `notice` naming the rows requested and applied, and an offset of 10,000 or more is refused (`offset_too_large`); `cursor="*"` starts deep paging via chained `nextCursor` tokens — cursor and offset cannot be combined
 - A cursor walk ends on the page that omits `nextCursor` — an empty page never carries one; every empty page's `notice` names which of the three causes applies
 
 ---
@@ -89,7 +91,7 @@ The skill is also served through the `skill://{+path}` template and ships as `sk
 - Each reference carries its deposited citation string and, when Crossref has resolved it, a DOI for `crossref_get_work`, with `doiAssertedBy` saying whether the publisher deposited that DOI or Crossref matched it
 - Structured parts as deposited: author, year, article title, journal title, the title of a cited book or volume (`volumeTitle`, which stands in as the title when there is no article title), series title, volume, issue, first page, edition, and ISSN
 - Citation strings have formatting markup stripped and character references decoded; a bracketed span that isn't a recognized tag (a cited URL, a Miller index, a DOI fragment) is left exactly as deposited
-- Paged by `offset`/`limit` (default 100, up to 500 per call — a larger `limit` is clamped to 500 with a `notice`); `referenceCount` is the full deposited total and `nextOffset` continues when more remain
+- Paged by `offset`/`limit` (default 100, up to 2,500 per call — a larger `limit` is clamped to 2,500 with a `notice`); `referenceCount` is the full deposited total and `nextOffset` continues when more remain
 - Coverage varies by publisher — pre-2000 works and non-participating publishers often have no indexed references
 - Single-hop only; incoming citations are not available through Crossref — use OpenAlex for citation graphs
 - A DOI Crossref holds no record for returns `doi_not_found` naming its registration agency (`registrationAgency`), or saying no agency registered it, the same way `crossref_get_work` does
@@ -98,12 +100,12 @@ The skill is also served through the `skill://{+path}` template and ships as `sk
 
 ### `crossref_search_journals` <sub>tool</sub>
 
-- `include_works: true` also returns a page of the journal's most recent works — newest published first by `works_offset`, newest registered first on a `works_cursor` walk; requires an unambiguous journal — a title query matching more than one returns `ambiguous_journal`, naming candidates and ISSNs
+- `include_works: true` also returns a page of the journal's most recent works, drawn from every ISSN its record lists whichever one was passed — newest published first by `works_offset`, newest registered first on a `works_cursor` walk; requires an unambiguous journal — a title query matching more than one returns `ambiguous_journal`, naming candidates and ISSNs
 - Returns journal title, publisher, ISSNs with their print/electronic form, subject areas, DOI counts (total/current/backfile), and per-category metadata deposit coverage (abstracts, references, ORCIDs, funders, licenses, and more) as current/backfile fractions — the same breakdown `crossref_get_member` gives per publisher
 - An `issn` lookup also returns DOI counts by issued year, ascending; title-query results omit them
-- Title-query results page by `offset` (ceiling `offset + rows ≤ 100,000`); the works list pages separately by `works_offset` (ceiling `≤ 10,000`) — an offset past the end of either list carries a `notice` naming it, and so does a page that stalls at either ceiling, along with the offset and smaller `rows` that reach the last records below it
+- Title-query results page by `offset` (ceiling `offset + rows ≤ 100,000`); the works list pages separately by `works_offset` (ceiling `≤ 10,000`) — a page that would pass either ceiling returns the `rows` that fit, with a `notice` naming the rows requested and applied, and only an offset at or past a ceiling is refused; an offset past the end of either list carries a `notice` naming it, and so does a page that reaches either ceiling with records past it
 - `works_cursor="*"` pages the works list with no ceiling via chained `nextWorksCursor` tokens; a cursor walk runs by Crossref registration date, newest first (Crossref does not walk a publication-date sort by cursor), and cannot combine with `works_offset > 0` (`works_cursor_offset_conflict`)
-- A matched journal with no ISSN registered has no addressable works list — `include_works` is skipped with a `notice` rather than returning an empty list
+- A matched journal with no well-formed ISSN registered has no addressable works list — `include_works` is skipped with a `notice` rather than returning an empty list
 
 ---
 
@@ -112,8 +114,8 @@ The skill is also served through the `skill://{+path}` template and ships as `sk
 - Accepts a name `query`, a bare registry ID (`100000001`), or a full funder DOI (`10.13039/100000001`, optionally behind a `doi:`/`https://doi.org/` prefix)
 - `include_works: true` also returns a page of funded works; requires an unambiguous funder — a name query matching more than one returns `ambiguous_funder`, naming candidates and registry IDs
 - Returns funder name, registry ID, country, and alternate names
-- Name-query results page by `offset` (ceiling `≤ 100,000`); the funded-works list pages separately by `works_offset` (ceiling `≤ 10,000`) or, with no ceiling, `works_cursor="*"` chaining `nextWorksCursor` — offset pages run newest published first, a cursor walk newest registered first, and the two cannot combine (`works_offset > 0`); an offset past the end of either list carries a `notice` naming it, and a page that stalls at either ceiling names the offset and smaller `rows` that reach the last records below it
-- The funded-works list also counts works funded by the funder's registry descendants, which a `crossref_search_works` filter on `{"funder": "10.13039/<id>"}` does not
+- Name-query results page by `offset` (ceiling `≤ 100,000`); the funded-works list pages separately by `works_offset` (ceiling `≤ 10,000`) or, with no ceiling, `works_cursor="*"` chaining `nextWorksCursor` — offset pages run newest published first, a cursor walk newest registered first, and the two cannot combine (`works_offset > 0`); a page that would pass either ceiling returns the `rows` that fit, with a `notice` naming the rows requested and applied, and only an offset at or past a ceiling is refused; an offset past the end of either list carries a `notice` naming it, and so does a page that reaches either ceiling with records past it
+- The funded-works list also counts works funded by the funder's registry descendants, which a `crossref_search_works` filter on `{"funder": "10.13039/<id>"}` does not; a `funder_doi` lookup returns those descendants' registry IDs as `descendants`, every depth, whole — OR'd with the funder's ID in the `funder` filter they count the same scope with date, type, or other filters. The lookup's `worksCount` counts the ID alone
 - A deprecated registry entry answers to its successor's name while counting only its own works — the response's `notice` names the superseding ID via `replacedBy`; the replacement is never followed automatically
 
 ---
@@ -122,14 +124,14 @@ The skill is also served through the `skill://{+path}` template and ships as `sk
 
 - Members are the organizations that register DOIs — this answers "what does this publisher publish, and how completely do they deposit metadata?"
 - Returns primary name, alternate imprint names, owned DOI prefixes, DOI counts (total/current/backfile), a per-work-type breakdown, and per-category metadata deposit coverage (references, abstracts, ORCIDs, funders, licenses, and more) as current/backfile fractions
-- Pair with `crossref_get_prefix` to resolve a DOI prefix to the member ID first
+- The member that holds a DOI now is the `memberId` `crossref_get_work` or `crossref_search_works` returns for it; `crossref_get_prefix` returns the member a prefix record names, which for a transferred title is a former publisher
 
 ---
 
 ### `crossref_get_prefix` <sub>tool</sub>
 
 - Accepts the registrant prefix of a DOI (e.g. `10.1038`, no `/suffix`)
-- Returns the publisher name and numeric member ID — the ID chains directly into `crossref_get_member` for the full record
+- Returns the publisher name and numeric member ID the prefix record names — the prefix's registrant — and the ID chains directly into `crossref_get_member` for the full record. A DOI under a title transferred to another publisher keeps its prefix, so its current member is the `memberId` `crossref_get_work` returns
 - The Crossref prefix record is thin by design (owner name and member link only); richer publisher data lives on the member record
 - A prefix with no Crossref member returns `prefix_not_found` naming the agency that registered it (`registrationAgency`, e.g. DataCite for `10.5281`), or saying no agency registered it
 
@@ -141,7 +143,7 @@ Crossref-specific:
 
 - Polite-pool `User-Agent` header injected on every Crossref request — priority access via `CROSSREF_MAILTO`, keyless otherwise; no API token required
 - Retry with exponential backoff on 429 (honoring `Retry-After`), 5xx, HTTP 408/504, and network failures; a malformed response body and a request that hits `CROSSREF_TIMEOUT_MS` are not retried
-- Cursor-based deep paging on the works search and on both works sub-resources, for result sets beyond the offset cap
+- Cursor-based deep paging on the works search and on the journal and funder works lists, for result sets beyond the offset cap
 - Crossref's rejections of a request come back as declared reasons — `unknown_filter` (with the hyphenated key when Crossref lists one), `invalid_parameter`, `sort_cursor_conflict`, `invalid_cursor` — carrying the rejected inputs and a recovery hint; a malformed `issn` filter value is refused before the request, and no upstream error relays Crossref's raw response body
 - Text normalization on every human-readable value: HTML character references decoded and whitespace collapsed; citation strings additionally have formatting markup stripped, so titles and abstracts read as plain text instead of raw JATS XML; a MathML formula keeps its structure — the TeX annotation where the deposit carries one, otherwise a linear form such as `x_i`, `A^{−1}`, `√(m)`, `(a+b)/c`
 
@@ -149,7 +151,7 @@ Agent-friendly output:
 
 - Provenance — identifiers, URLs, and dates are returned byte-exact while human-readable text is normalized, so a caller can trust `doi`, `issn`, and date fields without re-verification
 - Graceful partial failure — an empty page is a success, not an error: an offset past the end of a list, or a query nothing matched, carries a `notice` saying which, and so does the page that ends a `crossref_search_works` cursor walk; a journal or funder works walk ends on the page that omits `nextWorksCursor`
-- Discriminated output contracts — the `nextCursor`, `nextOffset`, `nextWorksOffset`, and `nextWorksCursor` continuation fields are withheld once a list is exhausted, and a page that stops at an offset ceiling says so in its `notice`; a cursor token can still ride the last partial page, and the empty page after it carries none
+- Discriminated output contracts — the `nextCursor`, `nextOffset`, `nextWorksOffset`, and `nextWorksCursor` continuation fields are withheld once a list is exhausted, a page that reaches an offset ceiling says so in its `notice`, and one that would pass it is cut to the rows that fit; a cursor token can still ride the last partial page, and the empty page after it carries none
 - Ambiguity handled explicitly — `ambiguous_journal` and `ambiguous_funder` list every candidate and its identifier in the error data rather than silently resolving to the first match
 
 ## Getting started

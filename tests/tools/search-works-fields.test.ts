@@ -1,18 +1,22 @@
 /**
- * @fileoverview `crossref_search_works.fields` — the `select=` projection. Every name the input
- * accepts has an output field on both result surfaces, so a selection is never fetched and then
- * discarded; any other name is refused by the schema before a request is made. Driven through
- * the real `CrossrefService` behind a fetch fake, so the `select=` that leaves the server and the
- * projection of what comes back are both the production code.
+ * @fileoverview `select=` on every works list. `crossref_search_works.fields` is the caller's
+ * projection: every name the input accepts has an output field on both result surfaces, so a
+ * selection is never fetched and then discarded, and any other name is refused by the schema
+ * before a request is made. A works list the caller does not narrow still names its fields —
+ * `crossref_search_works` without `fields`, and the journal and funder works lists — each the
+ * names its summary reads, which projecting full captured records against the same records cut
+ * to that select proves on both surfaces. Driven through the real `CrossrefService` behind a
+ * fetch fake, so the `select=` that leaves the server and the projection of what comes back are
+ * both the production code.
  * @module tests/tools/search-works-fields.test
  */
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { createFetchMock, runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { textOf, workList } from '../helpers/crossref-responses.js';
+import { singleRecord, type ToolResult, textOf, workList } from '../helpers/crossref-responses.js';
 
 vi.mock('@/config/server-config.js', () => ({
   getServerConfig: vi.fn().mockReturnValue({
@@ -22,7 +26,11 @@ vi.mock('@/config/server-config.js', () => ({
   }),
 }));
 
-import { searchWorksTool } from '@/mcp-server/tools/definitions/index.js';
+import {
+  searchFundersTool,
+  searchJournalsTool,
+  searchWorksTool,
+} from '@/mcp-server/tools/definitions/index.js';
 import { initCrossrefService } from '@/services/crossref/crossref-service.js';
 
 const WORKS = /^https:\/\/api\.crossref\.test\/works\?/;
@@ -38,6 +46,7 @@ const ACCEPTED = [
   'published-online',
   'container-title',
   'publisher',
+  'member',
   'is-referenced-by-count',
   'score',
   'abstract',
@@ -169,6 +178,52 @@ describe('crossref_search_works fields', () => {
     expect(lines).toContain('**Volume:** 585 | **Issue:** 7825 | **Pages:** 357-362');
   });
 
+  it('fills containerTitle and containerTitles from the one container-title name', async () => {
+    http.route({
+      match: WORKS,
+      respond: () =>
+        workList([
+          {
+            DOI: '10.1007/978-3-030-58452-8_1',
+            'container-title': ['Lecture Notes in Computer Science', 'Computer Vision – ECCV 2020'],
+          },
+        ]),
+    });
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'q',
+      fields: ['container-title'],
+      rows: 1,
+    });
+
+    expect(selected()).toEqual(['DOI', 'container-title']);
+    expect(firstWork(result)).toEqual({
+      doi: '10.1007/978-3-030-58452-8_1',
+      containerTitle: 'Lecture Notes in Computer Science',
+      containerTitles: ['Lecture Notes in Computer Science', 'Computer Vision – ECCV 2020'],
+    });
+    expect(textOf(result)).toContain(
+      '**Journal:** Lecture Notes in Computer Science | Computer Vision – ECCV 2020',
+    );
+  });
+
+  it('returns doi and memberId alone under fields ["member"]', async () => {
+    http.route({
+      match: WORKS,
+      respond: () => workList([{ DOI: '10.1155/2024/9760680', member: '311' }]),
+    });
+
+    const result = await runToolContract(searchWorksTool, {
+      filter: { doi: '10.1155/2024/9760680' },
+      fields: ['member'],
+      rows: 1,
+    });
+
+    expect(selected()).toEqual(['DOI', 'member']);
+    expect(firstWork(result)).toEqual({ doi: '10.1155/2024/9760680', memberId: 311 });
+    expect(textOf(result)).toContain('**Member ID:** 311');
+  });
+
   it('omits a selected field the record does not deposit, without erroring', async () => {
     http.route({ match: WORKS, respond: () => workList([{ DOI: '10.5555/sparse' }]) });
 
@@ -291,4 +346,191 @@ describe('crossref_search_works fields', () => {
       expect(http.calls).toHaveLength(0);
     },
   );
+
+  /**
+   * Without a selection Crossref returns whole records — reference lists included — for a
+   * projection that reads twenty fields of them: a heavy 1000-row page is 13.0 MB upstream
+   * against 3.2 MB under the select, with identical output.
+   */
+  it.each([
+    ['fields omitted', {}],
+    ['fields empty', { fields: [] }],
+    ['an offset page', { offset: 40 }],
+    ['a cursor walk', { cursor: '*' }],
+  ])('names every field the summary projects in select= with %s', async (_, input) => {
+    http.route({ match: WORKS, respond: () => workList([]) });
+
+    const result = await runToolContract(searchWorksTool, { query: 'q', rows: 1, ...input });
+
+    expect(result.isError).toBeFalsy();
+    expect(selected()).toEqual(ACCEPTED);
+  });
+});
+
+/**
+ * The names the journal and funder works-list summaries read: `doi`, `title`, `type`,
+ * `published` (the first of three date sources that names one), and `isReferencedByCount`.
+ */
+const WORKS_LIST_SELECT = [
+  'DOI',
+  'title',
+  'type',
+  'published',
+  'published-print',
+  'published-online',
+  'is-referenced-by-count',
+];
+
+const FIXTURES = new URL('../fixtures/works/', import.meta.url);
+
+/**
+ * Every captured full work record, plus two whose only date sits in a fallback source — no real
+ * record lacks `published`, so without them nothing would show the fallbacks are read. Each
+ * carries a `score`, as a search page's records do and a single-record fetch's do not.
+ */
+const RECORDS: Record<string, unknown>[] = [
+  ...readdirSync(FIXTURES)
+    .filter((name) => name.endsWith('.json'))
+    .sort()
+    .map(
+      (name) =>
+        (
+          JSON.parse(readFileSync(new URL(name, FIXTURES), 'utf8')) as {
+            message: Record<string, unknown>;
+          }
+        ).message,
+    ),
+  {
+    DOI: '10.5555/print-only',
+    type: 'journal-article',
+    'published-print': { 'date-parts': [[2019, 4]] },
+  },
+  {
+    DOI: '10.5555/online-only',
+    type: 'journal-article',
+    'published-online': { 'date-parts': [[2021, 3]] },
+  },
+].map((record, i) => ({ ...record, score: 40 - i }));
+
+/** Whether a request is to this path on the configured Crossref host. */
+function crossrefPath(path: string): (request: Request) => boolean {
+  return (request) => {
+    const url = new URL(request.url);
+    return url.hostname === 'api.crossref.test' && url.pathname === path;
+  };
+}
+
+/**
+ * How the works route answers: every record whole, or each cut to the request's `select=` names
+ * as Crossref cuts them — less one name, to show the projection reads it.
+ */
+type Answer = { kind: 'whole' } | { kind: 'selected'; without?: string };
+
+/** One works list, driven through its tool for a page holding every record. */
+type WorksListCase = {
+  /** The names the list's request must carry in `select=`. */
+  select: readonly string[];
+  worksPath: string;
+  /** Routes the call needs besides its works list — the journal or funder record. */
+  setup(): void;
+  run(): Promise<ToolResult>;
+};
+
+const LISTS: Record<string, WorksListCase> = {
+  crossref_search_works: {
+    select: ACCEPTED,
+    worksPath: '/works',
+    setup: () => {},
+    run: () => runToolContract(searchWorksTool, { query: 'q', rows: RECORDS.length }),
+  },
+  'crossref_search_journals works list': {
+    select: WORKS_LIST_SELECT,
+    worksPath: '/works',
+    setup: () => {
+      http.route({
+        match: crossrefPath('/journals/0959-8138'),
+        respond: () => singleRecord({ title: 'BMJ', ISSN: ['0959-8138', '1756-1833'] }),
+      });
+    },
+    run: () =>
+      runToolContract(searchJournalsTool, {
+        issn: '0959-8138',
+        include_works: true,
+        rows: RECORDS.length,
+      }),
+  },
+  'crossref_search_funders works list': {
+    select: WORKS_LIST_SELECT,
+    worksPath: '/funders/100000001/works',
+    setup: () => {
+      http.route({
+        match: crossrefPath('/funders/100000001'),
+        respond: () => singleRecord({ id: '100000001', name: 'National Science Foundation' }),
+      });
+    },
+    run: () =>
+      runToolContract(searchFundersTool, {
+        funder_doi: '100000001',
+        include_works: true,
+        rows: RECORDS.length,
+      }),
+  },
+};
+
+/** Both result surfaces of one call, with the works route answering as `answer` says. */
+async function surfaces(list: WorksListCase, answer: Answer) {
+  http.reset();
+  list.setup();
+  http.route({
+    match: crossrefPath(list.worksPath),
+    respond: (request) => {
+      const names = new URL(request.url).searchParams.get('select')?.split(',');
+      if (answer.kind === 'whole' || names === undefined) return workList(RECORDS);
+      const kept = names.filter((name) => name !== answer.without);
+      return workList(
+        RECORDS.map((record) =>
+          Object.fromEntries(Object.entries(record).filter(([key]) => kept.includes(key))),
+        ),
+      );
+    },
+  });
+  const result = await list.run();
+  expect(result.isError).toBeFalsy();
+  const works = http.calls.filter((call) => crossrefPath(list.worksPath)(call.request));
+  expect(works).toHaveLength(1);
+  return {
+    select: new URL(works[0]?.request.url ?? '').searchParams.get('select')?.split(','),
+    structured: result.structuredContent,
+    text: textOf(result),
+  };
+}
+
+describe('select= on every works list', () => {
+  describe.each(Object.entries(LISTS))('%s', (_, list) => {
+    it('names exactly the fields its summary reads', async () => {
+      expect((await surfaces(list, { kind: 'whole' })).select).toEqual(list.select);
+    });
+
+    /**
+     * The guard on the select list: a raw key the projection reads but the select leaves out
+     * reaches the projection as absent, so the two outputs part on whichever surface carries it.
+     */
+    it('projects records cut to its select exactly as it projects them whole', async () => {
+      const whole = await surfaces(list, { kind: 'whole' });
+      const selected = await surfaces(list, { kind: 'selected' });
+
+      expect(selected.structured).toEqual(whole.structured);
+      expect(selected.text).toBe(whole.text);
+    });
+
+    it.each(list.select.filter((name) => name !== 'DOI'))(
+      'reads %s — a record cut without it projects differently',
+      async (name) => {
+        const whole = await surfaces(list, { kind: 'whole' });
+        const without = await surfaces(list, { kind: 'selected', without: name });
+
+        expect(without.structured).not.toEqual(whole.structured);
+      },
+    );
+  });
 });

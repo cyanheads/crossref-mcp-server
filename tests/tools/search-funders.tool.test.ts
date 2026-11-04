@@ -3,6 +3,7 @@
  * @module tests/tools/search-funders.tool.test
  */
 
+import { readFileSync } from 'node:fs';
 import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { searchFundersTool } from '@/mcp-server/tools/definitions/search-funders.tool.js';
@@ -247,7 +248,8 @@ describe('searchFundersTool', () => {
     const ctx = createMockContext({ errors: searchFundersTool.errors });
     mockSearchFunders.mockResolvedValue(funderList([RAW_DEPRECATED_FUNDER], 200_000));
 
-    const input = searchFundersTool.input.parse({ query: 'council', offset: 99_990, rows: 10 });
+    // The one funder returned at 99999 ends the page on the ceiling with records still past it.
+    const input = searchFundersTool.input.parse({ query: 'council', offset: 99_999, rows: 1 });
     const result = await searchFundersTool.handler(input, ctx);
 
     expect(result.funders).toHaveLength(1);
@@ -401,9 +403,9 @@ describe('searchFundersTool', () => {
     expect(text).toContain('10');
   });
 
-  it('accepts rows between 1 and 100', () => {
+  it('accepts rows between 1 and 1000', () => {
     expect(() => searchFundersTool.input.parse({ query: 'test', rows: 1 })).not.toThrow();
-    expect(() => searchFundersTool.input.parse({ query: 'test', rows: 100 })).not.toThrow();
+    expect(() => searchFundersTool.input.parse({ query: 'test', rows: 1000 })).not.toThrow();
   });
 
   it('accepts valid funder_doi formats — full DOI, doi: prefix, and URL prefix', () => {
@@ -799,19 +801,30 @@ describe('searchFundersTool', () => {
       expect(wire.notice).toContain('169103');
     });
 
-    it('throws offset_too_large before any upstream call when offset + rows passes 100000', async () => {
+    it('cuts a page that would pass 100000 to the rows that fit, and throws offset_too_large at it before any upstream call', async () => {
       const ctx = createMockContext({ errors: searchFundersTool.errors });
+      mockSearchFunders.mockResolvedValue(funderList([], 2252));
 
       const input = searchFundersTool.input.parse({ query: 'National', rows: 10, offset: 99_995 });
-      await expect(searchFundersTool.handler(input, ctx)).rejects.toMatchObject({
+      await searchFundersTool.handler(input, ctx);
+      expect(mockSearchFunders).toHaveBeenCalledWith(
+        expect.objectContaining({ offset: 99_995, rows: 5 }),
+        expect.anything(),
+      );
+
+      mockSearchFunders.mockClear();
+      const atCap = searchFundersTool.input.parse({ query: 'National', rows: 10, offset: 100_000 });
+      await expect(searchFundersTool.handler(atCap, ctx)).rejects.toMatchObject({
         code: JsonRpcErrorCode.ValidationError,
         data: { reason: 'offset_too_large', cap: 100_000 },
       });
       expect(mockSearchFunders).not.toHaveBeenCalled();
     });
 
-    it('throws works_offset_too_large at the ten-times-lower works ceiling', async () => {
+    it('cuts and refuses works pages at the ten-times-lower works ceiling', async () => {
       const ctx = createMockContext({ errors: searchFundersTool.errors });
+      mockSearchFunders.mockResolvedValue(funderList([RAW_FUNDER], 1));
+      mockGetFunderWorks.mockResolvedValue({ totalResults: 559_017, items: [] });
 
       const input = searchFundersTool.input.parse({
         funder_doi: '100000001',
@@ -819,7 +832,21 @@ describe('searchFundersTool', () => {
         rows: 10,
         works_offset: 9_995,
       });
-      await expect(searchFundersTool.handler(input, ctx)).rejects.toMatchObject({
+      await searchFundersTool.handler(input, ctx);
+      expect(mockGetFunderWorks).toHaveBeenCalledWith(
+        '100000001',
+        { rows: 5, offset: 9_995 },
+        expect.anything(),
+      );
+
+      mockSearchFunders.mockClear();
+      const atCap = searchFundersTool.input.parse({
+        funder_doi: '100000001',
+        include_works: true,
+        rows: 10,
+        works_offset: 10_000,
+      });
+      await expect(searchFundersTool.handler(atCap, ctx)).rejects.toMatchObject({
         code: JsonRpcErrorCode.ValidationError,
         data: { reason: 'works_offset_too_large', cap: 10_000 },
       });
@@ -1008,84 +1035,100 @@ describe('searchFundersTool', () => {
   });
 });
 
-describe('searchFundersTool page-size clamp', () => {
-  const CLAMP = 'rows 250 is above the per-call cap of 100, so 100 was applied.';
+/**
+ * `rows` on this tool caps at Crossref's own page maximum of 1000, which the schema already
+ * enforces, so every value it accepts reaches both requests as sent unless an offset window cuts it.
+ */
+describe('searchFundersTool rows at the page maximum', () => {
   const funders = (count: number) =>
     Array.from({ length: count }, (_, i) => ({
       ...RAW_FUNDER,
       id: `1000${i}`,
       name: `Funder ${i}`,
     }));
+  const works = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({ DOI: `10.5555/f${i}` }));
 
-  it('clamps rows above 100 on the funder list, continuing nextOffset after the page returned', async () => {
-    mockSearchFunders.mockResolvedValue({ totalResults: 5000, items: funders(100) });
+  it('sends rows 1000 to the funder list as requested, with no notice', async () => {
+    mockSearchFunders.mockResolvedValue({ totalResults: 5000, items: funders(1000) });
 
     const result = await runToolContract(searchFundersTool, {
       query: 'Funder',
-      rows: 250,
+      rows: 1000,
       offset: 40,
     });
 
     expect(mockSearchFunders).toHaveBeenCalledWith(
-      expect.objectContaining({ rows: 100, offset: 40 }),
+      expect.objectContaining({ rows: 1000, offset: 40 }),
       expect.anything(),
     );
-    expect(result.structuredContent).toMatchObject({ funderCount: 100, nextOffset: 140 });
-    expect((result.structuredContent as { notice?: string }).notice).toBe(CLAMP);
-    expect(result.content.map(blockText).join('\n')).toContain(CLAMP);
+    expect(result.structuredContent).toMatchObject({ funderCount: 1000, nextOffset: 1040 });
+    expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
+    expect(result.content.map(blockText).join('\n')).toContain('## Funder 999');
   });
 
-  it('clamps rows on the funded-works list, continuing nextWorksOffset after the page returned', async () => {
+  it('sends rows 1000 to the funded-works list as requested, continuing nextWorksOffset after it', async () => {
     mockSearchFunders.mockResolvedValue({ totalResults: 1, items: [RAW_FUNDER] });
-    mockGetFunderWorks.mockResolvedValue({
-      totalResults: 250_000,
-      items: Array.from({ length: 100 }, (_, i) => ({ DOI: `10.5555/f${i}` })),
-    });
+    mockGetFunderWorks.mockResolvedValue({ totalResults: 250_000, items: works(1000) });
 
     const result = await runToolContract(searchFundersTool, {
       funder_doi: '100000001',
       include_works: true,
-      rows: 250,
+      rows: 1000,
       works_offset: 200,
     });
 
     expect(mockGetFunderWorks).toHaveBeenCalledWith(
       '100000001',
-      { rows: 100, offset: 200 },
+      { rows: 1000, offset: 200 },
       expect.anything(),
     );
-    expect(result.structuredContent).toMatchObject({ nextWorksOffset: 300 });
-    expect((result.structuredContent as { notice?: string }).notice).toBe(CLAMP);
+    expect(result.structuredContent).toMatchObject({ nextWorksOffset: 1200 });
+    expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
   });
 
-  it('rejects works_offset 9950 + rows 250 with works_offset_too_large on rows 100', async () => {
+  it('reaches works_offset 9000 + rows 1000, the last full page offset paging allows', async () => {
+    mockSearchFunders.mockResolvedValue({ totalResults: 1, items: [RAW_FUNDER] });
+    mockGetFunderWorks.mockResolvedValue({ totalResults: 250_000, items: works(1000) });
+
     const result = await runToolContract(searchFundersTool, {
       funder_doi: '100000001',
       include_works: true,
-      rows: 250,
-      works_offset: 9950,
+      rows: 1000,
+      works_offset: 9000,
     });
 
-    expect(result.isError).toBe(true);
-    const error = (
-      result.structuredContent as { error?: { message?: string; data?: Record<string, unknown> } }
-    ).error;
-    expect(error?.data).toMatchObject({ reason: 'works_offset_too_large', rows: 100 });
-    expect(error?.message).toContain('works_offset 9950 + rows 100 = 10050');
-    expect(error?.message).toContain(CLAMP);
-    expect(mockSearchFunders).not.toHaveBeenCalled();
-  });
-
-  it('leaves rows 100 untouched and notice-free', async () => {
-    mockSearchFunders.mockResolvedValue({ totalResults: 5000, items: funders(100) });
-
-    const result = await runToolContract(searchFundersTool, { query: 'Funder', rows: 100 });
-
-    expect(mockSearchFunders).toHaveBeenCalledWith(
-      expect.objectContaining({ rows: 100 }),
+    expect(result.isError).toBeFalsy();
+    expect(mockGetFunderWorks).toHaveBeenCalledWith(
+      '100000001',
+      { rows: 1000, offset: 9000 },
       expect.anything(),
     );
-    expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
+    expect((result.structuredContent as { notice?: string }).notice).toBe(
+      'This is the last works page reachable by works_offset — Crossref caps works_offset + rows at 10000 on a funded-works list and 250000 works exist. Re-run with works_cursor="*" and chain nextWorksCursor to read the whole list; the walk restarts at the most recently registered work and runs by registration date, not publication date.',
+    );
+  });
+
+  it('applies the 950 works that fit at works_offset 9050 + rows 1000', async () => {
+    mockSearchFunders.mockResolvedValue({ totalResults: 1, items: [RAW_FUNDER] });
+    mockGetFunderWorks.mockResolvedValue({ totalResults: 250_000, items: works(950) });
+
+    const result = await runToolContract(searchFundersTool, {
+      funder_doi: '100000001',
+      include_works: true,
+      rows: 1000,
+      works_offset: 9050,
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(mockGetFunderWorks).toHaveBeenCalledWith(
+      '100000001',
+      { rows: 950, offset: 9050 },
+      expect.anything(),
+    );
+    expect((result.structuredContent as { notice?: string }).notice).toBe(
+      'works_offset 9050 + rows 1000 would pass the 10000 ceiling Crossref puts on works_offset + rows on a funded-works list, so 950 was applied — the last works page reachable by works_offset, and 250000 works exist. Re-run with works_cursor="*" and chain nextWorksCursor to read the whole list; the walk restarts at the most recently registered work and runs by registration date, not publication date.',
+    );
   });
 });
 
@@ -1103,37 +1146,27 @@ describe('searchFundersTool offset-ceiling recipes', () => {
   const named = (count: number) =>
     Array.from({ length: count }, (_, i) => ({ ...RAW_FUNDER, id: `1000${i}`, name: `F ${i}` }));
 
-  it('names the rows that still fit when works_offset + rows passes 10000', async () => {
-    const rejected = await runToolContract(searchFundersTool, {
+  it('applies the rows that still fit when works_offset + rows passes 10000', async () => {
+    mockSearchFunders.mockResolvedValue({ totalResults: 1, items: [RAW_FUNDER] });
+    mockGetFunderWorks.mockResolvedValue({ totalResults: 250_000, items: works(50) });
+
+    const page = await runToolContract(searchFundersTool, {
       funder_doi: '100000001',
       include_works: true,
       rows: 100,
       works_offset: 9950,
     });
 
-    expect((rejected.structuredContent as ErrorShape).error?.data?.reason).toBe(
-      'works_offset_too_large',
-    );
-    const hint = hintOf(rejected);
-    expect(hint).toBe(
-      'Pass works_offset=9950 with rows=50 to read the last funded works offset paging reaches, or restart the funded-works list with works_cursor="*" and chain the nextWorksCursor token from each response to read the whole list.',
-    );
-    expect(renderedText(contentText(rejected.content))).toContain(hint);
-
-    mockSearchFunders.mockResolvedValue({ totalResults: 1, items: [RAW_FUNDER] });
-    mockGetFunderWorks.mockResolvedValue({ totalResults: 250_000, items: works(50) });
-    const next = await runToolContract(searchFundersTool, {
-      funder_doi: '100000001',
-      include_works: true,
-      rows: 50,
-      works_offset: 9950,
-    });
-    expect(next.isError).toBeFalsy();
+    expect(page.isError).toBeFalsy();
     expect(mockGetFunderWorks).toHaveBeenCalledWith(
       '100000001',
       { rows: 50, offset: 9950 },
       expect.anything(),
     );
+    const notice =
+      'works_offset 9950 + rows 100 would pass the 10000 ceiling Crossref puts on works_offset + rows on a funded-works list, so 50 was applied — the last works page reachable by works_offset, and 250000 works exist. Re-run with works_cursor="*" and chain nextWorksCursor to read the whole list; the walk restarts at the most recently registered work and runs by registration date, not publication date.';
+    expect((page.structuredContent as { notice?: string }).notice).toBe(notice);
+    expect(renderedText(contentText(page.content))).toContain(notice);
   });
 
   it('routes only to works_cursor once works_offset itself reaches 10000', async () => {
@@ -1151,36 +1184,57 @@ describe('searchFundersTool offset-ceiling recipes', () => {
     expect(hint).not.toContain('with rows=');
   });
 
-  it('names the rows that still fit when offset + rows passes 100000 on name search', async () => {
-    const rejected = await runToolContract(searchFundersTool, {
+  it('applies the rows that still fit when offset + rows passes 100000 on name search', async () => {
+    mockSearchFunders.mockResolvedValue({ totalResults: 200_000, items: named(50) });
+
+    const page = await runToolContract(searchFundersTool, {
       query: 'council',
       rows: 100,
       offset: 99_950,
     });
-    expect((rejected.structuredContent as ErrorShape).error?.data?.reason).toBe('offset_too_large');
-    expect(hintOf(rejected)).toMatch(/^Pass offset=99950 with rows=50 to read the last funders /);
+
+    expect(page.isError).toBeFalsy();
+    expect(mockSearchFunders).toHaveBeenCalledWith(
+      expect.objectContaining({ rows: 50, offset: 99_950 }),
+      expect.anything(),
+    );
+    expect((page.structuredContent as { notice?: string }).notice).toMatch(
+      /^offset 99950 \+ rows 100 would pass the 100000 ceiling Crossref puts on offset \+ rows on funder name search, so 50 was applied — /,
+    );
   });
 
-  it('names works_offset and rows for the last reachable works page short of the ceiling', async () => {
+  it('hands out the works_offset short of the ceiling, and that page cuts itself to the rows that fit', async () => {
     mockSearchFunders.mockResolvedValue({ totalResults: 1, items: [RAW_FUNDER] });
-    mockGetFunderWorks.mockResolvedValue({ totalResults: 250_000, items: works(100) });
+    mockGetFunderWorks.mockResolvedValue({ totalResults: 250_000, items: works(1000) });
 
     const page = await runToolContract(searchFundersTool, {
       funder_doi: '100000001',
       include_works: true,
-      rows: 250,
-      works_offset: 9850,
+      rows: 1000,
+      works_offset: 8950,
     });
 
     const structured = page.structuredContent as { notice?: string; nextWorksOffset?: number };
-    expect(structured.nextWorksOffset).toBeUndefined();
-    const notice =
-      'rows 250 is above the per-call cap of 100, so 100 was applied. Crossref caps works_offset + rows at 10000 on a funded-works list and 250000 works exist, so a full page at works_offset 9950 is out of reach. Pass works_offset=9950 with rows=50 for the last works page reachable by works_offset, or re-run with works_cursor="*" and chain nextWorksCursor to read the whole list; the walk restarts at the most recently registered work and runs by registration date, not publication date.';
-    expect(structured.notice).toBe(notice);
-    expect(page.content.map(blockText).join('\n')).toContain(notice);
+    expect(structured.nextWorksOffset).toBe(9950);
+    expect(structured.notice).toBeUndefined();
+
+    mockGetFunderWorks.mockResolvedValue({ totalResults: 250_000, items: works(50) });
+    const next = await runToolContract(searchFundersTool, {
+      funder_doi: '100000001',
+      include_works: true,
+      rows: 1000,
+      works_offset: 9950,
+    });
+    expect(next.isError).toBeFalsy();
+    expect(mockGetFunderWorks).toHaveBeenLastCalledWith(
+      '100000001',
+      { rows: 50, offset: 9950 },
+      expect.anything(),
+    );
+    expect((next.structuredContent as { fundedWorks: unknown[] }).fundedWorks).toHaveLength(50);
   });
 
-  it('names offset and rows for the last reachable funder page short of the ceiling', async () => {
+  it('hands out the offset short of the ceiling, and that page cuts itself to the rows that fit', async () => {
     mockSearchFunders.mockResolvedValue({ totalResults: 200_000, items: named(100) });
 
     const page = await runToolContract(searchFundersTool, {
@@ -1190,9 +1244,415 @@ describe('searchFundersTool offset-ceiling recipes', () => {
     });
 
     const structured = page.structuredContent as { notice?: string; nextOffset?: number };
-    expect(structured.nextOffset).toBeUndefined();
-    expect(structured.notice).toBe(
-      'Crossref caps offset + rows at 100000 on funder search and 200000 funders matched, so a full page at offset 99950 is out of reach. Pass offset=99950 with rows=50 for the last funder page reachable by offset, and narrow the query to bring the rest into reach.',
+    expect(structured.nextOffset).toBe(99_950);
+    expect(structured.notice).toBeUndefined();
+
+    mockSearchFunders.mockResolvedValue({ totalResults: 200_000, items: named(50) });
+    const next = await runToolContract(searchFundersTool, {
+      query: 'council',
+      rows: 100,
+      offset: 99_950,
+    });
+    expect(next.isError).toBeFalsy();
+    expect(mockSearchFunders).toHaveBeenLastCalledWith(
+      expect.objectContaining({ rows: 50, offset: 99_950 }),
+      expect.anything(),
     );
+    expect((next.structuredContent as { funderCount?: number }).funderCount).toBe(50);
+  });
+});
+
+/**
+ * Every (offset, rows) pair either side of each offset window, against fakes that answer the way
+ * Crossref does: the records when `offset + rows` fits the route's ceiling, a rejection when it
+ * does not (live: `offset + rows` exactly at the ceiling → 200, one past → 400, on both routes).
+ * Offsets are written relative to the ceiling, so one table drives both guards. `rows` here has
+ * no per-call cap below Crossref's page maximum of 1000, which the schema enforces, so 1001 is
+ * refused before either window applies. `applied` is the page returned and `next` the
+ * continuation offset handed out (null: withheld at the ceiling). `v050` is what the published
+ * 0.5.0 returned — rows capped at 100, the window checked on the capped rows, every pair that
+ * passed it refused. A pair 0.5.0 answered is answered here with at least as many records.
+ */
+describe('searchFundersTool offset windows', () => {
+  type Notice = 'none' | 'last' | 'cut';
+  // [offset - ceiling, rows, applied (null: refused; 'invalid': schema), next - ceiling (null: withheld), notice, 0.5.0 applied]
+  type Row = [number, number, number | null | 'invalid', number | null, Notice, number | null];
+  const WINDOW: Row[] = [
+    [-1, 1, 1, null, 'last', 1],
+    [-1, 100, 1, null, 'cut', null],
+    [-1, 101, 1, null, 'cut', null],
+    [-1, 1000, 1, null, 'cut', null],
+    [-50, 1, 1, -49, 'none', 1],
+    [-50, 100, 50, null, 'cut', null],
+    [-50, 101, 50, null, 'cut', null],
+    [-50, 1000, 50, null, 'cut', null],
+    [-100, 1, 1, -99, 'none', 1],
+    [-100, 100, 100, null, 'last', 100],
+    [-100, 101, 100, null, 'cut', 100],
+    [-100, 1000, 100, null, 'cut', 100],
+    [-101, 1, 1, -100, 'none', 1],
+    [-101, 100, 100, -1, 'none', 100],
+    [-101, 101, 101, null, 'last', 100],
+    [-101, 1000, 101, null, 'cut', 100],
+    ...[1, 100, 101, 1000].flatMap((rows): Row[] => [
+      [0, rows, null, null, 'none', null],
+      [1, rows, null, null, 'none', null],
+    ]),
+    ...[-1, -50, -100, -101, 0, 1].map(
+      (delta): Row => [delta, 1001, 'invalid', null, 'none', null],
+    ),
+  ];
+  const works = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({ DOI: `10.5555/f${i}` }));
+  const named = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({ ...RAW_FUNDER, id: `1000${i}`, name: `F ${i}` }));
+
+  type Structured = {
+    funderCount?: number;
+    fundedWorks?: unknown[];
+    nextOffset?: number;
+    nextWorksOffset?: number;
+    notice?: string;
+    error?: { code?: number; data?: { reason?: string } };
+  };
+
+  describe('the funder name list (ceiling 100000)', () => {
+    const CEILING = 100_000;
+    const ROUTE =
+      'the last funder page reachable by offset, and 200000 funders matched. Narrow the query to bring the rest into reach.';
+
+    beforeEach(() => {
+      mockSearchFunders.mockImplementation(async (opts: { offset: number; rows: number }) => {
+        if (opts.offset + opts.rows > CEILING)
+          throw new Error(`Crossref refuses offset ${opts.offset} + rows ${opts.rows}`);
+        return funderList(named(opts.rows), 200_000);
+      });
+    });
+
+    it.each(WINDOW)(
+      'offset 100000 + (%i), rows %i → %s funders (next: 100000 + (%s); notice: %s; 0.5.0: %s)',
+      async (delta, rows, applied, nextDelta, notice, v050) => {
+        const offset = CEILING + delta;
+        const result = await runToolContract(searchFundersTool, { query: 'council', rows, offset });
+        const structured = result.structuredContent as Structured;
+
+        if (applied === 'invalid') {
+          expect(structured.error?.code).toBe(JsonRpcErrorCode.InvalidParams);
+          expect(mockSearchFunders).not.toHaveBeenCalled();
+          return;
+        }
+        if (applied === null) {
+          expect(structured.error?.data?.reason).toBe('offset_too_large');
+          expect(mockSearchFunders).not.toHaveBeenCalled();
+          return;
+        }
+        expect(result.isError).toBeFalsy();
+        expect(mockSearchFunders).toHaveBeenCalledWith(
+          expect.objectContaining({ offset, rows: applied }),
+          expect.anything(),
+        );
+        expect(structured.funderCount).toBe(applied);
+        if (v050 !== null) expect(applied).toBeGreaterThanOrEqual(v050);
+        expect(structured.nextOffset).toBe(nextDelta === null ? undefined : CEILING + nextDelta);
+        const expected = {
+          none: undefined,
+          last: 'This is the last funder page reachable by offset — Crossref caps offset + rows at 100000 on funder search and 200000 funders matched. Narrow the query to bring the rest into reach.',
+          cut: `offset ${offset} + rows ${rows} would pass the 100000 ceiling Crossref puts on offset + rows on funder name search, so ${applied} was applied — ${ROUTE}`,
+        }[notice];
+        expect(structured.notice).toBe(expected);
+      },
+    );
+
+    it('carries a window-cut page identically on both surfaces', async () => {
+      const result = await runToolContract(searchFundersTool, {
+        query: 'council',
+        rows: 1000,
+        offset: 99_900,
+      });
+
+      const structured = result.structuredContent as Structured & {
+        funders: Array<{ id?: string }>;
+      };
+      const notice = `offset 99900 + rows 1000 would pass the 100000 ceiling Crossref puts on offset + rows on funder name search, so 100 was applied — ${ROUTE}`;
+      expect(structured.notice).toBe(notice);
+      const lines = renderedText(contentText(result.content)).split('\n');
+      expect(lines.some((line) => line.endsWith(notice))).toBe(true);
+      expect(structured.funders).toHaveLength(100);
+      for (const funder of structured.funders) expect(lines).toContain(`ID: ${funder.id}`);
+    });
+
+    /** A cut page that ends the list has nothing past it to route to. */
+    it('says only that the rows were cut when the list ends at the ceiling', async () => {
+      mockSearchFunders.mockImplementation(async (opts: { rows: number }) =>
+        funderList(named(opts.rows), CEILING),
+      );
+
+      const result = await runToolContract(searchFundersTool, {
+        query: 'council',
+        rows: 100,
+        offset: 99_950,
+      });
+
+      const structured = result.structuredContent as Structured;
+      const notice =
+        'offset 99950 + rows 100 would pass the 100000 ceiling Crossref puts on offset + rows on funder name search, so 50 was applied.';
+      expect(structured.funderCount).toBe(50);
+      expect(structured.nextOffset).toBeUndefined();
+      expect(structured.notice).toBe(notice);
+      const lines = renderedText(contentText(result.content)).split('\n');
+      expect(lines.some((line) => line.endsWith(notice))).toBe(true);
+    });
+  });
+
+  describe('the funded-works list (ceiling 10000)', () => {
+    const CEILING = 10_000;
+    const ROUTE =
+      'the last works page reachable by works_offset, and 250000 works exist. Re-run with works_cursor="*" and chain nextWorksCursor to read the whole list; the walk restarts at the most recently registered work and runs by registration date, not publication date.';
+
+    beforeEach(() => {
+      mockSearchFunders.mockResolvedValue(funderList([RAW_FUNDER], 1));
+      mockGetFunderWorks.mockImplementation(
+        async (_id: string, opts: { offset: number; rows: number }) => {
+          if (opts.offset + opts.rows > CEILING)
+            throw new Error(`Crossref refuses offset ${opts.offset} + rows ${opts.rows}`);
+          return { totalResults: 250_000, items: works(opts.rows) };
+        },
+      );
+    });
+
+    it.each(WINDOW)(
+      'works_offset 10000 + (%i), rows %i → %s works (next: 10000 + (%s); notice: %s; 0.5.0: %s)',
+      async (delta, rows, applied, nextDelta, notice, v050) => {
+        const worksOffset = CEILING + delta;
+        const result = await runToolContract(searchFundersTool, {
+          funder_doi: '100000001',
+          include_works: true,
+          rows,
+          works_offset: worksOffset,
+        });
+        const structured = result.structuredContent as Structured;
+
+        if (applied === 'invalid') {
+          expect(structured.error?.code).toBe(JsonRpcErrorCode.InvalidParams);
+          expect(mockSearchFunders).not.toHaveBeenCalled();
+          return;
+        }
+        if (applied === null) {
+          expect(structured.error?.data?.reason).toBe('works_offset_too_large');
+          expect(mockSearchFunders).not.toHaveBeenCalled();
+          return;
+        }
+        expect(result.isError).toBeFalsy();
+        expect(mockGetFunderWorks).toHaveBeenCalledWith(
+          '100000001',
+          { rows: applied, offset: worksOffset },
+          expect.anything(),
+        );
+        expect(structured.fundedWorks).toHaveLength(applied);
+        if (v050 !== null) expect(applied).toBeGreaterThanOrEqual(v050);
+        expect(structured.nextWorksOffset).toBe(
+          nextDelta === null ? undefined : CEILING + nextDelta,
+        );
+        const expected = {
+          none: undefined,
+          last: 'This is the last works page reachable by works_offset — Crossref caps works_offset + rows at 10000 on a funded-works list and 250000 works exist. Re-run with works_cursor="*" and chain nextWorksCursor to read the whole list; the walk restarts at the most recently registered work and runs by registration date, not publication date.',
+          cut: `works_offset ${worksOffset} + rows ${rows} would pass the 10000 ceiling Crossref puts on works_offset + rows on a funded-works list, so ${applied} was applied — ${ROUTE}`,
+        }[notice];
+        expect(structured.notice).toBe(expected);
+      },
+    );
+
+    it('carries a window-cut page identically on both surfaces', async () => {
+      const result = await runToolContract(searchFundersTool, {
+        funder_doi: '100000001',
+        include_works: true,
+        rows: 1000,
+        works_offset: 9950,
+      });
+
+      const structured = result.structuredContent as Structured & {
+        fundedWorks: Array<{ doi: string }>;
+      };
+      const notice = `works_offset 9950 + rows 1000 would pass the 10000 ceiling Crossref puts on works_offset + rows on a funded-works list, so 50 was applied — ${ROUTE}`;
+      expect(structured.notice).toBe(notice);
+      const lines = renderedText(contentText(result.content)).split('\n');
+      expect(lines.some((line) => line.endsWith(notice))).toBe(true);
+      expect(structured.fundedWorks).toHaveLength(50);
+      for (const work of structured.fundedWorks) expect(lines).toContain(`DOI: ${work.doi}`);
+    });
+
+    /** A cut page that ends the list has nothing past it to route to. */
+    it('says only that the rows were cut when the list ends at the ceiling', async () => {
+      mockGetFunderWorks.mockImplementation(async (_id: string, opts: { rows: number }) => ({
+        totalResults: CEILING,
+        items: works(opts.rows),
+      }));
+
+      const result = await runToolContract(searchFundersTool, {
+        funder_doi: '100000001',
+        include_works: true,
+        rows: 100,
+        works_offset: 9950,
+      });
+
+      const structured = result.structuredContent as Structured;
+      const notice =
+        'works_offset 9950 + rows 100 would pass the 10000 ceiling Crossref puts on works_offset + rows on a funded-works list, so 50 was applied.';
+      expect(structured.fundedWorks).toHaveLength(50);
+      expect(structured.nextWorksOffset).toBeUndefined();
+      expect(structured.notice).toBe(notice);
+      const lines = renderedText(contentText(result.content)).split('\n');
+      expect(lines.some((line) => line.endsWith(notice))).toBe(true);
+    });
+
+    it('cuts the works list alone, leaving the funder list at the rows requested', async () => {
+      const result = await runToolContract(searchFundersTool, {
+        query: 'National Science Foundation',
+        include_works: true,
+        rows: 1000,
+        works_offset: 9500,
+      });
+
+      expect(result.isError).toBeFalsy();
+      expect(mockSearchFunders).toHaveBeenCalledWith(
+        expect.objectContaining({ query: 'National Science Foundation', rows: 1000 }),
+        expect.anything(),
+      );
+      expect(mockGetFunderWorks).toHaveBeenCalledWith(
+        '100000001',
+        { rows: 500, offset: 9500 },
+        expect.anything(),
+      );
+    });
+
+    it('leaves a works_cursor walk untouched by the window', async () => {
+      mockGetFunderWorks.mockResolvedValue({ totalResults: 250_000, items: works(1000) });
+
+      await runToolContract(searchFundersTool, {
+        funder_doi: '100000001',
+        include_works: true,
+        rows: 1000,
+        works_cursor: '*',
+      });
+
+      expect(mockGetFunderWorks).toHaveBeenCalledWith(
+        '100000001',
+        { rows: 1000, cursor: '*' },
+        expect.anything(),
+      );
+    });
+  });
+});
+
+/**
+ * The funded-works list counts a funder's registry descendants and the `funder` filter does not,
+ * so a filtered count with sub-agencies needs their IDs: a funder_doi lookup relays them whole.
+ * Records are live `/funders/{id}` captures — NIH (59 descendants, NCI's own among them), the
+ * European Commission (195, the longest list across 24 umbrella funders), and DFG (none).
+ */
+describe('searchFundersTool registry descendants', () => {
+  type RawFunder = { id: string; name: string; 'work-count': number; descendants: string[] };
+  const captured = (id: string): RawFunder =>
+    (
+      JSON.parse(
+        readFileSync(new URL(`../fixtures/funders/${id}.json`, import.meta.url), 'utf8'),
+      ) as { message: RawFunder }
+    ).message;
+  const NIH = captured('100000002');
+  const NCI = captured('100000054');
+  const EC = captured('501100000780');
+  const DFG = captured('501100001659');
+
+  type Structured = { funders: Array<Record<string, unknown>> };
+  const funderOf = (result: { structuredContent?: unknown }) =>
+    (result.structuredContent as Structured).funders[0];
+  /** The lines a CommonMark reader sees in `content[]`, escapes resolved. */
+  const readLines = (result: { content: Parameters<typeof contentText>[0] }) =>
+    renderedText(contentText(result.content)).split('\n');
+
+  it('relays every descendant at every depth on both surfaces of a funder_doi lookup', async () => {
+    mockSearchFunders.mockResolvedValue(funderList([NIH]));
+
+    const result = await runToolContract(searchFundersTool, { funder_doi: '100000002' });
+
+    expect(result.isError).toBeFalsy();
+    const funder = funderOf(result);
+    expect(funder?.descendants).toEqual(NIH.descendants);
+    expect(funder?.descendants).toHaveLength(59);
+    // NCI sits under NIH, and the institutes under NCI are on NIH's list too — not its children alone.
+    expect(NCI.descendants).toHaveLength(7);
+    expect(funder?.descendants).toEqual(expect.arrayContaining([NCI.id, ...NCI.descendants]));
+    expect(readLines(result)).toContain(`Descendants (59): ${NIH.descendants.join(', ')}`);
+  });
+
+  it('returns the longest list whole, uncapped, on both surfaces', async () => {
+    mockSearchFunders.mockResolvedValue(funderList([EC]));
+
+    const result = await runToolContract(searchFundersTool, { funder_doi: '501100000780' });
+
+    expect(EC.descendants).toHaveLength(195);
+    expect(funderOf(result)?.descendants).toEqual(EC.descendants);
+    expect(readLines(result)).toContain(`Descendants (195): ${EC.descendants.join(', ')}`);
+    expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
+  });
+
+  it('carries no field and no line for a funder with no descendants', async () => {
+    mockSearchFunders.mockResolvedValue(funderList([DFG]));
+
+    const result = await runToolContract(searchFundersTool, { funder_doi: '501100001659' });
+
+    expect(DFG.descendants).toEqual([]);
+    expect(result.isError).toBeFalsy();
+    expect(funderOf(result)).not.toHaveProperty('descendants');
+    expect(contentText(result.content)).not.toContain('Descendants');
+  });
+
+  /**
+   * Crossref's name search returns rows without `descendants`; the lookup path is what the field
+   * rides, so a name page of umbrella funders is never carrying ~2.5 KB of IDs per row.
+   */
+  it('never carries descendants on a name-query row, even one whose record lists them', async () => {
+    mockSearchFunders.mockResolvedValue(funderList([NIH]));
+
+    const result = await runToolContract(searchFundersTool, {
+      query: 'National Institutes of Health',
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(funderOf(result)).not.toHaveProperty('descendants');
+    expect(contentText(result.content)).not.toContain('Descendants');
+  });
+
+  it('renders the descendants line beside the registry relationships', () => {
+    const text = blockText(
+      searchFundersTool.format!({
+        funders: [
+          {
+            id: '100000054',
+            name: 'National Cancer Institute',
+            worksCount: 83567,
+            descendants: NCI.descendants,
+          },
+        ],
+      })[0],
+    );
+    expect(text.split('\n')).toEqual([
+      '## National Cancer Institute',
+      '**ID:** 100000054',
+      '**Works in Crossref:** 83567',
+      `**Descendants (7):** ${NCI.descendants.join(', ')}`,
+      '',
+    ]);
+  });
+
+  it('names the scope of each count and the route to a filtered count with sub-agencies', () => {
+    const funder = searchFundersTool.output.shape.funders.element.shape;
+    expect(funder.worksCount.description).toContain('this registry ID alone');
+    expect(funder.descendants.description).toContain('funder filter');
+    expect(searchFundersTool.enrichment?.fundedWorksTotal?.description).toContain(
+      'registry descendants',
+    );
+    expect(searchFundersTool.description).toContain('descendants');
+    expect(searchFundersTool.description).toContain('funder filter');
   });
 });

@@ -14,11 +14,11 @@
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
-import { mdText, mdTextAtLineStart } from '@/mcp-server/tools/markdown-text.js';
+import { mdText, mdTextAtLineStart, mdTextInHeading } from '@/mcp-server/tools/markdown-text.js';
 import {
   clampPageSize,
-  ENTRY_LIMIT_CAP,
   ENTRY_LIMIT_CEILING,
+  GET_WORK_LIMIT_CAP,
 } from '@/mcp-server/tools/page-size.js';
 import { notFoundDetail } from '@/mcp-server/tools/registration-agency.js';
 import { locatorFields, locatorLine, projectLocators } from '@/mcp-server/tools/work-locators.js';
@@ -154,7 +154,7 @@ const RelationSchema = z
 export const getWorkTool = tool('crossref_get_work', {
   title: 'Get Work by DOI',
   description:
-    'Resolves a DOI to its full Crossref metadata record: title, authors, editors, affiliations, abstract (when deposited), journal or container with the volume, issue, pages, and article number that locate the work in it, ISSNs and ISBNs, publication date, type, license, full-text links, and funder acknowledgements. The author list is paged: authorCount is the full deposited total, offset and limit select the page (25 authors by default), and when authors remain the response carries a nextOffset to pass back as offset — large-collaboration papers deposit thousands. Post-publication updates are relayed as Crossref records them: updatedBy names each correction, retraction, expression of concern, or new version issued against this work, with its notice DOI and whether the publisher or Retraction Watch recorded it, and updateTo names the works this record is itself a notice for. An absent updatedBy does not mean the work was never updated — coverage depends on those deposits. relations lists related identifiers, such as a preprint and its published version, grouped by relation type; only the Crossref-registered DOIs among them resolve through crossref_get_work. Outgoing references are reported as a count in referencesCount; the reference entries themselves come from crossref_get_references. The isReferencedByCount field reports the total incoming citation count from Crossref; the citing works themselves are not available through Crossref — use OpenAlex for citation graphs.',
+    'Resolves a DOI to its full Crossref metadata record: title, authors, editors, affiliations, abstract (when deposited), journal or container with the volume, issue, pages, and article number that locate the work in it, ISSNs and ISBNs, publication date, type, license, full-text links, and funder acknowledgements. The author list is paged: authorCount is the full deposited total, offset and limit select the page (25 authors by default), and when authors remain the response carries a nextOffset to pass back as offset — large-collaboration papers deposit thousands. Post-publication updates are relayed as Crossref records them: updatedBy names each correction, retraction, expression of concern, or new version issued against this work, with its notice DOI and whether the publisher or Retraction Watch recorded it, and updateTo names the works this record is itself a notice for. An absent updatedBy does not mean the work was never updated — coverage depends on those deposits. relations lists related identifiers, such as a preprint and its published version, grouped by relation type; only the Crossref-registered DOIs among them resolve through crossref_get_work. memberId is the Crossref member that holds the DOI now — pass it to crossref_get_member for the publisher record and its deposit coverage; the prefix of the DOI names the member that registered the prefix, which for a transferred title is a former publisher. Outgoing references are reported as a count in referencesCount; the reference entries themselves come from crossref_get_references. The isReferencedByCount field reports the total incoming citation count from Crossref; the citing works themselves are not available through Crossref — use OpenAlex for citation graphs.',
   annotations: { readOnlyHint: true, idempotentHint: true },
 
   input: z.object({
@@ -182,7 +182,7 @@ export const getWorkTool = tool('crossref_get_work', {
       .max(ENTRY_LIMIT_CEILING)
       .default(25)
       .describe(
-        `Maximum number of authors to return in one page (1–${ENTRY_LIMIT_CAP} per call, default 25). A larger value, up to ${ENTRY_LIMIT_CEILING}, returns ${ENTRY_LIMIT_CAP} and says so in notice; nextOffset continues after the authors returned. Ordinary records fit in a single page; large-collaboration papers in particle physics and genomics deposit thousands.`,
+        `Maximum number of authors to return in one page (1–${GET_WORK_LIMIT_CAP} per call, default 25). A larger value, up to ${ENTRY_LIMIT_CEILING}, returns ${GET_WORK_LIMIT_CAP} and says so in notice; nextOffset continues after the authors returned. Ordinary records fit in a single page; large-collaboration papers in particle physics and genomics deposit thousands.`,
       ),
   }),
 
@@ -242,7 +242,15 @@ export const getWorkTool = tool('crossref_get_work', {
     containerTitle: z
       .string()
       .optional()
-      .describe('Journal, book, or proceedings name containing this work'),
+      .describe(
+        'Journal, book, or proceedings name containing this work — the first entry of containerTitles',
+      ),
+    containerTitles: z
+      .array(z.string())
+      .optional()
+      .describe(
+        'Every container title the record deposits, in deposited order. A book chapter or proceedings paper often deposits two: the series, then the book or volume. Omitted when the record deposits none.',
+      ),
     ...locatorFields,
     issn: z.array(z.string()).optional().describe('ISSN(s) of the containing journal'),
     isbn: z
@@ -252,6 +260,12 @@ export const getWorkTool = tool('crossref_get_work', {
         'ISBN(s) as deposited — for a book chapter, those of the containing book. Omitted when the record deposits none.',
       ),
     publisher: z.string().optional().describe('Publisher name'),
+    memberId: z
+      .number()
+      .optional()
+      .describe(
+        "Crossref member ID of the publisher that holds this DOI now — pass to crossref_get_member for its record. The DOI's prefix names the member that registered the prefix, which for a transferred title is a former publisher. Omitted when the record deposits no member.",
+      ),
     published: DatePartsSchema.optional().describe(
       'Publication date — the first of published, published-print, published-online, and issued that names one. A component Crossref records as unknown is omitted, and so is every component below it.',
     ),
@@ -302,7 +316,7 @@ export const getWorkTool = tool('crossref_get_work', {
      */
     const doi = normalizeDoi(input.doi);
     // Clamped once, here, so the author slice, nextOffset, and the `cap` enrichment read the page size used.
-    const limitClamp = clampPageSize('limit', input.limit, ENTRY_LIMIT_CAP);
+    const limitClamp = clampPageSize('limit', input.limit, GET_WORK_LIMIT_CAP);
     const limit = limitClamp.value;
     ctx.log.info('Resolving DOI', { doi });
     const svc = getCrossrefService();
@@ -324,10 +338,14 @@ export const getWorkTool = tool('crossref_get_work', {
         : raw['short-title']?.[0] !== undefined
           ? normalizeMarkupText(raw['short-title'][0])
           : undefined;
-    const containerTitle =
-      raw['container-title']?.[0] !== undefined
-        ? normalizeMarkupText(raw['container-title'][0])
-        : undefined;
+    const containerTitles = raw['container-title']?.map(normalizeMarkupText);
+    const containerTitle = containerTitles?.[0];
+    /**
+     * Crossref deposits `member` as a digit string (`"311"`). Anything else is no ID a caller
+     * could pass to crossref_get_member, so it is left out rather than read as a number.
+     */
+    const memberId =
+      raw.member !== undefined && /^\d+$/.test(raw.member) ? Number(raw.member) : undefined;
 
     const published = resolveWorkDate(raw);
 
@@ -397,11 +415,12 @@ export const getWorkTool = tool('crossref_get_work', {
       ...(raw['references-count'] !== undefined && {
         referencesCount: raw['references-count'],
       }),
-      ...(containerTitle !== undefined && { containerTitle }),
+      ...(containerTitle !== undefined && { containerTitle, containerTitles }),
       ...projectLocators(raw),
       ...(raw.ISSN && raw.ISSN.length > 0 && { issn: raw.ISSN }),
       ...(raw.ISBN?.length && { isbn: raw.ISBN }),
       ...(raw.publisher !== undefined && { publisher: normalizeText(raw.publisher) }),
+      ...(memberId !== undefined && { memberId }),
       ...(published !== undefined && { published }),
       ...(raw.funder && { funders: raw.funder.map(normalizeFunder) }),
       ...(raw.license && {
@@ -431,14 +450,15 @@ export const getWorkTool = tool('crossref_get_work', {
   format: (result) => {
     const lines: string[] = [];
 
-    lines.push(`## ${result.title ? mdText(result.title) : result.doi}`);
+    lines.push(`## ${result.title ? mdTextInHeading(result.title) : result.doi}`);
     if (result.subtitle) lines.push(`*${mdText(result.subtitle)}*`);
     lines.push('');
 
     lines.push(`**DOI:** ${result.doi}${result.type ? ` | **Type:** ${result.type}` : ''}`);
     if (result.publisher) lines.push(`**Publisher:** ${mdText(result.publisher)}`);
-    if (result.containerTitle)
-      lines.push(`**Journal/Container:** ${mdText(result.containerTitle)}`);
+    if (result.memberId !== undefined) lines.push(`**Member ID:** ${result.memberId}`);
+    if (result.containerTitles?.length)
+      lines.push(`**Journal/Container:** ${result.containerTitles.map(mdText).join(' | ')}`);
     const locators = locatorLine(result);
     if (locators) lines.push(locators);
     if (result.issn?.length) lines.push(`**ISSN:** ${result.issn.join(', ')}`);
@@ -453,8 +473,8 @@ export const getWorkTool = tool('crossref_get_work', {
 
     /**
      * Update links, relations, and editors render ahead of the author page, which can run to
-     * 500 lines: a retraction has to be visible before it, not after. Each section is a list
-     * of its own, opened and closed by a blank line so a CommonMark reader never folds the
+     * thousands of lines: a retraction has to be visible before it, not after. Each section is a
+     * list of its own, opened and closed by a blank line so a CommonMark reader never folds the
      * next label into the last bullet.
      */
     const sections = [

@@ -1,11 +1,15 @@
 /**
  * @fileoverview CrossrefService wraps the Crossref REST API with polite-pool User-Agent injection,
  * per-request timeout, retry with exponential backoff, and pagination helpers. Offset paging is
- * honored on the name-search and works sub-resource routes, whose ceilings differ by an order of
- * magnitude — see NAME_SEARCH_OFFSET_CAP and WORKS_OFFSET_CAP. Cursor paging has no ceiling and
- * is available on `/works` and on both works sub-resources. One request leaves Crossref: the DOI
- * registry's agency lookup, made only after a Crossref 404 (`getRegistrationAgency`), to
- * `https://doi.org` whatever `CROSSREF_BASE_URL` says and without the polite-pool `mailto`.
+ * honored on the name-search routes and on the journal and funder works lists, whose ceilings
+ * differ by an order of magnitude — see NAME_SEARCH_OFFSET_CAP and WORKS_OFFSET_CAP. Cursor
+ * paging has no ceiling and is available on `/works` and `/funders/{id}/works`, the two routes
+ * the works lists read. Every works-list request names its fields in `select=` — the caller's
+ * `fields` on a works search, `WORKS_LIST_SELECT` on the journal and funder lists — since
+ * without one Crossref returns whole records, reference lists included. One request leaves
+ * Crossref: the DOI registry's agency lookup, made only after a Crossref 404
+ * (`getRegistrationAgency`), to `https://doi.org` whatever `CROSSREF_BASE_URL` says and without
+ * the polite-pool `mailto`.
  *
  * Also home to the text normalization every tool projects free-text values through —
  * `normalizeText` for the baseline pass, `normalizeMarkupText` for the JATS-deposited fields,
@@ -809,7 +813,7 @@ export type WorksSearchOptions = {
   queryAuthor?: string;
   queryContainerTitle?: string;
   filter?: Record<string, string>;
-  fields?: string[];
+  fields?: readonly string[];
   rows?: number;
   offset?: number;
   cursor?: string;
@@ -834,13 +838,14 @@ export type FundersSearchOptions = {
 };
 
 /**
- * Paging options for the `/journals/{issn}/works` and `/funders/{id}/works` sub-resources.
- * `cursor` and `offset` are alternatives, not a pair — Crossref rejects the combination with
+ * Paging options for the journal and funder works lists — `/works` filtered on a journal's ISSNs,
+ * and the `/funders/{id}/works` sub-resource. `cursor` and `offset` are alternatives, not a
+ * pair — Crossref rejects the combination with
  * `cursor-with-offset-or-sample`, so `cursor` wins here and callers validate ahead of the call.
  * The two modes also order the list differently: an offset page is newest-published first, a
- * cursor walk newest-registered first — see `subResourcePageParams`.
+ * cursor walk newest-registered first — see `worksListPageParams`.
  */
-export type SubResourceWorksOptions = {
+export type WorksListOptions = {
   rows: number;
   offset?: number;
   cursor?: string;
@@ -867,10 +872,11 @@ export type ListSearchResult<T> = {
 export const NAME_SEARCH_OFFSET_CAP = 100_000;
 
 /**
- * The `/journals/{issn}/works` and `/funders/{id}/works` sub-resources cap ten times lower —
- * `offset + rows <= 10000` — and their rejection body directs callers to cursor paging. It is a
- * ceiling on the `offset` input alone: both routes accept `cursor=*` and return a `next-cursor`
- * token, which the tools thread as `works_cursor` / `nextWorksCursor` to read past it.
+ * The journal and funder works lists cap ten times lower — `offset + rows <= 10000`, the ceiling
+ * `/works` and the `/funders/{id}/works` sub-resource share — and the rejection body directs
+ * callers to cursor paging. It is a ceiling on the `offset` input alone: both routes accept
+ * `cursor=*` and return a `next-cursor` token, which the tools thread as `works_cursor` /
+ * `nextWorksCursor` to read past it.
  */
 export const WORKS_OFFSET_CAP = 10_000;
 
@@ -885,17 +891,20 @@ export type PageContinuation =
   | { kind: 'end' }
   | { kind: 'ceiling' };
 
-/** Classify the continuation for a page against its route's offset ceiling. */
+/**
+ * Classify the continuation for a page against its route's offset ceiling. Any offset below the
+ * ceiling is spendable — the tools cut a page that would pass it to the rows that fit — so the
+ * ceiling is reached only once the next offset sits on it.
+ */
 export function nextPageOffset(args: {
   offset: number;
   returned: number;
   total: number;
-  rows: number;
   cap: number;
 }): PageContinuation {
   const next = args.offset + args.returned;
   if (next >= args.total) return { kind: 'end' };
-  if (next + args.rows > args.cap) return { kind: 'ceiling' };
+  if (next >= args.cap) return { kind: 'ceiling' };
   return { kind: 'next', offset: next };
 }
 
@@ -1182,8 +1191,9 @@ export class CrossrefService {
   }
 
   /**
-   * Resolve a DOI prefix (e.g. "10.1038") to its owning member. Returns null on 404.
-   * Same 404→null pattern as getWork()/getMember().
+   * Resolve a DOI prefix (e.g. "10.1038") to the member its prefix record names — the prefix's
+   * registrant, which for a title transferred to another publisher is not the member holding
+   * its DOIs now. Returns null on 404. Same 404→null pattern as getWork()/getMember().
    */
   async getPrefix(prefix: string, ctx: Context): Promise<RawCrossrefPrefix | null> {
     try {
@@ -1260,7 +1270,9 @@ export class CrossrefService {
     }
 
     /**
-     * select= only on /works (search), never on /works/{doi}.
+     * select= on /works (search), never on /works/{doi}, which refuses the parameter.
+     * crossref_search_works always names its fields — the caller's selection, or every name
+     * its summary projects when there is none — so a page never carries whole records.
      *
      * DOI is force-included in every projection: it is the work summary's only
      * identifier and the sole key that chains into /works/{doi}, so a projection
@@ -1311,16 +1323,32 @@ export class CrossrefService {
   }
 
   /**
-   * Fetch a page of works for a specific journal by ISSN, most recent first — by publication
-   * date on an offset page, by registration date on a cursor walk.
+   * Fetch a page of a journal's works — every work deposited under any of `issns`, the ISSNs its
+   * record lists — most recent first: by publication date on an offset page, by registration
+   * date on a cursor walk. Read from `/works` with one `issn` filter pair per distinct ISSN
+   * rather than from `/journals/{issn}/works`, which lists only the works of the one ISSN in its
+   * path, and a journal's works are split across its ISSNs (BMJ's first of seven holds 5,514 of
+   * its 456,306). `/works` pages that filter exactly as the sub-resource pages its ISSN: the same
+   * offset order and 10,000 ceiling, the same cursor walk and tokens.
+   *
+   * Throws when no ISSN in `issns` is one Crossref can read: `/works` with no filter lists every
+   * work in Crossref. A caller decides that case first, through `readableIssns`.
    */
   async getJournalWorks(
-    issn: string,
-    opts: SubResourceWorksOptions,
+    issns: readonly string[],
+    opts: WorksListOptions,
     ctx: Context,
   ): Promise<WorksSearchResult> {
+    const readable = readableIssns(issns);
+    if (readable.length === 0) {
+      throw new Error(
+        `getJournalWorks was given no ISSN Crossref can read (${JSON.stringify(issns)}), and /works without an issn filter lists every work.`,
+      );
+    }
+    const params = worksListPageParams(opts);
+    params.set('filter', readable.map((issn) => `issn:${issn}`).join(','));
     const envelope = await this.request<CrossrefListMessage<RawCrossrefWork>>(
-      `/journals/${encodeURIComponent(issn)}/works?${subResourcePageParams(opts)}`,
+      `/works?${params}`,
       ctx,
     );
     return toWorksSearchResult(envelope.message);
@@ -1355,17 +1383,17 @@ export class CrossrefService {
 
   /**
    * Fetch a page of works for a specific funder by funder DOI/ID, most recent first — by
-   * publication date on an offset page, by registration date on a cursor walk. Ordered the
-   * same way as `getJournalWorks`, so the two works lists agree.
+   * publication date on an offset page, by registration date on a cursor walk. Paged, ordered,
+   * and selected the same way as `getJournalWorks`, so the two works lists agree.
    */
   async getFunderWorks(
     funderId: string,
-    opts: SubResourceWorksOptions,
+    opts: WorksListOptions,
     ctx: Context,
   ): Promise<WorksSearchResult> {
     const id = normalizeDoi(funderId);
     const envelope = await this.request<CrossrefListMessage<RawCrossrefWork>>(
-      `/funders/${encodeURIComponent(id)}/works?${subResourcePageParams(opts)}`,
+      `/funders/${encodeURIComponent(id)}/works?${worksListPageParams(opts)}`,
       ctx,
     );
     return toWorksSearchResult(envelope.message);
@@ -1513,9 +1541,52 @@ function assertIssnFilters(filterStr: string): void {
 }
 
 /**
- * The query string for one page of a works sub-resource. Cursor and offset are mutually
- * exclusive upstream, so only one is ever written — the same precedence `searchWorks` uses on
- * `/works` — and an offset of 0 is the start of the list, left off the query string entirely.
+ * The distinct ISSNs Crossref reads from `values`, in first-seen order, each the run
+ * `ISSN_RUN` finds written as `NNNN-NNNX`; a value with no run is left out. The values are a
+ * journal record's ISSNs headed for an `issn` filter, which Crossref splits on commas with no
+ * escape, so writing each as the one ISSN read from it is what keeps a value carrying
+ * `,from-pub-date:…` or `,issn:…` from adding a pair of its own.
+ *
+ * Exported for `crossref_search_journals`, which decides by the same rule whether a matched
+ * journal has a works list to look up at all: a record whose every ISSN entry yields nothing
+ * here has none, exactly as a record listing no ISSN.
+ */
+export function readableIssns(values: readonly string[]): string[] {
+  const issns = new Set<string>();
+  for (const value of values) {
+    const run = ISSN_RUN.exec(value.replace(NOT_ISSN_CHARACTER, ''))?.[0].toUpperCase();
+    if (run) issns.add(`${run.slice(0, 4)}-${run.slice(4)}`);
+  }
+  return [...issns];
+}
+
+/**
+ * The select names the journal and funder works-list summaries read: `DOI`, `title`, `type`, the
+ * three date sources `published` is resolved from, and `is-referenced-by-count`. Both lists
+ * project the same summary (`crossref_search_journals` `recentWorks`, `crossref_search_funders`
+ * `fundedWorks`), so one list serves both. A raw key either projection starts reading joins this
+ * list in the same change, or it reads as absent on every record — the projection tests cut full
+ * records to this list and compare.
+ *
+ * Without a selection Crossref returns whole records, reference lists included: a 1000-row NSF
+ * works page is 23.3 MB upstream, 0.29 MB under this one, for identical output.
+ */
+const WORKS_LIST_SELECT = [
+  'DOI',
+  'title',
+  'type',
+  'published',
+  'published-print',
+  'published-online',
+  'is-referenced-by-count',
+].join(',');
+
+/**
+ * The query string for one page of the journal or funder works list — `/works` filtered on a
+ * journal's ISSNs, or `/funders/{id}/works`. Cursor and offset are mutually exclusive upstream,
+ * so only one is ever written — the same precedence `searchWorks` uses — and an offset of 0 is
+ * the start of the list, left off the query string entirely. Every page names
+ * `WORKS_LIST_SELECT`, on a cursor walk as on an offset page.
  *
  * Both modes read newest first, by different dates. An offset page sorts by publication date.
  * A cursor walk cannot: Crossref refuses every publication-date sort alongside a cursor
@@ -1524,7 +1595,7 @@ function assertIssnFilters(filterStr: string): void {
  * by `created` — the date the DOI was first registered — which Crossref walks by cursor and
  * which never changes under a record, so a walk cannot reorder mid-way.
  */
-function subResourcePageParams(opts: SubResourceWorksOptions): URLSearchParams {
+function worksListPageParams(opts: WorksListOptions): URLSearchParams {
   const params = new URLSearchParams({ rows: String(opts.rows) });
   if (opts.cursor) {
     params.set('cursor', opts.cursor);
@@ -1534,6 +1605,7 @@ function subResourcePageParams(opts: SubResourceWorksOptions): URLSearchParams {
     params.set('sort', 'published');
   }
   params.set('order', 'desc');
+  params.set('select', WORKS_LIST_SELECT);
   return params;
 }
 

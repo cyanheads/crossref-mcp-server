@@ -1017,36 +1017,63 @@ describe('getReferencesTool book, series, issue, edition, and DOI-provenance fie
 });
 
 describe('getReferencesTool page-size clamp', () => {
-  const CLAMP = 'limit 1000 is above the per-call cap of 500, so 500 was applied.';
+  const CLAMP = 'limit 2501 is above the per-call cap of 2500, so 2500 was applied.';
   const refs = (count: number) =>
     Array.from({ length: count }, (_, i) => ({ key: `r${i}`, unstructured: `Ref ${i}.` }));
 
-  it('clamps limit above 500: pages 500 references, reports cap 500, and advances nextOffset by the page', async () => {
-    mockGetWork.mockResolvedValue({ DOI: '10.1038/nature12373', reference: refs(1200) });
+  it('clamps limit above 2500: pages 2500 references, reports cap 2500, and advances nextOffset by the page', async () => {
+    mockGetWork.mockResolvedValue({ DOI: '10.1038/nature12373', reference: refs(6000) });
 
     const result = await runToolContract(getReferencesTool, {
       doi: '10.1038/nature12373',
       offset: 500,
-      limit: 1000,
+      limit: 2501,
     });
 
     const structured = result.structuredContent as {
       references: Array<{ key?: string }>;
       notice?: string;
     };
-    expect(structured.references).toHaveLength(500);
+    expect(structured.references).toHaveLength(2500);
     expect(structured.references[0]?.key).toBe('r500');
-    expect(structured.references.at(-1)?.key).toBe('r999');
+    expect(structured.references.at(-1)?.key).toBe('r2999');
     expect(result.structuredContent).toMatchObject({
       truncated: true,
-      shown: 500,
-      cap: 500,
-      nextOffset: 1000,
+      shown: 2500,
+      cap: 2500,
+      nextOffset: 3000,
     });
     expect(structured.notice).toBe(
-      `${CLAMP} Showing references 501–1000 of 1200. Call again with offset=1000 for the next page.`,
+      `${CLAMP} Showing references 501–3000 of 6000. Call again with offset=3000 for the next page.`,
     );
-    expect(result.content.map(blockText).join('\n')).toContain(CLAMP);
+    const text = result.content.map(blockText).join('\n');
+    expect(text).toContain(CLAMP);
+    expect(text).toContain('3000. [3000] key:r2999 | Ref 2999.');
+    expect(text).not.toContain('key:r3000');
+  });
+
+  it('pages a 25,814-reference list at 2500 when limit is the schema maximum', async () => {
+    mockGetWork.mockResolvedValue({
+      DOI: '10.1016/b978-0-12-397189-0.00123-3',
+      reference: refs(25_814),
+    });
+
+    const result = await runToolContract(getReferencesTool, {
+      doi: '10.1016/b978-0-12-397189-0.00123-3',
+      limit: 100_000,
+    });
+
+    const structured = result.structuredContent as {
+      references: unknown[];
+      referenceCount: number;
+      notice?: string;
+    };
+    expect(structured.references).toHaveLength(2500);
+    expect(structured.referenceCount).toBe(25_814);
+    expect(result.structuredContent).toMatchObject({ nextOffset: 2500, cap: 2500 });
+    expect(structured.notice).toBe(
+      'limit 100000 is above the per-call cap of 2500, so 2500 was applied. Showing references 1–2500 of 25814. Call again with offset=2500 for the next page.',
+    );
   });
 
   it('discloses the clamp alone on a page that holds the rest of the list', async () => {
@@ -1054,7 +1081,7 @@ describe('getReferencesTool page-size clamp', () => {
 
     const result = await runToolContract(getReferencesTool, {
       doi: '10.1038/nature12373',
-      limit: 1000,
+      limit: 2501,
     });
 
     expect((result.structuredContent as { references: unknown[] }).references).toHaveLength(300);
@@ -1066,7 +1093,7 @@ describe('getReferencesTool page-size clamp', () => {
     mockGetWork.mockResolvedValue({ DOI: '10.1038/nature12373', reference: [] });
     const empty = await runToolContract(getReferencesTool, {
       doi: '10.1038/nature12373',
-      limit: 1000,
+      limit: 2501,
     });
     expect((empty.structuredContent as { notice?: string }).notice).toBe(
       `${CLAMP} No reference list indexed for this work. Coverage varies by publisher and era; pre-2000 works and non-participating publishers often have no indexed references. Try OpenAlex for alternative reference data.`,
@@ -1076,22 +1103,23 @@ describe('getReferencesTool page-size clamp', () => {
     const past = await runToolContract(getReferencesTool, {
       doi: '10.1038/nature12373',
       offset: 50,
-      limit: 1000,
+      limit: 2501,
     });
     expect((past.structuredContent as { notice?: string }).notice).toBe(
       `${CLAMP} Offset 50 is past the end of this reference list (10 references). Request an offset below 10.`,
     );
   });
 
-  it('leaves limit 500 untouched and notice-free', async () => {
-    mockGetWork.mockResolvedValue({ DOI: '10.1038/nature12373', reference: refs(400) });
+  it('leaves limit 2500 untouched and notice-free on a list that fits it exactly', async () => {
+    mockGetWork.mockResolvedValue({ DOI: '10.1038/nature12373', reference: refs(2500) });
 
     const result = await runToolContract(getReferencesTool, {
       doi: '10.1038/nature12373',
-      limit: 500,
+      limit: 2500,
     });
 
-    expect((result.structuredContent as { references: unknown[] }).references).toHaveLength(400);
+    expect((result.structuredContent as { references: unknown[] }).references).toHaveLength(2500);
+    expect(result.structuredContent).not.toHaveProperty('nextOffset');
     expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
   });
 });

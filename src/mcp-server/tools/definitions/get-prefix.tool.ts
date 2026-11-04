@@ -1,5 +1,6 @@
 /**
- * @fileoverview crossref_get_prefix — resolves a DOI prefix to its owning Crossref member (publisher).
+ * @fileoverview crossref_get_prefix — resolves a DOI prefix to the Crossref member (publisher) its
+ * prefix record names: the prefix's registrant, not necessarily the member holding a DOI now.
  * @module mcp-server/tools/definitions/get-prefix.tool
  */
 
@@ -13,7 +14,7 @@ import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js'
 export const getPrefixTool = tool('crossref_get_prefix', {
   title: 'Get Prefix Owner',
   description:
-    'Resolves a DOI prefix — the registrant portion of a DOI, e.g. "10.1038" — to its owning Crossref member: the publisher name and numeric member ID. Answers "who publishes DOIs starting with 10.1038?" The Crossref prefix record carries only these three facts (no counts, coverage, or flags); the returned memberId chains directly into crossref_get_member for the full publisher record.',
+    'Resolves a DOI prefix — the registrant portion of a DOI, e.g. "10.1038" — to the Crossref member its prefix record names: the publisher name and numeric member ID. That member is the prefix\'s registrant, so for a title transferred to another publisher it is not the member holding the DOI now — crossref_get_work\'s memberId names that one. The Crossref prefix record carries only these three facts (no counts, coverage, or flags); the returned memberId chains directly into crossref_get_member for the full publisher record.',
   annotations: { readOnlyHint: true, idempotentHint: true },
 
   input: z.object({
@@ -33,12 +34,12 @@ export const getPrefixTool = tool('crossref_get_prefix', {
     ownerName: z
       .string()
       .optional()
-      .describe('Name of the member (publisher) that owns this prefix'),
+      .describe('Name of the member (publisher) the prefix record names — its registrant'),
     memberId: z
       .number()
       .optional()
       .describe(
-        'Numeric Crossref member ID that owns this prefix — pass to crossref_get_member for the full publisher record',
+        "Numeric Crossref member ID the prefix record names — pass to crossref_get_member for the full publisher record. For a transferred title it is a former publisher; a DOI's current member is the memberId crossref_get_work returns.",
       ),
   }),
 

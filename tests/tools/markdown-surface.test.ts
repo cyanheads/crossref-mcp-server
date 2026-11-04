@@ -7,8 +7,9 @@
  */
 
 import { runToolContract } from '@cyanheads/mcp-ts-core/testing';
+import { Parser } from 'commonmark';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { blockText } from '../helpers/content.js';
+import { blockText, renderedText } from '../helpers/content.js';
 
 vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/services/crossref/crossref-service.js')>();
@@ -61,14 +62,17 @@ beforeEach(() => {
   );
 });
 
-/** A work record with the probe in every free-text field a tool projects out of one. */
+/**
+ * A work record with the probe in every free-text field a tool projects out of one — twice in a
+ * list a tool renders past its first entry.
+ */
 function probeWork() {
   return {
     DOI: '10.1000/probe',
     type: 'journal-article',
     title: [DEPOSITED],
     subtitle: [DEPOSITED],
-    'container-title': [DEPOSITED],
+    'container-title': [DEPOSITED, DEPOSITED],
     publisher: DEPOSITED,
     abstract: DEPOSITED,
     subject: [DEPOSITED],
@@ -284,4 +288,105 @@ describe('the Markdown surface of every tool', () => {
       expect(text.replaceAll('\\', ''), surface.name).toContain(NORMALIZED);
     }
   });
+
+  /**
+   * A value ending in a backslash, on a label line another line follows: CommonMark reads the
+   * backslash before the line break as a hard break and drops it.
+   */
+  it('keeps a trailing backslash on a label line another line follows', async () => {
+    service.getWork.mockResolvedValue({ ...probeWork(), publisher: 'Foo\\' });
+    const result = await runToolContract(getWorkTool, { doi: '10.1000/probe' });
+    const lines = renderedText(result.content.map(blockText).join('\n')).split('\n');
+
+    expect(result.structuredContent).toMatchObject({ publisher: 'Foo\\' });
+    expect(lines).toContain('Publisher: Foo\\');
+  });
+});
+
+/** What a CommonMark reader shows as the text of each heading in a Markdown document. */
+function headingTexts(markdown: string): string[] {
+  const walker = new Parser().parse(markdown).walker();
+  const headings: string[] = [];
+  let open: string | undefined;
+  for (let step = walker.next(); step; step = walker.next()) {
+    const { node, entering } = step;
+    if (node.type === 'heading') {
+      if (entering) open = '';
+      else {
+        headings.push(open ?? '');
+        open = undefined;
+      }
+    } else if (open !== undefined && node.type === 'text') {
+      open += node.literal ?? '';
+    }
+  }
+  return headings;
+}
+
+/**
+ * A run of `#` that ends a heading line after a space is the heading's closing sequence, which a
+ * renderer drops. Each tool renders one deposited name as a heading, and each has to keep it.
+ */
+describe('the heading every tool renders from a deposited name', () => {
+  const CLOSING = 'Programming in F #';
+
+  const HEADINGS: Array<{
+    name: string;
+    field: string;
+    arrange: () => void;
+    run: () => Promise<ToolRunResult>;
+  }> = [
+    {
+      name: 'crossref_get_work',
+      field: 'title',
+      arrange: () => service.getWork.mockResolvedValue({ ...probeWork(), title: [CLOSING] }),
+      run: () => runToolContract(getWorkTool, { doi: '10.1000/probe' }),
+    },
+    {
+      name: 'crossref_search_works',
+      field: 'title',
+      arrange: () =>
+        service.searchWorks.mockResolvedValue({
+          ...worksPage,
+          items: [{ ...probeWork(), title: [CLOSING] }],
+        }),
+      run: () => runToolContract(searchWorksTool, { query: 'probe' }),
+    },
+    {
+      name: 'crossref_get_member',
+      field: 'primaryName',
+      arrange: () => service.getMember.mockResolvedValue({ id: 297, 'primary-name': CLOSING }),
+      run: () => runToolContract(getMemberTool, { member_id: 297 }),
+    },
+    {
+      name: 'crossref_search_journals',
+      field: 'title',
+      arrange: () =>
+        service.searchJournals.mockResolvedValue({
+          totalResults: 1,
+          items: [{ title: CLOSING, 'ISSN-L': '1234-5678', ISSN: ['1234-5678'] }],
+        }),
+      run: () => runToolContract(searchJournalsTool, { query: 'probe' }),
+    },
+    {
+      name: 'crossref_search_funders',
+      field: 'name',
+      arrange: () =>
+        service.searchFunders.mockResolvedValue({
+          totalResults: 1,
+          items: [{ id: '100000001', name: CLOSING }],
+        }),
+      run: () => runToolContract(searchFundersTool, { query: 'probe' }),
+    },
+  ];
+
+  for (const heading of HEADINGS) {
+    it(`${heading.name} keeps the trailing # of its ${heading.field} heading`, async () => {
+      heading.arrange();
+      const result = await heading.run();
+
+      expect(JSON.stringify(result.structuredContent)).toContain(`"${heading.field}":"${CLOSING}"`);
+      expect(headingTexts(result.content.map(blockText).join('\n'))).toContain(CLOSING);
+    });
+  }
 });

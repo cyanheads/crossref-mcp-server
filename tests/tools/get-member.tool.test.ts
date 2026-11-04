@@ -217,6 +217,30 @@ describe('getMemberTool', () => {
     });
   });
 
+  /**
+   * A DOI's prefix names the member that registered the prefix, which for a transferred title is
+   * not the one holding the DOI now, so the recovery routes through the work record's member.
+   */
+  it('routes a member_not_found caller to the member a work record names, on both surfaces', async () => {
+    mockGetMember.mockResolvedValue(null);
+
+    const result = await runToolContract(getMemberTool, { member_id: 999999999 });
+    const error = (
+      result.structuredContent as {
+        error: { data: { reason: string; recovery: { hint: string } } };
+      }
+    ).error;
+
+    expect(result.isError).toBe(true);
+    expect(error.data.reason).toBe('member_not_found');
+    expect(error.data.recovery.hint).toBe(
+      'Verify the member ID, or read the current member of a DOI from the memberId crossref_get_work returns for it.',
+    );
+    expect(result.content.map(blockText).join('\n')).toContain(
+      `Recovery: ${error.data.recovery.hint}`,
+    );
+  });
+
   it('rejects non-positive or non-integer member_id via the Zod schema', () => {
     expect(() => getMemberTool.input.parse({ member_id: 0 })).toThrow();
     expect(() => getMemberTool.input.parse({ member_id: -5 })).toThrow();

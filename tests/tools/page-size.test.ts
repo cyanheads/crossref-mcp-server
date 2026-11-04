@@ -1,32 +1,56 @@
 /**
  * @fileoverview The page-size clamp: a value above its per-call cap is cut to the cap with a
- * disclosure, and everything at or under the cap passes through untouched. The schema side of
- * the same contract — every page-size input advertises its hard ceiling and still refuses what
- * lies outside it — is tabled here once across all six inputs; each tool's own test file proves
- * only that its handler reads the clamped value.
+ * disclosure, and everything at or under the cap passes through untouched. Each input's cap is
+ * pinned here, and the schema side of the same contract — every page-size input states its cap,
+ * advertises its hard ceiling, and still refuses what lies outside the ceiling — is tabled here
+ * once across all six inputs; each tool's own test file proves only that its handler reads the
+ * clamped value.
  * @module tests/tools/page-size.test
  */
 
 import { z } from '@cyanheads/mcp-ts-core';
 import { describe, expect, it } from 'vitest';
 import { allToolDefinitions } from '@/mcp-server/tools/definitions/index.js';
-import { clampPageSize } from '@/mcp-server/tools/page-size.js';
+import {
+  clampPageSize,
+  ENTRY_LIMIT_CEILING,
+  GET_REFERENCES_LIMIT_CAP,
+  GET_WORK_LIMIT_CAP,
+  ROWS_CEILING,
+  SEARCH_JOURNALS_ROWS_CAP,
+  SEARCH_WORKS_AUTHOR_LIMIT_CAP,
+  SEARCH_WORKS_ROWS_CAP,
+} from '@/mcp-server/tools/page-size.js';
+
+describe('page-size caps and ceilings', () => {
+  it.each([
+    ['crossref_search_works rows', SEARCH_WORKS_ROWS_CAP, 250],
+    ['crossref_search_journals rows', SEARCH_JOURNALS_ROWS_CAP, 500],
+    ['crossref_search_works authorLimit', SEARCH_WORKS_AUTHOR_LIMIT_CAP, 500],
+    ['crossref_get_work limit', GET_WORK_LIMIT_CAP, 10_000],
+    ['crossref_get_references limit', GET_REFERENCES_LIMIT_CAP, 2500],
+    ['the rows schema ceiling', ROWS_CEILING, 1000],
+    ['the entry-list schema ceiling', ENTRY_LIMIT_CEILING, 100_000],
+  ])('%s is %d', (_label, actual, expected) => {
+    expect(actual).toBe(expected);
+  });
+});
 
 describe('clampPageSize', () => {
   it.each([
-    ['below the cap', 1, 100],
-    ['one under the cap', 99, 100],
-    ['at the cap', 100, 100],
-    ['at the entry cap', 500, 500],
+    ['below the cap', 1, 250],
+    ['one under the cap', 249, 250],
+    ['at the cap', 250, 250],
+    ['at the largest cap', 10_000, 10_000],
   ])('passes a value %s through with no notice', (_label, requested, cap) => {
     expect(clampPageSize('rows', requested, cap)).toEqual({ value: requested });
   });
 
   it.each([
-    ['rows', 101, 100],
-    ['rows', 250, 100],
-    ['rows', 1000, 100],
-    ['limit', 501, 500],
+    ['rows', 251, 250],
+    ['rows', 1000, 500],
+    ['limit', 2501, 2500],
+    ['limit', 100_000, 10_000],
     ['authorLimit', 100_000, 500],
   ])('cuts %s %d to the cap of %d and names both values', (name, requested, cap) => {
     expect(clampPageSize(name, requested, cap)).toEqual({
@@ -36,14 +60,24 @@ describe('clampPageSize', () => {
   });
 });
 
-/** The six page-size inputs: tool, input, the schema ceiling, and the unchanged default. */
+/**
+ * The six page-size inputs: tool, input, the per-call cap its description states, the schema
+ * ceiling, and the unchanged default. `crossref_search_funders` `rows` caps at Crossref's own page
+ * maximum, which is also its schema ceiling, so no value it accepts is clamped.
+ */
 const PAGE_SIZE_INPUTS = [
-  { tool: 'crossref_search_works', field: 'rows', ceiling: 1000, fallback: 20 },
-  { tool: 'crossref_search_journals', field: 'rows', ceiling: 1000, fallback: 10 },
-  { tool: 'crossref_search_funders', field: 'rows', ceiling: 1000, fallback: 10 },
-  { tool: 'crossref_search_works', field: 'authorLimit', ceiling: 100_000, fallback: 25 },
-  { tool: 'crossref_get_work', field: 'limit', ceiling: 100_000, fallback: 25 },
-  { tool: 'crossref_get_references', field: 'limit', ceiling: 100_000, fallback: 100 },
+  { tool: 'crossref_search_works', field: 'rows', cap: 250, ceiling: 1000, fallback: 20 },
+  { tool: 'crossref_search_journals', field: 'rows', cap: 500, ceiling: 1000, fallback: 10 },
+  { tool: 'crossref_search_funders', field: 'rows', cap: 1000, ceiling: 1000, fallback: 10 },
+  {
+    tool: 'crossref_search_works',
+    field: 'authorLimit',
+    cap: 500,
+    ceiling: 100_000,
+    fallback: 25,
+  },
+  { tool: 'crossref_get_work', field: 'limit', cap: 10_000, ceiling: 100_000, fallback: 25 },
+  { tool: 'crossref_get_references', field: 'limit', cap: 2500, ceiling: 100_000, fallback: 100 },
 ] as const;
 
 const REQUIRED: Record<string, Record<string, unknown>> = {
@@ -60,8 +94,24 @@ function definitionOf(name: string) {
   return definition;
 }
 
-describe.each(PAGE_SIZE_INPUTS)('$tool $field schema', ({ tool, field, ceiling, fallback }) => {
+describe.each(PAGE_SIZE_INPUTS)('$tool $field schema', (input) => {
+  const { tool, field, cap, ceiling, fallback } = input;
   const definition = definitionOf(tool);
+
+  it(`states its per-call cap of ${cap} in its description`, () => {
+    const schema = z.toJSONSchema(definition.input, { io: 'input' }) as {
+      properties: Record<string, { description?: string }>;
+    };
+    const description = schema.properties[field]?.description ?? '';
+    expect(description).toContain(`(1–${cap}`);
+    // Only an input whose cap sits below its ceiling has a clamp to disclose.
+    if (cap < ceiling) {
+      expect(description).toContain(`up to ${ceiling}`);
+      expect(description).toContain(`${cap} and says so in notice`);
+    } else {
+      expect(description).not.toContain('notice');
+    }
+  });
 
   it(`advertises an integer from 1 to ${ceiling} with its default unchanged`, () => {
     const schema = z.toJSONSchema(definition.input, { io: 'input' }) as {

@@ -346,10 +346,11 @@ describe('CrossrefService', () => {
   it('sorts journal works by publication date descending in getJournalWorks', async () => {
     serve(makeListEnvelope([]));
 
-    await service.getJournalWorks('0028-0836', { rows: 8 }, createMockContext());
+    await service.getJournalWorks(['0028-0836'], { rows: 8 }, createMockContext());
 
-    expect(requestedUrl()).toContain('/journals/0028-0836/works');
+    expect(new URL(requestedUrl()).pathname).toBe('/works');
     const qs = requestedParams();
+    expect(qs.get('filter')).toBe('issn:0028-0836');
     expect(qs.get('sort')).toBe('published');
     expect(qs.get('order')).toBe('desc');
     expect(qs.get('rows')).toBe('8');
@@ -370,16 +371,17 @@ describe('CrossrefService', () => {
     expect(qs.get('offset')).toBeNull();
   });
 
-  it('sends offset on the journal works sub-resource when a page offset is given', async () => {
+  it('sends offset on the journal works list when a page offset is given', async () => {
     serve(makeListEnvelope([], 446507));
 
     const result = await service.getJournalWorks(
-      '0028-0836',
+      ['0028-0836', '1476-4687'],
       { rows: 10, offset: 20 },
       createMockContext(),
     );
 
     const qs = requestedParams();
+    expect(qs.get('filter')).toBe('issn:0028-0836,issn:1476-4687');
     expect(qs.get('offset')).toBe('20');
     expect(qs.get('sort')).toBe('published');
     expect(qs.get('order')).toBe('desc');
@@ -408,17 +410,18 @@ describe('CrossrefService', () => {
    * oldest-registered first. So the cursor path orders by registration date, newest first —
    * the one "most recent" ordering a cursor can carry.
    */
-  it('sends cursor instead of offset on the journal works sub-resource, sorted by registration date', async () => {
+  it('sends cursor instead of offset on the journal works list, sorted by registration date', async () => {
     serve(makeListEnvelope([{ DOI: '10.1038/a' }], 446507, { 'next-cursor': 'AoJw8P3T3fAC' }));
 
     const result = await service.getJournalWorks(
-      '0028-0836',
+      ['0028-0836', '1476-4687'],
       { rows: 2, cursor: '*', offset: 20 },
       createMockContext(),
     );
 
     // Crossref rejects the pair with `cursor-with-offset-or-sample`, so only the cursor is sent.
     const qs = requestedParams();
+    expect(qs.get('filter')).toBe('issn:0028-0836,issn:1476-4687');
     expect(qs.get('cursor')).toBe('*');
     expect(qs.get('offset')).toBeNull();
     expect(qs.get('sort')).toBe('created');
@@ -444,6 +447,120 @@ describe('CrossrefService', () => {
     expect(qs.getAll('sort')).toEqual(['created']);
     expect(result.nextCursor).toBe('AoJw8P3T3fAC');
   });
+
+  /**
+   * Without a selection Crossref returns whole records for a five-field summary: a 1000-row NSF
+   * works page is 23.3 MB upstream, 0.29 MB under the select, with identical output.
+   */
+  it.each([
+    ['journal', 'an offset page', { rows: 5, offset: 20 }],
+    ['journal', 'a cursor walk', { rows: 5, cursor: '*' }],
+    ['funder', 'an offset page', { rows: 5, offset: 20 }],
+    ['funder', 'a cursor walk', { rows: 5, cursor: 'continuation-token' }],
+  ] as const)('names the summary fields in select= on %s works list, %s', async (list, _, opts) => {
+    serve(makeListEnvelope([]));
+
+    await (list === 'journal'
+      ? service.getJournalWorks(['0028-0836'], opts, createMockContext())
+      : service.getFunderWorks('100000001', opts, createMockContext()));
+
+    expect(requestedParams().getAll('select')).toEqual([
+      'DOI,title,type,published,published-print,published-online,is-referenced-by-count',
+    ]);
+  });
+
+  /**
+   * `/journals/{issn}/works` lists the works of the one ISSN in its path, and a journal's works
+   * are split across its ISSNs — BMJ's record lists seven, the first holding 5,514 of its
+   * 456,306 works. One `/works` request with an `issn` pair per record ISSN reads them all.
+   */
+  it('reads a journal works list from /works with one issn pair per record ISSN', async () => {
+    serve(makeListEnvelope([{ DOI: '10.1136/bmj.a' }], 456306));
+    const bmj = [
+      '0267-0623',
+      '1468-5833',
+      '0959-535X',
+      '0959-8138',
+      '0959-8154',
+      '1756-1833',
+      '1759-2151',
+    ];
+
+    const result = await service.getJournalWorks(bmj, { rows: 1 }, createMockContext());
+
+    expect(http.calls).toHaveLength(1);
+    expect(new URL(requestedUrl()).pathname).toBe('/works');
+    expect(requestedParams().getAll('filter')).toEqual([
+      'issn:0267-0623,issn:1468-5833,issn:0959-535X,issn:0959-8138,issn:0959-8154,issn:1756-1833,issn:1759-2151',
+    ]);
+    expect(result.totalResults).toBe(456306);
+    expect(result.items).toEqual([{ DOI: '10.1136/bmj.a' }]);
+  });
+
+  /** 22 of 391 sampled journal records list one ISSN twice (`0103-9733` on Brazilian Journal of Physics). */
+  it('sends an ISSN a record lists twice once', async () => {
+    serve(makeListEnvelope([]));
+
+    await service.getJournalWorks(
+      ['0103-9733', '0103-9733', '1678-4448'],
+      { rows: 1 },
+      createMockContext(),
+    );
+
+    expect(requestedParams().get('filter')).toBe('issn:0103-9733,issn:1678-4448');
+  });
+
+  /** Distinct means distinct as Crossref reads it, so two spellings of one ISSN are one pair. */
+  it('sends an ISSN a record spells two ways once', async () => {
+    serve(makeListEnvelope([]));
+
+    await service.getJournalWorks(
+      ['2167-647x', '2167-647X', '2167647X', '1678-4448'],
+      { rows: 1 },
+      createMockContext(),
+    );
+
+    expect(requestedParams().get('filter')).toBe('issn:2167-647X,issn:1678-4448');
+  });
+
+  /**
+   * The ISSNs come from Crossref's journal record, and Crossref splits a filter on commas with no
+   * escape, so a value carrying `,key:value` would add a pair of its own — narrowing the list or
+   * widening it to another journal. Each value goes in as the one ISSN Crossref reads from it.
+   */
+  it.each([
+    ['0028-0836,from-pub-date:2030', 'issn:0028-0836'],
+    ['0028-0836,issn:1476-4687', 'issn:0028-0836'],
+    ['issn:2167-647x', 'issn:2167-647X'],
+    [' 00280836 ', 'issn:0028-0836'],
+  ])('sends record ISSN %j as the one ISSN Crossref reads from it', async (value, filter) => {
+    serve(makeListEnvelope([]));
+
+    await service.getJournalWorks([value], { rows: 1 }, createMockContext());
+
+    expect(requestedParams().getAll('filter')).toEqual([filter]);
+  });
+
+  it('leaves out a record ISSN Crossref cannot read and sends the rest', async () => {
+    serve(makeListEnvelope([]));
+
+    await service.getJournalWorks(['0028-083', '1476-4687'], { rows: 1 }, createMockContext());
+
+    expect(requestedParams().get('filter')).toBe('issn:1476-4687');
+  });
+
+  /** `/works` with no filter lists every work in Crossref — never a journal's works list. */
+  it.each([[[]], [['0028-083', 'abcd-efgh']]])(
+    'refuses %j before any request rather than reading /works unfiltered',
+    async (issns) => {
+      serve(makeListEnvelope([], 188_000_000));
+
+      await expect(
+        service.getJournalWorks(issns, { rows: 1 }, createMockContext()),
+      ).rejects.toThrow(/no ISSN Crossref can read/);
+      expect(http.calls).toHaveLength(0);
+    },
+  );
 
   it('uses ISSN path for journal lookup when issn provided', async () => {
     serve({
@@ -885,56 +1002,62 @@ describe('normalizeDoi', () => {
 
 describe('nextPageOffset', () => {
   it('advances by the number of records actually returned', () => {
-    expect(nextPageOffset({ offset: 0, returned: 10, total: 223, rows: 10, cap: 100_000 })).toEqual(
-      {
-        kind: 'next',
-        offset: 10,
-      },
-    );
-    expect(
-      nextPageOffset({ offset: 10, returned: 10, total: 223, rows: 10, cap: 100_000 }),
-    ).toEqual({ kind: 'next', offset: 20 });
+    expect(nextPageOffset({ offset: 0, returned: 10, total: 223, cap: 100_000 })).toEqual({
+      kind: 'next',
+      offset: 10,
+    });
+    expect(nextPageOffset({ offset: 10, returned: 10, total: 223, cap: 100_000 })).toEqual({
+      kind: 'next',
+      offset: 20,
+    });
   });
 
   it('reports end once the page reaches the end of the list', () => {
-    expect(
-      nextPageOffset({ offset: 220, returned: 3, total: 223, rows: 10, cap: 100_000 }),
-    ).toEqual({ kind: 'end' });
+    expect(nextPageOffset({ offset: 220, returned: 3, total: 223, cap: 100_000 })).toEqual({
+      kind: 'end',
+    });
   });
 
   it('reports end for an empty page past the end of the list', () => {
-    expect(
-      nextPageOffset({ offset: 500, returned: 0, total: 223, rows: 10, cap: 100_000 }),
-    ).toEqual({ kind: 'end' });
+    expect(nextPageOffset({ offset: 500, returned: 0, total: 223, cap: 100_000 })).toEqual({
+      kind: 'end',
+    });
   });
 
   it('distinguishes the route ceiling from the end of the list', () => {
-    // Records remain (total is far larger) but the next call would breach the ceiling. That is a
-    // different fact from `end` and must not collapse into it — a caller reading only an absent
-    // offset would conclude it had retrieved everything.
-    expect(
-      nextPageOffset({
-        offset: WORKS_OFFSET_CAP - 20,
-        returned: 10,
-        total: 446_507,
-        rows: 10,
-        cap: WORKS_OFFSET_CAP,
-      }),
-    ).toEqual({ kind: 'next', offset: WORKS_OFFSET_CAP - 10 });
+    // Records remain (total is far larger) but the next offset sits on the ceiling, where no page
+    // starts. That is a different fact from `end` and must not collapse into it — a caller
+    // reading only an absent offset would conclude it had retrieved everything.
     expect(
       nextPageOffset({
         offset: WORKS_OFFSET_CAP - 10,
         returned: 10,
         total: 446_507,
-        rows: 10,
         cap: WORKS_OFFSET_CAP,
       }),
     ).toEqual({ kind: 'ceiling' });
   });
 
+  it('hands out every next offset below the ceiling, however few rows still fit there', () => {
+    // The page that follows cuts itself to the rows that fit, so an offset one short of the
+    // ceiling is still a page of one record rather than a ceiling.
+    const deep = { returned: 100, total: 446_507, cap: WORKS_OFFSET_CAP };
+    expect(nextPageOffset({ ...deep, offset: WORKS_OFFSET_CAP - 150 })).toEqual({
+      kind: 'next',
+      offset: WORKS_OFFSET_CAP - 50,
+    });
+    expect(nextPageOffset({ ...deep, offset: WORKS_OFFSET_CAP - 101 })).toEqual({
+      kind: 'next',
+      offset: WORKS_OFFSET_CAP - 1,
+    });
+    expect(nextPageOffset({ ...deep, offset: WORKS_OFFSET_CAP - 100 })).toEqual({
+      kind: 'ceiling',
+    });
+  });
+
   it('applies the name-search ceiling an order of magnitude above the works ceiling', () => {
-    // The same position that ends paging on a works sub-resource keeps going on a name search.
-    const at = { offset: WORKS_OFFSET_CAP - 10, returned: 10, total: 446_507, rows: 10 };
+    // The same position that ends paging on a works list keeps going on a name search.
+    const at = { offset: WORKS_OFFSET_CAP - 10, returned: 10, total: 446_507 };
     expect(nextPageOffset({ ...at, cap: WORKS_OFFSET_CAP })).toEqual({ kind: 'ceiling' });
     expect(nextPageOffset({ ...at, cap: NAME_SEARCH_OFFSET_CAP })).toEqual({
       kind: 'next',
@@ -949,7 +1072,6 @@ describe('nextPageOffset', () => {
         offset: WORKS_OFFSET_CAP - 10,
         returned: 10,
         total: WORKS_OFFSET_CAP,
-        rows: 10,
         cap: WORKS_OFFSET_CAP,
       }),
     ).toEqual({ kind: 'end' });

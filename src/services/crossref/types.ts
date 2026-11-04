@@ -210,7 +210,17 @@ export type RawCrossrefFunder = {
   replaces?: string[];
   /** Registry IDs superseding this funder. Always present; empty unless the entry is deprecated. */
   'replaced-by'?: string[];
+  /**
+   * Works asserting this registry ID alone — what a `funder` filter on the ID returns. Carried by
+   * `/funders/{id}`; the name search omits it.
+   */
   'work-count'?: number;
+  /**
+   * Bare registry IDs of every funder below this one in the registry hierarchy, at every depth
+   * (NIH's list includes the National Cancer Institute's own). Carried by `/funders/{id}`, empty
+   * when there are none; the name search omits it.
+   */
+  descendants?: string[];
 };
 
 /**

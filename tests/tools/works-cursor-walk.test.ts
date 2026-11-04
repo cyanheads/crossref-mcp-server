@@ -41,7 +41,7 @@ const PAGES: Record<string, { dois: string[]; next?: string }> = {
   MTc5MDE4MjAwMDAwMCwxMC41NTU1L3c0: { dois: [] },
 };
 
-/** Answer a works sub-resource request the way Crossref does. */
+/** Answer a works-list request the way Crossref does. */
 function worksPage(request: Request): Response {
   const qs = new URL(request.url).searchParams;
   const cursor = qs.get('cursor');
@@ -93,14 +93,19 @@ function textOf(result: ToolResult): string {
   return result.content.map(blockText).join('\n');
 }
 
-const SUB_RESOURCES = [
+/**
+ * The journal list reads `/works` filtered on every ISSN its record lists, looked up here by the
+ * second of them; the funder list reads the funder's own sub-resource and carries no filter.
+ */
+const WORKS_LISTS = [
   {
     name: 'crossref_search_journals',
     definition: searchJournalsTool,
-    input: { issn: '0028-0836', include_works: true, rows: 2 },
-    worksRoute: /\/journals\/0028-0836\/works\?/,
-    recordRoute: /\/journals\/0028-0836$/,
-    record: { title: 'Nature', 'ISSN-L': '0028-0836', ISSN: ['0028-0836'] },
+    input: { issn: '1476-4687', include_works: true, rows: 2 },
+    worksRoute: /^https:\/\/api\.crossref\.test\/works\?/,
+    worksFilter: 'issn:0028-0836,issn:1476-4687',
+    recordRoute: /\/journals\/1476-4687$/,
+    record: { title: 'Nature', ISSN: ['0028-0836', '1476-4687'] },
     worksKey: 'recentWorks',
   },
   {
@@ -108,6 +113,7 @@ const SUB_RESOURCES = [
     definition: searchFundersTool,
     input: { funder_doi: '100000001', include_works: true, rows: 2 },
     worksRoute: /\/funders\/100000001\/works\?/,
+    worksFilter: null,
     recordRoute: /\/funders\/100000001$/,
     record: { id: '100000001', name: 'National Science Foundation' },
     worksKey: 'fundedWorks',
@@ -116,7 +122,7 @@ const SUB_RESOURCES = [
 
 describe('advisory cursor restart notices', () => {
   const targets = [
-    ...SUB_RESOURCES.map((target) => ({ ...target, cursorKey: 'works_cursor' })),
+    ...WORKS_LISTS.map((target) => ({ ...target, cursorKey: 'works_cursor' })),
     {
       name: 'crossref_search_works',
       definition: searchWorksTool,
@@ -128,7 +134,16 @@ describe('advisory cursor restart notices', () => {
       cursorKey: 'cursor',
     },
   ];
+  /**
+   * One over each tool's `rows` cap. crossref_search_funders caps `rows` at the schema maximum, so
+   * it has no value to clamp and its page composes the restart and empty-page notices alone.
+   */
+  const OVER_CAP_ROWS: Partial<Record<string, number>> = {
+    crossref_search_journals: 501,
+    crossref_search_works: 251,
+  };
   it.each(targets)('composes clamp and empty-page notices on $name', async (target) => {
+    const rows = OVER_CAP_ROWS[target.name];
     http.route({
       match: target.recordRoute,
       respond: () => Response.json({ message: target.record }),
@@ -140,7 +155,7 @@ describe('advisory cursor restart notices', () => {
     });
     const result = await runToolContract(target.definition, {
       ...target.input,
-      rows: 501,
+      ...(rows !== undefined && { rows }),
       [target.cursorKey]: 'bogus',
     });
     expect(result.isError).toBeFalsy();
@@ -148,7 +163,11 @@ describe('advisory cursor restart notices', () => {
     expect(result.structuredContent).not.toHaveProperty('nextCursor');
     const notice = (result.structuredContent as { notice: string }).notice;
     expect(notice).toContain('may have restarted');
-    expect(notice).toContain('501');
+    if (rows !== undefined) {
+      expect(notice).toContain(
+        `rows ${rows} is above the per-call cap of ${rows - 1}, so ${rows - 1} was applied.`,
+      );
+    }
     expect(textOf(result)).toContain(notice);
     if (target.cursorKey === 'works_cursor') expect(notice).not.toContain('walk is complete');
   });
@@ -216,7 +235,7 @@ describe('advisory cursor restart notices', () => {
   });
 });
 
-describe.each(SUB_RESOURCES)('a works_cursor walk on $name', (target) => {
+describe.each(WORKS_LISTS)('a works_cursor walk on $name', (target) => {
   beforeEach(() => {
     http.route({ match: target.worksRoute, respond: worksPage });
     http.route({
@@ -281,6 +300,7 @@ describe.each(SUB_RESOURCES)('a works_cursor walk on $name', (target) => {
       expect(qs.getAll('sort')).toEqual(['created']);
       expect(qs.get('order')).toBe('desc');
       expect(qs.get('offset')).toBeNull();
+      expect(qs.get('filter')).toBe(target.worksFilter);
     }
   });
 });

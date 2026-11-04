@@ -5,7 +5,7 @@
 
 import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
-import { mdText } from '@/mcp-server/tools/markdown-text.js';
+import { mdText, mdTextInHeading } from '@/mcp-server/tools/markdown-text.js';
 import {
   CoverageEntrySchema,
   coverageLines,
@@ -38,7 +38,7 @@ const WorkTypeCountSchema = z
 export const getMemberTool = tool('crossref_get_member', {
   title: 'Get Member by ID',
   description:
-    'Resolves a Crossref member ID to its publisher/organization record: primary name, alternate imprint names, owned DOI prefixes, registered DOI counts, a per-work-type breakdown, and per-category metadata deposit coverage. Members are the organizations that register DOIs with Crossref, so this answers "what does this publisher publish, and how completely do they deposit metadata?" Resolve a DOI prefix (e.g. "10.1038") to its member ID with crossref_get_prefix, then pass that ID here.',
+    'Resolves a Crossref member ID to its publisher/organization record: primary name, alternate imprint names, owned DOI prefixes, registered DOI counts, a per-work-type breakdown, and per-category metadata deposit coverage. Members are the organizations that register DOIs with Crossref, so this answers "what does this publisher publish, and how completely do they deposit metadata?" The member that holds a DOI now is the memberId crossref_get_work or crossref_search_works returns for it — pass that ID here. crossref_get_prefix returns the member a DOI prefix record names, the prefix\'s registrant, which for a transferred title is a former publisher rather than the DOI\'s current one.',
   annotations: { readOnlyHint: true, idempotentHint: true },
 
   input: z.object({
@@ -47,7 +47,7 @@ export const getMemberTool = tool('crossref_get_member', {
       .int()
       .positive()
       .describe(
-        'Crossref member ID — a positive integer, e.g. 297 (Springer) or 340 (PLOS). Resolve a DOI prefix to a member ID first with crossref_get_prefix.',
+        "Crossref member ID — a positive integer, e.g. 297 (Springer) or 340 (PLOS). A DOI's current member is the memberId crossref_get_work returns for it.",
       ),
   }),
 
@@ -91,7 +91,7 @@ export const getMemberTool = tool('crossref_get_member', {
       code: JsonRpcErrorCode.NotFound,
       when: 'No Crossref member exists for the given ID.',
       recovery:
-        'Verify the member ID, or resolve a DOI prefix to its owning member ID with crossref_get_prefix first.',
+        'Verify the member ID, or read the current member of a DOI from the memberId crossref_get_work returns for it.',
     },
   ],
 
@@ -109,7 +109,9 @@ export const getMemberTool = tool('crossref_get_member', {
 
   format: (result) => {
     const lines: string[] = [];
-    lines.push(`## ${result.primaryName ? mdText(result.primaryName) : `Member ${result.id}`}`);
+    lines.push(
+      `## ${result.primaryName ? mdTextInHeading(result.primaryName) : `Member ${result.id}`}`,
+    );
     lines.push(`**Member ID:** ${result.id}`);
     if (result.location) lines.push(`**Location:** ${mdText(result.location)}`);
 

@@ -17,13 +17,14 @@ import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { isBlank, nonBlank } from '@/mcp-server/tools/blank-input.js';
 import { cursorNotice } from '@/mcp-server/tools/cursor-notice.js';
-import { mdText } from '@/mcp-server/tools/markdown-text.js';
+import { mdText, mdTextInHeading } from '@/mcp-server/tools/markdown-text.js';
 import {
   clampPageSize,
-  ENTRY_LIMIT_CAP,
   ENTRY_LIMIT_CEILING,
-  ROWS_CAP,
+  fitWindow,
   ROWS_CEILING,
+  SEARCH_WORKS_AUTHOR_LIMIT_CAP,
+  SEARCH_WORKS_ROWS_CAP,
 } from '@/mcp-server/tools/page-size.js';
 import { locatorFields, locatorLine, projectLocators } from '@/mcp-server/tools/work-locators.js';
 import { projectUpdates, updateFields, updateSections } from '@/mcp-server/tools/work-updates.js';
@@ -49,7 +50,9 @@ const OFFSET_CAP = 10_000;
 /**
  * The `select=` names the work summary projects, and so the only names `fields` accepts. Crossref
  * lists 59 select names on `/works`; a name outside this set would be fetched and then dropped by
- * the projection, which no response surface could report.
+ * the projection, which no response surface could report. It is also the selection a page
+ * carries when `fields` names none, so a raw key the projection below starts reading joins this
+ * list in the same change — absent from it, the key reads as absent on every record.
  */
 const SELECTABLE_FIELDS = [
   'DOI',
@@ -61,6 +64,7 @@ const SELECTABLE_FIELDS = [
   'published-online',
   'container-title',
   'publisher',
+  'member',
   'is-referenced-by-count',
   'score',
   'abstract',
@@ -108,10 +112,25 @@ const WorkSummarySchema = z
       .describe(
         'Publication date — the first of published, published-print, and published-online that names one. A component Crossref records as unknown is omitted, and so is every component below it.',
       ),
-    containerTitle: z.string().optional().describe('Journal or container name'),
+    containerTitle: z
+      .string()
+      .optional()
+      .describe('Journal or container name — the first entry of containerTitles'),
+    containerTitles: z
+      .array(z.string())
+      .optional()
+      .describe(
+        'Every container title the record deposits, in deposited order. A book chapter or proceedings paper often deposits two: the series, then the book or volume. Omitted when the record deposits none.',
+      ),
     ...locatorFields,
     issn: z.array(z.string()).optional().describe('ISSN(s) of the containing journal'),
     publisher: z.string().optional().describe('Publisher name'),
+    memberId: z
+      .number()
+      .optional()
+      .describe(
+        "Crossref member ID of the publisher that holds this DOI now — pass to crossref_get_member for its record. The DOI's prefix names the member that registered the prefix, which for a transferred title is a former publisher. Omitted when the record deposits no member.",
+      ),
     ...updateFields,
     isReferencedByCount: z.number().optional().describe('Incoming citation count'),
     score: z.number().optional().describe('Relevance score assigned by Crossref'),
@@ -165,7 +184,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       .array(z.enum(SELECTABLE_FIELDS).describe('Crossref select name'))
       .optional()
       .describe(
-        'Fields to return (reduces payload). Names are case-sensitive, and each fills one output field: DOI → doi, title → title, type → type, author → authors and authorCount, published / published-print / published-online → published, container-title → containerTitle, publisher → publisher, is-referenced-by-count → isReferencedByCount, score → score, abstract → abstract, volume → volume, issue → issue, page → page, article-number → articleNumber, ISSN → issn, updated-by → updatedBy, update-to → updateTo. A selected field absent from a work means the record does not deposit it. DOI is always returned whether or not it is listed here, so every result stays resolvable by crossref_get_work, which also returns the fields this list does not cover (license, funder, references, and the rest of the record).',
+        'Fields to return (reduces payload). Names are case-sensitive, and each fills one output field: DOI → doi, title → title, type → type, author → authors and authorCount, published / published-print / published-online → published, container-title → containerTitle and containerTitles, publisher → publisher, member → memberId, is-referenced-by-count → isReferencedByCount, score → score, abstract → abstract, volume → volume, issue → issue, page → page, article-number → articleNumber, ISSN → issn, updated-by → updatedBy, update-to → updateTo. A selected field absent from a work means the record does not deposit it. DOI is always returned whether or not it is listed here, so every result stays resolvable by crossref_get_work, which also returns the fields this list does not cover (license, funder, references, and the rest of the record).',
       ),
     rows: z
       .number()
@@ -174,7 +193,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       .max(ROWS_CEILING)
       .default(20)
       .describe(
-        `Number of results to return per page (1–${ROWS_CAP} per call, default 20). A larger value, up to ${ROWS_CEILING}, returns ${ROWS_CAP} and says so in notice — on an offset page the notice also names the offset that continues after the records returned.`,
+        `Number of results to return per page (1–${SEARCH_WORKS_ROWS_CAP} per call, default 20). A larger value, up to ${ROWS_CEILING}, returns ${SEARCH_WORKS_ROWS_CAP} and says so in notice — on an offset page the notice also names the offset that continues after the records returned.`,
       ),
     authorLimit: z
       .number()
@@ -183,7 +202,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       .max(ENTRY_LIMIT_CEILING)
       .default(25)
       .describe(
-        `Maximum number of authors to return per work (1–${ENTRY_LIMIT_CAP} per call, default 25; a larger value, up to ${ENTRY_LIMIT_CEILING}, applies ${ENTRY_LIMIT_CAP} and says so in notice). Ordinary records fit under the default; large-collaboration papers deposit thousands, and a page of them is large enough to exhaust a client context. Each work reports its full deposited total as authorCount — call crossref_get_work with that work doi to page the authors this cap left out.`,
+        `Maximum number of authors to return per work (1–${SEARCH_WORKS_AUTHOR_LIMIT_CAP} per call, default 25; a larger value, up to ${ENTRY_LIMIT_CEILING}, applies ${SEARCH_WORKS_AUTHOR_LIMIT_CAP} and says so in notice). Ordinary records fit under the default; large-collaboration papers deposit thousands, and a page of them is large enough to exhaust a client context. Each work reports its full deposited total as authorCount — call crossref_get_work with that work doi to page the authors this cap left out.`,
       ),
     offset: z
       .number()
@@ -191,7 +210,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       .min(0)
       .optional()
       .describe(
-        'Zero-based result offset for offset-based paging. Cannot be used with cursor. Capped at ~10K; use cursor for deeper paging.',
+        'Zero-based result offset for offset-based paging. Cannot be used with cursor. Capped at ~10K: offset + rows cannot pass it, so a page that would returns the rows that fit and says so in notice, and an offset at or past it is refused. Use cursor for deeper paging.',
       ),
     cursor: z
       .string()
@@ -261,7 +280,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       .string()
       .optional()
       .describe(
-        'Guidance on an empty page, naming which of its three causes applies: a query nothing matched, an offset past the end of a list that did match, or a cursor walk that has reached the end of the list. On a page carrying records, present when authorLimit cut at least one work list, naming how many and the route to the rest, or when every query term and filter value was supplied blank, so the page lists the whole index unfiltered. On any page, present when rows or authorLimit was above its per-call cap, naming the value requested and the cap applied — on an offset page with records remaining, also the offset that continues after the records returned, with the smaller rows that still fit when a full page there would pass the ~10K offset ceiling. A page needing more than one caveat carries them all in this one string.',
+        'Guidance on an empty page, naming which of its three causes applies: a query nothing matched, an offset past the end of a list that did match, or a cursor walk that has reached the end of the list. On a page carrying records, present when authorLimit cut at least one work list, naming how many and the route to the rest, or when every query term and filter value was supplied blank, so the page lists the whole index unfiltered. On any page, present when rows or authorLimit was above its per-call cap, naming the value requested and the cap applied — on an offset page with records remaining, also the offset that continues after the records returned. On an offset page where offset + rows would pass the ~10K offset ceiling, present naming the rows requested and the rows that fit and were applied, and, when records remain past the ceiling, cursor as the route to them. A page needing more than one caveat carries them all in this one string.',
       ),
   },
 
@@ -281,7 +300,7 @@ export const searchWorksTool = tool('crossref_search_works', {
     {
       reason: 'offset_too_large',
       code: JsonRpcErrorCode.ValidationError,
-      when: 'The requested offset exceeds the ~10K Crossref limit for offset-based paging.',
+      when: 'The requested offset is at or past the ~10K limit Crossref puts on offset + rows, so no page of any size starts there.',
       recovery:
         'Switch to cursor-based paging by passing cursor="*" on the first request, then chaining the nextCursor token from each response.',
     },
@@ -349,35 +368,42 @@ export const searchWorksTool = tool('crossref_search_works', {
     }
 
     /**
-     * Clamped once, here, so the offset ceiling, the upstream request, the per-work author
+     * Clamped once, here, so the offset window, the upstream request, the per-work author
      * slice, and the `cap` enrichment all read the page size actually used.
      */
-    const rowsClamp = clampPageSize('rows', input.rows, ROWS_CAP);
-    const authorLimitClamp = clampPageSize('authorLimit', input.authorLimit, ENTRY_LIMIT_CAP);
-    const rows = rowsClamp.value;
+    const rowsClamp = clampPageSize('rows', input.rows, SEARCH_WORKS_ROWS_CAP);
+    const authorLimitClamp = clampPageSize(
+      'authorLimit',
+      input.authorLimit,
+      SEARCH_WORKS_AUTHOR_LIMIT_CAP,
+    );
     const authorLimit = authorLimitClamp.value;
 
     /**
      * Crossref's ceiling is on offset + rows, so an offset below it still reaches the records up
-     * to it with a smaller page. That request is named in the hint; past the ceiling, only the
-     * contract's cursor recovery applies.
+     * to it with a smaller page — the one reading such a request has, applied the way the
+     * per-call cap is rather than refused. Only an offset at or past the ceiling, where no row
+     * fits, is refused. A cursor page carries no offset, so it has no window.
      */
-    if (input.offset !== undefined && cursor === undefined && input.offset + rows > OFFSET_CAP) {
-      const offset = input.offset;
+    const offset = input.offset;
+    if (offset !== undefined && offset >= OFFSET_CAP) {
       throw ctx.fail(
         'offset_too_large',
-        `Offset ${offset} + rows ${rows} = ${offset + rows} exceeds the ~${OFFSET_CAP} Crossref offset limit.${rowsClamp.notice ? ` ${rowsClamp.notice}` : ''}`,
-        {
-          offset,
-          rows,
-          ...(offset < OFFSET_CAP && {
-            recovery: {
-              hint: `Pass offset=${offset} with rows=${OFFSET_CAP - offset} to read the last records offset paging reaches, or switch to cursor-based paging with cursor="*" and chain the nextCursor token from each response to reach the records after them.`,
-            },
-          }),
-        },
+        `Offset ${offset} is at or past the ~${OFFSET_CAP} limit Crossref puts on offset + rows, so no page starts there.`,
+        { offset },
       );
     }
+    const { rows, cut: windowCut } =
+      offset === undefined
+        ? { rows: rowsClamp.value, cut: undefined }
+        : fitWindow(
+            'offset',
+            offset,
+            OFFSET_CAP,
+            `~${OFFSET_CAP} limit Crossref puts on offset + rows`,
+            input.rows,
+            rowsClamp,
+          );
 
     ctx.log.info('Searching works', {
       query: terms.query,
@@ -400,7 +426,8 @@ export const searchWorksTool = tool('crossref_search_works', {
         queryContainerTitle: terms.queryContainerTitle,
       }),
       ...(filter !== undefined && { filter }),
-      ...(input.fields !== undefined && { fields: input.fields }),
+      // No selection is every name the summary projects, never Crossref's whole record.
+      fields: input.fields?.length ? input.fields : SELECTABLE_FIELDS,
       ...(input.offset !== undefined && { offset: input.offset }),
       ...(cursor !== undefined && { cursor }),
       ...(sort !== undefined && { sort }),
@@ -410,6 +437,8 @@ export const searchWorksTool = tool('crossref_search_works', {
 
     const works = result.items.map((raw) => {
       const published = resolveWorkSummaryDate(raw);
+      const containerTitles = raw['container-title']?.map(normalizeMarkupText);
+      const containerTitle = containerTitles?.[0];
       return {
         doi: raw.DOI,
         ...(raw.title?.[0] !== undefined && { title: normalizeMarkupText(raw.title[0]) }),
@@ -428,12 +457,13 @@ export const searchWorksTool = tool('crossref_search_works', {
           })),
         }),
         ...(published !== undefined && { published }),
-        ...(raw['container-title']?.[0] !== undefined && {
-          containerTitle: normalizeMarkupText(raw['container-title'][0]),
-        }),
+        ...(containerTitle !== undefined && { containerTitle, containerTitles }),
         ...projectLocators(raw),
         ...(raw.ISSN?.length && { issn: raw.ISSN }),
         ...(raw.publisher !== undefined && { publisher: normalizeText(raw.publisher) }),
+        // A digit string (`"311"`) as Crossref deposits it; anything else is no ID to pass on.
+        ...(raw.member !== undefined &&
+          /^\d+$/.test(raw.member) && { memberId: Number(raw.member) }),
         ...projectUpdates(raw),
         ...(raw['is-referenced-by-count'] !== undefined && {
           isReferencedByCount: raw['is-referenced-by-count'],
@@ -471,22 +501,28 @@ export const searchWorksTool = tool('crossref_search_works', {
     const notices: string[] = [];
     const restart = cursorNotice(cursor);
     if (restart) notices.push(restart);
-    if (rowsClamp.notice) {
+    const next = (offset ?? 0) + returned;
+    if (windowCut) {
+      // A window-cut page ends at the ceiling unless the list ends first; only then is there a
+      // record past it to route to the cursor.
+      notices.push(
+        next >= OFFSET_CAP && next < result.totalResults
+          ? `${windowCut} — the last records offset paging reaches; re-run with cursor="*" to reach the records after them.`
+          : `${windowCut}.`,
+      );
+    } else if (rowsClamp.notice) {
       /**
        * This tool has no nextOffset field, so a caller continuing an offset walk adds what it
        * asked for — and offset + the requested rows would skip every record between the cap
-       * and the request. The page names the offset that actually follows it, and near the
-       * ceiling the rows that still fit beside it, so the request named is one Crossref accepts.
+       * and the request. The page names the offset that actually follows it; a page there that
+       * would pass the ceiling is cut to the rows that fit when it is requested.
        */
-      const next = (input.offset ?? 0) + returned;
       const continuation =
         isCursorPage || returned === 0 || next >= result.totalResults
           ? ''
-          : next + rows <= OFFSET_CAP
+          : next < OFFSET_CAP
             ? ` Pass offset=${next} for the next page — the offset after the ${returned} records returned, not after the ${input.rows} requested.`
-            : next < OFFSET_CAP
-              ? ` Pass offset=${next} with rows=${OFFSET_CAP - next} for the last page offset paging reaches — offset + rows cannot pass ~${OFFSET_CAP}; re-run with cursor="*" to reach the records after it.`
-              : ` Records past offset ${next} are beyond the ~${OFFSET_CAP} offset limit; re-run with cursor="*" to reach them.`;
+            : ` Records past offset ${next} are beyond the ~${OFFSET_CAP} offset limit; re-run with cursor="*" to reach them.`;
       notices.push(`${rowsClamp.notice}${continuation}`);
     }
     if (authorLimitClamp.notice) notices.push(authorLimitClamp.notice);
@@ -533,9 +569,9 @@ export const searchWorksTool = tool('crossref_search_works', {
       ctx.enrich({ truncated: true, cap: authorLimit });
       // Raising authorLimit is advice only below the per-call cap; at it, a larger value clamps back.
       const widen =
-        authorLimit < ENTRY_LIMIT_CAP
+        authorLimit < SEARCH_WORKS_AUTHOR_LIMIT_CAP
           ? ', or raise authorLimit to widen the cap here'
-          : ` — ${ENTRY_LIMIT_CAP} is the most authorLimit applies, so a larger value widens nothing here`;
+          : ` — ${SEARCH_WORKS_AUTHOR_LIMIT_CAP} is the most authorLimit applies, so a larger value widens nothing here`;
       notices.push(
         `Author lists were capped at ${authorLimit} per work — ${cutWorks} of the ${returned} ${returned === 1 ? 'work' : 'works'} on this page ${cutWorks === 1 ? 'carries' : 'carry'} more authors than are shown. Each work reports its full deposited total as authorCount; call crossref_get_work with that work doi to page its whole author list${widen}.`,
       );
@@ -562,14 +598,16 @@ export const searchWorksTool = tool('crossref_search_works', {
     if (result.nextCursor) lines.push(`**Next cursor:** \`${result.nextCursor}\``, '');
 
     for (const w of result.works) {
-      lines.push(`### ${w.title ? mdText(w.title) : w.doi}`);
+      lines.push(`### ${w.title ? mdTextInHeading(w.title) : w.doi}`);
       lines.push(`**DOI:** ${w.doi}${w.type ? ` | **Type:** ${w.type}` : ''}`);
       if (w.published?.year) lines.push(`**Published:** ${formatDateParts(w.published)}`);
-      if (w.containerTitle) lines.push(`**Journal:** ${mdText(w.containerTitle)}`);
+      if (w.containerTitles?.length)
+        lines.push(`**Journal:** ${w.containerTitles.map(mdText).join(' | ')}`);
       const locators = locatorLine(w);
       if (locators) lines.push(locators);
       if (w.issn?.length) lines.push(`**ISSN:** ${w.issn.join(', ')}`);
       if (w.publisher) lines.push(`**Publisher:** ${mdText(w.publisher)}`);
+      if (w.memberId !== undefined) lines.push(`**Member ID:** ${w.memberId}`);
       /**
        * Update links render ahead of the author line and abstract, so a retraction is seen
        * before either. Each is a list of its own, opened and closed by a blank line so a

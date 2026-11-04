@@ -1,0 +1,42 @@
+{
+  "status": "ok",
+  "message-type": "funder",
+  "message-version": "1.0.0",
+  "message": {
+    "hierarchy-names": {
+      "501100001659": "Deutsche Forschungsgemeinschaft"
+    },
+    "replaced-by": [],
+    "work-count": 293338,
+    "name": "Deutsche Forschungsgemeinschaft",
+    "descendants": [],
+    "descendant-work-count": 293338,
+    "id": "501100001659",
+    "tokens": [
+      "deutsche",
+      "forschungsgemeinschaft",
+      "german",
+      "research",
+      "association",
+      "dfg",
+      "deutsche",
+      "forschungsgemeinschaft",
+      "dfg",
+      "german",
+      "research",
+      "foundation"
+    ],
+    "replaces": [],
+    "uri": "https://doi.org/10.13039/501100001659",
+    "hierarchy": {
+      "501100001659": {}
+    },
+    "alt-names": [
+      "German Research Association",
+      "DFG",
+      "Deutsche Forschungsgemeinschaft (DFG)",
+      "German Research Foundation"
+    ],
+    "location": "Germany"
+  }
+}

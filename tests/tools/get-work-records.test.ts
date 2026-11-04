@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs';
 import { createFetchMock, runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import { HtmlRenderer, Parser } from 'commonmark';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderedText } from '../helpers/content.js';
 import { type ToolResult, textOf } from '../helpers/crossref-responses.js';
 
 vi.mock('@/config/server-config.js', () => ({
@@ -67,6 +68,13 @@ const CITATION_AND_LINK_KEYS = [
   'relations',
 ] as const;
 
+/**
+ * The output keys added after those: every container title beside the first, and the member
+ * that holds the DOI. `containerTitles` reads a field `containerTitle` already read, so only
+ * `member` can be left out of a deposit.
+ */
+const CONTAINER_AND_MEMBER_KEYS = ['containerTitles', 'memberId'] as const;
+
 type Message = Record<string, unknown>;
 
 /** A captured `/works/{doi}` response body. */
@@ -76,11 +84,12 @@ function captured(doi: string): { message: Message } {
   return JSON.parse(readFileSync(file, 'utf8')) as { message: Message };
 }
 
-/** The same record with every citation, update, and relation field removed. */
+/** The same record with every citation, update, and relation field, and its member, removed. */
 function stripped(doi: string): { message: Message } {
   const body = captured(doi);
   const message = { ...body.message };
   for (const field of CITATION_AND_LINK_FIELDS) delete message[field];
+  delete message.member;
   return { ...body, message };
 }
 
@@ -128,10 +137,12 @@ function commonmark(markdown: string): string {
 
 /**
  * What every captured record returned before the citation, update, and relation fields existed.
- * The first file holds each record's structured output minus the keys those fields add, and the
- * notice on the records whose notice now also names their updates. The second holds both whole
- * surfaces for each record with those fields removed from the deposit — a record depositing none
- * of them has to come back byte-identical, rendered text included.
+ * The first file holds each record's structured output minus the keys those fields and the
+ * container and member fields add, and the notice on the records whose notice now also names
+ * their updates. The second holds both whole surfaces for each record with those fields and its
+ * member removed from the deposit — a record depositing none of them has to come back
+ * byte-identical, rendered text included, beside the `containerTitles` its one container title
+ * now also fills.
  */
 describe('crossref_get_work output that predates the citation and update fields', () => {
   it('keeps the value and shape of every existing field on every captured record', async () => {
@@ -139,7 +150,7 @@ describe('crossref_get_work output that predates the citation and update fields'
     const out: Record<string, unknown> = {};
     for (const doi of CAPTURED) {
       const sc = structured(await getWork(doi));
-      for (const key of CITATION_AND_LINK_KEYS) delete sc[key];
+      for (const key of [...CITATION_AND_LINK_KEYS, ...CONTAINER_AND_MEMBER_KEYS]) delete sc[key];
       if (captured(doi).message['updated-by'] !== undefined) delete sc.notice;
       out[doi] = sc;
     }
@@ -501,5 +512,86 @@ describe('crossref_get_work relations', () => {
     for (const label of ['Updated by:', 'Update notice for:', 'Relations:', 'Authors:']) {
       expect(html).toContain(`<p><strong>${label}</strong>`);
     }
+  });
+});
+
+/** A book chapter depositing its series and then its book as two container titles. */
+const CHAPTER = '10.1007/978-3-030-58452-8_1';
+
+describe('crossref_get_work container titles', () => {
+  beforeEach(() => serve(captured));
+
+  it('returns every container title of a book chapter in deposited order, on both surfaces', async () => {
+    const result = await getWork(CHAPTER);
+
+    expect(structured(result)).toMatchObject({
+      containerTitle: 'Lecture Notes in Computer Science',
+      containerTitles: ['Lecture Notes in Computer Science', 'Computer Vision – ECCV 2020'],
+    });
+    expect(renderedText(textOf(result)).split('\n')).toContain(
+      'Journal/Container: Lecture Notes in Computer Science | Computer Vision – ECCV 2020',
+    );
+  });
+
+  it('returns a one-entry list beside a single container title, with the line unchanged', async () => {
+    const result = await getWork('10.1038/s41586-020-2649-2');
+
+    expect(structured(result)).toMatchObject({
+      containerTitle: 'Nature',
+      containerTitles: ['Nature'],
+    });
+    expect(textOf(result).split('\n')).toContain('**Journal/Container:** Nature');
+  });
+
+  it('returns neither field for a record depositing no container title', async () => {
+    const doi = '10.1101/2025.11.10.687519';
+    expect(captured(doi).message['container-title']).toEqual([]);
+    const result = await getWork(doi);
+
+    expect(structured(result)).not.toHaveProperty('containerTitle');
+    expect(structured(result)).not.toHaveProperty('containerTitles');
+    expect(textOf(result)).not.toContain('**Journal/Container:**');
+  });
+});
+
+/**
+ * A Hindawi DOI transferred to Wiley: its prefix record names Hindawi (member 98), and the work
+ * record names the member that holds it now.
+ */
+const TRANSFERRED = '10.1155/2024/9760680';
+
+describe('crossref_get_work member', () => {
+  beforeEach(() => serve(captured));
+
+  it('returns the member the work record names, on both surfaces', async () => {
+    expect(captured(TRANSFERRED).message.member).toBe('311');
+    const result = await getWork(TRANSFERRED);
+
+    expect(structured(result)).toMatchObject({ publisher: 'Wiley', memberId: 311 });
+    expect(renderedText(textOf(result)).split('\n')).toContain('Member ID: 311');
+  });
+
+  it('returns each captured record its own member', async () => {
+    for (const [doi, memberId] of [
+      ['10.1038/s41586-020-2649-2', 297],
+      ['10.1016/S0140-6736(20)31180-6', 78],
+      [CHAPTER, 297],
+    ] as const) {
+      const result = await getWork(doi);
+
+      expect(structured(result).memberId, doi).toBe(memberId);
+      expect(textOf(result).split('\n'), doi).toContain(`**Member ID:** ${memberId}`);
+    }
+  });
+
+  it('omits memberId, and its line, for a record depositing no member', async () => {
+    serve((doi) => {
+      const { member: _dropped, ...message } = captured(doi).message;
+      return { ...captured(doi), message };
+    });
+    const result = await getWork(TRANSFERRED);
+
+    expect(structured(result)).not.toHaveProperty('memberId');
+    expect(textOf(result)).not.toContain('Member ID');
   });
 });
