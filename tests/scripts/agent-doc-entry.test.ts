@@ -3,8 +3,7 @@
  * `scripts/lint-packaging.ts` (the post-bundle check). It removes agent skill trees only at an
  * installed package's root, so the MCP SDK's `dist/ext/skills/` runtime modules survive the
  * clean and a bundle missing them never passes the check (cyanheads/mcp-ts-core#794). Both
- * scripts load by URL at run time: `lint-packaging.ts` carries a repo-only fallback import that
- * `tsc` cannot resolve in this project (cyanheads/mcp-ts-core#797).
+ * scripts load by URL at run time.
  * @module tests/scripts/agent-doc-entry.test
  */
 
