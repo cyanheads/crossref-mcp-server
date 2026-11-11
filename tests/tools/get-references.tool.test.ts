@@ -27,7 +27,7 @@ const mockLookup = vi.fn();
 beforeEach(() => {
   vi.mocked(getCrossrefService).mockReturnValue({
     getWork: mockGetWork,
-    getRegistrationAgency: mockLookup,
+    getDoiRegistration: mockLookup,
   } as unknown as ReturnType<typeof getCrossrefService>);
   mockGetWork.mockReset();
   mockLookup.mockReset();
@@ -488,6 +488,30 @@ describe('getReferencesTool', () => {
         reason: 'doi_not_found',
         doi: '10.5281/zenodo.3242074',
         registrationAgency: 'DataCite',
+        recovery: { hint },
+      });
+      expect(text).toContain(`Error: ${message}\n\nRecovery: ${hint}`);
+      expect(error.data).not.toHaveProperty('citation');
+    });
+
+    it('carries the citation doi.org served onto data.citation and into the message', async () => {
+      mockLookup.mockResolvedValue({
+        kind: 'registered',
+        agency: 'JaLC',
+        citation: { title: 'Offset inks', publisher: '千葉大学' },
+      });
+      const { error, text } = await notFound('10.11501/3075355');
+
+      const message =
+        'No Crossref record for DOI: 10.11501/3075355 — it is registered with JaLC, not Crossref. JaLC\'s citation: title "Offset inks"; publisher "千葉大学".';
+      const hint =
+        "No Crossref tool can return a DOI registered with JaLC; query JaLC's metadata service for it.";
+      expect(error.message).toBe(message);
+      expect(error.data).toMatchObject({
+        reason: 'doi_not_found',
+        doi: '10.11501/3075355',
+        registrationAgency: 'JaLC',
+        citation: { title: 'Offset inks', publisher: '千葉大学' },
         recovery: { hint },
       });
       expect(text).toContain(`Error: ${message}\n\nRecovery: ${hint}`);

@@ -24,6 +24,17 @@ export type CrossrefAffiliation = {
   id?: CrossrefOrganizationId[];
 };
 
+/**
+ * An institution a work record names: the awarding institution of a thesis, the server a preprint
+ * was posted to, the laboratories behind a report. Crossref's schema marks `name` required, but an
+ * institution asserted by identifier carries `id` and no `name`, as an affiliation does.
+ */
+export type CrossrefInstitution = CrossrefAffiliation & {
+  place?: string[];
+  department?: string[];
+  acronym?: string[];
+};
+
 /** A single author or contributor on a Crossref work. */
 export type CrossrefAuthor = {
   given?: string;
@@ -122,6 +133,19 @@ export type CrossrefReference = {
   ISSN?: string;
 };
 
+/**
+ * The conference or meeting a proceedings record was presented at. Crossref's schema marks `name`
+ * required, but no field is relied on. Records also deposit `number`, `sponsor`, and `theme`,
+ * which nothing reads and so are not typed here.
+ */
+export type CrossrefEvent = {
+  name?: string;
+  acronym?: string;
+  location?: string;
+  start?: CrossrefDateParts;
+  end?: CrossrefDateParts;
+};
+
 /** Raw upstream work shape from the Crossref REST API. All optional except DOI; type can be null. */
 export type RawCrossrefWork = {
   DOI: string;
@@ -156,6 +180,14 @@ export type RawCrossrefWork = {
   created?: CrossrefDateParts;
   updated?: CrossrefDateParts;
   issued?: CrossrefDateParts;
+  /**
+   * The date a dissertation or standard was approved — on most of them the only date deposited,
+   * beside an `issued` of `[[null]]`. A report depositing one carries `published` too. Not a
+   * publication date.
+   */
+  approved?: CrossrefDateParts;
+  /** Deposited on proceedings records: proceedings articles, volumes, and series. */
+  event?: CrossrefEvent;
   subject?: string[];
   funder?: CrossrefFunder[];
   license?: CrossrefLicense[];
@@ -172,7 +204,14 @@ export type RawCrossrefWork = {
   score?: number;
   language?: string;
   'content-domain'?: { domain?: string[]; 'crossmark-restriction'?: boolean };
-  institution?: CrossrefAffiliation[];
+  /** Read wherever deposited: theses, posted content, reports, and datasets all carry it. */
+  institution?: CrossrefInstitution[];
+  /** The degree a thesis was submitted for; Crossref allows several. */
+  degree?: string[];
+  /** The kind of posted content, e.g. `preprint`. */
+  subtype?: string;
+  /** The collection or subject a posted-content server files the work under. */
+  'group-title'?: string;
 };
 
 /** Raw journal record from Crossref /journals endpoint. */

@@ -3,7 +3,7 @@
  * Fetches the full /works/{doi} record and extracts the reference[] array client-side, then slices
  * it by offset/limit so structuredContent and content[] carry the identical page. The entry's
  * free-text fields are entity-decoded, whitespace-collapsed, and stripped of the markup a
- * publisher deposits into a citation string — see normalizeReferenceText in the service, whose
+ * publisher deposits into a citation string — see normalizeReferenceText in markup-text, whose
  * bounded rule is what keeps a bracketed URL or a Miller index from being read as a tag. What
  * that rule keeps is escaped again by mdText on its way into content[], or the client's
  * Markdown renderer consumes the bracket the strip just protected.
@@ -20,11 +20,8 @@ import {
   GET_REFERENCES_LIMIT_CAP,
 } from '@/mcp-server/tools/page-size.js';
 import { notFoundDetail } from '@/mcp-server/tools/registration-agency.js';
-import {
-  getCrossrefService,
-  normalizeDoi,
-  normalizeReferenceText,
-} from '@/services/crossref/crossref-service.js';
+import { getCrossrefService, normalizeDoi } from '@/services/crossref/crossref-service.js';
+import { normalizeReferenceText } from '@/services/crossref/markup-text.js';
 import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
 
 /**
@@ -186,7 +183,7 @@ export const getReferencesTool = tool('crossref_get_references', {
         subject: 'doi',
         message: `No Crossref record for DOI: ${doi}`,
         recovery: ctx.recoveryFor('doi_not_found').recovery.hint,
-        lookup: await svc.getRegistrationAgency(doi, ctx),
+        lookup: await svc.getDoiRegistration(doi, ctx),
       });
       throw ctx.fail('doi_not_found', detail.message, { doi, ...detail.data });
     }

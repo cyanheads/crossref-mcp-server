@@ -8,7 +8,8 @@ import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { mdText } from '@/mcp-server/tools/markdown-text.js';
 import { notFoundDetail } from '@/mcp-server/tools/registration-agency.js';
-import { getCrossrefService, normalizeText } from '@/services/crossref/crossref-service.js';
+import { getCrossrefService } from '@/services/crossref/crossref-service.js';
+import { normalizeText } from '@/services/crossref/markup-text.js';
 import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
 
 export const getPrefixTool = tool('crossref_get_prefix', {

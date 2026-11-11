@@ -9,7 +9,7 @@
 
 import { z } from '@cyanheads/mcp-ts-core';
 import { mdText } from '@/mcp-server/tools/markdown-text.js';
-import { formatDateParts, parseDateParts } from '@/services/crossref/crossref-service.js';
+import { formatDateParts, parseDateParts } from '@/services/crossref/date-parts.js';
 import type { CrossrefUpdate, RawCrossrefWork } from '@/services/crossref/types.js';
 
 const UpdateSchema = z

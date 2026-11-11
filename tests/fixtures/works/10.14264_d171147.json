@@ -1,0 +1,93 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "institution": [
+      {
+        "id": [
+          {
+            "id": "https://ror.org/00rqy9422",
+            "id-type": "ROR",
+            "asserted-by": "publisher"
+          }
+        ],
+        "department": ["School of Biological Sciences"]
+      }
+    ],
+    "indexed": {
+      "date-parts": [[2026, 7, 30]],
+      "date-time": "2026-07-30T13:58:00Z",
+      "timestamp": 1785419880936,
+      "version": "3.56.0"
+    },
+    "reference-count": 0,
+    "publisher": "University of Queensland Library",
+    "content-domain": {
+      "domain": [],
+      "crossmark-restriction": false
+    },
+    "short-container-title": [],
+    "DOI": "10.14264/d171147",
+    "type": "dissertation",
+    "created": {
+      "date-parts": [[2025, 7, 21]],
+      "date-time": "2025-07-21T23:12:39Z",
+      "timestamp": 1753139559000
+    },
+    "approved": {
+      "date-parts": [[1988, 1, 1]]
+    },
+    "source": "Crossref",
+    "is-referenced-by-count": 0,
+    "title": [
+      "The ultrastructure of the sense organs on the cerci of the Australian sheep blowfly, Lucilia cuprina (Wied.) and their connection with the central nervous system"
+    ],
+    "prefix": "10.14264",
+    "author": [
+      {
+        "given": "David John",
+        "family": "Merritt",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "member": "5387",
+    "container-title": [],
+    "original-title": [],
+    "contributor": [
+      {
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [null]
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2025, 7, 21]],
+      "date-time": "2025-07-21T23:15:22Z",
+      "timestamp": 1753139722000
+    },
+    "score": 1,
+    "degree": ["PhD Thesis"],
+    "resource": {
+      "primary": {
+        "URL": "https://espace.library.uq.edu.au/view/UQ:d171147"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [[null]]
+    },
+    "references-count": 0,
+    "URL": "https://doi.org/10.14264/d171147",
+    "relation": {},
+    "subject": []
+  }
+}

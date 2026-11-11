@@ -23,24 +23,23 @@ import {
   normalizeCoverage,
 } from '@/mcp-server/tools/metadata-coverage.js';
 import {
+  type ClampedPageSize,
   clampPageSize,
   fitWindow,
   ROWS_CEILING,
   SEARCH_JOURNALS_ROWS_CAP,
 } from '@/mcp-server/tools/page-size.js';
 import {
-  formatDateParts,
   getCrossrefService,
   type JournalsSearchOptions,
   type ListSearchResult,
   NAME_SEARCH_OFFSET_CAP,
   nextPageOffset,
-  normalizeMarkupText,
-  normalizeText,
   readableIssns,
-  resolveWorkSummaryDate,
   WORKS_OFFSET_CAP,
 } from '@/services/crossref/crossref-service.js';
+import { formatDateParts, resolveWorkSummaryDate } from '@/services/crossref/date-parts.js';
+import { normalizeMarkupText, normalizeText } from '@/services/crossref/markup-text.js';
 import type { RawCrossrefJournal } from '@/services/crossref/types.js';
 import {
   INVALID_CURSOR,
@@ -229,7 +228,7 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       .max(ROWS_CEILING)
       .default(10)
       .describe(
-        `Maximum number of journals to return for title queries, or works when include_works is true (1–${SEARCH_JOURNALS_ROWS_CAP} per call, default 10). A larger value, up to ${ROWS_CEILING}, returns ${SEARCH_JOURNALS_ROWS_CAP} and says so in notice; nextOffset and nextWorksOffset continue after the records returned.`,
+        `Maximum number of journals to return for a title query (1–${SEARCH_JOURNALS_ROWS_CAP} per call, default 10), or of works when include_works is true (1–${ROWS_CEILING}). A larger value on a title query without include_works, up to ${ROWS_CEILING}, returns ${SEARCH_JOURNALS_ROWS_CAP} journals and says so in notice; an issn lookup returns its one journal. nextOffset and nextWorksOffset continue after the records returned.`,
       ),
     offset: z
       .number()
@@ -312,10 +311,15 @@ export const searchJournalsTool = tool('crossref_search_journals', {
     const onlyBlankTerms =
       query === undefined && issn === undefined && (isBlank(input.query) || isBlank(input.issn));
     /**
-     * Clamped once, here, so both offset windows, both upstream requests, and both
-     * continuation offsets read the page size actually used.
+     * The per-call cap is the title-query journal list's alone, and is applied once, here, so its
+     * offset window, its request, and its continuation offset read the page size used. Its rows
+     * carry coverage, which makes a page of them heavy; an issn lookup resolves one record, and
+     * the works list's summary stays light enough that Crossref's page maximum bounds it, as on
+     * crossref_search_funders.
      */
-    const rowsClamp = clampPageSize('rows', input.rows, SEARCH_JOURNALS_ROWS_CAP);
+    const listClamp: ClampedPageSize = issn
+      ? { value: input.rows }
+      : clampPageSize('rows', input.rows, SEARCH_JOURNALS_ROWS_CAP);
 
     /**
      * Both ceilings are on offset + rows, so an offset below one still reaches the records up to
@@ -332,14 +336,14 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       );
     }
     const listWindow = issn
-      ? { rows: rowsClamp.value }
+      ? { rows: listClamp.value }
       : fitWindow(
           'offset',
           input.offset,
           NAME_SEARCH_OFFSET_CAP,
           `${NAME_SEARCH_OFFSET_CAP} ceiling Crossref puts on offset + rows on journal title search`,
           input.rows,
-          rowsClamp,
+          listClamp,
         );
     /**
      * A blank string is not a cursor. Form-based clients send `""` for an optional field the
@@ -381,9 +385,9 @@ export const searchJournalsTool = tool('crossref_search_journals', {
           WORKS_OFFSET_CAP,
           `${WORKS_OFFSET_CAP} ceiling Crossref puts on works_offset + rows on a journal works list`,
           input.rows,
-          rowsClamp,
+          { value: input.rows },
         )
-      : { rows: rowsClamp.value };
+      : { rows: input.rows };
 
     ctx.log.info('Searching journals', { query, issn, offset: input.offset });
     const svc = getCrossrefService();
@@ -464,11 +468,14 @@ export const searchJournalsTool = tool('crossref_search_journals', {
     const notices: string[] = [];
     /**
      * A window cut names the per-call cap itself when the cap also cut the request, so the cap's
-     * own sentence leads the string only when no cut sentence carries it.
+     * own sentence leads the string only when no cut sentence carries it — and only on a page
+     * that is the journal list. An include_works page holds at most one journal beside a works
+     * list the cap never applies to, so naming the cap there would describe a cut of nothing.
      */
+    const capNotice = input.include_works ? undefined : listClamp.notice;
     let capFolded = false;
     const flushNotices = () => {
-      const all = rowsClamp.notice && !capFolded ? [rowsClamp.notice, ...notices] : notices;
+      const all = capNotice && !capFolded ? [capNotice, ...notices] : notices;
       if (all.length > 0) ctx.enrich.notice(all.join(' '));
     };
     if (onlyBlankTerms) {
@@ -612,7 +619,6 @@ export const searchJournalsTool = tool('crossref_search_journals', {
       });
       const worksRoute = `Re-run with works_cursor="*" and chain nextWorksCursor to read the whole list; the walk restarts at the most recently registered work and runs by registration date, not publication date.`;
       if (worksWindow.cut) {
-        capFolded = true;
         notices.push(
           worksContinuation.kind === 'ceiling'
             ? `${worksWindow.cut} — the last works page reachable by works_offset, and ${worksResult.totalResults} works exist. ${worksRoute}`

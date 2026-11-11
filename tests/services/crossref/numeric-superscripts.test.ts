@@ -3,10 +3,7 @@
  * @module tests/services/crossref/numeric-superscripts.test
  */
 import { describe, expect, it } from 'vitest';
-import {
-  normalizeMarkupText,
-  normalizeReferenceText,
-} from '@/services/crossref/crossref-service.js';
+import { normalizeMarkupText, normalizeReferenceText } from '@/services/crossref/markup-text.js';
 import { expectLinearScaling, nestTo, repeatTo } from '../../helpers/scaling.js';
 
 const passes = [normalizeMarkupText, normalizeReferenceText];

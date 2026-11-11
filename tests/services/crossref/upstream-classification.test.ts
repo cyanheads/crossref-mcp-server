@@ -12,6 +12,7 @@
  * @module tests/services/crossref/upstream-classification.test
  */
 
+import { readFileSync } from 'node:fs';
 import { JsonRpcErrorCode, McpError } from '@cyanheads/mcp-ts-core/errors';
 import {
   createFetchMock,
@@ -35,6 +36,7 @@ vi.mock('@/config/server-config.js', () => ({
 
 import {
   allToolDefinitions,
+  getReferencesTool,
   getWorkTool,
   searchFundersTool,
   searchJournalsTool,
@@ -268,7 +270,9 @@ describe('upstream failure classification', () => {
   /**
    * The registry lookup rides the same attempt primitive as every Crossref call, so its
    * answer, its single attempt, and its silence on success are asserted through the real
-   * service and the real tool rather than a stubbed lookup.
+   * service and the real tool rather than a stubbed lookup. A DataCite answer also sends the
+   * citation request, which this stub answers in plain JSON rather than CSL-JSON — so the third
+   * request is made and the answer stays the agency alone.
    */
   it('names the agency the DOI registry reports, through the real service and tool', async () => {
     http.route({
@@ -289,11 +293,314 @@ describe('upstream failure classification', () => {
       doi: DOI,
       registrationAgency: 'DataCite',
     });
+    expect(errorOf(result).data).not.toHaveProperty('citation');
     expect(textOf(result)).toContain(`Error: ${message}\n`);
     expect(http.calls.map((call) => call.request.url)).toEqual([
       `${BASE_URL}/works/10.1038%2Fnature12373`,
       'https://doi.org/doiRA/10.1038%2Fnature12373',
+      'https://doi.org/10.1038%2Fnature12373',
     ]);
+  });
+
+  /**
+   * Every registry answer outside the agencies doi.org serves a citation for ends the not-found
+   * path where it ended before: the Crossref 404 and the registry lookup, then the error, on both
+   * surfaces, exactly as written here.
+   */
+  describe('registry answers that send no citation request', () => {
+    const recovery = () => declaredRecovery(getWorkTool, 'doi_not_found');
+    const otherAgency = (agency: string) => ({
+      answer: [{ DOI, RA: agency }],
+      message: `No Crossref record for DOI: ${DOI} — it is registered with ${agency}, not Crossref.`,
+      data: { registrationAgency: agency },
+      hint: () =>
+        `No Crossref tool can return a DOI registered with ${agency}; query ${agency}'s metadata service for it.`,
+    });
+
+    it.each([
+      ['CNKI', otherAgency('CNKI')],
+      ['ISTIC', otherAgency('ISTIC')],
+      ['Airiti', otherAgency('Airiti')],
+      ['EIDR', otherAgency('EIDR')],
+      [
+        'Crossref',
+        {
+          answer: [{ DOI, RA: 'Crossref' }],
+          message: `No Crossref record for DOI: ${DOI} — Crossref registered this DOI but serves no work record for it.`,
+          data: { registrationAgency: 'Crossref' },
+          hint: () =>
+            `${recovery()} A Funder Registry DOI (10.13039/…) is looked up with crossref_search_funders funder_doi.`,
+        },
+      ],
+      [
+        'DOI does not exist',
+        {
+          answer: [{ DOI, status: 'DOI does not exist' }],
+          message: `No Crossref record for DOI: ${DOI} — no registration agency has registered this DOI.`,
+          data: {},
+          hint: () =>
+            'Check the DOI for a typo or truncation, or find the work with crossref_search_works.',
+        },
+      ],
+      [
+        'an unreadable answer',
+        {
+          answer: [{ DOI, status: 'Unknown' }],
+          message: `No Crossref record for DOI: ${DOI}`,
+          data: {},
+          hint: recovery,
+        },
+      ],
+    ])('%s', async (_label, { answer, message, data, hint }) => {
+      http.route({
+        match: WORKS_ROUTE,
+        respond: () => new Response('Resource not found.', { status: 404 }),
+      });
+      http.route({
+        match: (request) => new URL(request.url).hostname === 'doi.org',
+        respond: () => Response.json(answer),
+      });
+
+      const result = await getWork();
+
+      expect(errorOf(result)).toEqual({
+        code: JsonRpcErrorCode.NotFound,
+        message,
+        data: { doi: DOI, ...data, recovery: { hint: hint() }, reason: 'doi_not_found' },
+      });
+      expect(textOf(result)).toBe(
+        `Error: ${message}\n\nRecovery: ${hint()}\n\n(reason doi_not_found)`,
+      );
+      expect(http.calls.map((call) => call.request.url)).toEqual([
+        `${BASE_URL}/works/10.1038%2Fnature12373`,
+        'https://doi.org/doiRA/10.1038%2Fnature12373',
+      ]);
+    });
+  });
+
+  /**
+   * The agencies doi.org serves CSL-JSON for, each with a record it served — the bodies under
+   * `tests/fixtures/csl/` as captured, each with the Content-Type it came with — through the real
+   * service and tool: the Crossref 404, the registry lookup, the citation request, then the
+   * error with its citation on both surfaces.
+   */
+  describe('the citation of a DOI another agency registered', () => {
+    const CSL = 'application/vnd.citationstyles.csl+json';
+    const fixture = (doi: string) =>
+      readFileSync(
+        new URL(`../../fixtures/csl/${doi.toLowerCase().replace('/', '_')}.json`, import.meta.url),
+        'utf8',
+      );
+    const onCitation = (request: Request) => {
+      const url = new URL(request.url);
+      return url.hostname === 'doi.org' && !url.pathname.startsWith('/doiRA/');
+    };
+
+    /** Crossref has no record, the registry names `agency`, and doi.org serves `doi`'s fixture. */
+    function registeredElsewhere(doi: string, agency: string, contentType: string) {
+      http.route({
+        match: WORKS_ROUTE,
+        respond: () => new Response('Resource not found.', { status: 404 }),
+      });
+      http.route({
+        match: (request) => request.url.startsWith('https://doi.org/doiRA/'),
+        respond: () => Response.json([{ DOI: doi, RA: agency }]),
+      });
+      http.route({
+        match: onCitation,
+        respond: () => new Response(fixture(doi), { headers: { 'content-type': contentType } }),
+      });
+    }
+
+    const hintFor = (agency: string) =>
+      `No Crossref tool can return a DOI registered with ${agency}; query ${agency}'s metadata service for it.`;
+
+    it.each([
+      [
+        '10.5281/zenodo.3242074',
+        'DataCite',
+        `${CSL}; charset=utf-8`,
+        {
+          title: 'Simple requirements.txt based example for repo2docker',
+          authors: [{ given: 'Project', family: 'Binder' }],
+          authorCount: 1,
+          issued: { year: 2019, month: 6, day: 9 },
+          publisher: 'Zenodo',
+          type: 'software',
+        },
+        `DataCite's citation: title "Simple requirements.txt based example for repo2docker"; authors "Project Binder"; issued 2019-06-09; publisher "Zenodo"; type software.`,
+      ],
+      [
+        '10.11501/3075355',
+        'JaLC',
+        `${CSL};charset=UTF-8`,
+        {
+          title: 'Rheological properties and emulsification mechanism of offset inks',
+          authors: [{ given: '林, 努' }],
+          authorCount: 1,
+          issued: { year: 1994, month: 3, day: 25 },
+          publisher: '千葉大学',
+        },
+        `JaLC's citation: title "Rheological properties and emulsification mechanism of offset inks"; authors "林, 努"; issued 1994-03-25; publisher "千葉大学".`,
+      ],
+      [
+        '10.1400/123456',
+        'mEDRA',
+        `${CSL};charset=UTF-8`,
+        {
+          title: 'Premios Goya 2008',
+          authors: [
+            { given: 'Rueda [texto]', family: 'Duque' },
+            { given: 'Pipo [fotografia]', family: 'Fernández' },
+          ],
+          authorCount: 2,
+          containerTitle: 'Punto y coma',
+          issued: { year: 2008 },
+          publisher: 'Habla con Eñe',
+          type: 'article-journal',
+        },
+        `mEDRA's citation: title "Premios Goya 2008"; authors "Rueda [texto] Duque", "Pipo [fotografia] Fernández"; container "Punto y coma"; issued 2008; publisher "Habla con Eñe"; type article-journal.`,
+      ],
+      [
+        '10.3743/kosim.2014.31.4.049',
+        'KISTI',
+        `${CSL};charset=UTF-8`,
+        {
+          title:
+            'A Content Analysis of Journal Articles Using the Language Network Analysis Methods',
+          containerTitle: 'Journal of the Korean Society for information Management',
+          issued: { year: 2014, month: 12, day: 1 },
+          publisher: '한국정보관리학회',
+          type: 'article-journal',
+        },
+        `KISTI's citation: title "A Content Analysis of Journal Articles Using the Language Network Analysis Methods"; container "Journal of the Korean Society for information Management"; issued 2014-12-01; publisher "한국정보관리학회"; type article-journal.`,
+      ],
+      [
+        '10.2760/180576',
+        'OP',
+        `${CSL};charset=UTF-8`,
+        {
+          title: 'Energy communities: an overview of energy and social innovation.',
+          authors: [{ name: 'European Commission. Joint Research Centre.' }],
+          authorCount: 1,
+          issued: { year: 2020 },
+          publisher: 'Publications Office',
+          type: 'book',
+        },
+        `OP's citation: title "Energy communities: an overview of energy and social innovation."; authors "European Commission. Joint Research Centre."; issued 2020; publisher "Publications Office"; type book.`,
+      ],
+    ])('%s (%s)', async (doi, agency, contentType, citation, sentence) => {
+      registeredElsewhere(doi, agency, contentType);
+
+      const result = await settle(runToolContract(getWorkTool, { doi }));
+
+      const message = `No Crossref record for DOI: ${doi} — it is registered with ${agency}, not Crossref. ${sentence}`;
+      expect(errorOf(result)).toEqual({
+        code: JsonRpcErrorCode.NotFound,
+        message,
+        data: {
+          doi,
+          registrationAgency: agency,
+          citation,
+          recovery: { hint: hintFor(agency) },
+          reason: 'doi_not_found',
+        },
+      });
+      expect(renderedText(textOf(result))).toContain(
+        `Error: ${message}\nRecovery: ${hintFor(agency)}\n`,
+      );
+      const encoded = encodeURIComponent(doi);
+      expect(http.calls.map((call) => call.request.url)).toEqual([
+        `${BASE_URL}/works/${encoded}`,
+        `https://doi.org/doiRA/${encoded}`,
+        `https://doi.org/${encoded}`,
+      ]);
+      expect(http.calls[2]?.request.headers.get('Accept')).toBe(CSL);
+    });
+
+    it('names the first 25 of the 3,435 authors an arXiv collaboration record lists', async () => {
+      const doi = '10.48550/arXiv.2507.06261';
+      registeredElsewhere(doi, 'DataCite', `${CSL}; charset=utf-8`);
+
+      const result = await settle(runToolContract(getWorkTool, { doi }));
+
+      const { message, data } = errorOf(result);
+      const citation = data?.citation as { authors: unknown[]; authorCount: number };
+      expect(citation).toMatchObject({
+        title:
+          'Gemini 2.5: Pushing the Frontier with Advanced Reasoning, Multimodality, Long Context, and Next Generation Agentic Capabilities',
+        authorCount: 3435,
+        issued: { year: 2025 },
+        publisher: 'arXiv',
+        type: 'article',
+      });
+      expect(citation).not.toHaveProperty('containerTitle');
+      expect(citation.authors).toHaveLength(25);
+      expect(citation.authors[0]).toEqual({ given: 'Gheorghe', family: 'Comanici' });
+      expect(citation.authors[24]).toEqual({ given: 'Eric', family: 'Chu' });
+      expect(message).toContain(
+        '; authors (first 25 of 3435) "Gheorghe Comanici", "Eric Bieber", "Mike Schaekermann", ',
+      );
+      expect(message).toContain(
+        ', "Gaurav Mishra", "Eric Chu"; issued 2025; publisher "arXiv"; type article.',
+      );
+      // The 26th author is the first one left out.
+      expect(message).not.toContain('Toby Boyd');
+      expect(renderedText(textOf(result))).toContain(`Error: ${message}\n`);
+    });
+
+    it('carries the same citation on crossref_get_references', async () => {
+      registeredElsewhere('10.11501/3075355', 'JaLC', `${CSL};charset=UTF-8`);
+
+      const result = await settle(runToolContract(getReferencesTool, { doi: '10.11501/3075355' }));
+
+      expect(errorOf(result).message).toBe(
+        `No Crossref record for DOI: 10.11501/3075355 — it is registered with JaLC, not Crossref. JaLC's citation: title "Rheological properties and emulsification mechanism of offset inks"; authors "林, 努"; issued 1994-03-25; publisher "千葉大学".`,
+      );
+      expect(errorOf(result).data).toMatchObject({
+        reason: 'doi_not_found',
+        registrationAgency: 'JaLC',
+        citation: { title: 'Rheological properties and emulsification mechanism of offset inks' },
+      });
+      expect(http.calls).toHaveLength(3);
+    });
+
+    it('answers with the agency alone when doi.org has no citation to serve', async () => {
+      http.route({
+        match: WORKS_ROUTE,
+        respond: () => new Response('Resource not found.', { status: 404 }),
+      });
+      http.route({
+        match: (request) => request.url.startsWith('https://doi.org/doiRA/'),
+        respond: () => Response.json([{ DOI, RA: 'mEDRA' }]),
+      });
+      http.route({
+        match: onCitation,
+        respond: () =>
+          new Response('<!DOCTYPE html><title>Error: DOI Not Found</title>', {
+            status: 404,
+            headers: { 'content-type': 'text/html;charset=utf-8' },
+          }),
+      });
+
+      const result = await getWork();
+
+      const message = `No Crossref record for DOI: ${DOI} — it is registered with mEDRA, not Crossref.`;
+      expect(errorOf(result)).toEqual({
+        code: JsonRpcErrorCode.NotFound,
+        message,
+        data: {
+          doi: DOI,
+          registrationAgency: 'mEDRA',
+          recovery: { hint: hintFor('mEDRA') },
+          reason: 'doi_not_found',
+        },
+      });
+      expect(textOf(result)).toBe(
+        `Error: ${message}\n\nRecovery: ${hintFor('mEDRA')}\n\n(reason doi_not_found)`,
+      );
+      expect(http.calls).toHaveLength(3);
+    });
   });
 
   it('keeps the declared not-found text when the registry answers 503, without retrying it', async () => {
@@ -784,6 +1091,45 @@ describe('Crossref rejections of caller input', () => {
     expect(error.data).toMatchObject({ rejected: [{ type: 'cursor-invalid', value: 'garbage' }] });
     expect(JSON.stringify(result)).not.toContain('resource-failure');
     expect(http.calls).toHaveLength(1);
+  });
+
+  /**
+   * The values a rejection tells the caller to send back — the hyphenated filter key Crossref
+   * lists, the `*` that restarts a cursor walk — render in `content[]` as code spans, so a model
+   * copying one from the text carries no Markdown escape into its next call. A CommonMark reader
+   * still reads the text exactly as `structuredContent` carries it.
+   */
+  it('renders each suggested filter key as code, the text around it unchanged', async () => {
+    http.route({
+      match: WORKS_ROUTE,
+      respond: () =>
+        validationFailure(filterNotAvailable('has_abstract'), filterNotAvailable('from_pub_date')),
+    });
+
+    const result = await searchWorks({
+      filter: { has_abstract: 'true', from_pub_date: '2020' },
+      rows: 1,
+    });
+
+    const { message } = errorOf(result);
+    expect(message).toBe(
+      'Crossref rejected the request: filter key "has_abstract" is not a Crossref filter — did you mean "has-abstract"?; filter key "from_pub_date" is not a Crossref filter — did you mean "from-pub-date"?',
+    );
+    expect(textOf(result)).toContain('did you mean "`has-abstract`"?');
+    expect(textOf(result)).toContain('did you mean "`from-pub-date`"?');
+    expect(renderedText(textOf(result))).toContain(`Error: ${message}\n`);
+  });
+
+  it('renders the cursor that restarts a walk as code, not as an escaped asterisk', async () => {
+    http.route({ match: WORKS_ROUTE, respond: cursorInvalid });
+
+    const result = await searchWorks({ query: 'crispr', cursor: 'garbage', rows: 1 });
+
+    const hint = declaredRecovery(searchWorksTool, 'invalid_cursor');
+    expect(errorOf(result).data).toMatchObject({ recovery: { hint } });
+    expect(textOf(result)).toContain('Restart the walk by passing "`*`" as cursor');
+    expect(textOf(result)).not.toContain('\\*');
+    expect(renderedText(textOf(result))).toContain(`Recovery: ${hint}\n`);
   });
 
   it.each([

@@ -55,7 +55,7 @@ function scalarValue(codePoint: number): string | undefined {
  * escaped precisely so it would not be markup.
  *
  * Callers strip markup before decoding, never after — see the normalization passes in
- * `crossref-service`. A deposited `&lt;i&gt;` has to reach the strip still escaped, or it
+ * `markup-text`. A deposited `&lt;i&gt;` has to reach the strip still escaped, or it
  * decodes into a tag the strip then eats and the reader loses the text.
  */
 export function decodeHtmlEntities(raw: string): string {

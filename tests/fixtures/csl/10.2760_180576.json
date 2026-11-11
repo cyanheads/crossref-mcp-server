@@ -1,0 +1,11 @@
+{
+  "type": "book",
+  "language": "eng",
+  "author": [{ "literal": "European Commission. Joint Research Centre." }],
+  "issued": { "date-parts": [[2020]] },
+  "DOI": "10.2760\/180576",
+  "publisher": "Publications Office",
+  "publisher-place": "LU",
+  "title": "Energy communities: an overview of energy and social innovation.",
+  "URL": "https:\/\/data.europa.eu\/doi\/10.2760\/180576"
+}

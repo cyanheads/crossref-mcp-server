@@ -8,10 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import {
-  normalizeMarkupText,
-  normalizeReferenceText,
-} from '@/services/crossref/crossref-service.js';
+import { normalizeMarkupText, normalizeReferenceText } from '@/services/crossref/markup-text.js';
 import { expectLinearScaling, repeatTo } from '../../helpers/scaling.js';
 
 /** Both markup passes over one input, as `[JATS, reference]`. */

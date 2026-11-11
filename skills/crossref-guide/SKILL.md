@@ -15,7 +15,7 @@ Reach elsewhere for:
 
 - Aggregations (works per year, per institution, per topic), author disambiguation, institutions, and topics — OpenAlex. Crossref answers counts only one filtered call at a time.
 - Citation counts as a measure of influence — OpenAlex. `isReferencedByCount` counts only the citing works Crossref matched from deposited reference lists, so it differs from other indexes.
-- Biomedical abstracts — PubMed. A DOI registered with DataCite — a DataCite source.
+- Biomedical abstracts — PubMed. A DOI registered with DataCite — a DataCite source. crossref_get_work and crossref_get_references on a DOI another agency registered answer `doi_not_found` naming that agency, and for DataCite, JaLC, mEDRA, KISTI, and OP they also carry the work's citation (title, authors, container, date, publisher, type) when doi.org serves one.
 
 ## Identifiers
 
@@ -52,7 +52,7 @@ For a journal through crossref_search_works, pass every ISSN its record lists as
 ### Filter syntax
 
 - **OR on one key.** The filter object holds one value per key, but Crossref ORs a repeated key and the server joins pairs with commas, so a value carrying `,key:value` adds a second pair: `{"issn":"0028-0836,issn:1476-4687"}`, `{"type":"journal-article,type:proceedings-article"}`, `{"doi":"10.1038/171737a0,doi:10.1007/s11277-021-09072-0"}`. Different keys AND together.
-- **Dates.** `from-pub-date` and `until-pub-date` take `YYYY`, `YYYY-MM`, or `YYYY-MM-DD`; a bare year covers the whole year. `from-created-date` bounds when the DOI was registered rather than published. A recorded publication date can lie in the future, so a newest-published list can lead with dates that have not arrived.
+- **Dates.** `from-pub-date` and `until-pub-date` take `YYYY`, `YYYY-MM`, or `YYYY-MM-DD`; a bare year covers the whole year. `from-created-date` bounds when the DOI was registered rather than published. Dissertations and most standards deposit their date as `approved` rather than a publication date, so a pub-date filter finds none of them — bound them with `from-approved-date` and `until-approved-date`. A recorded publication date can lie in the future, so a newest-published list can lead with dates that have not arrived.
 - **Types.** Crossref's own type names: a preprint is `posted-content`. An unknown type comes back as `invalid_parameter` listing every valid one.
 - **Publisher scope.** `member` (numeric ID) matches the works a publisher holds now, under every prefix, including titles transferred to it; `prefix` matches a DOI's own prefix, whoever holds it now.
 - **Counting.** For "how many", call crossref_search_works with `rows: 1` and `fields: ["DOI"]` and read `totalResults`; one call per bucket (per year, per type).

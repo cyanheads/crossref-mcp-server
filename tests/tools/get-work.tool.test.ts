@@ -28,7 +28,7 @@ const mockLookup = vi.fn();
 beforeEach(() => {
   vi.mocked(getCrossrefService).mockReturnValue({
     getWork: mockGetWork,
-    getRegistrationAgency: mockLookup,
+    getDoiRegistration: mockLookup,
   } as unknown as ReturnType<typeof getCrossrefService>);
   mockGetWork.mockReset();
   mockLookup.mockReset();
@@ -658,6 +658,55 @@ describe('getWorkTool', () => {
     expect(result.abstract).toContain('Gene editing was studied');
   });
 
+  /**
+   * The abstract goes through the abstract normalizer, not the pass titles share: a structured
+   * abstract's section headings stay apart from their text, and the "Abstract" label the deposit
+   * opens with is dropped — the same string on both surfaces. The same markup deposited as a
+   * title or container title keeps that pass.
+   */
+  it('keeps structured-abstract headings apart from their text on both surfaces', async () => {
+    const markup =
+      '<jats:title>Abstract</jats:title><jats:sec><jats:title>Objectives</jats:title><jats:p>Reducing sedentary behaviour.</jats:p></jats:sec><jats:sec><jats:title content-type="abstract-subheading">Design</jats:title><jats:p>A realist review.</jats:p></jats:sec>';
+    mockGetWork.mockResolvedValue(
+      makeRawWork({ abstract: markup, title: [markup], 'container-title': [markup] }),
+    );
+
+    const result = await runToolContract(getWorkTool, { doi: '10.1136/bmjopen-2024-095775' });
+
+    const expected = 'Objectives: Reducing sedentary behaviour. Design: A realist review.';
+    const sc = result.structuredContent as {
+      abstract?: string;
+      title?: string;
+      containerTitle?: string;
+    };
+    expect(sc.abstract).toBe(expected);
+    const lines = result.content.map(blockText).join('\n').split('\n');
+    expect(lines[lines.indexOf('**Abstract:**') + 1]).toBe(expected);
+    const asTitle = 'Abstract Objectives Reducing sedentary behaviour. Design A realist review.';
+    expect(sc.title).toBe(asTitle);
+    expect(sc.containerTitle).toBe(asTitle);
+  });
+
+  /**
+   * A deposit whose only text was the "Abstract" label leaves nothing, and nothing is reported
+   * the way a record that never deposited one is — no empty string on structuredContent beside
+   * a `*Not deposited*` line on content[].
+   */
+  it('reports an abstract with no text left exactly like one never deposited', async () => {
+    mockGetWork.mockResolvedValue(
+      makeRawWork({ abstract: '<jats:title>Abstract</jats:title><jats:p/>' }),
+    );
+    const emptied = await runToolContract(getWorkTool, { doi: '10.1093/eurheartj/ehaa444' });
+    mockGetWork.mockResolvedValue(makeRawWork({ abstract: undefined }));
+    const absent = await runToolContract(getWorkTool, { doi: '10.1093/eurheartj/ehaa444' });
+
+    expect(emptied.isError).toBeFalsy();
+    expect(emptied.structuredContent).not.toHaveProperty('abstract');
+    expect(emptied.structuredContent).toEqual(absent.structuredContent);
+    expect(emptied.content).toEqual(absent.content);
+    expect(emptied.content.map(blockText).join('\n')).toContain('**Abstract:**\n*Not deposited*');
+  });
+
   it('strips JATS markup and embedded newlines from title, subtitle, and container title', async () => {
     const ctx = createMockContext({ errors: getWorkTool.errors });
     mockGetWork.mockResolvedValue(
@@ -1218,6 +1267,30 @@ describe('getWorkTool', () => {
       expect(text).toContain(
         "Error: No Crossref record for DOI: 10.5281/zenodo.3242074 — it is registered with DataCite, not Crossref.\n\nRecovery: No Crossref tool can return a DOI registered with DataCite; query DataCite's metadata service for it.",
       );
+      expect(error.data).not.toHaveProperty('citation');
+    });
+
+    it('carries the citation doi.org served onto data.citation and into the message', async () => {
+      mockLookup.mockResolvedValue({
+        kind: 'registered',
+        agency: 'JaLC',
+        citation: { title: 'Offset inks', publisher: '千葉大学' },
+      });
+      const { error, text } = await notFound('10.11501/3075355');
+
+      const message =
+        'No Crossref record for DOI: 10.11501/3075355 — it is registered with JaLC, not Crossref. JaLC\'s citation: title "Offset inks"; publisher "千葉大学".';
+      const hint =
+        "No Crossref tool can return a DOI registered with JaLC; query JaLC's metadata service for it.";
+      expect(error.message).toBe(message);
+      expect(error.data).toMatchObject({
+        reason: 'doi_not_found',
+        doi: '10.11501/3075355',
+        registrationAgency: 'JaLC',
+        citation: { title: 'Offset inks', publisher: '千葉大学' },
+        recovery: { hint },
+      });
+      expect(text).toContain(`Error: ${message}\n\nRecovery: ${hint}`);
     });
 
     it('points a Crossref-registered DOI with no work record at the Funder Registry lookup', async () => {

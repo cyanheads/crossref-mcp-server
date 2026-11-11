@@ -1,0 +1,19 @@
+{
+  "type": "software",
+  "id": "https://doi.org/10.5281/zenodo.3242074",
+  "author": [
+    {
+      "family": "Binder",
+      "given": "Project"
+    }
+  ],
+  "issued": {
+    "date-parts": [[2019, 6, 9]]
+  },
+  "abstract": "Simple requirements.txt based example",
+  "DOI": "10.5281/ZENODO.3242074",
+  "publisher": "Zenodo",
+  "title": "Simple requirements.txt based example for repo2docker",
+  "URL": "https://zenodo.org/record/3242074",
+  "copyright": "BSD 3-Clause \"New\" or \"Revised\" License"
+}

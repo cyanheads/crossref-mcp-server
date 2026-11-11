@@ -1,0 +1,89 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "institution": [
+      {
+        "name": "Universidade de São Paulo",
+        "place": ["São Paulo"],
+        "department": ["Faculdade de Educação"]
+      }
+    ],
+    "indexed": {
+      "date-parts": [[2026, 6, 16]],
+      "date-time": "2026-06-16T13:56:56Z",
+      "timestamp": 1781618216458,
+      "version": "3.54.5"
+    },
+    "reference-count": 0,
+    "publisher": "Universidade de São Paulo. Agência de Bibliotecas e Coleções Digitais",
+    "content-domain": {
+      "domain": [],
+      "crossmark-restriction": false
+    },
+    "short-container-title": [],
+    "DOI": "10.11606/t.48.2015.tde-14122015-153241",
+    "type": "dissertation",
+    "created": {
+      "date-parts": [[2016, 2, 29]],
+      "date-time": "2016-02-29T08:49:30Z",
+      "timestamp": 1456735770000
+    },
+    "approved": {
+      "date-parts": [[2015, 9, 22]]
+    },
+    "source": "Crossref",
+    "is-referenced-by-count": 0,
+    "title": [
+      "Música no berçário: formação de professores e a teoria da aprendizagem musical de Edwin Gordon"
+    ],
+    "prefix": "10.11606",
+    "author": [
+      {
+        "given": "Fabiana Leite Rabello",
+        "family": "Mariano",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "member": "4873",
+    "container-title": [],
+    "original-title": [],
+    "link": [
+      {
+        "URL": "http://www.teses.usp.br/teses/disponiveis/48/48134/tde-14122015-153241/publico/FABIANA_LEITE_RABELLO_MARIANO_rev.pdf",
+        "content-type": "unspecified",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2026, 6, 16]],
+      "date-time": "2026-06-16T13:06:58Z",
+      "timestamp": 1781615218000
+    },
+    "score": 1,
+    "degree": ["Doutorado em Educação"],
+    "resource": {
+      "primary": {
+        "URL": "https://teses.usp.br/teses/disponiveis/48/48134/tde-14122015-153241/"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [[null]]
+    },
+    "references-count": 0,
+    "URL": "https://doi.org/10.11606/t.48.2015.tde-14122015-153241",
+    "relation": {},
+    "subject": []
+  }
+}

@@ -11,7 +11,8 @@ import {
   coverageLines,
   normalizeCoverage,
 } from '@/mcp-server/tools/metadata-coverage.js';
-import { getCrossrefService, normalizeText } from '@/services/crossref/crossref-service.js';
+import { getCrossrefService } from '@/services/crossref/crossref-service.js';
+import { normalizeText } from '@/services/crossref/markup-text.js';
 import type { RawCrossrefMember } from '@/services/crossref/types.js';
 import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
 

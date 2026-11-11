@@ -3,9 +3,10 @@
  * The deposited author list is paged by offset/limit the way crossref_get_references pages
  * references: the slice happens once in the handler, so structuredContent and content[] carry
  * the identical page, and authorCount reports the full deposited total.
- * A funder and an affiliation are the two organizations a record names, and a publisher may
- * assert either through the ROR registry instead of by name — so both are projected with the
- * identifier standing in for the name they lack, on both surfaces, rather than as a blank entry.
+ * A funder, an affiliation, and an institution are the organizations a record names, and a
+ * publisher may assert any of them through the ROR registry instead of by name — so each is
+ * projected with the identifier standing in for the name it lacks, on both surfaces, rather than
+ * as a blank entry.
  * Editors, update links, and related identifiers are returned whole: none approaches the author
  * tail, and each is relayed entry for entry as deposited. Update links also feed the notice,
  * which shares its one string with the author-paging guidance.
@@ -21,6 +22,15 @@ import {
   GET_WORK_LIMIT_CAP,
 } from '@/mcp-server/tools/page-size.js';
 import { notFoundDetail } from '@/mcp-server/tools/registration-agency.js';
+import {
+  approvedFields,
+  approvedLine,
+  DatePartsSchema,
+  eventFields,
+  eventLine,
+  projectApproved,
+  projectEvent,
+} from '@/mcp-server/tools/work-dates.js';
 import { locatorFields, locatorLine, projectLocators } from '@/mcp-server/tools/work-locators.js';
 import {
   projectUpdates,
@@ -28,18 +38,20 @@ import {
   updateFields,
   updateSections,
 } from '@/mcp-server/tools/work-updates.js';
+import { getCrossrefService, normalizeDoi } from '@/services/crossref/crossref-service.js';
+import { formatDateParts, resolveWorkDate } from '@/services/crossref/date-parts.js';
 import {
-  formatDateParts,
-  getCrossrefService,
-  normalizeDoi,
+  normalizeAbstract,
   normalizeMarkupText,
+  normalizeNonEmptyText,
+  normalizeNonEmptyTexts,
   normalizeText,
-  resolveWorkDate,
-} from '@/services/crossref/crossref-service.js';
+} from '@/services/crossref/markup-text.js';
 import type {
   CrossrefAffiliation,
   CrossrefAuthor,
   CrossrefFunder,
+  CrossrefInstitution,
   CrossrefOrganizationId,
   CrossrefRelation,
 } from '@/services/crossref/types.js';
@@ -98,6 +110,29 @@ const FunderSchema = z
   })
   .describe('Funding assertion');
 
+const InstitutionSchema = z
+  .object({
+    name: z
+      .string()
+      .optional()
+      .describe(
+        'Institution name as deposited. Absent when the deposit identifies the institution by identifier alone, where ror carries it when that identifier is a ROR.',
+      ),
+    ror: z
+      .string()
+      .optional()
+      .describe(
+        'ROR identifier for the institution, when the deposit carries one. It is the whole identity of an institution deposited without a name.',
+      ),
+    place: z.array(z.string()).optional().describe('Places as deposited, such as a city'),
+    department: z
+      .array(z.string())
+      .optional()
+      .describe('Departments, faculties, or schools as deposited'),
+    acronym: z.array(z.string()).optional().describe('Acronyms as deposited'),
+  })
+  .describe('Institution');
+
 const LicenseSchema = z
   .object({
     url: z.string().describe('License URL'),
@@ -121,12 +156,6 @@ const LinkSchema = z
       .describe('Intended use (text-mining, similarity-checking, etc.)'),
   })
   .describe('Registered full-text link');
-
-const DatePartsSchema = z.object({
-  year: z.number().optional().describe('Year'),
-  month: z.number().optional().describe('Month (1–12)'),
-  day: z.number().optional().describe('Day of month'),
-});
 
 const RelationSchema = z
   .object({
@@ -154,7 +183,7 @@ const RelationSchema = z
 export const getWorkTool = tool('crossref_get_work', {
   title: 'Get Work by DOI',
   description:
-    'Resolves a DOI to its full Crossref metadata record: title, authors, editors, affiliations, abstract (when deposited), journal or container with the volume, issue, pages, and article number that locate the work in it, ISSNs and ISBNs, publication date, type, license, full-text links, and funder acknowledgements. The author list is paged: authorCount is the full deposited total, offset and limit select the page (25 authors by default), and when authors remain the response carries a nextOffset to pass back as offset — large-collaboration papers deposit thousands. Post-publication updates are relayed as Crossref records them: updatedBy names each correction, retraction, expression of concern, or new version issued against this work, with its notice DOI and whether the publisher or Retraction Watch recorded it, and updateTo names the works this record is itself a notice for. An absent updatedBy does not mean the work was never updated — coverage depends on those deposits. relations lists related identifiers, such as a preprint and its published version, grouped by relation type; only the Crossref-registered DOIs among them resolve through crossref_get_work. memberId is the Crossref member that holds the DOI now — pass it to crossref_get_member for the publisher record and its deposit coverage; the prefix of the DOI names the member that registered the prefix, which for a transferred title is a former publisher. Outgoing references are reported as a count in referencesCount; the reference entries themselves come from crossref_get_references. The isReferencedByCount field reports the total incoming citation count from Crossref; the citing works themselves are not available through Crossref — use OpenAlex for citation graphs.',
+    'Resolves a DOI to its full Crossref metadata record: title, authors, editors, affiliations, abstract (when deposited), journal or container with the volume, issue, pages, and article number that locate the work in it, ISSNs and ISBNs, publication date, type, license, full-text links, and funder acknowledgements. Where the record deposits them it also carries the conference event of a proceedings paper (event), the approval date that dissertations and most standards deposit in place of a publication date (approved, never read into published), the institutions a record names (the awarding institution of a thesis, the server of a preprint, the laboratories behind a report) and the degree of a thesis, and the subtype and group title of posted content such as a preprint. The author list is paged: authorCount is the full deposited total, offset and limit select the page (25 authors by default), and when authors remain the response carries a nextOffset to pass back as offset — large-collaboration papers deposit thousands. Post-publication updates are relayed as Crossref records them: updatedBy names each correction, retraction, expression of concern, or new version issued against this work, with its notice DOI and whether the publisher or Retraction Watch recorded it, and updateTo names the works this record is itself a notice for. An absent updatedBy does not mean the work was never updated — coverage depends on those deposits. relations lists related identifiers, such as a preprint and its published version, grouped by relation type; only the Crossref-registered DOIs among them resolve through crossref_get_work. memberId is the Crossref member that holds the DOI now — pass it to crossref_get_member for the publisher record and its deposit coverage; the prefix of the DOI names the member that registered the prefix, which for a transferred title is a former publisher. Outgoing references are reported as a count in referencesCount; the reference entries themselves come from crossref_get_references. The isReferencedByCount field reports the total incoming citation count from Crossref; the citing works themselves are not available through Crossref — use OpenAlex for citation graphs.',
   annotations: { readOnlyHint: true, idempotentHint: true },
 
   input: z.object({
@@ -194,6 +223,12 @@ export const getWorkTool = tool('crossref_get_work', {
       .string()
       .optional()
       .describe('Work type (e.g. journal-article, book-chapter, posted-content)'),
+    subtype: z
+      .string()
+      .optional()
+      .describe(
+        'Kind of posted content as deposited, e.g. preprint or other. Omitted when the record deposits none.',
+      ),
     authors: z
       .array(AuthorSchema)
       .optional()
@@ -229,7 +264,7 @@ export const getWorkTool = tool('crossref_get_work', {
       .string()
       .optional()
       .describe(
-        'Abstract when deposited by the publisher. Many records lack abstracts. Publishers deposit it as JATS XML, so this is the text of that deposit with markup removed and character references decoded; numeric JATS superscripts retain caret notation (10^{16}, GeV^2), a link keeps its tag only where its href holds an address the text it wraps does not already carry, and each formula appears once — MathML as the TeX annotation it carries, otherwise written out linearly (x_i, A^{−1}, √(m), (a+b)/c), and TeX deposited beside MathML in whichever notation comes first.',
+        'Abstract when deposited by the publisher. Many records lack abstracts, and one whose deposit holds no text is omitted the same way. Publishers deposit it as JATS XML, so this is the text of that deposit with markup removed and character references decoded; each section heading of a structured abstract is followed by a colon ("Objectives: …") unless it already ends in a period, colon, question mark, or exclamation mark, and the "Abstract" heading a deposit opens with is dropped; numeric JATS superscripts retain caret notation (10^{16}, GeV^2), a link keeps its tag only where its href holds an address the text it wraps does not already carry, and each formula appears once — MathML as the TeX annotation it carries, otherwise written out linearly (x_i, A^{−1}, √(m), (a+b)/c), and TeX deposited beside MathML in whichever notation comes first.',
       ),
     isReferencedByCount: z
       .number()
@@ -251,7 +286,14 @@ export const getWorkTool = tool('crossref_get_work', {
       .describe(
         'Every container title the record deposits, in deposited order. A book chapter or proceedings paper often deposits two: the series, then the book or volume. Omitted when the record deposits none.',
       ),
+    groupTitle: z
+      .string()
+      .optional()
+      .describe(
+        'Group title as deposited on posted content — the collection or subject a server files the work under, such as "Developmental Biology" on bioRxiv, or the server itself, such as "SSRN". Omitted when the record deposits none.',
+      ),
     ...locatorFields,
+    ...eventFields,
     issn: z.array(z.string()).optional().describe('ISSN(s) of the containing journal'),
     isbn: z
       .array(z.string())
@@ -266,9 +308,22 @@ export const getWorkTool = tool('crossref_get_work', {
       .describe(
         "Crossref member ID of the publisher that holds this DOI now — pass to crossref_get_member for its record. The DOI's prefix names the member that registered the prefix, which for a transferred title is a former publisher. Omitted when the record deposits no member.",
       ),
+    institutions: z
+      .array(InstitutionSchema)
+      .optional()
+      .describe(
+        'Institutions the record names, in deposited order — the awarding institution of a thesis, the server a preprint was posted to, the laboratories behind a report — read wherever deposited, whatever the work type. Distinct from publisher, which for many theses names a library or repository and for many preprints the platform company. Omitted when the record deposits none.',
+      ),
+    degree: z
+      .array(z.string())
+      .optional()
+      .describe(
+        'Degree a thesis was submitted for, as deposited, e.g. "Doutorado em Educação". Omitted when the record deposits none.',
+      ),
     published: DatePartsSchema.optional().describe(
       'Publication date — the first of published, published-print, published-online, and issued that names one. A component Crossref records as unknown is omitted, and so is every component below it.',
     ),
+    ...approvedFields,
     funders: z.array(FunderSchema).optional().describe('Funding acknowledgements'),
     licenses: z.array(LicenseSchema).optional().describe('License terms'),
     links: z.array(LinkSchema).optional().describe('Registered full-text links'),
@@ -326,7 +381,7 @@ export const getWorkTool = tool('crossref_get_work', {
         subject: 'doi',
         message: `No Crossref record for DOI: ${doi}`,
         recovery: ctx.recoveryFor('doi_not_found').recovery.hint,
-        lookup: await svc.getRegistrationAgency(doi, ctx),
+        lookup: await svc.getDoiRegistration(doi, ctx),
       });
       throw ctx.fail('doi_not_found', detail.message, { doi, ...detail.data });
     }
@@ -348,6 +403,7 @@ export const getWorkTool = tool('crossref_get_work', {
       raw.member !== undefined && /^\d+$/.test(raw.member) ? Number(raw.member) : undefined;
 
     const published = resolveWorkDate(raw);
+    const abstract = raw.abstract === undefined ? undefined : normalizeAbstract(raw.abstract);
 
     /**
      * The author list is bounded the same way crossref_get_references bounds references:
@@ -362,6 +418,8 @@ export const getWorkTool = tool('crossref_get_work', {
 
     const updates = projectUpdates(raw);
     const relations = raw.relation ? groupRelations(raw.relation) : [];
+    const groupTitle = normalizeNonEmptyText(raw['group-title']);
+    const degree = normalizeNonEmptyTexts(raw.degree);
 
     /**
      * `notice` is last-wins, and `truncated()` writes it too, so every text the notice carries
@@ -400,6 +458,7 @@ export const getWorkTool = tool('crossref_get_work', {
       ...(title !== undefined && { title }),
       ...(subtitle !== undefined && { subtitle }),
       ...(raw.type != null && { type: raw.type }),
+      ...(raw.subtype !== undefined && { subtype: raw.subtype }),
       ...updates,
       ...(relations.length > 0 && { relations }),
       ...(authorPage !== undefined && {
@@ -408,7 +467,7 @@ export const getWorkTool = tool('crossref_get_work', {
         offset: input.offset,
       }),
       ...(raw.editor?.length && { editors: raw.editor.map(normalizeAuthor) }),
-      ...(raw.abstract !== undefined && { abstract: normalizeMarkupText(raw.abstract) }),
+      ...(abstract !== undefined && { abstract }),
       ...(raw['is-referenced-by-count'] !== undefined && {
         isReferencedByCount: raw['is-referenced-by-count'],
       }),
@@ -416,12 +475,17 @@ export const getWorkTool = tool('crossref_get_work', {
         referencesCount: raw['references-count'],
       }),
       ...(containerTitle !== undefined && { containerTitle, containerTitles }),
+      ...(groupTitle !== undefined && { groupTitle }),
       ...projectLocators(raw),
+      ...projectEvent(raw),
       ...(raw.ISSN && raw.ISSN.length > 0 && { issn: raw.ISSN }),
       ...(raw.ISBN?.length && { isbn: raw.ISBN }),
       ...(raw.publisher !== undefined && { publisher: normalizeText(raw.publisher) }),
       ...(memberId !== undefined && { memberId }),
+      ...(raw.institution?.length && { institutions: raw.institution.map(normalizeInstitution) }),
+      ...(degree !== undefined && { degree }),
       ...(published !== undefined && { published }),
+      ...projectApproved(raw),
       ...(raw.funder && { funders: raw.funder.map(normalizeFunder) }),
       ...(raw.license && {
         licenses: raw.license.map((l) => ({
@@ -454,16 +518,25 @@ export const getWorkTool = tool('crossref_get_work', {
     if (result.subtitle) lines.push(`*${mdText(result.subtitle)}*`);
     lines.push('');
 
-    lines.push(`**DOI:** ${result.doi}${result.type ? ` | **Type:** ${result.type}` : ''}`);
+    const type = result.type ? ` | **Type:** ${result.type}` : '';
+    const subtype = result.subtype !== undefined ? ` | **Subtype:** ${mdText(result.subtype)}` : '';
+    lines.push(`**DOI:** ${result.doi}${type}${subtype}`);
     if (result.publisher) lines.push(`**Publisher:** ${mdText(result.publisher)}`);
     if (result.memberId !== undefined) lines.push(`**Member ID:** ${result.memberId}`);
+    if (result.institutions) lines.push(...result.institutions.map(institutionLine));
+    if (result.degree) lines.push(`**Degree:** ${result.degree.map(mdText).join(', ')}`);
     if (result.containerTitles?.length)
       lines.push(`**Journal/Container:** ${result.containerTitles.map(mdText).join(' | ')}`);
+    if (result.groupTitle !== undefined) lines.push(`**Group:** ${mdText(result.groupTitle)}`);
     const locators = locatorLine(result);
     if (locators) lines.push(locators);
+    const event = eventLine(result);
+    if (event) lines.push(event);
     if (result.issn?.length) lines.push(`**ISSN:** ${result.issn.join(', ')}`);
     if (result.isbn?.length) lines.push(`**ISBN:** ${result.isbn.join(', ')}`);
     if (result.published?.year) lines.push(`**Published:** ${formatDateParts(result.published)}`);
+    const approved = approvedLine(result);
+    if (approved) lines.push(approved);
     if (result.language) lines.push(`**Language:** ${result.language}`);
 
     if (result.isReferencedByCount !== undefined)
@@ -559,19 +632,22 @@ export const getWorkTool = tool('crossref_get_work', {
 
 /**
  * What an organization is called on the Markdown surface when the deposit named none. Shared by
- * the two renders so a funder and an affiliation say the same thing about the same absence.
+ * the renders so a funder, an affiliation, and an institution say the same thing about the same
+ * absence.
  */
 const UNNAMED = '(no name deposited)';
 
 /**
  * The ROR identifier on an organization Crossref carries by identifier rather than by name.
  *
- * A funder or an affiliation deposited without a name is not an empty entry — it is an
- * organization the publisher asserted through the registry instead of spelling out, and its `id`
- * array is where that assertion lives. Crossref puts several identifier schemes in that one
- * array, so the type decides which is read: ROR is the one every nameless funder and affiliation
- * in a sampled draw carried, and the only one ever seen alone. An ISNI appears beside a ROR and
- * never in place of one, so reading ROR loses nothing an entry depends on for its identity.
+ * A funder, an affiliation, or an institution deposited without a name is not an empty entry —
+ * it is an organization the publisher asserted through the registry instead of spelling out, and
+ * its `id` array is where that assertion lives. Crossref puts several identifier schemes in that
+ * one array, so the type decides which is read: ROR is the one every nameless funder and
+ * affiliation in a sampled draw carried, and the only one ever seen alone on them. An ISNI
+ * appears beside a ROR and never in place of one, so reading ROR loses nothing those entries
+ * depend on for their identity. One sampled institution, on a dataset, carried a Wikidata ID and
+ * nothing else; it reads as unnamed, the one rule kept across all three kinds of organization.
  */
 function rorId(ids: CrossrefOrganizationId[] | undefined): string | undefined {
   return ids?.find((entry) => entry['id-type']?.toUpperCase() === 'ROR')?.id;
@@ -610,6 +686,41 @@ function normalizeAffiliation(af: CrossrefAffiliation) {
     ...(af.name !== undefined && { name: normalizeText(af.name) }),
     ...(ror !== undefined && { ror }),
   };
+}
+
+/**
+ * Project an institution: an affiliation's name and ROR, plus the place, department, and acronym
+ * lists Crossref deposits beside them, each omitted when absent or deposited empty. An entry
+ * carrying none of these stays in the list, as an affiliation does, so the deposited count and
+ * order survive.
+ */
+function normalizeInstitution(inst: CrossrefInstitution) {
+  const place = normalizeNonEmptyTexts(inst.place);
+  const department = normalizeNonEmptyTexts(inst.department);
+  const acronym = normalizeNonEmptyTexts(inst.acronym);
+  return {
+    ...normalizeAffiliation(inst),
+    ...(place !== undefined && { place }),
+    ...(department !== undefined && { department }),
+    ...(acronym !== undefined && { acronym }),
+  };
+}
+
+type Institution = z.infer<typeof InstitutionSchema>;
+
+/**
+ * An institution's line: its name, or the ROR or absence that stands in for one, the way an
+ * affiliation reads — then each list it deposits, labelled, since a bare place and a bare
+ * department are not told apart by a reader.
+ */
+function institutionLine(inst: Institution): string {
+  const details = [
+    inst.place && `place: ${inst.place.map(mdText).join(', ')}`,
+    inst.department && `department: ${inst.department.map(mdText).join(', ')}`,
+    inst.acronym && `acronym: ${inst.acronym.map(mdText).join(', ')}`,
+  ].filter((detail) => detail !== undefined);
+  const tail = details.length > 0 ? ` — ${details.join('; ')}` : '';
+  return `**Institution:** ${affiliationLabel(inst)}${tail}`;
 }
 
 /**

@@ -493,6 +493,76 @@ describe('searchWorksTool', () => {
     expect(text).not.toContain('…');
   });
 
+  /** The same heading markup deposited as a title or container title keeps the JATS pass. */
+  it('leaves a title and container title carrying heading markup on the JATS pass', async () => {
+    const markup =
+      '<jats:title>Abstract</jats:title><jats:sec><jats:title>Objectives</jats:title><jats:p>Reducing sedentary behaviour.</jats:p></jats:sec>';
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        items: [
+          { DOI: '10.1136/bmjopen-2024-095775', title: [markup], 'container-title': [markup] },
+        ],
+      }),
+    );
+
+    const result = await runToolContract(searchWorksTool, { query: 'sedentary' });
+
+    const asTitle = 'Abstract Objectives Reducing sedentary behaviour.';
+    const works = (result.structuredContent as { works: Record<string, unknown>[] }).works;
+    expect(works[0]).toMatchObject({
+      title: asTitle,
+      containerTitle: asTitle,
+      containerTitles: [asTitle],
+    });
+  });
+
+  /** The summary's abstract goes through the same normalizer as crossref_get_work's. */
+  it('keeps structured-abstract headings apart from their text on both surfaces', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        items: [
+          {
+            DOI: '10.1186/s13007-021-00734-5',
+            abstract:
+              '<jats:title>Abstract</jats:title><jats:sec><jats:title>Background</jats:title><jats:p>Plant traits related to nutrition.</jats:p></jats:sec><jats:sec><jats:title>Results:</jats:title><jats:p>Yield rose.</jats:p></jats:sec>',
+          },
+        ],
+      }),
+    );
+
+    const result = await runToolContract(searchWorksTool, { query: 'plant traits' });
+
+    const expected = 'Background: Plant traits related to nutrition. Results: Yield rose.';
+    const works = (result.structuredContent as { works: { abstract?: string }[] }).works;
+    expect(works[0]?.abstract).toBe(expected);
+    expect(contentText(result.content).split('\n')).toContain(`**Abstract:** ${expected}`);
+  });
+
+  it('omits an abstract with no text left from both surfaces', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        items: [
+          {
+            DOI: '10.1093/eurheartj/ehaa444',
+            title: ['A record'],
+            abstract: '<jats:title>Abstract</jats:title><jats:p/>',
+          },
+        ],
+      }),
+    );
+    const emptied = await runToolContract(searchWorksTool, { query: 'q' });
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ items: [{ DOI: '10.1093/eurheartj/ehaa444', title: ['A record'] }] }),
+    );
+    const absent = await runToolContract(searchWorksTool, { query: 'q' });
+
+    const works = (emptied.structuredContent as { works: object[] }).works;
+    expect(works[0]).not.toHaveProperty('abstract');
+    expect(emptied.structuredContent).toEqual(absent.structuredContent);
+    expect(emptied.content).toEqual(absent.content);
+    expect(contentText(emptied.content)).not.toContain('**Abstract:**');
+  });
+
   it('handles items with no title or authors gracefully', async () => {
     const ctx = createMockContext({ errors: searchWorksTool.errors });
     mockSearchWorks.mockResolvedValue(
@@ -711,7 +781,7 @@ describe('searchWorksTool page-size clamp', () => {
     );
     // offset 10000 is unusable for any rows, so the page routes to the cursor alone.
     expect((result.structuredContent as { notice?: string }).notice).toBe(
-      'rows 251 is above the per-call cap of 250, so 250 was applied. Records past offset 10000 are beyond the ~10000 offset limit; re-run with cursor="*" to reach them.',
+      'rows 251 is above the per-call cap of 250, so 250 was applied. Records past offset 10000 are beyond the ~10000 offset limit. To read them, walk the list with cursor="*" and chain nextCursor; the walk starts at the first record, not at offset 10000.',
     );
   });
 
@@ -732,7 +802,7 @@ describe('searchWorksTool page-size clamp', () => {
       expect.anything(),
     );
     expect((result.structuredContent as { notice?: string }).notice).toBe(
-      'rows 251 is above the per-call cap of 250, and offset 9800 + 250 would pass the ~10000 limit Crossref puts on offset + rows, so 200 was applied — the last records offset paging reaches; re-run with cursor="*" to reach the records after them.',
+      'rows 251 is above the per-call cap of 250, and offset 9800 + 250 would pass the ~10000 limit Crossref puts on offset + rows, so 200 was applied — the last records offset paging reaches. To read past them, walk the list with cursor="*" and chain nextCursor; the walk starts at the first record, not after these.',
     );
   });
 
@@ -799,6 +869,145 @@ describe('searchWorksTool page-size clamp', () => {
 });
 
 /**
+ * `rows` is capped by what the selection carries: 250 when it includes `abstract` or `author` —
+ * as an omitted or empty `fields` does, selecting every field — and 600 when it names neither.
+ * The tier keys on those two names alone, so every other selectable field falls in the 600 tier.
+ */
+describe('searchWorksTool rows cap by selection', () => {
+  const LIGHT_TIER =
+    'That cap holds for a fields selection naming neither abstract nor author; one including either is capped at 250.';
+  const HEAVY_TIER =
+    'That cap holds for a fields selection including abstract or author; one naming neither takes rows up to 600.';
+  const selectable = (
+    z.toJSONSchema(searchWorksTool.input, { io: 'input' }) as unknown as {
+      properties: { fields: { items: { enum: string[] } } };
+    }
+  ).properties.fields.items.enum;
+  const light = selectable.filter((name) => name !== 'abstract' && name !== 'author');
+
+  it.each([
+    ['DOI and title', ['DOI', 'title']],
+    ['DOI alone', ['DOI']],
+    ['every field but abstract and author', light],
+  ])('passes rows up to 600 through untouched for %s', async (_label, fields) => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ totalResults: 5000, items: makeItems(600) }),
+    );
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'test',
+      fields,
+      rows: 600,
+    } as never);
+
+    expect(mockSearchWorks).toHaveBeenCalledWith(
+      expect.objectContaining({ rows: 600 }),
+      expect.anything(),
+    );
+    expect((result.structuredContent as { works: unknown[] }).works).toHaveLength(600);
+    expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
+  });
+
+  it.each([601, 1000])(
+    'clamps rows %i to 600 for a selection naming neither, naming both caps on both surfaces',
+    async (rows) => {
+      mockSearchWorks.mockResolvedValue(
+        makeSearchResult({ totalResults: 5000, items: makeItems(600) }),
+      );
+
+      const result = await runToolContract(searchWorksTool, {
+        query: 'test',
+        fields: ['DOI', 'title'],
+        rows,
+      });
+
+      expect(mockSearchWorks).toHaveBeenCalledWith(
+        expect.objectContaining({ rows: 600 }),
+        expect.anything(),
+      );
+      const notice = `rows ${rows} is above the per-call cap of 600, so 600 was applied. ${LIGHT_TIER} Pass offset=600 for the next page — the offset after the 600 records returned, not after the ${rows} requested.`;
+      expect((result.structuredContent as { notice?: string }).notice).toBe(notice);
+      expect(contentText(result.content)).toContain(notice);
+    },
+  );
+
+  it.each([
+    ['abstract', ['DOI', 'abstract']],
+    ['author', ['DOI', 'author']],
+    ['both', ['author', 'abstract', 'title']],
+  ])(
+    'clamps rows at 250 once the selection includes %s, naming the 600 route',
+    async (_label, fields) => {
+      mockSearchWorks.mockResolvedValue(
+        makeSearchResult({ totalResults: 5000, items: makeItems(250) }),
+      );
+
+      const result = await runToolContract(searchWorksTool, {
+        query: 'test',
+        fields,
+        rows: 1000,
+      } as never);
+
+      expect(mockSearchWorks).toHaveBeenCalledWith(
+        expect.objectContaining({ rows: 250 }),
+        expect.anything(),
+      );
+      const notice = `rows 1000 is above the per-call cap of 250, so 250 was applied. ${HEAVY_TIER} Pass offset=250 for the next page — the offset after the 250 records returned, not after the 1000 requested.`;
+      expect((result.structuredContent as { notice?: string }).notice).toBe(notice);
+      expect(contentText(result.content)).toContain(notice);
+    },
+  );
+
+  it('clamps an empty fields at 250 as an omitted one is, every field selected', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ totalResults: 5000, items: makeItems(250) }),
+    );
+
+    const result = await runToolContract(searchWorksTool, { query: 'test', fields: [], rows: 601 });
+
+    expect(mockSearchWorks).toHaveBeenCalledWith(
+      expect.objectContaining({ rows: 250 }),
+      expect.anything(),
+    );
+    expect((result.structuredContent as { notice?: string }).notice).toBe(
+      'rows 601 is above the per-call cap of 250, so 250 was applied. Pass offset=250 for the next page — the offset after the 250 records returned, not after the 601 requested.',
+    );
+  });
+
+  it('fits a light page into the offset window on the cap that applied, routing to the cursor', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ totalResults: 50_000, items: makeItems(500, 9500) }),
+    );
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'test',
+      fields: ['DOI'],
+      offset: 9500,
+      rows: 1000,
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(mockSearchWorks).toHaveBeenCalledWith(
+      expect.objectContaining({ offset: 9500, rows: 500 }),
+      expect.anything(),
+    );
+    const notice =
+      'rows 1000 is above the per-call cap of 600, and offset 9500 + 600 would pass the ~10000 limit Crossref puts on offset + rows, so 500 was applied — the last records offset paging reaches. To read past them, walk the list with cursor="*" and chain nextCursor; the walk starts at the first record, not after these.';
+    expect((result.structuredContent as { notice?: string }).notice).toBe(notice);
+    expect(renderedText(contentText(result.content))).toContain(notice);
+  });
+
+  it('states both caps in the rows description', () => {
+    const schema = z.toJSONSchema(searchWorksTool.input, { io: 'input' }) as unknown as {
+      properties: { rows: { description: string } };
+    };
+    const { description } = schema.properties.rows;
+    expect(description).toContain('1–250 per call');
+    expect(description).toContain('1–600 when fields names neither abstract nor author');
+  });
+});
+
+/**
  * Crossref accepts `offset + rows` up to exactly 10000 on `/works` (9950 + 50 → 200, 9950 + 51 →
  * 400). Every request a page or a rejection tells the caller to make next has to be one the next
  * call accepts — so each recipe here is executed, not just read.
@@ -857,7 +1066,7 @@ describe('searchWorksTool offset-ceiling recipes', () => {
       expect.anything(),
     );
     const notice =
-      'offset 9950 + rows 100 would pass the ~10000 limit Crossref puts on offset + rows, so 50 was applied — the last records offset paging reaches; re-run with cursor="*" to reach the records after them.';
+      'offset 9950 + rows 100 would pass the ~10000 limit Crossref puts on offset + rows, so 50 was applied — the last records offset paging reaches. To read past them, walk the list with cursor="*" and chain nextCursor; the walk starts at the first record, not after these.';
     expect((page.structuredContent as { notice?: string }).notice).toBe(notice);
     expect(renderedText(contentText(page.content))).toContain(notice);
   });
@@ -935,7 +1144,7 @@ describe('searchWorksTool offset window', () => {
     ]),
   ];
   const ROUTE =
-    'the last records offset paging reaches; re-run with cursor="*" to reach the records after them.';
+    'the last records offset paging reaches. To read past them, walk the list with cursor="*" and chain nextCursor; the walk starts at the first record, not after these.';
 
   beforeEach(() => {
     mockSearchWorks.mockImplementation(async (opts: { offset?: number; rows: number }) => {

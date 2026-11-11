@@ -1102,7 +1102,44 @@ describe('searchJournalsTool page-size clamp', () => {
     expect(notice).not.toContain(CLAMP);
   });
 
-  it('clamps rows on the works list and checks works_offset against the clamped rows', async () => {
+  /**
+   * The works list carries no per-call cap: its summary is small enough that Crossref's own page
+   * maximum bounds it, as on crossref_search_funders. The journal list beside it holds one
+   * journal, so no clamp is named either.
+   */
+  it('returns up to 1000 works on an issn lookup with include_works, naming no clamp', async () => {
+    mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
+    mockGetJournalWorks.mockResolvedValue({
+      totalResults: 90_000,
+      items: Array.from({ length: 1000 }, (_, i) => ({ DOI: `10.1038/w${i}` })),
+    });
+
+    const result = await runToolContract(searchJournalsTool, {
+      issn: '0028-0836',
+      include_works: true,
+      rows: 1000,
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(mockGetJournalWorks).toHaveBeenCalledWith(
+      RAW_JOURNAL.ISSN,
+      { rows: 1000, offset: 0 },
+      expect.anything(),
+    );
+    const structured = result.structuredContent as {
+      recentWorks: unknown[];
+      notice?: string;
+      nextWorksOffset?: number;
+    };
+    expect(structured.recentWorks).toHaveLength(1000);
+    expect(structured.nextWorksOffset).toBe(1000);
+    expect(structured.notice).toBeUndefined();
+    const text = contentText(result.content);
+    expect(text).toContain('DOI: 10.1038/w999');
+    expect(text).not.toContain('per-call cap');
+  });
+
+  it('fits rows above 500 on the works list to the works_offset window, never to a cap', async () => {
     mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
     mockGetJournalWorks.mockResolvedValue({
       totalResults: 90_000,
@@ -1122,15 +1159,71 @@ describe('searchJournalsTool page-size clamp', () => {
       { rows: 500, offset: 9500 },
       expect.anything(),
     );
-    // 9500 + 500 returned = 10000 leaves no room for another offset page; the ceiling notice joins the clamp.
+    // 9500 + 500 returned = 10000 leaves no room for another offset page.
     const structured = result.structuredContent as { notice?: string; nextWorksOffset?: number };
     expect(structured.nextWorksOffset).toBeUndefined();
     expect(structured.notice).toBe(
-      `${CLAMP} This is the last works page reachable by works_offset — Crossref caps works_offset + rows at 10000 on a journal works list and 90000 works exist. Re-run with works_cursor="*" and chain nextWorksCursor to read the whole list; the walk restarts at the most recently registered work and runs by registration date, not publication date.`,
+      'works_offset 9500 + rows 501 would pass the 10000 ceiling Crossref puts on works_offset + rows on a journal works list, so 500 was applied — the last works page reachable by works_offset, and 90000 works exist. Re-run with works_cursor="*" and chain nextWorksCursor to read the whole list; the walk restarts at the most recently registered work and runs by registration date, not publication date.',
     );
   });
 
-  it('applies the 450 works that fit at works_offset 9550 + rows 501, naming the cap and the window once', async () => {
+  it('names no clamp on an issn lookup, which returns its one journal', async () => {
+    mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
+
+    const result = await runToolContract(searchJournalsTool, { issn: '0028-0836', rows: 1000 });
+
+    expect(result.isError).toBeFalsy();
+    expect(result.structuredContent).toMatchObject({ journalCount: 1, journalsTotal: 1 });
+    expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
+    expect(contentText(result.content)).not.toContain('per-call cap');
+  });
+
+  it('clamps a title query at rows 1000 to 500 journals, with the same notice', async () => {
+    mockSearchJournals.mockResolvedValue(journalList(journals(500), 5000));
+
+    const result = await runToolContract(searchJournalsTool, { query: 'Journal', rows: 1000 });
+
+    expect(mockSearchJournals).toHaveBeenCalledWith(
+      expect.objectContaining({ rows: 500 }),
+      expect.anything(),
+    );
+    expect(result.structuredContent).toMatchObject({ journalCount: 500, nextOffset: 500 });
+    const notice = 'rows 1000 is above the per-call cap of 500, so 500 was applied.';
+    expect((result.structuredContent as { notice?: string }).notice).toBe(notice);
+    expect(contentText(result.content)).toContain(notice);
+  });
+
+  /**
+   * A title query reaching include_works matched one journal — more is refused as ambiguous — so
+   * the journal-list cap cut nothing worth naming, and the works list beside it takes rows whole.
+   */
+  it('takes rows whole on the works list of a title query that matched one journal', async () => {
+    mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
+    mockGetJournalWorks.mockResolvedValue({
+      totalResults: 90_000,
+      items: Array.from({ length: 1000 }, (_, i) => ({ DOI: `10.1038/w${i}` })),
+    });
+
+    const result = await runToolContract(searchJournalsTool, {
+      query: 'Nature',
+      include_works: true,
+      rows: 1000,
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(mockSearchJournals).toHaveBeenCalledWith(
+      expect.objectContaining({ query: 'Nature', rows: 500 }),
+      expect.anything(),
+    );
+    expect(mockGetJournalWorks).toHaveBeenCalledWith(
+      RAW_JOURNAL.ISSN,
+      { rows: 1000, offset: 0 },
+      expect.anything(),
+    );
+    expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
+  });
+
+  it('applies the 450 works that fit at works_offset 9550 + rows 501, naming the window alone', async () => {
     mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
     mockGetJournalWorks.mockResolvedValue({
       totalResults: 90_000,
@@ -1152,9 +1245,9 @@ describe('searchJournalsTool page-size clamp', () => {
     );
     const notice = (result.structuredContent as { notice?: string }).notice;
     expect(notice).toBe(
-      'rows 501 is above the per-call cap of 500, and works_offset 9550 + 500 would pass the 10000 ceiling Crossref puts on works_offset + rows on a journal works list, so 450 was applied — the last works page reachable by works_offset, and 90000 works exist. Re-run with works_cursor="*" and chain nextWorksCursor to read the whole list; the walk restarts at the most recently registered work and runs by registration date, not publication date.',
+      'works_offset 9550 + rows 501 would pass the 10000 ceiling Crossref puts on works_offset + rows on a journal works list, so 450 was applied — the last works page reachable by works_offset, and 90000 works exist. Re-run with works_cursor="*" and chain nextWorksCursor to read the whole list; the walk restarts at the most recently registered work and runs by registration date, not publication date.',
     );
-    expect(notice).not.toContain(CLAMP);
+    expect(notice).not.toContain('per-call cap');
   });
 
   it('leaves rows 500 untouched and notice-free', async () => {
@@ -1247,22 +1340,19 @@ describe('searchJournalsTool offset-ceiling recipes', () => {
     const page = await runToolContract(searchJournalsTool, {
       issn: '0028-0836',
       include_works: true,
-      rows: 501,
+      rows: 500,
       works_offset: 9450,
     });
 
     const structured = page.structuredContent as { notice?: string; nextWorksOffset?: number };
     expect(structured.nextWorksOffset).toBe(9950);
-    expect(structured.notice).toBe(
-      'rows 501 is above the per-call cap of 500, so 500 was applied.',
-    );
-    expect(renderedText(contentText(page.content))).toContain(structured.notice);
+    expect(structured.notice).toBeUndefined();
 
     mockGetJournalWorks.mockResolvedValue({ totalResults: 90_000, items: works(50) });
     const next = await runToolContract(searchJournalsTool, {
       issn: '0028-0836',
       include_works: true,
-      rows: 501,
+      rows: 500,
       works_offset: 9950,
     });
     expect(next.isError).toBeFalsy();
@@ -1307,7 +1397,9 @@ describe('searchJournalsTool offset-ceiling recipes', () => {
  * Crossref does: the records when `offset + rows` fits the route's ceiling, a rejection when it
  * does not (live: `offset + rows` exactly at the ceiling → 200, one past → 400, on both routes).
  * Offsets are written relative to the ceiling, which differs by an order of magnitude between the
- * two lists while the per-call cap of 500 is shared, so one table drives both guards. `applied`
+ * two lists, so one table drives both guards. The per-call cap of 500 is the journal list's alone:
+ * a row the journal list answers with `cap+cut` the works list answers with `cut`, every page in
+ * the table fitting under both caps either way. `applied`
  * is the page returned and `next` the continuation offset handed out (null: withheld at the
  * ceiling). `v050` is what the published 0.5.0 returned — rows capped at 100, the window checked
  * on the capped rows, every pair that passed it refused. A pair 0.5.0 answered is answered here
@@ -1487,12 +1579,12 @@ describe('searchJournalsTool offset windows', () => {
         expect(structured.nextWorksOffset).toBe(
           nextDelta === null ? undefined : CEILING + nextDelta,
         );
+        // The works list has no per-call cap, so only its window ever cuts the rows requested.
         const expected = {
           none: undefined,
           last: 'This is the last works page reachable by works_offset — Crossref caps works_offset + rows at 10000 on a journal works list and 250000 works exist. Re-run with works_cursor="*" and chain nextWorksCursor to read the whole list; the walk restarts at the most recently registered work and runs by registration date, not publication date.',
           cut: `works_offset ${worksOffset} + rows ${rows} would pass the 10000 ceiling Crossref puts on works_offset + rows on a journal works list, so ${applied} was applied — ${ROUTE}`,
-          'cap+cut': `rows ${rows} is above the per-call cap of 500, and works_offset ${worksOffset} + 500 would pass the 10000 ceiling Crossref puts on works_offset + rows on a journal works list, so ${applied} was applied — ${ROUTE}`,
-        }[notice];
+        }[notice === 'cap+cut' ? 'cut' : notice];
         expect(structured.notice).toBe(expected);
       },
     );

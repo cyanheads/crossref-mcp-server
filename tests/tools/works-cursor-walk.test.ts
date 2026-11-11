@@ -135,15 +135,17 @@ describe('advisory cursor restart notices', () => {
     },
   ];
   /**
-   * One over each tool's `rows` cap. crossref_search_funders caps `rows` at the schema maximum, so
-   * it has no value to clamp and its page composes the restart and empty-page notices alone.
+   * One over each tool's `rows` cap, where it has one. The funder and journal works lists take
+   * `rows` up to the schema maximum, so the most they accept composes the restart and empty-page
+   * notices alone, naming no clamp.
    */
-  const OVER_CAP_ROWS: Partial<Record<string, number>> = {
-    crossref_search_journals: 501,
-    crossref_search_works: 251,
+  const ROWS: Record<string, { rows: number; cap?: number }> = {
+    crossref_search_works: { rows: 251, cap: 250 },
+    crossref_search_journals: { rows: 1000 },
+    crossref_search_funders: { rows: 1000 },
   };
   it.each(targets)('composes clamp and empty-page notices on $name', async (target) => {
-    const rows = OVER_CAP_ROWS[target.name];
+    const { rows, cap } = ROWS[target.name] ?? { rows: 2 };
     http.route({
       match: target.recordRoute,
       respond: () => Response.json({ message: target.record }),
@@ -155,7 +157,7 @@ describe('advisory cursor restart notices', () => {
     });
     const result = await runToolContract(target.definition, {
       ...target.input,
-      ...(rows !== undefined && { rows }),
+      rows,
       [target.cursorKey]: 'bogus',
     });
     expect(result.isError).toBeFalsy();
@@ -163,10 +165,12 @@ describe('advisory cursor restart notices', () => {
     expect(result.structuredContent).not.toHaveProperty('nextCursor');
     const notice = (result.structuredContent as { notice: string }).notice;
     expect(notice).toContain('may have restarted');
-    if (rows !== undefined) {
+    if (cap !== undefined) {
       expect(notice).toContain(
-        `rows ${rows} is above the per-call cap of ${rows - 1}, so ${rows - 1} was applied.`,
+        `rows ${rows} is above the per-call cap of ${cap}, so ${cap} was applied.`,
       );
+    } else {
+      expect(notice).not.toContain('per-call cap');
     }
     expect(textOf(result)).toContain(notice);
     if (target.cursorKey === 'works_cursor') expect(notice).not.toContain('walk is complete');

@@ -44,7 +44,9 @@ const ACCEPTED = [
   'published',
   'published-print',
   'published-online',
+  'approved',
   'container-title',
+  'event',
   'publisher',
   'member',
   'is-referenced-by-count',
@@ -224,6 +226,97 @@ describe('crossref_search_works fields', () => {
     expect(textOf(result)).toContain('**Member ID:** 311');
   });
 
+  /**
+   * The event projection and line are shared with crossref_get_work and tabled in
+   * `work-dates.test.ts`; this pins the wiring, on a record that deposits one and one that does
+   * not.
+   */
+  it('returns doi and event alone under fields ["event"]', async () => {
+    http.route({
+      match: WORKS,
+      respond: () =>
+        workList([
+          {
+            DOI: '10.1109/iccar64901.2025.11073036',
+            event: {
+              name: '2025 11th International Conference on Control, Automation and Robotics (ICCAR)',
+              location: 'Kyoto, Japan',
+              start: { 'date-parts': [[2025, 4, 18]] },
+              end: { 'date-parts': [[2025, 4, 20]] },
+            },
+          },
+          { DOI: '10.5555/no-event' },
+        ]),
+    });
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'q',
+      fields: ['event'],
+      rows: 2,
+    });
+
+    expect(selected()).toEqual(['DOI', 'event']);
+    expect(result.isError).toBeFalsy();
+    expect((result.structuredContent as { works: WorkOut[] }).works).toEqual([
+      {
+        doi: '10.1109/iccar64901.2025.11073036',
+        event: {
+          name: '2025 11th International Conference on Control, Automation and Robotics (ICCAR)',
+          location: 'Kyoto, Japan',
+          start: { year: 2025, month: 4, day: 18 },
+          end: { year: 2025, month: 4, day: 20 },
+        },
+      },
+      { doi: '10.5555/no-event' },
+    ]);
+    const text = textOf(result);
+    expect(text.split('\n')).toContain(
+      '**Event:** 2025 11th International Conference on Control, Automation and Robotics (ICCAR), Kyoto, Japan, 2025-04-18 – 2025-04-20',
+    );
+    expect(text.split('**Event:**')).toHaveLength(2);
+  });
+
+  /**
+   * A dissertation's only date is `approved`, so a page selecting the publication dates alone
+   * dates it nowhere — the approval date fills its own field and never `published`.
+   */
+  it('returns doi and approved alone under fields ["approved"], never as published', async () => {
+    http.route({
+      match: WORKS,
+      respond: (request) => {
+        const names = new URL(request.url).searchParams.get('select')?.split(',') ?? [];
+        const thesis = {
+          DOI: '10.11606/t.48.2015.tde-14122015-153241',
+          approved: { 'date-parts': [[2015, 9, 22]] },
+        };
+        return workList([
+          Object.fromEntries(Object.entries(thesis).filter(([key]) => names.includes(key))),
+          { DOI: '10.5555/no-approval' },
+        ]);
+      },
+    });
+
+    const result = await runToolContract(searchWorksTool, {
+      filter: { type: 'dissertation' },
+      fields: ['approved', 'published'],
+      rows: 2,
+    });
+
+    expect(selected()).toEqual(['DOI', 'approved', 'published']);
+    expect(result.isError).toBeFalsy();
+    expect((result.structuredContent as { works: WorkOut[] }).works).toEqual([
+      {
+        doi: '10.11606/t.48.2015.tde-14122015-153241',
+        approved: { year: 2015, month: 9, day: 22 },
+      },
+      { doi: '10.5555/no-approval' },
+    ]);
+    const text = textOf(result);
+    expect(text.split('\n')).toContain('**Approved:** 2015-09-22');
+    expect(text.split('**Approved:**')).toHaveLength(2);
+    expect(text).not.toContain('**Published:**');
+  });
+
   it('omits a selected field the record does not deposit, without erroring', async () => {
     http.route({ match: WORKS, respond: () => workList([{ DOI: '10.5555/sparse' }]) });
 
@@ -349,7 +442,7 @@ describe('crossref_search_works fields', () => {
 
   /**
    * Without a selection Crossref returns whole records — reference lists included — for a
-   * projection that reads twenty fields of them: a heavy 1000-row page is 13.0 MB upstream
+   * projection that reads twenty-two fields of them: a heavy 1000-row page is 13.0 MB upstream
    * against 3.2 MB under the select, with identical output.
    */
   it.each([

@@ -1,0 +1,150 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "institution": [
+      {
+        "name": "Pacific Northwest National Laboratory (PNNL), Richland, WA (United States)",
+        "acronym": ["PNNL"]
+      },
+      {
+        "name": "Pacific Northwest Lab., Richland, WA (United States)"
+      },
+      {
+        "name": "USDOE, Washington, DC (United States)"
+      }
+    ],
+    "indexed": {
+      "date-parts": [[2026, 8, 20]],
+      "date-time": "2026-08-20T19:29:08Z",
+      "timestamp": 1787254148178,
+      "version": "build-2736575974"
+    },
+    "reference-count": 0,
+    "publisher": "Office of Scientific and Technical Information (OSTI)",
+    "funder": [
+      {
+        "name": "USDOE, Washington, DC (United States)"
+      },
+      {
+        "name": "DOE",
+        "award": ["AC06-76RL01830"],
+        "award-info": [
+          {
+            "award-number": ["AC06-76RL01830"]
+          }
+        ]
+      }
+    ],
+    "content-domain": {
+      "domain": [],
+      "crossmark-restriction": false
+    },
+    "short-container-title": [],
+    "published-print": {
+      "date-parts": [[1996, 2, 1]]
+    },
+    "DOI": "10.2172/207649",
+    "type": "report",
+    "created": {
+      "date-parts": [[2007, 4, 23]],
+      "date-time": "2007-04-23T11:44:00Z",
+      "timestamp": 1177328640000
+    },
+    "source": "Crossref",
+    "is-referenced-by-count": 0,
+    "title": ["Hanford Waste Vitrification Plant hydrogen generation"],
+    "prefix": "10.2172",
+    "author": [
+      {
+        "name": "Pacific Northwest Lab., Richland, WA (United States)",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "R",
+        "family": "King",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "name": "USDOE, Washington, DC (United States)",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "A",
+        "family": "King, Jr",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      },
+      {
+        "given": "N",
+        "family": "Bhattacharyya",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "and others"
+          }
+        ],
+        "role": [
+          {
+            "vocabulary": "crossref",
+            "role": "author"
+          }
+        ]
+      }
+    ],
+    "member": "960",
+    "container-title": [],
+    "original-title": [],
+    "deposited": {
+      "date-parts": [[2026, 8, 20]],
+      "date-time": "2026-08-20T19:01:55Z",
+      "timestamp": 1787252515000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://www.osti.gov/biblio/207649"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [[1996, 2, 1]]
+    },
+    "references-count": 0,
+    "URL": "https://doi.org/10.2172/207649",
+    "relation": {},
+    "subject": [],
+    "published": {
+      "date-parts": [[1996, 2, 1]]
+    }
+  }
+}

@@ -2,8 +2,8 @@
 
 **Server:** @cyanheads/crossref-mcp-server
 **Version:** 0.5.1
-**Framework:** [@cyanheads/mcp-ts-core](https://www.npmjs.com/package/@cyanheads/mcp-ts-core) `^0.13.18`
-**Engines:** Bun ≥1.4.0, Node ≥24.0.0
+**Framework:** [@cyanheads/mcp-ts-core](https://www.npmjs.com/package/@cyanheads/mcp-ts-core) `^0.13.22`
+**Engines:** Bun ≥1.4.4, Node ≥24.0.0
 **MCP SDK:** `@modelcontextprotocol/server` ^2.4.0
 **Zod:** ^4.6.7
 
@@ -38,7 +38,7 @@ crossref-mcp-server wraps the [Crossref REST API](https://api.crossref.org/) to 
 
 ### Key domain constraints
 
-- **Polite-pool `mailto` is optional but recommended.** Every Crossref request includes `User-Agent: crossref-mcp-server/<version> (mailto:<CROSSREF_MAILTO>)` when set; the not-found registry lookup to `https://doi.org` sends the bare `crossref-mcp-server/<version>` without the mailto. Without it, the server starts but logs a warning and uses the anonymous pool with stricter rate limits. Polite-pool access requires no token — just the email in the header.
+- **Polite-pool `mailto` is optional but recommended.** Every Crossref request includes `User-Agent: crossref-mcp-server/<version> (mailto:<CROSSREF_MAILTO>)` when set; the not-found registry lookup and the citation request, both to `https://doi.org`, send the bare `crossref-mcp-server/<version>` without the mailto. Without it, the server starts but logs a warning and uses the anonymous pool with stricter rate limits. Polite-pool access requires no token — just the email in the header.
 - **No incoming citations.** Crossref does not expose which works cite a given DOI. Redirect to OpenAlex for citation counts or citation graphs.
 - **Abstract coverage is incomplete.** Abstracts are deposited voluntarily; many records — especially older works and books — have none.
 - **Reference list coverage varies.** Outgoing references are only present for publisher participants; pre-2000 literature has low coverage.
@@ -48,6 +48,7 @@ crossref-mcp-server wraps the [Crossref REST API](https://api.crossref.org/) to 
 - **`select=` works on `/works` and `/funders/{id}/works`, never on `/works/{doi}`** (400 `parameter-not-allowed`), so `crossref_get_references` fetches the full record and extracts `reference[]` client-side. Every works-list request names the fields its summary reads — `crossref_search_works` the caller's `fields`, or every name its summary projects (`SELECTABLE_FIELDS`) when there are none; the journal and funder works lists `WORKS_LIST_SELECT` — since without one Crossref returns whole records, reference lists included.
 - **Filter keys use hyphens.** e.g. `has-abstract`, `has-references`, `has-full-text`, `from-pub-date`. No `is_open_access` filter exists — use `license.url` with a Creative Commons license URL for open-access content. `directory:DOAJ` passes Crossref's validator but every request carrying it is answered with HTTP 500, so no surface recommends it.
 - **A DOI is accepted wrapped in its resolver.** `https://doi.org/…`, `https://dx.doi.org/…`, and `doi:…` each name exactly one DOI, so `normalizeDoi` in the service unwraps them and every DOI-bearing input admits them. Crossref's own paths take the bare DOI, so the unwrap happens at the head of the handler and everything below it — request path, logs, `doi_not_found` message and `data.doi` — reads the bare form.
+- **A not-found DOI costs up to two more requests, both to `https://doi.org`.** The registry lookup (`https://doi.org/doiRA/{doi}`) names the agency; when it names DataCite, JaLC, mEDRA, KISTI, or OP, one more request to `https://doi.org/{doi}` asks for CSL-JSON, inside the same one-timeout window as the registry lookup, and the citation reaches `data.citation` and the message. Every other outcome leaves the error as it was without one.
 
 ---
 
@@ -211,7 +212,7 @@ throw serviceUnavailable('Crossref API unavailable', {}, { cause: err });
 
 **Keep the upstream request URL and response body off `error.data`.** It reaches the client as `structuredContent.error.data`, and `CROSSREF_BASE_URL` is operator-configurable, so a deployment pointed at a private mirror would hand that hostname — plus every query string this server builds — to every caller on every failure. `httpErrorFromResponse` omits the URL by default (`includeUrl` stays unpassed), no throw site adds it back, and `CrossrefService.request` logs it once per failed call through the Pino-only `logger` instead. `ctx.log` is not an alternative: it is dual-sink and ships to the client as `notifications/message`. The body stays off for a different reason: a Crossref 5xx body is a Java exception with a stack excerpt, which gives the caller nothing to act on, so every `httpErrorFromResponse` call passes `captureBody: false` and keeps only the status and a readable message.
 
-**Crossref's rejections of caller input are declared reasons.** A 400, and a 404 whose body is `cursor-invalid`, map on Crossref's own rejection `type` onto the entries beside `UPSTREAM_ERROR_CONTRACT` in `upstream-errors.ts`: `unknown_filter` (`filter-not-available`, with `data.suggestion` when Crossref lists the hyphenated key as valid), `sort_cursor_conflict`, `invalid_cursor`, and `invalid_parameter` for any other type or a body that does not parse. `data.rejected` lists every entry as `{ type, value }` and the reason follows the first; a blank filter value never reaches Crossref to be rejected — `crossref_search_works` drops it first. Any other 404 passes through untouched for the handlers' `*_not_found` reasons. An `issn` filter value Crossref cannot read — no run of seven digits and a check character once everything but digits and `X` is stripped — is refused before the request as `invalid_parameter`, since Crossref answers one with a 500 that would read as an outage; every spelling Crossref does read (`0028–0836`, `ISSN 0028-0836`) goes through as written. `crossref_search_works` declares all four; the journal and funder tools declare `invalid_cursor` and `invalid_parameter`.
+**Crossref's rejections of caller input are declared reasons.** A 400, and a 404 whose body is `cursor-invalid`, map on Crossref's own rejection `type` onto the entries beside `UPSTREAM_ERROR_CONTRACT` in `upstream-errors.ts`: `unknown_filter` (`filter-not-available`, with `data.suggestion` when Crossref lists the hyphenated key as valid), `sort_cursor_conflict`, `invalid_cursor`, and `invalid_parameter` for any other type or a body that does not parse. `data.rejected` lists every entry as `{ type, value }` and the reason follows the first; a blank filter value never reaches Crossref to be rejected — `crossref_search_works` drops it first. Any other 404 passes through untouched for the handlers' `*_not_found` reasons. An `issn` filter value Crossref cannot read — no run of seven digits and a check character once everything but digits and `X` is stripped — is refused before the request as `invalid_parameter`, since Crossref answers one with a 500 that would read as an outage; every spelling Crossref does read (`0028–0836`, `ISSN 0028-0836`) goes through as written. `crossref_search_works` declares all four; the journal and funder tools declare `invalid_cursor` and `invalid_parameter`. Values a rejection quotes for the caller to send back verbatim — the `*` that restarts a cursor walk in the `invalid_cursor` hint, the hyphenated key `unknown_filter` suggests — are declared as the error's `literals` (`upstreamError` in `upstream-errors.ts`), so `content[]` renders each as a code span rather than an escaped `\*`.
 
 See framework CLAUDE.md and the `api-errors` skill for the full auto-classification table, all factories, and the contract reference.
 
@@ -226,19 +227,23 @@ src/
     server-config.ts                    # CROSSREF_MAILTO, CROSSREF_BASE_URL, CROSSREF_TIMEOUT_MS
   services/
     crossref/
-      crossref-service.ts               # HTTP client, polite-pool User-Agent, retry, pagination
+      crossref-service.ts               # HTTP client, polite-pool User-Agent, retry, pagination, registry/citation lookup, rejection mapping
+      date-parts.ts                     # parseDateParts / formatDateParts / resolveWorkDate / resolveWorkSummaryDate
       html-entities.ts                  # HTML5 named character reference table + single-pass decode
       link-text.ts                      # A link element's text, read once per closer, for the href check
+      markup-text.ts                    # normalizeText / normalizeMarkupText / normalizeAbstract / normalizeReferenceText, the strip passes and tag tables
       mathml.ts                         # MathML region → TeX annotation, else linear notation
       types.ts                          # Crossref domain types (Work, Reference, Journal, Funder)
       upstream-errors.ts                # Upstream/transport error contract + throw-site factory
   mcp-server/
     tools/
       blank-input.ts                    # nonBlank / isBlank — a blank optional string reads as omitted
+      cursor-notice.ts                  # cursorNotice — advisory notice for a cursor that does not decode as a Crossref continuation token
       markdown-text.ts                  # mdText / mdTextAtLineStart / mdTextInHeading — the content[] escape
       metadata-coverage.ts              # Coverage schema, projection, and renderer — member and journal tools
       page-size.ts                      # Per-input page-size caps + clampPageSize — a value above its cap is clamped with a notice
-      registration-agency.ts            # notFoundDetail — not-found text branched on the DOI registry's answer
+      registration-agency.ts            # notFoundDetail — not-found text branched on the DOI registry's answer, plus the citation of a DOI another agency registered (citationOf, citationSentence)
+      work-dates.ts                     # event / approved — fields, projection, line
       work-locators.ts                  # volume / issue / page / articleNumber — fields, projection, line
       work-updates.ts                   # updatedBy / updateTo — fields, projection, line
     tools/definitions/
@@ -355,7 +360,7 @@ When you complete a skill's checklist, check the boxes and add a completion time
 
 ## Bundling
 
-`bun run bundle` produces a `.mcpb` extension bundle for one-click install in Claude Desktop. `mcpb pack` reads `.mcpbignore`, not `.gitignore`, so every root path the bundle must not ship — source, tests, docs, caches, logs, agent docs, plugin manifests, gitignored local files — needs a root-anchored line there (`/docs/`, never `docs/`, which also strips `node_modules/*/docs/`); `lint:packaging` names each missing or unanchored line. Root `skills/` ships on purpose. The pack step is followed by `scripts/clean-mcpb.ts`, which prunes dev dependencies (`mcpb clean`) and strips four classes of `node_modules/**` content that root-anchored `.mcpbignore` patterns cannot reach: dependency-shipped agent docs (`framework-skills/`, `skills/`, `.claude/`, `.agents/` at a package's root, and any `SKILL.md`); platform-specific native bindings, which would otherwise lock the bundle to the platform it was packed on; node-gyp build output beside a `binding.gyp`, which records the packing machine's paths — compiled `*.node` addons stay; and build-only package files — the framework's `changelog/`, `scripts/`, `templates/`, `CLAUDE.md`, `AGENTS.md`, and config bases, and `better-sqlite3`'s `deps/` and `src/` C sources. The agent-doc selector is anchored to package roots in both `clean-mcpb.ts` and `lint-packaging.ts` (`tests/scripts/agent-doc-entry.test.ts` holds the pair): the MCP SDK's `dist/ext/skills/` is runtime code the server loads at startup, and an unanchored `skills/` match strips it from the bundle (cyanheads/mcp-ts-core#794) — keep that edit when a maintenance sync overwrites either script. MCPB is stdio-only — HTTP deployments are unaffected. Consumers who don't need it can delete `manifest.json` and `.mcpbignore`; `lint:packaging` skips cleanly.
+`bun run bundle` produces a `.mcpb` extension bundle for one-click install in Claude Desktop. `mcpb pack` reads `.mcpbignore`, not `.gitignore`, so every root path the bundle must not ship — source, tests, docs, caches, logs, agent docs, plugin manifests, gitignored local files — needs a root-anchored line there (`/docs/`, never `docs/`, which also strips `node_modules/*/docs/`); `lint:packaging` names each missing or unanchored line. Root `skills/` ships on purpose. The pack step is followed by `scripts/clean-mcpb.ts`, which prunes dev dependencies (`mcpb clean`) and strips four classes of `node_modules/**` content that root-anchored `.mcpbignore` patterns cannot reach: dependency-shipped agent docs — `framework-skills/`, `skills/`, `.claude/`, `.agents/`, `AGENTS.md`, and `CLAUDE.md` at a package's root, and `SKILL.md` anywhere (a `skills/` deeper in a package is runtime code and stays); platform-specific native bindings, which would otherwise lock the bundle to the platform it was packed on; node-gyp build output beside a `binding.gyp`, which records the packing machine's paths — compiled `*.node` addons stay; and build-only package files — the framework's `changelog/`, `scripts/`, `templates/`, and config bases, and `better-sqlite3`'s `deps/` and `src/` C sources. The agent-doc selector is one literal in both `clean-mcpb.ts` and `lint-packaging.ts` (`tests/scripts/agent-doc-entry.test.ts` holds the pair): the MCP SDK's `dist/ext/skills/` is runtime code the server loads at startup, and an unanchored `skills/` match strips it from the bundle (cyanheads/mcp-ts-core#794). MCPB is stdio-only — HTTP deployments are unaffected. Consumers who don't need it can delete `manifest.json` and `.mcpbignore`; `lint:packaging` skips cleanly.
 
 **Adding an env var requires both files:** `server.json` (registry discovery, `environmentVariables[]`) and `manifest.json` (bundle install UX, `mcp_config.env` + `user_config`). `lint:packaging` (run by `devcheck`) verifies the env var names match, that every `user_config` option is wired into `mcp_config.env` as `"X": "${user_config.X}"` (the host substitutes nothing else — `"${X}"` reaches the server as that literal string), and that an optional string option carries `"default": ""`.
 

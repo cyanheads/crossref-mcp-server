@@ -6,36 +6,12 @@
  * paging has no ceiling and is available on `/works` and `/funders/{id}/works`, the two routes
  * the works lists read. Every works-list request names its fields in `select=` — the caller's
  * `fields` on a works search, `WORKS_LIST_SELECT` on the journal and funder lists — since
- * without one Crossref returns whole records, reference lists included. One request leaves
- * Crossref: the DOI registry's agency lookup, made only after a Crossref 404
- * (`getRegistrationAgency`), to `https://doi.org` whatever `CROSSREF_BASE_URL` says and without
- * the polite-pool `mailto`.
- *
- * Also home to the text normalization every tool projects free-text values through —
- * `normalizeText` for the baseline pass, `normalizeMarkupText` for the JATS-deposited fields,
- * and `normalizeReferenceText` for the deposited citation strings. The two markup passes are
- * one rule over one implementation (`stripMarkup`): a bracket is removed only when it is
- * recognizable as markup, by its shape, by sitting inside a markup region, or by its element
- * name — and they differ in exactly one thing, what an unrecognized element name means. A link
- * element is the one class settled per occurrence instead of per name, since its tags may come
- * out only where its own text already carries the address its `href` holds; an `<alternatives>`
- * wrapper is the one region that selects rather than strips, keeping the first of the encodings
- * it holds so one expression does not reach the reader twice and leaving the block boundary a
- * formula leaves, whichever encoding it kept; a MathML formula is the one region that is read
- * rather than emptied — see `mathml` — so the operators its tree encodes as structure survive
- * the loss of its tags. Every region is found by a scan linear in the field, however many of
- * its openers the deposit leaves unclosed. All three passes end in the same
- * baseline: character references decoded against the HTML5 named set in `html-entities`, then
- * whitespace collapsed.
- *
- * Home too to the publication date every work-projecting tool resolves through — `resolveWorkDate`
- * for a full record and `resolveWorkSummaryDate` for a work summary. Both take the record rather
- * than a chain of its date fields, so the one thing that could differ between call sites — when
- * the chain falls through to the next source — is settled here for all of them at once.
- *
- * What these passes produce is what `structuredContent` carries. The same values are escaped
- * again on their way into the Markdown of `content[]` — see `mdText` in `mcp-server/tools` —
- * so a bracket kept here is not consumed by the client's renderer instead.
+ * without one Crossref returns whole records, reference lists included. Two requests leave
+ * Crossref, both made only after a Crossref 404, both to `https://doi.org` whatever
+ * `CROSSREF_BASE_URL` says, and neither carrying the polite-pool `mailto`: the DOI registry's
+ * agency lookup (`getRegistrationAgency`, `getDoiRegistration`), and — for a DOI one of the
+ * agencies in `CSL_AGENCIES` registered — the work's CSL-JSON citation, read inside the
+ * lookup's own timeout window (`getDoiRegistration`).
  * @module services/crossref/crossref-service
  */
 
@@ -50,11 +26,8 @@ import {
 } from '@cyanheads/mcp-ts-core/errors';
 import { httpErrorFromResponse, logger, withExtra, withRetry } from '@cyanheads/mcp-ts-core/utils';
 import { getServerConfig } from '@/config/server-config.js';
-import { decodeHtmlEntities } from './html-entities.js';
-import { type LinkText, linkTextReader } from './link-text.js';
-import { mathmlText } from './mathml.js';
+import { collapseWhitespace } from './markup-text.js';
 import type {
-  CrossrefDateParts,
   CrossrefListMessage,
   CrossrefSingleMessage,
   RawCrossrefFunder,
@@ -89,704 +62,6 @@ function readPackageVersion(): string {
 }
 
 const _packageVersion = readPackageVersion();
-
-/**
- * Collapse every run of whitespace to a single space and trim. Any run, not runs of two or
- * more: a lone newline inside a deposited string is enough to split a Markdown heading in
- * `content[]` and turn the indented continuation into a code block.
- */
-function collapseWhitespace(raw: string): string {
-  return raw.replace(/\s+/g, ' ').trim();
-}
-
-/**
- * Normalize a human-readable upstream string for output: decode character references,
- * collapse whitespace, trim.
- *
- * This is the baseline every free-text value this server projects from a Crossref record
- * passes through — work and journal titles, publisher and funder and member names,
- * affiliations, subjects, reference text. Identifiers and machine-format values (DOIs, URIs,
- * ISSNs, prefixes, dates, work types, coverage categories) are projected byte-exact and never
- * come through here.
- *
- * The decode runs before the collapse, so a reference naming a whitespace character —
- * `&#10;`, `&nbsp;` — folds into the surrounding run rather than reaching `content[]` as a
- * line break that splits the Markdown around it.
- */
-export function normalizeText(raw: string): string {
-  return collapseWhitespace(decodeHtmlEntities(raw));
-}
-
-/**
- * The attribute tail of a well-formed tag: zero or more `name="value"` pairs, quoted or bare.
- * Requiring the `=` is what separates a tag from a bracketed phrase that merely opens with an
- * element name. `<Stack Overflow, https://…>`, `<Available from: http://…>`, and `<The Internet
- * Movie DataBase, http://…>` are all text a reader needs, and all three read as a tag under a
- * looser `<name\b[^>]*>`.
- *
- * The bare-value form excludes quotes so that each value has exactly one parse. Letting it also
- * match `"y"` gives every attribute two readings and the whole tail 2^n of them, which a tag
- * left unterminated by its deposit backtracks through: `<p class="a" x = "y" x = "y" …` costs
- * seconds at fifty pairs and does not improve with fewer. A bare value containing a quote is not
- * well formed in any case. It excludes `<` for the same kind of reason: a tag cannot hold one
- * unquoted, and admitting it lets the value of a tag the deposit never terminated run on through
- * every tag after it — `<i x=1<i x=1…` — so each one is rescanned to the end of the field.
- */
-const TAG_ATTRIBUTES = String.raw`(?:\s+[A-Za-z_:][\w.:-]*\s*=\s*(?:"[^"]*"|'[^']*'|[^\s<>"']+))*\s*`;
-
-/**
- * A well-formed tag. The name follows `<` with no space — so an inequality written
- * `0.01 < x > 0.8` can never read as one — may carry a namespace prefix (`<jats:italic>`),
- * and is followed by an attribute tail and nothing else. Captures the closing slash, the
- * local name, and the self-closing slash, which is everything the classifier needs.
- */
-const TAG = new RegExp(
-  String.raw`<(\/?)(?:[A-Za-z][\w.-]*:)?([A-Za-z][\w.-]*)${TAG_ATTRIBUTES}(\/?)>`,
-  'g',
-);
-
-/**
- * What removing an element does to the text around it — or, for `keep`, that the bracket does
- * not come out on the element name alone. An unrecognized name is `keep` on the reference
- * surface because it is presumed to be content; a link element is `keep` until its own text is
- * checked for the address its `href` carries.
- */
-type Verdict = 'tight' | 'inline' | 'block' | 'keep';
-
-/**
- * Elements that can carry an address in an attribute. Their tags come out only when the
- * element's own text already carries that address — see `linkAddressSurvives`.
- */
-const LINK_ELEMENTS = ['ext-link', 'uri', 'a'];
-
-/**
- * Inline emphasis in the HTML, JATS, and Springer spellings, plus the JATS citation fields
- * publishers deposit bare into an otherwise typed citation string.
- */
-const INLINE_ELEMENTS = [
-  'article-title',
-  'given-names',
-  'person-group',
-  'string-name',
-  'surname',
-  'italic',
-  'strong',
-  'collab',
-  'small',
-  'bold',
-  'fname',
-  'span',
-  'etal',
-  'scp',
-  'em',
-  'sc',
-  'i',
-  'b',
-  'u',
-];
-
-/**
- * Block boundaries. A publisher packing several citations into one field separates them here —
- * `refersplit` is the separator one publisher appends to each packed citation, self-closing and
- * carrying nothing, and the text before it ends in a period rather than a word character.
- */
-const BLOCK_ELEMENTS = ['disp-formula', 'refersplit', 'br', 'p'];
-
-/**
- * Scripts and inline formula wrappers: their content continues the token around them, and the
- * wrapper itself carries nothing the text does not — `<tex Notation="TeX">$\hbox{1}/f$</tex>`
- * reads as the TeX it wraps.
- */
-const TIGHT_ELEMENTS = [
-  'inline-formula',
-  'ref_formula',
-  'superscript',
-  'subscript',
-  'tex-math',
-  'formula',
-  'stack',
-  'sub',
-  'sup',
-  'inf',
-  'tex',
-];
-
-/**
- * Every element name this server classifies, and what removing it does to the text around it.
- * Both markup passes read this one map, which is what keeps them from drifting apart; it is
- * exported so a test can drive the caller-visible outcome of every name in it, rather than
- * asserting that a name is present and leaving the behavior unpinned.
- */
-export const ELEMENT_VERDICTS = new Map<string, Verdict>([
-  ...LINK_ELEMENTS.map((name) => [name, 'keep'] as const),
-  ...TIGHT_ELEMENTS.map((name) => [name, 'tight'] as const),
-  ...INLINE_ELEMENTS.map((name) => [name, 'inline'] as const),
-  ...BLOCK_ELEMENTS.map((name) => [name, 'block'] as const),
-]);
-
-/**
- * A construct matched end to end — from its opening tag to the first closing tag after it — so
- * a strip can never half-consume one. The two tags are matched separately rather than as one
- * lazy `<open>[\s\S]*?</close>` pattern: that pattern learns an opener has no closer by scanning
- * to the end of the field, and does so again from every later opener, which is quadratic in a
- * field packed with unclosed ones. Found separately, the first opener with no closer after it
- * ends the search, since no later opener can have one either — see `replaceRegions`.
- */
-interface Region {
-  /** The closing tag, global. */
-  readonly closer: RegExp;
-  /** The opening tag, global. */
-  readonly opener: RegExp;
-}
-
-/** A region whose elements are named by `names` (a regex alternation), opened by `openerTail`. */
-function region(names: string, openerTail: string): Region {
-  const prefix = '(?:[A-Za-z][\\w.-]*:)?';
-  return {
-    opener: new RegExp(String.raw`<${prefix}(?:${names})\b${openerTail}>`, 'gi'),
-    closer: new RegExp(String.raw`</${prefix}(?:${names})\s*>`, 'gi'),
-  };
-}
-
-/**
- * A whole MathML formula. Removing the region outright would delete the symbol the sentence is
- * about, and emptying it of tags deletes every operator its tree encodes as structure — so it is
- * read instead, by `mathmlText`. The opener's attributes stop at the next `<`, which no
- * attribute can hold unquoted, so an opener the deposit never terminated costs one short scan.
- */
-const MATHML = region('math', '[^<>]*');
-
-/**
- * A JATS `<alternatives>` wrapper. It holds several encodings of one object and expects a
- * consumer to pick one — a formula's TeX beside the same formula's presentation MathML, or a
- * graphic beside the TeX that reproduces it. Emitting every child that carries text renders one
- * expression twice.
- *
- * `alternatives` is an ordinary English word, which on the reference surface would ordinarily
- * keep its brackets. Matching it as a region is what settles that: a reader who writes the
- * word in angle brackets does not also write a closing tag for it, so the pair is what
- * identifies the construct, and an unclosed one matches nothing and is left whole.
- */
-const ALTERNATIVES = region('alternatives', TAG_ATTRIBUTES);
-
-/**
- * A JATS structured citation deposited whole into a free-text field. Inside one, every bracket
- * is a tag by construction — nobody types a Miller index inside `<mixed-citation>` — so the
- * name-by-name allow-list does not apply there and the whole vocabulary comes out, however it
- * is spelled.
- */
-const CITATION = region('mixed-citation|element-citation|nlm-citation|citation', TAG_ATTRIBUTES);
-
-/**
- * Replace every region in a string with what `read` makes of its content — the text between
- * its opening and closing tags — and leave everything outside the regions as it was.
- *
- * Each region runs from an opener to the first closer after it, and the next search resumes
- * past that closer. An opener with no closer after it claims nothing, and it ends the search:
- * every later opener sits after it, so a closer following one would have followed this one
- * too. That is what keeps the scan linear — the one search for a closer that comes back empty
- * reads the rest of the field once, rather than once per unclosed opener.
- */
-function replaceRegions(
-  text: string,
-  { opener, closer }: Region,
-  read: (inner: string) => string,
-): string {
-  let result = '';
-  let resume = 0;
-  opener.lastIndex = 0;
-  for (let open = opener.exec(text); open; open = opener.exec(text)) {
-    closer.lastIndex = opener.lastIndex;
-    const close = closer.exec(text);
-    if (!close) break;
-    result += text.slice(resume, open.index) + read(text.slice(opener.lastIndex, close.index));
-    resume = closer.lastIndex;
-    opener.lastIndex = resume;
-  }
-  return result + text.slice(resume);
-}
-
-/** Letters and digits in any script — Latin, CJK, Greek — not just ASCII `\w`. */
-const WORD_CHAR = /[\p{L}\p{N}]/u;
-
-/**
- * The marks a sentence ends on. Text resumes after one rather than continuing through it, so a
- * word that follows one is a new word however tightly the deposit packs it.
- */
-const SENTENCE_END = /[.:?!]/;
-
-/**
- * A word boundary leaves a space only where the text would otherwise run together: between two
- * word characters, or where a sentence ends and the next word begins.
- *
- * The first case is why an italic journal title followed by a comma closes up instead of gaining
- * a stray space before it. The second is why a heading a publisher marks with `<bold>` rather
- * than `<title>` keeps the space that separates it from the sentence before —
- * `…effectiveness of MOC.<bold>Methods</bold>` is two sentences, not one word. Only a following
- * word character earns the space, so a tag between a period and a bracket still closes up.
- */
-function separateWords(run: string, offset: number, whole: string): string {
-  const before = whole[offset - 1];
-  const after = whole[offset + run.length];
-  if (!before || !after || !WORD_CHAR.test(after)) return '';
-  return WORD_CHAR.test(before) || SENTENCE_END.test(before) ? ' ' : '';
-}
-
-/**
- * The address a link element carries: `href`, or the `xlink:href` a JATS deposit spells it as.
- * Any namespace prefix is admitted; a longer attribute name that merely ends in `href` is not,
- * since the leading `\s` and the optional prefix leave nothing for the rest of it to match.
- */
-const HREF_ATTRIBUTE = /\s(?:[A-Za-z][\w.-]*:)?href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>"']+))/i;
-
-/**
- * The transport prefix of an address — `https://`, `ftp://`, `mailto:`, `doi:`. It says how to
- * fetch the resource; everything after it is what gets fetched.
- */
-const URI_SCHEME = /^[A-Za-z][A-Za-z0-9+.-]*:(?:\/\/)?/;
-
-/**
- * The closing tag of each link element, in any namespace spelling. Global rather than plain so
- * the search can start at the opening tag through `lastIndex` and read the rest of the string
- * in place — the alternative copies everything after every link element just to find its end.
- * `linkTextReader` reads each link's text up to the first of these after it.
- */
-const LINK_CLOSERS: ReadonlyMap<string, RegExp> = new Map(
-  LINK_ELEMENTS.map(
-    (name) => [name, new RegExp(String.raw`</(?:[A-Za-z][\w.-]*:)?${name}\s*>`, 'gi')] as const,
-  ),
-);
-
-/**
- * Whether a link element's tags can come out without costing the reader its address.
- *
- * A link is kept because its address lives in an attribute, where removing the tag deletes it.
- * That premise has to be checked rather than assumed: a structured abstract deposits a URL, an
- * accession, or a trial registration as the element's *text* and repeats it in the `href`, and
- * there the tag protects nothing while putting a namespace-bearing XML tag in the middle of an
- * abstract. Three ways the address is safe:
- *
- * 1. **No attribute.** Nothing of the element's value lives in one, so nothing can be lost —
- *    a `<uri>` deposited around a bare URL, or an `<a>` carrying only a `name`.
- * 2. **Nothing outside the deposit is addressed.** An empty `href`, or one that is a bare
- *    fragment (`#b1`), names a place inside the publisher's own XML. That document is not
- *    something the reader has, so the fragment resolves to nothing and preserves nothing.
- * 3. **The text already carries it.** The element's own text contains the `href`, either
- *    verbatim or less its scheme.
- *
- * The scheme is the only difference the comparison forgives, and the line is deliberate. Losing
- * `http://` in front of `www.fasebj.org` costs the reader nothing they cannot supply; losing the
- * `/ct2/show/NCT02196038` behind `https://clinicaltrials.gov/` costs them the thing being
- * addressed, which is the failure the rule exists to prevent. Every looser comparison — treating
- * `www.` as optional, ignoring a trailing slash, decoding percent-escapes, resolving a DOI
- * through its resolver host — asserts that two different strings name the same resource, and
- * each such assertion is a way for the identifying part of an address to go missing. Every
- * tighter one (equality rather than containment) keeps the tag whenever the deposit wraps a
- * sentence around the URL, which protects nothing.
- */
-function linkAddressSurvives(openTag: string, text: LinkText): boolean {
-  const attribute = HREF_ATTRIBUTE.exec(openTag);
-  const href = (attribute?.[1] ?? attribute?.[2] ?? attribute?.[3] ?? '').trim();
-  if (href === '' || href.startsWith('#')) return true;
-  if (text.includes(href)) return true;
-  const target = href.replace(URI_SCHEME, '');
-  return target !== '' && target !== href && text.includes(target);
-}
-
-/**
- * The elements a region holds directly, in deposit order. Depth is counted off the same
- * well-formed-tag match the strip uses, so a child's own nested markup travels with it and a
- * closing tag with no opener inside the region is ignored rather than closing the region's
- * first child early.
- */
-function* topLevelElements(inner: string): Generator<string> {
-  let depth = 0;
-  let start = -1;
-  for (const match of inner.matchAll(TAG)) {
-    const [tag, close, , selfClose] = match as unknown as [string, string, string, string];
-    if (close) {
-      if (depth === 0) continue;
-      depth -= 1;
-      if (depth === 0 && start >= 0) {
-        yield inner.slice(start, match.index + tag.length);
-        start = -1;
-      }
-    } else if (selfClose) {
-      if (depth === 0) yield tag;
-    } else {
-      if (depth === 0) start = match.index;
-      depth += 1;
-    }
-  }
-}
-
-/**
- * Pick the one encoding an `<alternatives>` wrapper's consumer is meant to read: its first
- * child that carries any text at all.
- *
- * Position rather than notation is what decides. The children are siblings with no marked
- * primary — unlike a MathML `<annotation>`, which the vocabulary itself defines as the second
- * copy — so preferring TeX over presentation MathML or the reverse would be this server
- * ranking notations it has no standing to rank, and would need extending every time the
- * vocabulary admits another encoding. Taking the first text-bearing child needs no such list:
- * an `<inline-graphic>` carries no text and is passed over on that basis, and a child element
- * nobody has seen before is handled by the same rule. What is selected is returned as it was
- * deposited, so the pass that follows classifies it like any other markup.
- *
- * A wrapper holding no child elements at all keeps its content whole. Nothing in it can be a
- * duplicate encoding, and dropping it would cost the reader text.
- *
- * What is selected is returned without a separator of its own; the wrapper's boundary is applied
- * around it by the caller, so the same construct spaces the same way whichever encoding a
- * publisher happened to deposit first.
- */
-function firstAlternative(inner: string): string {
-  let sawChild = false;
-  for (const child of topLevelElements(inner)) {
-    sawChild = true;
-    if (/\S/.test(child.replace(/<[^>]*>/g, ''))) return child;
-  }
-  return sawChild ? '' : inner;
-}
-
-/**
- * A MathML formula as one expression in the sentence around it. Inside, the region is read by
- * `mathmlText` — its TeX annotation where it deposits one, otherwise its tree written out — with
- * no separator of its own and none of the whitespace a deposit pretty-prints between its tags,
- * which is insignificant in XML. A character reference in a token is text to that reading and
- * resolves in the decode afterwards, so an escaped `<` is a relation, never a tag.
- *
- * Outside is the opposite of inside: the region stands as its own token in the sentence and is
- * never a continuation of the word beside it, so it leaves a block boundary. A MathML deposit
- * carries the whole token — `<mmultiscripts><mi>Si</mi>…<mn>33</mn>` is all of `³³Si` — and
- * publishers routinely deposit no space against the prose, so a tight join there would read
- * `thin films of^{33}Siand partially filled`.
- */
-function readMathml(inner: string): string {
-  return ` ${mathmlText(inner)} `;
-}
-
-/**
- * Read closed numeric superscripts before stripping tags. A single token scan counts text
- * incompatible with a numeric script; nested scripts invalidate their parent, so accepted
- * spans never overlap and no nested body is rescanned or recursively rendered.
- */
-function readNumericSuperscripts(text: string): string {
-  if (!text.includes('<')) return text;
-  const openers = new Map<string, Array<{ start: number; content: number; invalid: number }>>();
-  const edits: Array<{ start: number; end: number; from: number; to: number }> = [];
-  const parts: string[] = [];
-  let length = 0;
-  let invalid = 0;
-  let previous = 0;
-  for (const match of text.matchAll(TAG)) {
-    const [tag, close, rawName, selfClose] = match as RegExpExecArray &
-      [string, string, string, string];
-    const offset = match.index;
-    const plain = decodeHtmlEntities(text.slice(previous, offset));
-    parts.push(plain);
-    length += plain.length;
-    if (/[^0-9+.−-]/.test(plain)) invalid++;
-    const name = rawName.toLowerCase();
-    if (name === 'sup' || name === 'superscript') {
-      const stack = openers.get(name) ?? [];
-      if (close) {
-        const opener = stack.pop();
-        if (opener && opener.invalid === invalid && length > opener.content) {
-          let start = opener.start;
-          while (start > 0 && /\s/.test(text.charAt(start - 1))) start--;
-          edits.push({ start, end: offset + tag.length, from: opener.content, to: length });
-        }
-      } else if (!selfClose) {
-        stack.push({ start: offset, content: length, invalid: invalid + 1 });
-        openers.set(name, stack);
-      }
-      invalid++;
-    } else if (!INLINE_ELEMENTS.includes(name)) {
-      invalid++;
-    }
-    previous = offset + tag.length;
-  }
-  if (!edits.length) return text;
-  const content = parts.join('');
-  const output: string[] = [];
-  previous = 0;
-  for (const edit of edits) {
-    const value = content.slice(edit.from, edit.to);
-    output.push(text.slice(previous, edit.start), value.length === 1 ? `^${value}` : `^{${value}}`);
-    previous = edit.end;
-  }
-  output.push(text.slice(previous));
-  return output.join('');
-}
-
-/**
- * Classify every well-formed tag in a string and remove the ones this surface recognizes as
- * markup, leaving the separator its class calls for. `unlisted` is the verdict for a name on
- * none of the class lists, and it is the only thing that varies between surfaces.
- *
- * An opening tag is removed on its own evidence; a closing tag is removed only if the matching
- * opener was itself removed. That asymmetry is what keeps an element from coming apart: a
- * `<span hidden>` fails the shape test — a valueless attribute is prose as far as the shape
- * rule can tell, and admitting one would reopen `<Bold statement about X>` — while its
- * attribute-free `</span>` matches the shape on its own. A lone closer has no claim to being a
- * tag beyond an opener that this pass already declined to treat as one.
- *
- * A link element is the one class decided per occurrence rather than per name: its opening tag
- * comes out, as a word boundary, only where its own text already carries the address, and its
- * closing tag follows the opener on the same bookkeeping as every other element. A self-closing
- * link wraps no text at all, so nothing there can carry the address.
- */
-function stripTags(text: string, unlisted: Verdict): string {
-  text = readNumericSuperscripts(text);
-  const removed: string[] = [];
-  /**
-   * Link names whose closing tag is already known to be absent from the rest of the string.
-   * The scan for one runs to the end when there is none, and tags are visited left to right,
-   * so a name that failed once cannot succeed later — recording it is what keeps a field
-   * packed with unterminated openers from costing a full scan apiece.
-   */
-  const unclosed = new Set<string>();
-  const linkText = linkTextReader(text, LINK_CLOSERS);
-  return text.replace(
-    TAG,
-    (
-      tag: string,
-      close: string,
-      rawName: string,
-      selfClose: string,
-      offset: number,
-      whole: string,
-    ) => {
-      const name = rawName.toLowerCase();
-      let verdict = ELEMENT_VERDICTS.get(name) ?? unlisted;
-      if (verdict === 'keep') {
-        if (close) {
-          if (!removed.includes(name)) return tag;
-        } else if (selfClose || unclosed.has(name)) {
-          return tag;
-        } else {
-          const inner = linkText(offset + tag.length, name);
-          if (inner === undefined) {
-            unclosed.add(name);
-            return tag;
-          }
-          if (!linkAddressSurvives(tag, inner)) return tag;
-        }
-        verdict = 'inline';
-      }
-      if (close) {
-        const opener = removed.lastIndexOf(name);
-        if (opener < 0) return tag;
-        removed.splice(opener, 1);
-      } else if (!selfClose) {
-        removed.push(name);
-      }
-      if (verdict === 'tight') return '';
-      if (verdict === 'block') return ' ';
-      return separateWords(tag, offset, whole);
-    },
-  );
-}
-
-/**
- * Strip the markup a deposited string carries, and nothing else.
- *
- * One rule, two surfaces. A bracket is removed only when it is recognizable as markup, on three
- * tests applied in order:
- *
- * 1. **Shape.** The name follows `<` with no space, and the attribute tail is `name="value"`
- *    pairs rather than prose. This is what separates `<span class="smallcaps">` from
- *    `<Stack Overflow, https://…>`, `<Available from: http://…>`, and `<B. subtilis>` — all text
- *    a reader needs, and all of them read as a tag under a looser `<name\b[^>]*>`.
- * 2. **Region.** A MathML formula, a JATS structured citation, and an `<alternatives>` wrapper
- *    are matched end to end, because inside one there is no typed bracket to protect. A formula
- *    is read as one expression, keeping the operators its tree encodes as structure; a citation
- *    is emptied of tags; a wrapper holds one object encoded several ways and is reduced to its
- *    first text-bearing child, or the same expression reaches the reader twice. All or nothing:
- *    an unclosed region matches nothing and is left whole rather than half-consumed. The two
- *    formula-bearing regions leave a block boundary on their outer edge, because a formula
- *    stands as its own token in the sentence rather than continuing the word beside it.
- * 3. **Name.** Everywhere else the element name decides, on three shared classes plus a
- *    per-surface default. Numeric superscripts retain a caret marker; other scripts and inline
- *    formula wrappers leave nothing — `O<sub>2</sub>` is
- *    one formula and a space there splits it, `T<inf>c</inf>` is one symbol. Inline emphasis and
- *    the bare JATS citation fields are a word boundary and leave a space only where the text
- *    would otherwise run together — between two word characters, or where a sentence ends and
- *    the next word begins — so `<i>Ann. Probab.</i>, 49` closes up while
- *    `MOC.<bold>Methods</bold>` does not. Block elements always leave a space,
- *    because the text before one ends in a period rather than a word character and two citations
- *    packed into one field must not run together. Link elements are the one class decided per
- *    occurrence rather than per name, because what a removed `<a href>` costs depends on where
- *    its address is: see `linkAddressSurvives`.
- *
- * The surfaces differ in exactly one thing — what an unrecognized element name means — and they
- * differ there because the two fields are not the same kind of string. A title or abstract is
- * deposited as JATS, so a raw `<` in it came out of an XML document and is a tag by
- * construction: an unrecognized name is structure (`<sec>`, `<list-item>`, `<title>`) and is
- * removed as a block boundary. A reference entry is a citation string a publisher typed, where
- * the same syntax carries a cited URL (`<http://faostat.fao.org/…>`), a Miller index
- * (`Silicon <100> nanowires`), a DOI fragment (`<131::AID-QUA4>`), an acronym (`<IR>`), or a
- * guillemet quotation (`<<ruptures>>`) — so an unrecognized name is presumed content and stays.
- * Everything else the two surfaces do is the same rule, so they cannot drift apart again.
- *
- * Every separator is decided against the string the tags sit in: a tag never counts as a word
- * character, so removing one class can never create an adjacency another class then misreads.
- * `<span class="smallcaps">xvii</span><sup>e</sup>` is `xviie`, not `xvii e`.
- */
-function stripMarkup(raw: string, unlisted: Verdict): string {
-  /**
-   * The `<alternatives>` selection runs before the others: it hands back one of its children as
-   * deposited, and that child is a MathML formula as often as not.
-   *
-   * The block boundary is the wrapper's own, not the selected child's. A wrapper holds a formula,
-   * and a formula stands as its own token in the sentence rather than continuing the word beside
-   * it — the same reading that gives a MathML region its outer edge. It has to be the wrapper's,
-   * because publishers deposit the encodings in either order: decided by the child, the same
-   * construct would separate where the MathML came first and close up where the TeX did, and
-   * `time scale<inline-formula>…` would read `time scale$\mathbb{T}$with`.
-   */
-  const selected = replaceRegions(raw, ALTERNATIVES, (inner) => ` ${firstAlternative(inner)} `);
-  const read = replaceRegions(selected, MATHML, readMathml);
-  const cited = replaceRegions(read, CITATION, (inner) => stripTags(inner, 'inline'));
-  return collapseWhitespace(stripTags(cited, unlisted));
-}
-
-/**
- * Strip the markup a JATS-deposited field carries — work titles, subtitles, container titles,
- * and abstracts. An element name on none of the shared classes is structure, and comes out as a
- * block boundary.
- */
-export function stripJats(raw: string): string {
-  return stripMarkup(raw, 'block');
-}
-
-/**
- * Strip the markup a reference free-text field carries. An element name on none of the shared
- * classes is presumed to be content a publisher typed, and stays.
- */
-export function stripReferenceMarkup(raw: string): string {
-  return stripMarkup(raw, 'keep');
-}
-
-/**
- * Normalize a field publishers deposit as JATS/XML markup — work titles, subtitles, container
- * titles, and abstracts — by stripping markup before the baseline pass.
- *
- * Order matters: tags come out before entities are decoded, so a deposited `&lt;i&gt;` stays
- * literal text instead of decoding into a tag the strip pass would then eat.
- */
-export function normalizeMarkupText(raw: string): string {
-  return normalizeText(stripJats(raw));
-}
-
-/**
- * Normalize a reference entry's free text: strip markup, then the baseline pass. Same order,
- * same reason — a deposited `&lt;i&gt;` stays literal.
- */
-export function normalizeReferenceText(raw: string): string {
-  return normalizeText(stripReferenceMarkup(raw));
-}
-
-/** Format a year/month/day object as an ISO-style date string (e.g. "2023-04-15" or "2023"). */
-export function formatDateParts(d: {
-  year?: number | undefined;
-  month?: number | undefined;
-  day?: number | undefined;
-}): string {
-  const parts: string[] = [];
-  if (d.year !== undefined) parts.push(String(d.year));
-  if (d.month !== undefined) parts.push(String(d.month).padStart(2, '0'));
-  if (d.day !== undefined) parts.push(String(d.day).padStart(2, '0'));
-  return parts.join('-');
-}
-
-/**
- * Extract year/month/day from a Crossref date-parts array.
- *
- * A component Crossref does not know is deposited as `null` in the tuple rather than left off it:
- * a dissertation with no registered year arrives as `[[null]]`, and 8% of a random works draw
- * carries one somewhere in `issued`. Absent and null are the same fact for a caller — the
- * component is unknown — so both come back as an omitted field, which is what the output schemas
- * declare each of the three to be.
- *
- * The read stops at the first unknown component rather than skipping past it, because the tuple
- * is positional and the parts below one carry no meaning without it. `[[2020, null, 15]]` is a
- * year and a day-of-a-month nobody named, and rendering it through `formatDateParts` as `2020-15`
- * would state a date the deposit does not.
- */
-export function parseDateParts(
-  raw: { 'date-parts'?: Array<Array<number | null>> } | undefined,
-): { year?: number; month?: number; day?: number } | undefined {
-  const [year, month, day] = raw?.['date-parts']?.[0] ?? [];
-  if (typeof year !== 'number') return;
-  if (typeof month !== 'number') return { year };
-  if (typeof day !== 'number') return { year, month };
-  return { year, month, day };
-}
-
-/**
- * The date fields a work record answers "when was this published?" with, in preference order.
- *
- * `published` leads because it tracks the earliest of the two publication events, though Crossref
- * documents no definition for it; each event then answers for itself. `issued` is the one Crossref
- * does define that way, and it is the one of the four the API marks required — so a record with no
- * publication date at all carries its `[[null]]` placeholder there, with the other three absent.
- */
-const WORK_DATE_SOURCES = [
-  'published',
-  'published-print',
-  'published-online',
-  'issued',
-] as const satisfies ReadonlyArray<keyof RawCrossrefWork>;
-
-/** What a work summary reads. `issued` is `crossref_get_work`'s last resort and no one else's. */
-const WORK_SUMMARY_DATE_SOURCES = WORK_DATE_SOURCES.filter((source) => source !== 'issued');
-
-/** The date-bearing part of a work record — every source in the chain, each of them optional. */
-type WorkDateSources = Partial<Record<(typeof WORK_DATE_SOURCES)[number], CrossrefDateParts>>;
-
-/**
- * Answer with the first source that names a date.
- *
- * The chain advances on **nothing, never on less**. A source Crossref deposits holding only
- * unknown components states no date — the same fact an absent field states, which is why
- * `parseDateParts` reports both as nothing — so it must not silence a later source that does
- * name one. Selecting the source *object* first and parsing once would do exactly that: it
- * reads presence as an answer, and hands back no publication date for a record that carries
- * one two fields along.
- *
- * It stops at the first date rather than continuing for a more precise one, because the sources
- * answer different questions: `published` tracks the earliest publication event and
- * `published-online` is one particular event, so a coarse `published` beside a precise
- * `published-online` is not a partial answer to be completed — refining across the two would
- * report the online date as the work's publication date. Sampled live, 580 of 6,000 randomly
- * drawn works carry a `published` coarser than a later source in this chain.
- */
-function resolveDate(
-  raw: WorkDateSources,
-  sources: ReadonlyArray<(typeof WORK_DATE_SOURCES)[number]>,
-): { year?: number; month?: number; day?: number } | undefined {
-  for (const source of sources) {
-    const date = parseDateParts(raw[source]);
-    if (date !== undefined) return date;
-  }
-  return;
-}
-
-/**
- * The publication date of a full work record, `issued` included. Takes the whole record rather
- * than a chain of fields, so the order is settled here for every caller instead of being spelled
- * out — and re-spelled differently — at each one.
- */
-export function resolveWorkDate(raw: WorkDateSources) {
-  return resolveDate(raw, WORK_DATE_SOURCES);
-}
-
-/** The publication date of a work summary — the same rule over the three published-* sources. */
-export function resolveWorkSummaryDate(raw: WorkDateSources) {
-  return resolveDate(raw, WORK_SUMMARY_DATE_SOURCES);
-}
 
 /**
  * Unwrap a DOI from the resolver it was copied with — `https://doi.org/…`, the older
@@ -932,14 +207,71 @@ const RegistryAnswerSchema = z.tuple([
   ]),
 ]);
 
+/** doi.org itself: a DOI's own path, content-negotiated, answers with its agency's metadata. */
+const DOI_RESOLVER_URL = 'https://doi.org';
+
+/** The citation request asks for CSL-JSON, and a response in any other media type is not read. */
+const CSL_MEDIA_TYPE = 'application/vnd.citationstyles.csl+json';
+
+/**
+ * The registration agencies, lowercased, whose DOIs doi.org was seen to answer with CSL-JSON.
+ * The registry's spelling is matched case-insensitively, as the Crossref branch of the not-found
+ * text matches it. CNKI, ISTIC, and Airiti DOIs redirect to hosts that returned none — CNKI's to
+ * the DOI's deposited landing page, a URL its registrant controls — so a DOI registered with an
+ * agency not listed here is sent no citation request at all.
+ */
+const CSL_AGENCIES = new Set(['datacite', 'jalc', 'medra', 'kisti', 'op']);
+
+/**
+ * The CSL-JSON fields a citation reads. A string `title` is the one requirement: a body without
+ * one is no citation. Any other field that arrives in another shape reads as absent rather than
+ * costing the record its citation, since the agencies fill CSL unevenly — DataCite sends a null
+ * `container-title`, JaLC no `type`, KISTI a name whose parts are both blank. Unread fields are
+ * stripped.
+ */
+const CslNameSchema = z.object({
+  given: z.string().optional().catch(undefined),
+  family: z.string().optional().catch(undefined),
+  literal: z.string().optional().catch(undefined),
+});
+const CslRecordSchema = z.object({
+  title: z.string(),
+  author: z.array(CslNameSchema).optional().catch(undefined),
+  'container-title': z.string().optional().catch(undefined),
+  issued: z
+    .object({ 'date-parts': z.array(z.array(z.number().nullable())) })
+    .optional()
+    .catch(undefined),
+  publisher: z.string().optional().catch(undefined),
+  type: z.string().optional().catch(undefined),
+});
+
+/** A CSL-JSON record as doi.org serves it for a DOI another agency registered, as parsed. */
+export type CslRecord = z.infer<typeof CslRecordSchema>;
+
 /**
  * What the DOI registry says about an identifier Crossref has no record for: an agency holds
  * it (Crossref itself included), no agency has registered it, or no readable answer came back.
+ * A DOI's lookup also carries the citation doi.org served for it, when the agency is one in
+ * `CSL_AGENCIES` and the record was readable; a prefix's never does.
  */
 export type RegistrationLookup =
-  | { kind: 'registered'; agency: string }
+  | { kind: 'registered'; agency: string; citation?: CslRecord }
   | { kind: 'unregistered' }
   | { kind: 'unknown' };
+
+/**
+ * One `CROSSREF_TIMEOUT_MS` window, combined with the caller's signal, shared by every request
+ * made under it. Each Crossref attempt opens its own; a DOI's not-found lookup opens one for both
+ * of its doi.org requests, so the citation request runs on what the registry request left.
+ * Disposing it clears the timer.
+ */
+type Deadline = Disposable & {
+  /** Aborts when the window closes or the caller cancels — the signal each request carries. */
+  readonly signal: AbortSignal;
+  /** Whether the window itself closed, as opposed to the caller cancelling. */
+  expired(): boolean;
+};
 
 export class CrossrefService {
   private readonly baseUrl: string;
@@ -986,11 +318,13 @@ export class CrossrefService {
   private async request<T>(path: string, ctx: Context): Promise<T> {
     const url = `${this.baseUrl}${path}`;
     try {
-      return await withRetry(() => this.attempt<T>(url, this.userAgent, ctx), {
-        operation: 'CrossrefService.request',
-        baseDelayMs: 1_000,
-        signal: ctx.signal,
-      });
+      return await withRetry(
+        async () => {
+          using deadline = this.openDeadline(ctx);
+          return await this.attempt<T>(url, this.userAgent, deadline, ctx);
+        },
+        { operation: 'CrossrefService.request', baseDelayMs: 1_000, signal: ctx.signal },
+      );
     } catch (err) {
       if (!(err instanceof McpError && err.code === JsonRpcErrorCode.RequestCancelled)) {
         logger.warning('Crossref request failed', withExtra(ctx, { url, cause: causeOf(err) }));
@@ -1008,68 +342,81 @@ export class CrossrefService {
    * `ValidationError`, and a `TypeError` from `fetch` surfaces as an `InternalError`
    * — an upstream outage reported as a bug in this server.
    *
-   * `userAgent` is passed rather than read off the instance because the one request that
-   * leaves Crossref must not carry the polite-pool `mailto` — see `registryUserAgent`.
+   * `userAgent` is passed rather than read off the instance because the requests that leave
+   * Crossref must not carry the polite-pool `mailto` — see `registryUserAgent`. The window is
+   * passed in for the same kind of reason: the registry lookup shares its window with the
+   * citation request after it, while every Crossref attempt gets one of its own.
    */
-  private async attempt<T>(url: string, userAgent: string, ctx: Context): Promise<T> {
+  private async attempt<T>(
+    url: string,
+    userAgent: string,
+    deadline: Deadline,
+    ctx: Context,
+  ): Promise<T> {
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        signal: deadline.signal,
+        headers: { 'User-Agent': userAgent },
+      });
+    } catch (err) {
+      throw this.transportError(err, deadline.expired(), ctx);
+    }
+
+    if (!response.ok) throw await this.responseError(response);
+
+    let text: string;
+    try {
+      // The window still covers the body read — a stalled stream is a timeout too.
+      text = await response.text();
+    } catch (err) {
+      throw this.transportError(err, deadline.expired(), ctx);
+    }
+
+    if (/^\s*<(!DOCTYPE\s+html|html[\s>])/i.test(text)) {
+      throw upstreamError(
+        UPSTREAM_UNAVAILABLE,
+        'Crossref returned HTML instead of JSON — likely rate-limited or under maintenance.',
+      );
+    }
+
+    // A 200 with nothing in it is a truncated or dropped response, not a corrupt
+    // serialization: retrying can succeed, and `malformed_response`'s advice to ask
+    // for a smaller record has nothing to act on. Tested with a scan rather than
+    // `trim()`, which copies the whole body on every successful request to answer.
+    if (!/\S/.test(text)) {
+      throw upstreamError(UPSTREAM_UNAVAILABLE, 'Crossref returned HTTP 200 with an empty body.');
+    }
+
+    try {
+      return JSON.parse(text) as T;
+    } catch (err) {
+      throw upstreamError(
+        MALFORMED_RESPONSE,
+        'Crossref returned HTTP 200 with a body that is not valid JSON.',
+        { cause: err },
+      );
+    }
+  }
+
+  /** Open one timeout window, for the requests that are to share it — see `Deadline`. */
+  private openDeadline(ctx: Context): Deadline {
     /**
      * An `AbortController` aborted with a `TimeoutError` DOMException rather than
-     * `AbortSignal.timeout()`: the reason is then recognizable by identity below,
+     * `AbortSignal.timeout()`: the reason is then recognizable by identity in `expired`,
      * instead of by matching "timed out" in a message the runtime owns.
      */
-    const controller = new AbortController();
+    const timeout = new AbortController();
     const timeoutReason = new DOMException(
       `Crossref request timed out after ${this.timeoutMs}ms.`,
       'TimeoutError',
     );
-    const timer = setTimeout(() => controller.abort(timeoutReason), this.timeoutMs);
-    const signal = AbortSignal.any([ctx.signal, controller.signal]);
-
-    try {
-      let response: Response;
-      try {
-        response = await fetch(url, { signal, headers: { 'User-Agent': userAgent } });
-      } catch (err) {
-        throw this.transportError(err, controller.signal.reason === timeoutReason, ctx);
-      }
-
-      if (!response.ok) throw await this.responseError(response);
-
-      let text: string;
-      try {
-        // The timeout still covers the body read — a stalled stream is a timeout too.
-        text = await response.text();
-      } catch (err) {
-        throw this.transportError(err, controller.signal.reason === timeoutReason, ctx);
-      }
-
-      if (/^\s*<(!DOCTYPE\s+html|html[\s>])/i.test(text)) {
-        throw upstreamError(
-          UPSTREAM_UNAVAILABLE,
-          'Crossref returned HTML instead of JSON — likely rate-limited or under maintenance.',
-        );
-      }
-
-      // A 200 with nothing in it is a truncated or dropped response, not a corrupt
-      // serialization: retrying can succeed, and `malformed_response`'s advice to ask
-      // for a smaller record has nothing to act on. Tested with a scan rather than
-      // `trim()`, which copies the whole body on every successful request to answer.
-      if (!/\S/.test(text)) {
-        throw upstreamError(UPSTREAM_UNAVAILABLE, 'Crossref returned HTTP 200 with an empty body.');
-      }
-
-      try {
-        return JSON.parse(text) as T;
-      } catch (err) {
-        throw upstreamError(
-          MALFORMED_RESPONSE,
-          'Crossref returned HTTP 200 with a body that is not valid JSON.',
-          { cause: err },
-        );
-      }
-    } finally {
-      clearTimeout(timer);
-    }
+    const timer = setTimeout(() => timeout.abort(timeoutReason), this.timeoutMs);
+    return {
+      signal: AbortSignal.any([ctx.signal, timeout.signal]),
+      expired: () => timeout.signal.reason === timeoutReason,
+      [Symbol.dispose]: () => clearTimeout(timer),
+    };
   }
 
   /**
@@ -1209,20 +556,53 @@ export class CrossrefService {
   }
 
   /**
-   * Ask the DOI registry which registration agency holds a DOI or a bare prefix — read only
-   * after Crossref has answered 404, to tell a DOI another agency registered from one nobody
-   * did. Best effort by design: one attempt with no retry, bounded by the same per-request
-   * timeout and caller signal as every Crossref call, and any failure to get a readable answer
-   * is `unknown`, which leaves the caller's not-found text as it was. Caller cancellation is
-   * the one failure that is not absorbed, and it is reworded here: `attempt` reports an abort as
-   * a cancelled Crossref request, and this request did not go to Crossref.
+   * Ask the DOI registry which registration agency holds a bare prefix (or a DOI) — read only
+   * after Crossref has answered 404, to tell an identifier another agency registered from one
+   * nobody did. One window of its own, the same per-request timeout every Crossref attempt
+   * gets; see `readRegistry` for what it answers. A DOI's not-found lookup goes through
+   * `getDoiRegistration` instead, which can also read the work's citation.
    */
   async getRegistrationAgency(id: string, ctx: Context): Promise<RegistrationLookup> {
+    using deadline = this.openDeadline(ctx);
+    return await this.readRegistry(id, deadline, ctx);
+  }
+
+  /**
+   * Ask the DOI registry which agency holds a DOI Crossref has answered 404 for, and when that
+   * agency is one in `CSL_AGENCIES`, read the work's citation from doi.org. Both requests share
+   * one window opened as the registry request starts, so the not-found path still ends within
+   * the Crossref 404 plus one `CROSSREF_TIMEOUT_MS`: the citation request runs on what the
+   * registry request left, and a citation still outstanding when the window closes is given up.
+   * A citation that cannot be read leaves the lookup exactly as it is without one.
+   */
+  async getDoiRegistration(doi: string, ctx: Context): Promise<RegistrationLookup> {
+    using deadline = this.openDeadline(ctx);
+    const lookup = await this.readRegistry(doi, deadline, ctx);
+    if (lookup.kind !== 'registered' || !CSL_AGENCIES.has(lookup.agency.toLowerCase())) {
+      return lookup;
+    }
+    const citation = await this.readCitation(doi, deadline, ctx);
+    return citation ? { ...lookup, citation } : lookup;
+  }
+
+  /**
+   * The registry's answer for one identifier, inside `deadline`. Best effort by design: one
+   * attempt with no retry, and any failure to get a readable answer is `unknown`, which leaves
+   * the caller's not-found text as it was. Caller cancellation is the one failure that is not
+   * absorbed, and it is reworded here: `attempt` reports an abort as a cancelled Crossref
+   * request, and this request did not go to Crossref.
+   */
+  private async readRegistry(
+    id: string,
+    deadline: Deadline,
+    ctx: Context,
+  ): Promise<RegistrationLookup> {
     let body: unknown;
     try {
       body = await this.attempt<unknown>(
         `${DOI_REGISTRY_URL}/${encodeURIComponent(id)}`,
         this.registryUserAgent,
+        deadline,
         ctx,
       );
     } catch (err) {
@@ -1238,6 +618,41 @@ export class CrossrefService {
     const [answer] = parsed.data;
     if (!('status' in answer)) return { kind: 'registered', agency: answer.RA };
     return answer.status === 'DOI does not exist' ? { kind: 'unregistered' } : { kind: 'unknown' };
+  }
+
+  /**
+   * A DOI's citation, read from doi.org by content negotiation inside `deadline` — doi.org
+   * redirects to the registering agency's metadata service, and `fetch` follows. One attempt,
+   * no retry, no cache. The body is read only from a 200 in `CSL_MEDIA_TYPE` and is cancelled
+   * unread otherwise; every outcome short of a CSL-JSON record with a string title — a failure
+   * status, a timeout, a network error, another media type, a body that is not JSON or not a
+   * record — is `undefined`. Caller cancellation alone is rethrown, worded for this request.
+   */
+  private async readCitation(
+    doi: string,
+    deadline: Deadline,
+    ctx: Context,
+  ): Promise<CslRecord | undefined> {
+    try {
+      const response = await fetch(`${DOI_RESOLVER_URL}/${encodeURIComponent(doi)}`, {
+        signal: deadline.signal,
+        headers: { 'User-Agent': this.registryUserAgent, Accept: CSL_MEDIA_TYPE },
+      });
+      const mediaType = response.headers.get('content-type')?.split(';', 1)[0]?.trim();
+      if (response.status !== 200 || mediaType?.toLowerCase() !== CSL_MEDIA_TYPE) {
+        await response.body?.cancel();
+        return;
+      }
+      const parsed = CslRecordSchema.safeParse(JSON.parse(await response.text()));
+      return parsed.success ? parsed.data : undefined;
+    } catch (err) {
+      if (ctx.signal.aborted) {
+        throw requestCancelled('DOI citation lookup cancelled by caller.', undefined, {
+          cause: err,
+        });
+      }
+      return;
+    }
   }
 
   /** Search works with filter, field selection, and cursor/offset pagination. */
@@ -1478,7 +893,8 @@ function describeRejected(rejected: RejectedInput): string {
  * entry, `data.rejected` lists every one as `{type, value}`, and the message renders each in
  * turn. Nothing of the upstream response — body, status, URL — goes on `data`: the parsed
  * entries are the part a caller can act on. A body that did not parse is still the caller's
- * rejection, and lands on `invalid_parameter` with an empty `rejected`.
+ * rejection, and lands on `invalid_parameter` with an empty `rejected`. Every key the message
+ * suggests in place of a rejected one is declared a literal, the value the caller sends back.
  */
 function crossrefRejection(rejected: RejectedInput[] | undefined): McpError {
   const first = rejected?.[0];
@@ -1491,6 +907,10 @@ function crossrefRejection(rejected: RejectedInput[] | undefined): McpError {
   }
   const entry = REJECTION_REASONS[first.type] ?? INVALID_PARAMETER;
   const suggestion = first.type === 'filter-not-available' ? filterSuggestion(first) : undefined;
+  const suggested = rejected
+    .filter((input) => input.type === 'filter-not-available')
+    .map(filterSuggestion)
+    .filter((key) => key !== undefined);
   return upstreamError(
     entry,
     `Crossref rejected the request: ${rejected.map(describeRejected).join('; ')}`,
@@ -1499,6 +919,7 @@ function crossrefRejection(rejected: RejectedInput[] | undefined): McpError {
         rejected: rejected.map(({ type, value }) => ({ type, value })),
         ...(suggestion !== undefined && { suggestion }),
       },
+      literals: suggested,
     },
   );
 }

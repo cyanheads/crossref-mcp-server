@@ -1,0 +1,17 @@
+{
+  "type": "article-journal",
+  "author": [
+    { "family": "Duque", "given": "Rueda &#91;texto&#93;" },
+    { "family": "Fern&#225;ndez", "given": "Pipo &#91;fotografia&#93;" }
+  ],
+  "issued": { "date-parts": [[2008]] },
+  "container-title": "Punto y coma",
+  "DOI": "10.1400\/123456",
+  "ISSN": "18868215",
+  "issue": "11",
+  "medium": "JD",
+  "publisher": "Habla con Eñe",
+  "publisher-place": "IT",
+  "title": "Premios Goya 2008",
+  "URL": "https:\/\/doi.org\/10.1400\/123456"
+}

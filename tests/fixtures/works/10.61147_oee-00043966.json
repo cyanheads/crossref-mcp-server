@@ -1,0 +1,67 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "institution": [
+      {
+        "id": [
+          {
+            "id": "https://www.wikidata.org/entity/Q3562976",
+            "id-type": "wikidata",
+            "asserted-by": "publisher"
+          }
+        ]
+      }
+    ],
+    "indexed": {
+      "date-parts": [[2026, 1, 29]],
+      "date-time": "2026-01-29T21:49:54Z",
+      "timestamp": 1769723394263,
+      "version": "3.49.0"
+    },
+    "reference-count": 0,
+    "publisher": "Voltaire Foundation",
+    "content-domain": {
+      "domain": [],
+      "crossmark-restriction": false
+    },
+    "short-container-title": [],
+    "DOI": "10.61147/oee-00043966",
+    "type": "dataset",
+    "created": {
+      "date-parts": [[2026, 1, 29]],
+      "date-time": "2026-01-29T10:16:54Z",
+      "timestamp": 1769681814000
+    },
+    "source": "Crossref",
+    "is-referenced-by-count": 0,
+    "title": [
+      "OV correspondence, letter D8998: Voltaire to Charles Jean François Hénault (20th June 1760)"
+    ],
+    "prefix": "10.61147",
+    "member": "39264",
+    "container-title": ["Oxford University Voltaire"],
+    "original-title": [],
+    "deposited": {
+      "date-parts": [[2026, 1, 29]],
+      "date-time": "2026-01-29T10:45:59Z",
+      "timestamp": 1769683559000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://www.ov-vf.com/letter/de-9780729411028-div-014394"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": {
+      "date-parts": [[null]]
+    },
+    "references-count": 0,
+    "URL": "https://doi.org/10.61147/oee-00043966",
+    "relation": {},
+    "subject": []
+  }
+}

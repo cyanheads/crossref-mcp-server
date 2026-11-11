@@ -153,6 +153,14 @@ export const INVALID_PARAMETER = {
 } as const satisfies ErrorContract;
 
 /**
+ * Values an entry's `recovery` quotes for the caller to send back as written. Whenever
+ * `upstreamError` puts that recovery on the wire, it declares them as the error's `literals`,
+ * so `content[]` renders each as a code span — escaped, the `*` that restarts a cursor walk
+ * reads `\*`, which is no cursor Crossref accepts.
+ */
+const RECOVERY_LITERALS = new Map<ErrorContract, readonly string[]>([[INVALID_CURSOR, ['*']]]);
+
+/**
  * Build an `McpError` against a contract entry, mirroring what `ctx.fail` does inside a
  * handler, with the entry's `recovery` set on the error itself. The framework fills a
  * declared hint onto a failure that carries none, but it resolves the reason against the
@@ -167,6 +175,10 @@ export const INVALID_PARAMETER = {
  * `retryable` overrides the entry's own value for a throw site whose retry cost differs
  * from the rest of the reason. `withRetry`'s default predicate reads `data.retryable`,
  * so a `false` here fails the call on its first attempt.
+ *
+ * `literals` names the values the message quotes for the caller to send back verbatim, such
+ * as a suggested filter key; those the entry's own recovery quotes are added whenever it is
+ * the hint (`RECOVERY_LITERALS`). Only the rendering of `content[]` reads them.
  */
 export function upstreamError(
   entry: ErrorContract,
@@ -175,11 +187,16 @@ export function upstreamError(
     data?: Record<string, unknown> | undefined;
     hint?: string | undefined;
     retryable?: boolean | undefined;
+    literals?: readonly string[] | undefined;
     cause?: unknown;
   } = {},
 ): McpError {
-  const { data, hint, retryable, cause } = options;
+  const { data, hint, retryable, literals = [], cause } = options;
   const effectiveRetryable = retryable ?? entry.retryable;
+  const declared = [
+    ...literals,
+    ...(hint === undefined ? (RECOVERY_LITERALS.get(entry) ?? []) : []),
+  ];
   return new McpError(
     entry.code,
     message,
@@ -189,7 +206,10 @@ export function upstreamError(
       reason: entry.reason,
       recovery: { hint: hint ?? entry.recovery },
     },
-    cause !== undefined ? { cause } : undefined,
+    {
+      ...(cause !== undefined && { cause }),
+      ...(declared.length > 0 && { literals: declared }),
+    },
   );
 }
 

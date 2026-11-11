@@ -75,6 +75,31 @@ const CITATION_AND_LINK_KEYS = [
  */
 const CONTAINER_AND_MEMBER_KEYS = ['containerTitles', 'memberId'] as const;
 
+/**
+ * The deposited fields added after those, which say where a work comes from beyond its
+ * publisher: the conference event of a proceedings paper, the approval date of a dissertation or
+ * standard, and the institutions, degree, subtype, and group title of a thesis, report, or
+ * preprint.
+ */
+const ORIGIN_FIELDS = [
+  'event',
+  'approved',
+  'institution',
+  'degree',
+  'subtype',
+  'group-title',
+] as const;
+
+/** The output keys those fields project to. */
+const ORIGIN_KEYS = [
+  'event',
+  'approved',
+  'institutions',
+  'degree',
+  'subtype',
+  'groupTitle',
+] as const;
+
 type Message = Record<string, unknown>;
 
 /** A captured `/works/{doi}` response body. */
@@ -84,11 +109,14 @@ function captured(doi: string): { message: Message } {
   return JSON.parse(readFileSync(file, 'utf8')) as { message: Message };
 }
 
-/** The same record with every citation, update, and relation field, and its member, removed. */
+/**
+ * The same record with every citation, update, relation, and origin field, and its member,
+ * removed.
+ */
 function stripped(doi: string): { message: Message } {
   const body = captured(doi);
   const message = { ...body.message };
-  for (const field of CITATION_AND_LINK_FIELDS) delete message[field];
+  for (const field of [...CITATION_AND_LINK_FIELDS, ...ORIGIN_FIELDS]) delete message[field];
   delete message.member;
   return { ...body, message };
 }
@@ -137,12 +165,12 @@ function commonmark(markdown: string): string {
 
 /**
  * What every captured record returned before the citation, update, and relation fields existed.
- * The first file holds each record's structured output minus the keys those fields and the
- * container and member fields add, and the notice on the records whose notice now also names
- * their updates. The second holds both whole surfaces for each record with those fields and its
- * member removed from the deposit — a record depositing none of them has to come back
- * byte-identical, rendered text included, beside the `containerTitles` its one container title
- * now also fills.
+ * The first file holds each record's structured output minus the keys those fields, the
+ * container and member fields, and the origin fields add, and the notice on the records whose
+ * notice now also names their updates. The second holds both whole surfaces for each record with
+ * those fields and its member removed from the deposit — a record depositing none of them has to
+ * come back byte-identical, rendered text included, beside the `containerTitles` its one
+ * container title now also fills.
  */
 describe('crossref_get_work output that predates the citation and update fields', () => {
   it('keeps the value and shape of every existing field on every captured record', async () => {
@@ -150,7 +178,8 @@ describe('crossref_get_work output that predates the citation and update fields'
     const out: Record<string, unknown> = {};
     for (const doi of CAPTURED) {
       const sc = structured(await getWork(doi));
-      for (const key of [...CITATION_AND_LINK_KEYS, ...CONTAINER_AND_MEMBER_KEYS]) delete sc[key];
+      for (const key of [...CITATION_AND_LINK_KEYS, ...CONTAINER_AND_MEMBER_KEYS, ...ORIGIN_KEYS])
+        delete sc[key];
       if (captured(doi).message['updated-by'] !== undefined) delete sc.notice;
       out[doi] = sc;
     }
@@ -551,6 +580,339 @@ describe('crossref_get_work container titles', () => {
     expect(structured(result)).not.toHaveProperty('containerTitle');
     expect(structured(result)).not.toHaveProperty('containerTitles');
     expect(textOf(result)).not.toContain('**Journal/Container:**');
+  });
+});
+
+/** A proceedings paper depositing the conference it was presented at. */
+const PROCEEDINGS = '10.1109/icetce.2011.5774727';
+
+/**
+ * The event is one shared projection and line, tabled in `work-dates.test.ts`; these cases prove
+ * crossref_get_work wires it in, on a captured record that deposits one and one that does not.
+ */
+describe('crossref_get_work event', () => {
+  beforeEach(() => serve(captured));
+
+  it('returns the conference of a proceedings paper on both surfaces', async () => {
+    const result = await getWork(PROCEEDINGS);
+
+    expect(structured(result).event).toEqual({
+      name: '2011 International Conference on Electric Technology and Civil Engineering (ICETCE)',
+      location: 'Lushan',
+      start: { year: 2011, month: 4, day: 22 },
+      end: { year: 2011, month: 4, day: 24 },
+    });
+    expect(textOf(result).split('\n')).toContain(
+      '**Event:** 2011 International Conference on Electric Technology and Civil Engineering (ICETCE), Lushan, 2011-04-22 – 2011-04-24',
+    );
+  });
+
+  it('omits event, and its line, for a record depositing none', async () => {
+    expect(captured('10.7554/elife.03714').message.event).toBeUndefined();
+    const result = await getWork('10.7554/elife.03714');
+
+    expect(structured(result)).not.toHaveProperty('event');
+    expect(textOf(result)).not.toContain('**Event:**');
+  });
+});
+
+/**
+ * A dissertation deposits its date only as `approved`, beside an `issued` of `[[null]]` and no
+ * published date of any kind.
+ */
+const THESIS = '10.11606/t.48.2015.tde-14122015-153241';
+
+/**
+ * The approval date is one shared projection and line, tabled in `work-dates.test.ts`; these
+ * cases prove crossref_get_work wires it in and keeps it out of `published`.
+ */
+describe('crossref_get_work approval date', () => {
+  beforeEach(() => serve(captured));
+
+  it('returns the approval date of a dissertation on both surfaces, and no publication date', async () => {
+    const deposited = captured(THESIS).message;
+    expect(deposited.issued).toEqual({ 'date-parts': [[null]] });
+    for (const key of ['published', 'published-print', 'published-online']) {
+      expect(deposited, key).not.toHaveProperty(key);
+    }
+    const result = await getWork(THESIS);
+    const lines = textOf(result).split('\n');
+
+    expect(structured(result).approved).toEqual({ year: 2015, month: 9, day: 22 });
+    expect(lines).toContain('**Approved:** 2015-09-22');
+    expect(structured(result)).not.toHaveProperty('published');
+    expect(lines.some((line) => line.startsWith('**Published:**'))).toBe(false);
+  });
+
+  it('omits approved, and its line, for a record depositing none', async () => {
+    const result = await getWork('10.2172/207649');
+
+    expect(structured(result)).not.toHaveProperty('approved');
+    expect(structured(result).published).toEqual({ year: 1996, month: 2, day: 1 });
+    expect(textOf(result)).not.toContain('**Approved:**');
+  });
+});
+
+/** Every line of a result's `content[]` that opens with `label`. */
+function linesStarting(result: ToolResult, label: string): string[] {
+  return textOf(result)
+    .split('\n')
+    .filter((line) => line.startsWith(label));
+}
+
+/**
+ * The institution, degree, subtype, and group title a record deposits. Read wherever deposited —
+ * a thesis names its awarding institution, a preprint its server, a report its laboratories — and
+ * kept apart from publisher, which for many theses names a library and for many preprints the
+ * platform company.
+ */
+describe('crossref_get_work institutions, degree, subtype, and group title', () => {
+  beforeEach(() => serve(captured));
+
+  it('returns the awarding institution and degree of a thesis on both surfaces', async () => {
+    const result = await getWork(THESIS);
+    const sc = structured(result);
+
+    expect(sc.institutions).toEqual([
+      {
+        name: 'Universidade de São Paulo',
+        place: ['São Paulo'],
+        department: ['Faculdade de Educação'],
+      },
+    ]);
+    expect(sc.degree).toEqual(['Doutorado em Educação']);
+    expect(sc.publisher).toBe(
+      'Universidade de São Paulo. Agência de Bibliotecas e Coleções Digitais',
+    );
+    expect(sc).not.toHaveProperty('subtype');
+    expect(sc).not.toHaveProperty('groupTitle');
+    expect(linesStarting(result, '**Institution:**')).toEqual([
+      '**Institution:** Universidade de São Paulo — place: São Paulo; department: Faculdade de Educação',
+    ]);
+    expect(linesStarting(result, '**Degree:**')).toEqual(['**Degree:** Doutorado em Educação']);
+  });
+
+  it('leads an institution deposited by ROR alone with its ROR', async () => {
+    const result = await getWork('10.14264/d171147');
+
+    expect(structured(result).institutions).toEqual([
+      { ror: 'https://ror.org/00rqy9422', department: ['School of Biological Sciences'] },
+    ]);
+    expect(structured(result).degree).toEqual(['PhD Thesis']);
+    expect(linesStarting(result, '**Institution:**')).toEqual([
+      '**Institution:** https://ror.org/00rqy9422 — department: School of Biological Sciences',
+    ]);
+  });
+
+  /** A Wikidata ID is no identifier this projection reads, so the entry carries neither field. */
+  it('renders an institution with neither a name nor a ROR the way an affiliation is', async () => {
+    const result = await getWork('10.61147/oee-00043966');
+
+    expect(structured(result).institutions).toEqual([{}]);
+    expect(linesStarting(result, '**Institution:**')).toEqual([
+      '**Institution:** (no name deposited)',
+    ]);
+  });
+
+  it('returns every institution of a report, in deposited order', async () => {
+    const result = await getWork('10.2172/207649');
+
+    expect(structured(result).institutions).toEqual([
+      {
+        name: 'Pacific Northwest National Laboratory (PNNL), Richland, WA (United States)',
+        acronym: ['PNNL'],
+      },
+      { name: 'Pacific Northwest Lab., Richland, WA (United States)' },
+      { name: 'USDOE, Washington, DC (United States)' },
+    ]);
+    expect(structured(result)).not.toHaveProperty('degree');
+    expect(linesStarting(result, '**Institution:**')).toEqual([
+      '**Institution:** Pacific Northwest National Laboratory (PNNL), Richland, WA (United States) — acronym: PNNL',
+      '**Institution:** Pacific Northwest Lab., Richland, WA (United States)',
+      '**Institution:** USDOE, Washington, DC (United States)',
+    ]);
+  });
+
+  it('returns the server, subtype, and group title of a preprint on both surfaces', async () => {
+    const result = await getWork('10.1101/2025.11.10.687519');
+
+    expect(structured(result)).toMatchObject({
+      institutions: [{ name: 'bioRxiv' }],
+      subtype: 'preprint',
+      groupTitle: 'Neuroscience',
+      publisher: 'openRxiv',
+    });
+    expect(textOf(result).split('\n')).toEqual(
+      expect.arrayContaining([
+        '**DOI:** 10.1101/2025.11.10.687519 | **Type:** posted-content | **Subtype:** preprint',
+        '**Institution:** bioRxiv',
+        '**Group:** Neuroscience',
+      ]),
+    );
+  });
+
+  it('returns a subtype and group title without an institution or degree it lacks', async () => {
+    const result = await getWork('10.2139/ssrn.4944457');
+    const sc = structured(result);
+
+    expect(sc).toMatchObject({ subtype: 'preprint', groupTitle: 'SSRN' });
+    expect(sc).not.toHaveProperty('institutions');
+    expect(sc).not.toHaveProperty('degree');
+    expect(textOf(result)).not.toMatch(/\*\*(Institution|Degree):\*\*/);
+  });
+
+  it('omits all four, and their lines, on a record depositing none', async () => {
+    const result = await getWork('10.7554/elife.03714');
+    const sc = structured(result);
+
+    for (const key of ['institutions', 'degree', 'subtype', 'groupTitle']) {
+      expect(sc, key).not.toHaveProperty(key);
+    }
+    expect(textOf(result)).not.toMatch(/\*\*(Institution|Degree|Subtype|Group):\*\*/);
+  });
+
+  /**
+   * Deposited institution names carry runs of whitespace and group titles character references,
+   * so each string is normalized the way a publisher name is. A list deposited empty is no list.
+   */
+  it('normalizes every string and omits a list deposited empty', async () => {
+    serve((doi) => {
+      const body = captured(doi);
+      return {
+        ...body,
+        message: {
+          ...body.message,
+          institution: [
+            {
+              name: 'ARMY WAR COLL  CARLISLE BARRACKS PA',
+              id: [
+                { id: '0000 0001 2163 0069', 'id-type': 'ISNI', 'asserted-by': 'publisher' },
+                { id: 'https://ror.org/03ydkyb10', 'id-type': 'ROR', 'asserted-by': 'publisher' },
+              ],
+              place: [],
+              department: ['School of  Strategic\nLandpower'],
+              acronym: ['A&amp;M'],
+            },
+          ],
+          degree: [],
+          subtype: 'working_paper',
+          'group-title': 'MEDICINE &amp; PHARMACOLOGY',
+        },
+      };
+    });
+    const result = await getWork('10.2139/ssrn.4944457');
+    const sc = structured(result);
+
+    expect(sc.institutions).toEqual([
+      {
+        name: 'ARMY WAR COLL CARLISLE BARRACKS PA',
+        ror: 'https://ror.org/03ydkyb10',
+        department: ['School of Strategic Landpower'],
+        acronym: ['A&M'],
+      },
+    ]);
+    expect(sc).not.toHaveProperty('degree');
+    expect(sc).toMatchObject({ subtype: 'working_paper', groupTitle: 'MEDICINE & PHARMACOLOGY' });
+    expect(linesStarting(result, '**Institution:**')).toEqual([
+      '**Institution:** ARMY WAR COLL CARLISLE BARRACKS PA (https://ror.org/03ydkyb10) — department: School of Strategic Landpower; acronym: A&M',
+    ]);
+    expect(linesStarting(result, '**Group:**')).toEqual(['**Group:** MEDICINE & PHARMACOLOGY']);
+    expect(textOf(result)).toContain('| **Subtype:** working_paper');
+  });
+
+  /**
+   * A string that normalizes to nothing is no value: projected, it would render a label with
+   * nothing after it, or an empty item in a list.
+   */
+  it('drops a string that normalizes to nothing, and a list left with none', async () => {
+    serve((doi) => {
+      const body = captured(doi);
+      return {
+        ...body,
+        message: {
+          ...body.message,
+          institution: [
+            { name: 'bioRxiv', place: [' '], department: ['', 'Neuroscience'], acronym: ['&#32;'] },
+          ],
+          degree: ['', 'Ph&amp;D'],
+          'group-title': ' \n ',
+        },
+      };
+    });
+    const result = await getWork('10.1101/2025.11.10.687519');
+    const sc = structured(result);
+
+    expect(sc.institutions).toEqual([{ name: 'bioRxiv', department: ['Neuroscience'] }]);
+    expect(sc.degree).toEqual(['Ph&D']);
+    expect(sc).not.toHaveProperty('groupTitle');
+    expect(linesStarting(result, '**Institution:**')).toEqual([
+      '**Institution:** bioRxiv — department: Neuroscience',
+    ]);
+    expect(linesStarting(result, '**Degree:**')).toEqual(['**Degree:** Ph&D']);
+    expect(linesStarting(result, '**Group:**')).toEqual([]);
+  });
+
+  /**
+   * The place and degree lists are free text too, normalized the same way; every degree a thesis
+   * deposits reaches the line, and a department or acronym list deposited empty is no list.
+   */
+  it('normalizes place and degree, renders every degree, and omits each list deposited empty', async () => {
+    serve((doi) => {
+      const body = captured(doi);
+      return {
+        ...body,
+        message: {
+          ...body.message,
+          institution: [
+            {
+              name: 'Universidade de São Paulo',
+              place: ['São  Paulo\n'],
+              department: [],
+              acronym: [],
+            },
+          ],
+          degree: ['Doutorado em&#160;Educação', 'Mestrado  em Educação'],
+        },
+      };
+    });
+    const result = await getWork(THESIS);
+    const sc = structured(result);
+
+    expect(sc.institutions).toEqual([{ name: 'Universidade de São Paulo', place: ['São Paulo'] }]);
+    expect(sc.degree).toEqual(['Doutorado em Educação', 'Mestrado em Educação']);
+    expect(linesStarting(result, '**Institution:**')).toEqual([
+      '**Institution:** Universidade de São Paulo — place: São Paulo',
+    ]);
+    expect(linesStarting(result, '**Degree:**')).toEqual([
+      '**Degree:** Doutorado em Educação, Mestrado em Educação',
+    ]);
+  });
+
+  /**
+   * subtype is a term of Crossref's own vocabulary, relayed byte-exact the way type is rather than
+   * normalized as free text; the line escapes it, and a reader of either surface gets the same
+   * characters.
+   */
+  it('relays subtype byte-exact, as it relays type', async () => {
+    serve((doi) => {
+      const body = captured(doi);
+      return { ...body, message: { ...body.message, subtype: 'working&#95;paper' } };
+    });
+    const result = await getWork('10.2139/ssrn.4944457');
+
+    expect(structured(result).subtype).toBe('working&#95;paper');
+    expect(renderedText(textOf(result))).toContain('| Subtype: working&#95;paper\n');
+  });
+
+  it('omits institutions for a list deposited empty', async () => {
+    serve((doi) => {
+      const body = captured(doi);
+      return { ...body, message: { ...body.message, institution: [] } };
+    });
+    const result = await getWork('10.1101/2025.11.10.687519');
+
+    expect(structured(result)).not.toHaveProperty('institutions');
+    expect(textOf(result)).not.toContain('**Institution:**');
   });
 });
 

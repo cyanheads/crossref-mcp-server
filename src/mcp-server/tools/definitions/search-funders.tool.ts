@@ -21,16 +21,14 @@ import { mdText, mdTextInHeading } from '@/mcp-server/tools/markdown-text.js';
 import { fitWindow, ROWS_CEILING } from '@/mcp-server/tools/page-size.js';
 import {
   type FundersSearchOptions,
-  formatDateParts,
   getCrossrefService,
   type ListSearchResult,
   NAME_SEARCH_OFFSET_CAP,
   nextPageOffset,
-  normalizeMarkupText,
-  normalizeText,
-  resolveWorkSummaryDate,
   WORKS_OFFSET_CAP,
 } from '@/services/crossref/crossref-service.js';
+import { formatDateParts, resolveWorkSummaryDate } from '@/services/crossref/date-parts.js';
+import { normalizeMarkupText, normalizeText } from '@/services/crossref/markup-text.js';
 import type { RawCrossrefFunder } from '@/services/crossref/types.js';
 import {
   INVALID_CURSOR,

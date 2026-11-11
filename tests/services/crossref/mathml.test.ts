@@ -10,10 +10,7 @@
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import {
-  normalizeMarkupText,
-  normalizeReferenceText,
-} from '@/services/crossref/crossref-service.js';
+import { normalizeMarkupText, normalizeReferenceText } from '@/services/crossref/markup-text.js';
 import { expectLinearScaling, nestTo, repeatTo } from '../../helpers/scaling.js';
 
 /** A work's abstract as Crossref deposits it, from a captured `/works/{doi}` response. */

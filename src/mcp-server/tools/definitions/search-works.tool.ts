@@ -8,7 +8,8 @@
  * work's author list is capped per work by authorLimit, with authorCount carrying the full
  * deposited total and crossref_get_work as the route to the authors a cap left out. Update links
  * (`updatedBy`, `updateTo`) share their shape and line with crossref_get_work. `fields`
- * accepts only the select names the summary projects, and a blank optional input is read as
+ * accepts only the select names the summary projects, and sets the `rows` cap: a selection naming
+ * neither `abstract` nor `author` pages more works per call. A blank optional input is read as
  * omitted.
  * @module mcp-server/tools/definitions/search-works.tool
  */
@@ -24,18 +25,29 @@ import {
   fitWindow,
   ROWS_CEILING,
   SEARCH_WORKS_AUTHOR_LIMIT_CAP,
+  SEARCH_WORKS_LIGHT_ROWS_CAP,
   SEARCH_WORKS_ROWS_CAP,
 } from '@/mcp-server/tools/page-size.js';
+import {
+  approvedFields,
+  approvedLine,
+  eventFields,
+  eventLine,
+  projectApproved,
+  projectEvent,
+} from '@/mcp-server/tools/work-dates.js';
 import { locatorFields, locatorLine, projectLocators } from '@/mcp-server/tools/work-locators.js';
 import { projectUpdates, updateFields, updateSections } from '@/mcp-server/tools/work-updates.js';
 import {
-  formatDateParts,
   getCrossrefService,
-  normalizeMarkupText,
-  normalizeText,
-  resolveWorkSummaryDate,
   type WorksSearchOptions,
 } from '@/services/crossref/crossref-service.js';
+import { formatDateParts, resolveWorkSummaryDate } from '@/services/crossref/date-parts.js';
+import {
+  normalizeAbstract,
+  normalizeMarkupText,
+  normalizeText,
+} from '@/services/crossref/markup-text.js';
 import {
   INVALID_CURSOR,
   INVALID_PARAMETER,
@@ -62,7 +74,9 @@ const SELECTABLE_FIELDS = [
   'published',
   'published-print',
   'published-online',
+  'approved',
   'container-title',
+  'event',
   'publisher',
   'member',
   'is-referenced-by-count',
@@ -112,6 +126,7 @@ const WorkSummarySchema = z
       .describe(
         'Publication date — the first of published, published-print, and published-online that names one. A component Crossref records as unknown is omitted, and so is every component below it.',
       ),
+    ...approvedFields,
     containerTitle: z
       .string()
       .optional()
@@ -123,6 +138,7 @@ const WorkSummarySchema = z
         'Every container title the record deposits, in deposited order. A book chapter or proceedings paper often deposits two: the series, then the book or volume. Omitted when the record deposits none.',
       ),
     ...locatorFields,
+    ...eventFields,
     issn: z.array(z.string()).optional().describe('ISSN(s) of the containing journal'),
     publisher: z.string().optional().describe('Publisher name'),
     memberId: z
@@ -138,7 +154,7 @@ const WorkSummarySchema = z
       .string()
       .optional()
       .describe(
-        'Abstract when present in the indexed record — the text of the publisher’s JATS deposit, with markup removed and character references decoded; numeric JATS superscripts retain caret notation (10^{16}, GeV^2), a link keeps its tag only where its href holds an address the text it wraps does not already carry, and each formula appears once — MathML as the TeX annotation it carries, otherwise written out linearly (x_i, A^{−1}, √(m), (a+b)/c), and TeX deposited beside MathML in whichever notation comes first',
+        'Abstract when present in the indexed record — the text of the publisher’s JATS deposit, with markup removed and character references decoded; each section heading of a structured abstract is followed by a colon ("Objectives: …") unless it already ends in a period, colon, question mark, or exclamation mark, and the "Abstract" heading a deposit opens with is dropped; numeric JATS superscripts retain caret notation (10^{16}, GeV^2), a link keeps its tag only where its href holds an address the text it wraps does not already carry, and each formula appears once — MathML as the TeX annotation it carries, otherwise written out linearly (x_i, A^{−1}, √(m), (a+b)/c), and TeX deposited beside MathML in whichever notation comes first. Omitted when the deposit holds no text.',
       ),
   })
   .describe('Work summary');
@@ -178,13 +194,13 @@ export const searchWorksTool = tool('crossref_search_works', {
       .record(z.string(), z.string())
       .optional()
       .describe(
-        'Structured filter object using Crossref hyphen-separated keys. All values must be strings. Boolean flag keys (has-abstract, has-references, has-full-text) require string values "true" or "false". Example: {"type":"journal-article","has-abstract":"true","from-pub-date":"2023-01-01"}',
+        'Structured filter object using Crossref hyphen-separated keys. All values must be strings. Boolean flag keys (has-abstract, has-references, has-full-text) require string values "true" or "false". Dissertations, and most standards, deposit their date as an approval date rather than a publication date, which the pub-date filters (from-pub-date, until-pub-date) do not read — bound them by date with from-approved-date and until-approved-date. Example: {"type":"journal-article","has-abstract":"true","from-pub-date":"2023-01-01"}',
       ),
     fields: z
       .array(z.enum(SELECTABLE_FIELDS).describe('Crossref select name'))
       .optional()
       .describe(
-        'Fields to return (reduces payload). Names are case-sensitive, and each fills one output field: DOI → doi, title → title, type → type, author → authors and authorCount, published / published-print / published-online → published, container-title → containerTitle and containerTitles, publisher → publisher, member → memberId, is-referenced-by-count → isReferencedByCount, score → score, abstract → abstract, volume → volume, issue → issue, page → page, article-number → articleNumber, ISSN → issn, updated-by → updatedBy, update-to → updateTo. A selected field absent from a work means the record does not deposit it. DOI is always returned whether or not it is listed here, so every result stays resolvable by crossref_get_work, which also returns the fields this list does not cover (license, funder, references, and the rest of the record).',
+        'Fields to return (reduces payload). Names are case-sensitive, and each fills one output field: DOI → doi, title → title, type → type, author → authors and authorCount, published / published-print / published-online → published, approved → approved, container-title → containerTitle and containerTitles, event → event, publisher → publisher, member → memberId, is-referenced-by-count → isReferencedByCount, score → score, abstract → abstract, volume → volume, issue → issue, page → page, article-number → articleNumber, ISSN → issn, updated-by → updatedBy, update-to → updateTo. A selected field absent from a work means the record does not deposit it. DOI is always returned whether or not it is listed here, so every result stays resolvable by crossref_get_work, which also returns the fields this list does not cover (license, funder, references, and the rest of the record).',
       ),
     rows: z
       .number()
@@ -193,7 +209,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       .max(ROWS_CEILING)
       .default(20)
       .describe(
-        `Number of results to return per page (1–${SEARCH_WORKS_ROWS_CAP} per call, default 20). A larger value, up to ${ROWS_CEILING}, returns ${SEARCH_WORKS_ROWS_CAP} and says so in notice — on an offset page the notice also names the offset that continues after the records returned.`,
+        `Number of results to return per page (1–${SEARCH_WORKS_ROWS_CAP} per call, default 20; 1–${SEARCH_WORKS_LIGHT_ROWS_CAP} when fields names neither abstract nor author — an omitted or empty fields selects every field, both included). A larger value, up to ${ROWS_CEILING}, returns the cap that applies and says so in notice — on an offset page the notice also names the offset that continues after the records returned.`,
       ),
     authorLimit: z
       .number()
@@ -249,6 +265,15 @@ export const searchWorksTool = tool('crossref_search_works', {
       ),
   }),
 
+  /** Crossref's own names for these parameters — the ones the service sends upstream. */
+  inputAliases: {
+    select: 'fields',
+    'query.bibliographic': 'queryBibliographic',
+    'query.title': 'queryTitle',
+    'query.author': 'queryAuthor',
+    'query.container-title': 'queryContainerTitle',
+  },
+
   output: z.object({
     works: z
       .array(WorkSummarySchema)
@@ -280,7 +305,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       .string()
       .optional()
       .describe(
-        'Guidance on an empty page, naming which of its three causes applies: a query nothing matched, an offset past the end of a list that did match, or a cursor walk that has reached the end of the list. On a page carrying records, present when authorLimit cut at least one work list, naming how many and the route to the rest, or when every query term and filter value was supplied blank, so the page lists the whole index unfiltered. On any page, present when rows or authorLimit was above its per-call cap, naming the value requested and the cap applied — on an offset page with records remaining, also the offset that continues after the records returned. On an offset page where offset + rows would pass the ~10K offset ceiling, present naming the rows requested and the rows that fit and were applied, and, when records remain past the ceiling, cursor as the route to them. A page needing more than one caveat carries them all in this one string.',
+        `Guidance on an empty page, naming which of its three causes applies: a query nothing matched, an offset past the end of a list that did match, or a cursor walk that has reached the end of the list. On a page carrying records, present when authorLimit cut at least one work list, naming how many and the route to the rest, or when every query term and filter value was supplied blank, so the page lists the whole index unfiltered. On any page, present when rows or authorLimit was above its per-call cap, naming the value requested and the cap applied — for rows under a fields selection, also the other cap (${SEARCH_WORKS_ROWS_CAP} with abstract or author selected, ${SEARCH_WORKS_LIGHT_ROWS_CAP} with neither) and how it is reached; on an offset page with records remaining, also the offset that continues after the records returned. On an offset page where offset + rows would pass the ~10K offset ceiling, present naming the rows requested and the rows that fit and were applied, and, when records remain past the ceiling, cursor as the route to them. A page needing more than one caveat carries them all in this one string.`,
       ),
   },
 
@@ -367,11 +392,22 @@ export const searchWorksTool = tool('crossref_search_works', {
       throw ctx.fail('cursor_offset_conflict', 'Provide cursor or offset, not both.');
     }
 
+    // No selection is every name the summary projects, never Crossref's whole record.
+    const fields: readonly (typeof SELECTABLE_FIELDS)[number][] = input.fields?.length
+      ? input.fields
+      : SELECTABLE_FIELDS;
     /**
      * Clamped once, here, so the offset window, the upstream request, the per-work author
-     * slice, and the `cap` enrichment all read the page size actually used.
+     * slice, and the `cap` enrichment all read the page size actually used. The `rows` cap
+     * follows what the selection carries: an abstract or an author list is what makes a work
+     * heavy, so a selection naming neither takes the higher cap, whatever else it names.
      */
-    const rowsClamp = clampPageSize('rows', input.rows, SEARCH_WORKS_ROWS_CAP);
+    const heavy = fields.includes('abstract') || fields.includes('author');
+    const rowsClamp = clampPageSize(
+      'rows',
+      input.rows,
+      heavy ? SEARCH_WORKS_ROWS_CAP : SEARCH_WORKS_LIGHT_ROWS_CAP,
+    );
     const authorLimitClamp = clampPageSize(
       'authorLimit',
       input.authorLimit,
@@ -426,8 +462,7 @@ export const searchWorksTool = tool('crossref_search_works', {
         queryContainerTitle: terms.queryContainerTitle,
       }),
       ...(filter !== undefined && { filter }),
-      // No selection is every name the summary projects, never Crossref's whole record.
-      fields: input.fields?.length ? input.fields : SELECTABLE_FIELDS,
+      fields,
       ...(input.offset !== undefined && { offset: input.offset }),
       ...(cursor !== undefined && { cursor }),
       ...(sort !== undefined && { sort }),
@@ -439,6 +474,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       const published = resolveWorkSummaryDate(raw);
       const containerTitles = raw['container-title']?.map(normalizeMarkupText);
       const containerTitle = containerTitles?.[0];
+      const abstract = raw.abstract === undefined ? undefined : normalizeAbstract(raw.abstract);
       return {
         doi: raw.DOI,
         ...(raw.title?.[0] !== undefined && { title: normalizeMarkupText(raw.title[0]) }),
@@ -457,8 +493,10 @@ export const searchWorksTool = tool('crossref_search_works', {
           })),
         }),
         ...(published !== undefined && { published }),
+        ...projectApproved(raw),
         ...(containerTitle !== undefined && { containerTitle, containerTitles }),
         ...projectLocators(raw),
+        ...projectEvent(raw),
         ...(raw.ISSN?.length && { issn: raw.ISSN }),
         ...(raw.publisher !== undefined && { publisher: normalizeText(raw.publisher) }),
         // A digit string (`"311"`) as Crossref deposits it; anything else is no ID to pass on.
@@ -469,9 +507,7 @@ export const searchWorksTool = tool('crossref_search_works', {
           isReferencedByCount: raw['is-referenced-by-count'],
         }),
         ...(raw.score !== undefined && { score: raw.score }),
-        ...(raw.abstract !== undefined && {
-          abstract: normalizeMarkupText(raw.abstract),
-        }),
+        ...(abstract !== undefined && { abstract }),
       };
     });
 
@@ -507,7 +543,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       // record past it to route to the cursor.
       notices.push(
         next >= OFFSET_CAP && next < result.totalResults
-          ? `${windowCut} — the last records offset paging reaches; re-run with cursor="*" to reach the records after them.`
+          ? `${windowCut} — the last records offset paging reaches. To read past them, walk the list with cursor="*" and chain nextCursor; the walk starts at the first record, not after these.`
           : `${windowCut}.`,
       );
     } else if (rowsClamp.notice) {
@@ -522,8 +558,17 @@ export const searchWorksTool = tool('crossref_search_works', {
           ? ''
           : next < OFFSET_CAP
             ? ` Pass offset=${next} for the next page — the offset after the ${returned} records returned, not after the ${input.rows} requested.`
-            : ` Records past offset ${next} are beyond the ~${OFFSET_CAP} offset limit; re-run with cursor="*" to reach them.`;
-      notices.push(`${rowsClamp.notice}${continuation}`);
+            : ` Records past offset ${next} are beyond the ~${OFFSET_CAP} offset limit. To read them, walk the list with cursor="*" and chain nextCursor; the walk starts at the first record, not at offset ${next}.`;
+      /**
+       * A selection the caller wrote is told how the other cap is reached. An omitted or empty
+       * `fields` selects every field and keeps the notice such a page has always carried.
+       */
+      const tier = !heavy
+        ? ` That cap holds for a fields selection naming neither abstract nor author; one including either is capped at ${SEARCH_WORKS_ROWS_CAP}.`
+        : input.fields?.length
+          ? ` That cap holds for a fields selection including abstract or author; one naming neither takes rows up to ${SEARCH_WORKS_LIGHT_ROWS_CAP}.`
+          : '';
+      notices.push(`${rowsClamp.notice}${tier}${continuation}`);
     }
     if (authorLimitClamp.notice) notices.push(authorLimitClamp.notice);
     if (onlyBlankTerms) {
@@ -601,10 +646,14 @@ export const searchWorksTool = tool('crossref_search_works', {
       lines.push(`### ${w.title ? mdTextInHeading(w.title) : w.doi}`);
       lines.push(`**DOI:** ${w.doi}${w.type ? ` | **Type:** ${w.type}` : ''}`);
       if (w.published?.year) lines.push(`**Published:** ${formatDateParts(w.published)}`);
+      const approved = approvedLine(w);
+      if (approved) lines.push(approved);
       if (w.containerTitles?.length)
         lines.push(`**Journal:** ${w.containerTitles.map(mdText).join(' | ')}`);
       const locators = locatorLine(w);
       if (locators) lines.push(locators);
+      const event = eventLine(w);
+      if (event) lines.push(event);
       if (w.issn?.length) lines.push(`**ISSN:** ${w.issn.join(', ')}`);
       if (w.publisher) lines.push(`**Publisher:** ${mdText(w.publisher)}`);
       if (w.memberId !== undefined) lines.push(`**Member ID:** ${w.memberId}`);
