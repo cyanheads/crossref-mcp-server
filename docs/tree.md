@@ -1,6 +1,6 @@
 # crossref-mcp-server - Directory Structure
 
-Generated on: 2026-11-04 04:50:54
+Generated on: 2026-11-11 10:00:52
 
 ```text
 crossref-mcp-server/
@@ -168,13 +168,16 @@ crossref-mcp-server/
 │   │       ├── metadata-coverage.ts
 │   │       ├── page-size.ts
 │   │       ├── registration-agency.ts
+│   │       ├── work-dates.ts
 │   │       ├── work-locators.ts
 │   │       └── work-updates.ts
 │   ├── services/
 │   │   └── crossref/
 │   │       ├── crossref-service.ts
+│   │       ├── date-parts.ts
 │   │       ├── html-entities.ts
 │   │       ├── link-text.ts
+│   │       ├── markup-text.ts
 │   │       ├── mathml.ts
 │   │       ├── types.ts
 │   │       └── upstream-errors.ts
@@ -183,6 +186,13 @@ crossref-mcp-server/
 │   ├── config/
 │   │   └── server-config.test.ts
 │   ├── fixtures/
+│   │   ├── csl/
+│   │   │   ├── 10.11501_3075355.json
+│   │   │   ├── 10.1400_123456.json
+│   │   │   ├── 10.2760_180576.json
+│   │   │   ├── 10.3743_kosim.2014.31.4.049.json
+│   │   │   ├── 10.48550_arxiv.2507.06261.json
+│   │   │   └── 10.5281_zenodo.3242074.json
 │   │   ├── funders/
 │   │   │   ├── 100000002.json
 │   │   │   ├── 100000054.json
@@ -206,11 +216,15 @@ crossref-mcp-server/
 │   │       ├── 10.1103_physrevd.109.023023.json
 │   │       ├── 10.1109_icetce.2011.5774727.json
 │   │       ├── 10.1155_2024_9760680.json
+│   │       ├── 10.11606_t.48.2015.tde-14122015-153241.json
 │   │       ├── 10.1364_oe.572415.json
 │   │       ├── 10.1364_opticaopen.29459153.v1.json
+│   │       ├── 10.14264_d171147.json
 │   │       ├── 10.20944_preprints202302.0051.v34.json
 │   │       ├── 10.2139_ssrn.4944457.json
+│   │       ├── 10.2172_207649.json
 │   │       ├── 10.47094_978-65-6036-545-2.json
+│   │       ├── 10.61147_oee-00043966.json
 │   │       └── 10.7554_elife.03714.json
 │   ├── helpers/
 │   │   ├── content.ts
@@ -223,7 +237,10 @@ crossref-mcp-server/
 │   ├── services/
 │   │   └── crossref/
 │   │       ├── crossref-service.test.ts
+│   │       ├── date-parts.test.ts
+│   │       ├── html-entities.test.ts
 │   │       ├── markup-regions.test.ts
+│   │       ├── markup-text.test.ts
 │   │       ├── mathml.test.ts
 │   │       ├── numeric-superscripts.test.ts
 │   │       └── upstream-classification.test.ts
@@ -248,6 +265,7 @@ crossref-mcp-server/
 │       ├── search-journals.tool.test.ts
 │       ├── search-works-fields.test.ts
 │       ├── search-works.tool.test.ts
+│       ├── work-dates.test.ts
 │       └── works-cursor-walk.test.ts
 ├── .dockerignore
 ├── .env.example

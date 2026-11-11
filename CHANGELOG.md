@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.5.2](changelog/0.5.x/0.5.2.md) — 2026-11-11
+
+Works carry a proceedings paper's conference event and a thesis's or standard's approved date, crossref_get_work adds institutions, degree, subtype, and groupTitle, a not-found DOI registered with DataCite, JaLC, mEDRA, KISTI, or OP carries its citation, and light search_works pages take rows up to 600.
+
 ## [0.5.1](changelog/0.5.x/0.5.1.md) — 2026-11-03
 
 Journal works lists read every ISSN on the matched record, content[] keeps a heading's trailing # run and a value's trailing backslash, works carry containerTitles and memberId, funder lookups list descendants, page-size caps are set per input, a page near an offset ceiling returns the rows that fit, and every works list sends select=.
