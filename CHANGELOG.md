@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.5.3](changelog/0.5.x/0.5.3.md) — 2026-11-14
+
+crossref_search_works returns per-value counts through facets and accepts rows: 0, crossref_get_work returns clinical trial numbers and Crossmark assertions, per-call page caps rise, and funder worksCount and abstract list items read correctly.
+
 ## [0.5.2](changelog/0.5.x/0.5.2.md) — 2026-11-11
 
 Works carry a proceedings paper's conference event and a thesis's or standard's approved date, crossref_get_work adds institutions, degree, subtype, and groupTitle, a not-found DOI registered with DataCite, JaLC, mEDRA, KISTI, or OP carries its citation, and light search_works pages take rows up to 600.
