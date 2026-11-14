@@ -1639,7 +1639,7 @@ describe('searchFundersTool registry descendants', () => {
     expect(text.split('\n')).toEqual([
       '## National Cancer Institute',
       '**ID:** 100000054',
-      '**Works in Crossref:** 83567',
+      '**Registry work count:** 83567',
       `**Descendants (7):** ${NCI.descendants.join(', ')}`,
       '',
     ]);
@@ -1647,12 +1647,77 @@ describe('searchFundersTool registry descendants', () => {
 
   it('names the scope of each count and the route to a filtered count with sub-agencies', () => {
     const funder = searchFundersTool.output.shape.funders.element.shape;
-    expect(funder.worksCount.description).toContain('this registry ID alone');
+    expect(funder.worksCount.description).toContain(
+      "not counting the funder's registry descendants",
+    );
     expect(funder.descendants.description).toContain('funder filter');
     expect(searchFundersTool.enrichment?.fundedWorksTotal?.description).toContain(
       'registry descendants',
     );
     expect(searchFundersTool.description).toContain('descendants');
     expect(searchFundersTool.description).toContain('funder filter');
+  });
+});
+
+/**
+ * `worksCount` relays the registry record's own `work-count`, which is not the funder filter's
+ * total: on Wellcome Trust (as of 2026-11-14) the record says 40,946 while the filter on its ID and
+ * the funded-works list both total 61,914. Its superseded ID, 100004440, is asserted by 23,787
+ * works, and neither count includes those asserting only that one; the OR of the two IDs in the
+ * filter totals 84,996.
+ */
+describe('searchFundersTool registry work count and replaced IDs', () => {
+  const WELLCOME = {
+    id: '100010269',
+    name: 'Wellcome Trust',
+    'alt-names': ['Wellcome'],
+    location: 'United Kingdom',
+    uri: 'http://dx.doi.org/10.13039/100010269',
+    'work-count': 40946,
+    'replaced-by': [],
+    replaces: ['100004440'],
+    descendants: [],
+  };
+  const funderShape = searchFundersTool.output.shape.funders.element.shape;
+
+  it('labels worksCount as the registry count on both surfaces of a funder_doi lookup', async () => {
+    mockSearchFunders.mockResolvedValue(funderList([WELLCOME]));
+
+    const result = await runToolContract(searchFundersTool, { funder_doi: '100010269' });
+
+    expect(result.isError).toBeFalsy();
+    const funder = (result.structuredContent as { funders: Array<Record<string, unknown>> })
+      .funders[0];
+    expect(funder).toMatchObject({ worksCount: 40946, replaces: ['100004440'] });
+    const lines = renderedText(contentText(result.content)).split('\n');
+    expect(lines).toContain('Registry work count: 40946');
+    expect(lines).toContain('Replaces: 100004440');
+    expect(contentText(result.content)).not.toContain('Works in Crossref');
+  });
+
+  it("describes worksCount as the Funder Registry record's own count, naming the exact-figure call", () => {
+    const description = funderShape.worksCount.description ?? '';
+    expect(description).toContain("The Funder Registry record's own work count for this ID");
+    expect(description).toContain(
+      'can differ from the total a crossref_search_works funder filter',
+    );
+    expect(description).toContain(
+      'call crossref_search_works with filter {"funder": "<id>"} and rows: 0, and read totalResults',
+    );
+    expect(description).not.toContain('Works asserting this registry ID alone');
+  });
+
+  it("says no count includes a replaced ID's works and names the OR that adds them", () => {
+    const description = funderShape.replaces.description ?? '';
+    expect(description).toContain(
+      'A work asserting only one of these IDs is counted by neither the funded-works list nor a crossref_search_works funder filter on this ID',
+    );
+    expect(description).toContain('{"funder": "<id>,funder:<replaced>,…"}');
+    expect(description).toContain('whole history');
+  });
+
+  it('never calls the lookup count the ID-alone total in the tool description', () => {
+    expect(searchFundersTool.description).not.toContain('work count of the ID alone');
+    expect(searchFundersTool.description).toContain("the Funder Registry's own work count");
   });
 });

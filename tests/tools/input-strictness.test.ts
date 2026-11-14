@@ -289,6 +289,100 @@ describe('crossref_search_works accepts Crossref parameter names', () => {
     expect(asSelect.text.replace(' Validated select as fields.', '')).toBe(asFields.text);
   });
 
+  /**
+   * `facets` is a record keyed by Crossref's facet names. The framework repairs one JSON-string
+   * layer, so a stringified object reaches the handler as the object. The value's union accepts
+   * a string ("*"), so the framework never repairs a count spelled as one; the schema takes a
+   * decimal-integer string itself, and the handler sends it as the number it spells.
+   */
+  describe('the facets argument', () => {
+    function facetSent(): string | null {
+      return sent().get('facet');
+    }
+
+    it('advertises the 21 facet names as its keys, and no ceiling on a count', () => {
+      const facets = advertisedInputSchema(searchWorksTool).properties?.facets as {
+        type?: string;
+        propertyNames?: { enum?: string[] };
+        additionalProperties?: { anyOf?: Array<Record<string, unknown>> };
+      };
+
+      expect(facets.type).toBe('object');
+      expect(facets.propertyNames?.enum).toHaveLength(21);
+      expect(facets.propertyNames?.enum).toEqual(
+        expect.arrayContaining(['published', 'publisher-name', 'journal-issue', 'funder-doi']),
+      );
+      const count = facets.additionalProperties?.anyOf?.find((branch) => branch.type === 'integer');
+      // A count above 1000 is clamped with a notice, so the only bound is an integer's own.
+      expect(count).toMatchObject({ minimum: 1, maximum: Number.MAX_SAFE_INTEGER });
+      // A count spelled as a string is advertised by the pattern it must match.
+      expect(facets.additionalProperties?.anyOf).toContainEqual(
+        expect.objectContaining({ type: 'string', pattern: '^[1-9]\\d*$' }),
+      );
+    });
+
+    it('reaches the handler as an object when sent as a JSON string', async () => {
+      const result = await runToolContract(searchWorksTool, {
+        query: 'q',
+        facets: '{"published":"*","publisher-name":10}',
+      } as never);
+
+      expect(result.isError).toBeFalsy();
+      expect(facetSent()).toBe('published:*,publisher-name:10');
+    });
+
+    it.each([
+      ['a count spelled as a string', { published: '10', 'type-name': '*' }],
+      ['the same inside a JSON string', '{"published":"10","type-name":"*"}'],
+    ])('sends %s as the number it spells', async (_label, facets) => {
+      const result = await runToolContract(searchWorksTool, { query: 'q', facets } as never);
+
+      expect(result.isError).toBeFalsy();
+      expect(facetSent()).toBe('published:10,type-name:*');
+      expect(result.structuredContent).not.toHaveProperty('notice');
+    });
+
+    it('clamps a count spelled as a string above 1000, naming it as the number', async () => {
+      const result = await runToolContract(searchWorksTool, {
+        query: 'q',
+        facets: { affiliation: '1500' },
+      } as never);
+
+      expect(facetSent()).toBe('affiliation:1000');
+      const notice =
+        'facets.affiliation 1500 is above the 1000 values Crossref returns per facet, so 1000 was applied.';
+      expect((result.structuredContent as { notice?: string }).notice).toBe(notice);
+      expect(textOf(result)).toContain(notice);
+    });
+
+    it.each([
+      ['an unlisted facet name', { 'not-a-facet': '*' }, 'not-a-facet'],
+      ['a count of 0', { published: 0 }, 'facets.published'],
+      ['"0"', { published: '0' }, 'facets.published'],
+      ['a negative count spelled as a string', { published: '-5' }, 'facets.published'],
+      ['a fraction spelled as a string', { published: '1.5' }, 'facets.published'],
+      ['a count with a leading zero', { published: '010' }, 'facets.published'],
+      ['a word', { published: 'all' }, 'facets.published'],
+      ['a fraction inside a JSON string', '{"published":"2.5"}', 'facets'],
+    ])('refuses %s before any request, naming it', async (_label, facets, named) => {
+      const result = await runToolContract(searchWorksTool, { query: 'q', facets } as never);
+
+      const { structured, text } = refusal(result);
+      expect(structured).toContain(named);
+      expect(text).toContain(named);
+    });
+
+    it('never sends a __proto__ key, which reaches the handler as no facet at all', async () => {
+      const result = await runToolContract(searchWorksTool, {
+        query: 'q',
+        facets: JSON.parse('{"__proto__":"*","published":"*"}'),
+      } as never);
+
+      expect(result.isError).toBeFalsy();
+      expect(facetSent()).toBe('published:*');
+    });
+  });
+
   it('advertises the same inputSchema with and without the aliases', () => {
     const { inputAliases, ...definition } = searchWorksTool;
     expect(Object.keys(inputAliases ?? {})).toEqual([

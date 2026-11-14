@@ -688,24 +688,29 @@ describe('getWorkTool', () => {
   });
 
   /**
-   * A deposit whose only text was the "Abstract" label leaves nothing, and nothing is reported
-   * the way a record that never deposited one is — no empty string on structuredContent beside
-   * a `*Not deposited*` line on content[].
+   * A deposit whose only text was the "Abstract" label, or headings over sections holding no
+   * text, leaves nothing, and nothing is reported the way a record that never deposited one is —
+   * no empty string on structuredContent beside a `*Not deposited*` line on content[].
    */
-  it('reports an abstract with no text left exactly like one never deposited', async () => {
-    mockGetWork.mockResolvedValue(
-      makeRawWork({ abstract: '<jats:title>Abstract</jats:title><jats:p/>' }),
-    );
-    const emptied = await runToolContract(getWorkTool, { doi: '10.1093/eurheartj/ehaa444' });
-    mockGetWork.mockResolvedValue(makeRawWork({ abstract: undefined }));
-    const absent = await runToolContract(getWorkTool, { doi: '10.1093/eurheartj/ehaa444' });
+  it.each([
+    '<jats:title>Abstract</jats:title><jats:p/>',
+    '<jats:title>Abstract</jats:title><jats:sec><jats:title>Graphical Abstract</jats:title></jats:sec>',
+    '<jats:sec><jats:title>Visual Abstract:</jats:title><jats:fig><jats:graphic xlink:href="f1"/></jats:fig></jats:sec>',
+  ])(
+    'reports an abstract with no text left exactly like one never deposited: %j',
+    async (deposited) => {
+      mockGetWork.mockResolvedValue(makeRawWork({ abstract: deposited }));
+      const emptied = await runToolContract(getWorkTool, { doi: '10.1093/eurheartj/ehaa444' });
+      mockGetWork.mockResolvedValue(makeRawWork({ abstract: undefined }));
+      const absent = await runToolContract(getWorkTool, { doi: '10.1093/eurheartj/ehaa444' });
 
-    expect(emptied.isError).toBeFalsy();
-    expect(emptied.structuredContent).not.toHaveProperty('abstract');
-    expect(emptied.structuredContent).toEqual(absent.structuredContent);
-    expect(emptied.content).toEqual(absent.content);
-    expect(emptied.content.map(blockText).join('\n')).toContain('**Abstract:**\n*Not deposited*');
-  });
+      expect(emptied.isError).toBeFalsy();
+      expect(emptied.structuredContent).not.toHaveProperty('abstract');
+      expect(emptied.structuredContent).toEqual(absent.structuredContent);
+      expect(emptied.content).toEqual(absent.content);
+      expect(emptied.content.map(blockText).join('\n')).toContain('**Abstract:**\n*Not deposited*');
+    },
+  );
 
   it('strips JATS markup and embedded newlines from title, subtitle, and container title', async () => {
     const ctx = createMockContext({ errors: getWorkTool.errors });
@@ -1661,5 +1666,187 @@ describe('getWorkTool update entries', () => {
         },
       ],
     });
+  });
+});
+
+/**
+ * Each field of a trial number and an assertion on its own normalizer: identifiers, codes, and
+ * addresses byte-exact, a value through the JATS pass since publishers deposit inline markup in
+ * it, labels through the baseline pass. Shapes the captured records do not all carry are built
+ * here: a trial stage, a value deposited across lines, a URL repeating its value, a label that
+ * normalizes to nothing, and codes and addresses holding character references and space runs —
+ * every captured one is already in normal form, so only these can tell byte-exact from normalized.
+ */
+describe('getWorkTool clinical trial numbers and assertions', () => {
+  async function run(overrides: Record<string, unknown>) {
+    mockGetWork.mockResolvedValue(makeRawWork(overrides));
+    const result = await runToolContract(getWorkTool, { doi: '10.1038/nature12373' });
+    expect(result.isError).toBeFalsy();
+    wireSchema.parse(result.structuredContent);
+    return {
+      structured: result.structuredContent,
+      lines: result.content.map(blockText).join('\n').split('\n'),
+    };
+  }
+
+  it('relays a trial number, registry, and stage byte-exact on both surfaces', async () => {
+    const { structured, lines } = await run({
+      'clinical-trial-number': [
+        {
+          'clinical-trial-number': 'ISRCTN12345678',
+          registry: '10.18810/isrctn',
+          type: 'preResults',
+        },
+        { 'clinical-trial-number': 'nct00000001' },
+      ],
+    });
+
+    expect(structured).toMatchObject({
+      clinicalTrialNumbers: [
+        { number: 'ISRCTN12345678', registry: '10.18810/isrctn', type: 'preResults' },
+        { number: 'nct00000001' },
+      ],
+    });
+    const heading = lines.indexOf('**Clinical trial numbers:**');
+    expect(lines.slice(heading + 1, heading + 3)).toEqual([
+      '- ISRCTN12345678 — 10.18810/isrctn (preResults)',
+      '- nct00000001',
+    ]);
+  });
+
+  it('reads a value deposited across lines and in markup as one line of plain text', async () => {
+    const { structured, lines } = await run({
+      assertion: [
+        {
+          name: 'Ethics',
+          value: '  Line one\n   line two\r\n# not a heading\n- nor a bullet <i>x</i> &amp; y',
+          label: ' A&amp;B\n label ',
+          group: { name: 'Group_1', label: 'G &lt;1&gt;' },
+          URL: 'https://example.org/a_b',
+          explanation: { URL: 'https://example.org/why' },
+          order: 3,
+        },
+      ],
+    });
+
+    expect((structured as { assertions: unknown[] }).assertions).toEqual([
+      {
+        name: 'Ethics',
+        value: 'Line one line two # not a heading - nor a bullet x & y',
+        label: 'A&B label',
+        group: 'Group_1',
+        groupLabel: 'G <1>',
+        url: 'https://example.org/a_b',
+        explanationUrl: 'https://example.org/why',
+      },
+    ]);
+    const heading = lines.indexOf('**Assertions:**');
+    expect(lines[heading + 1]).toBe(
+      '- G <1> (Group_1) — A&B label (Ethics): Line one line two # not a heading - nor a bullet x & y — URL: https://example.org/a_b — explanation: https://example.org/why',
+    );
+    expect(lines.some((line) => /^(?:# not|- nor)/.test(line))).toBe(false);
+  });
+
+  /** The comparison reads the value as returned, so one deposited escaped or padded still repeats. */
+  it('omits a url that repeats its normalized value, and keeps one that differs', async () => {
+    const { structured } = await run({
+      assertion: [
+        {
+          name: 'aims_and_scope_url',
+          value: 'https://journal.example/aims',
+          URL: 'https://journal.example/aims',
+        },
+        {
+          name: 'aims_and_scope_url',
+          value: '\n  https://journal.example/scope?a=1&amp;b=2\n',
+          URL: 'https://journal.example/scope?a=1&b=2',
+        },
+        { name: 'related_data', value: 'Data', URL: 'https://doi.org/10.1000/data' },
+      ],
+    });
+
+    expect((structured as { assertions: unknown[] }).assertions).toEqual([
+      { name: 'aims_and_scope_url', value: 'https://journal.example/aims' },
+      { name: 'aims_and_scope_url', value: 'https://journal.example/scope?a=1&b=2' },
+      { name: 'related_data', value: 'Data', url: 'https://doi.org/10.1000/data' },
+    ]);
+  });
+
+  /**
+   * Codes, identifiers, and addresses are relayed as deposited — no reference decoded, no space
+   * collapsed — while a label takes the baseline pass alone: references decoded and whitespace
+   * collapsed, a tag-like run kept as text rather than stripped as markup.
+   */
+  it('relays every code, identifier, and address byte-exact, and each label through the baseline pass', async () => {
+    const { structured } = await run({
+      'clinical-trial-number': [
+        {
+          'clinical-trial-number': 'NCT&amp;0001  ',
+          registry: ' 10.18810/a&amp;b',
+          type: 'post  Results',
+        },
+      ],
+      assertion: [
+        {
+          name: 'peer_review&amp;method ',
+          value: 'v',
+          label: ' <i>Peer</i>  review &amp; method',
+          group: { name: ' peer  review', label: 'Group &amp; <b>label</b>' },
+          URL: 'https://example.org/a?x=1&amp;y=2 ',
+          explanation: { URL: ' https://example.org/why?p=1&amp;q=2' },
+        },
+      ],
+    });
+
+    const { clinicalTrialNumbers, assertions } = structured as {
+      clinicalTrialNumbers: unknown[];
+      assertions: unknown[];
+    };
+    expect(clinicalTrialNumbers).toEqual([
+      { number: 'NCT&amp;0001  ', registry: ' 10.18810/a&amp;b', type: 'post  Results' },
+    ]);
+    expect(assertions).toEqual([
+      {
+        name: 'peer_review&amp;method ',
+        value: 'v',
+        label: '<i>Peer</i> review & method',
+        group: ' peer  review',
+        groupLabel: 'Group & <b>label</b>',
+        url: 'https://example.org/a?x=1&amp;y=2 ',
+        explanationUrl: ' https://example.org/why?p=1&amp;q=2',
+      },
+    ]);
+  });
+
+  it('omits a value, label, or group label that normalizes to nothing, keeping the entry', async () => {
+    const { structured, lines } = await run({
+      assertion: [
+        { name: 'copyright' },
+        { name: 'n', value: ' <p/> ', label: '&#160;', group: { name: 'g', label: '  ' } },
+      ],
+    });
+
+    expect((structured as { assertions: unknown[] }).assertions).toEqual([
+      { name: 'copyright' },
+      { name: 'n', group: 'g' },
+    ]);
+    const heading = lines.indexOf('**Assertions:**');
+    expect(lines.slice(heading + 1, heading + 3)).toEqual(['- copyright', '- g — n']);
+  });
+
+  it('escapes deposited text the way every other deposited value is escaped', async () => {
+    const { structured, lines } = await run({
+      assertion: [{ name: 'note', label: '*Note*', value: '*not* emphasis, _nor_ this, [a](b)' }],
+    });
+
+    expect((structured as { assertions: Array<{ value: string }> }).assertions[0]?.value).toBe(
+      '*not* emphasis, _nor_ this, [a](b)',
+    );
+    const line = lines[lines.indexOf('**Assertions:**') + 1] ?? '';
+    expect(line).toBe('- \\*Note\\* (note): \\*not\\* emphasis, \\_nor\\_ this, [a\\](b)');
+    const html = commonmark(line);
+    expect(html).not.toContain('<em>');
+    expect(html).not.toContain('<a ');
+    expect(renderedText(line)).toBe('*Note* (note): *not* emphasis, _nor_ this, [a](b)\n');
   });
 });

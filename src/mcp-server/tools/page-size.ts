@@ -6,12 +6,14 @@
  * value the page is actually built from.
  *
  * Each input has its own cap: Crossref's page maximum (1000 rows, or the whole deposited list),
- * lowered only where the heaviest page measured at that size runs to megabytes of caller output
- * (`structuredContent` plus `content[]` text), to the largest round size whose heaviest page stays
- * under one. crossref_search_works `rows` has two, keyed on the one input that sets a work's
- * weight: whether `fields` selects `abstract` or `author`. A list whose summary stays light needs
- * no cap of its own — a 1000-row page of funders, or of a funder's or a journal's works, measures
- * under half a megabyte — so it is bounded by `ROWS_CEILING` alone.
+ * lowered only where the heaviest page measured at that size runs past about a megabyte on one
+ * caller surface, to the largest round size whose heaviest page stays near one. The measure is per
+ * surface — `structuredContent` and `content[]` text each, never summed — because a client reads
+ * one or the other; `structuredContent` is the heavier on every page measured. crossref_search_works
+ * `rows` is capped only when `fields` selects `abstract` or `author` (or is omitted, which selects
+ * both): every other selection's heaviest 1000-row page stays under a megabyte. The other lists —
+ * funders, a journal title query (whose 1000 journals with their coverage measure ~1.05 MB of
+ * `structuredContent`), and a funder's or a journal's works — are bounded by `ROWS_CEILING` alone.
  * @module mcp-server/tools/page-size
  */
 
@@ -20,25 +22,21 @@ export const ROWS_CEILING = 1000;
 /** Schema ceiling on the entry-list page sizes. */
 export const ENTRY_LIMIT_CEILING = 100_000;
 
-/** Cap on crossref_search_works `rows`: 250 abstract-bearing works, default fields, measure ~1 MB. */
-export const SEARCH_WORKS_ROWS_CAP = 250;
 /**
- * Cap on crossref_search_works `rows` when `fields` selects neither `abstract` nor `author`: 600 of
- * the heaviest such works found, expression-of-concern notices with every other field — a mass
- * notice's `updateTo` names hundreds of works — measure ~1 MB.
+ * Cap on crossref_search_works `rows` when `fields` selects `abstract` or `author`, or is omitted:
+ * 500 abstract-bearing journal articles with default fields measure ~1.07 MB of
+ * `structuredContent`.
  */
-export const SEARCH_WORKS_LIGHT_ROWS_CAP = 600;
-/**
- * Cap on crossref_search_journals `rows` for the title-query journal list: 500 journals with their
- * coverage measure ~0.9 MB. An issn lookup returns one journal, and the works list is uncapped.
- */
-export const SEARCH_JOURNALS_ROWS_CAP = 500;
-/** Cap on crossref_search_works `authorLimit`, per work: ten whole consortium lists pass 1 MB. */
+export const SEARCH_WORKS_ROWS_CAP = 500;
+/** Cap on crossref_search_works `authorLimit`, per work: six whole consortium lists pass 0.6 MB. */
 export const SEARCH_WORKS_AUTHOR_LIMIT_CAP = 500;
-/** Cap on crossref_get_work `limit`: the longest author list sampled (5,156) is ~0.5 MB whole. */
+/** Cap on crossref_get_work `limit`: the longest author list sampled (5,156) is ~0.3 MB whole. */
 export const GET_WORK_LIMIT_CAP = 10_000;
-/** Cap on crossref_get_references `limit`: 2,500 references measure ~1 MB, 25,814 run to 10 MB. */
-export const GET_REFERENCES_LIMIT_CAP = 2500;
+/**
+ * Cap on crossref_get_references `limit`: 4,000 references measure ~0.9 MB of `structuredContent`;
+ * the longest list sampled, 25,814, runs to 5.9 MB whole.
+ */
+export const GET_REFERENCES_LIMIT_CAP = 4000;
 
 /** A page-size input after the per-call cap is applied. */
 export interface ClampedPageSize {

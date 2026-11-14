@@ -41,6 +41,12 @@ const PAGES: Record<string, { dois: string[]; next?: string }> = {
   MTc5MDE4MjAwMDAwMCwxMC41NTU1L3c0: { dois: [] },
 };
 
+/**
+ * The facet block a `facet=` request is answered with on every page of the walk: counts over the
+ * whole match set, so the same on each page, the empty one included.
+ */
+const FACETS = { 'type-name': { 'value-count': 2, values: { 'Journal Article': 3, Dataset: 1 } } };
+
 /** Answer a works-list request the way Crossref does. */
 function worksPage(request: Request): Response {
   const qs = new URL(request.url).searchParams;
@@ -73,6 +79,7 @@ function worksPage(request: Request): Response {
       'items-per-page': 2,
       items: page.dois.map((DOI) => ({ DOI, type: 'journal-article', title: [DOI] })),
       ...(page.next !== undefined && { 'next-cursor': page.next }),
+      ...(qs.has('facet') && { facets: FACETS }),
     },
   });
 }
@@ -140,7 +147,7 @@ describe('advisory cursor restart notices', () => {
    * notices alone, naming no clamp.
    */
   const ROWS: Record<string, { rows: number; cap?: number }> = {
-    crossref_search_works: { rows: 251, cap: 250 },
+    crossref_search_works: { rows: 501, cap: 500 },
     crossref_search_journals: { rows: 1000 },
     crossref_search_funders: { rows: 1000 },
   };
@@ -357,6 +364,44 @@ describe('a cursor walk on crossref_search_works', () => {
     await page({ filter: { type: 'journal-article' }, cursor: '*' });
     expect(sent()[0]?.get('sort')).toBeNull();
     expect(sent()[0]?.get('filter')).toBe('type:journal-article');
+  });
+
+  it('carries the same facet counts on every page, and ends the walk on the empty page', async () => {
+    const pages: ToolResult[] = [];
+    let cursor: string | undefined = '*';
+    while (cursor !== undefined) {
+      const result: ToolResult = await runToolContract(searchWorksTool, {
+        filter: { type: 'journal-article' },
+        rows: 2,
+        cursor,
+        facets: { 'type-name': '*' },
+      });
+      expect(result.isError).toBeFalsy();
+      pages.push(result);
+      cursor = (result.structuredContent as { nextCursor?: string }).nextCursor;
+    }
+
+    const structured = pages.map(
+      (result) =>
+        result.structuredContent as { works: unknown[]; facets?: unknown; notice?: string },
+    );
+    expect(structured.map((s) => s.works.length)).toEqual([2, 2, 0]);
+    for (const [index, s] of structured.entries()) {
+      expect(s.facets, `page ${index}`).toEqual([
+        {
+          name: 'type-name',
+          values: [
+            { value: 'Journal Article', count: 3 },
+            { value: 'Dataset', count: 1 },
+          ],
+        },
+      ]);
+      expect(textOf(pages[index] as ToolResult)).toContain('- Journal Article: 3\n- Dataset: 1');
+    }
+    expect(structured[2]?.notice).toContain('walk is complete');
+    const second = PAGES['*']?.next ?? '';
+    expect(sent().map((qs) => qs.get('cursor'))).toEqual(['*', second, PAGES[second]?.next]);
+    for (const qs of sent()) expect(qs.get('facet')).toBe('type-name:*');
   });
 
   it('still refuses a publication-date sort beside a cursor as sort_cursor_conflict', async () => {

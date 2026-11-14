@@ -1,0 +1,622 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2026, 10, 30]],
+      "date-time": "2026-10-30T22:11:47Z",
+      "timestamp": 1793398307040,
+      "version": "4.5.0"
+    },
+    "reference-count": 110,
+    "publisher": "Wiley",
+    "issue": "4",
+    "license": [
+      {
+        "start": {
+          "date-parts": [[2025, 4, 6]],
+          "date-time": "2025-04-06T00:00:00Z",
+          "timestamp": 1743897600000
+        },
+        "content-version": "vor",
+        "delay-in-days": 5,
+        "URL": "http:\/\/creativecommons.org\/licenses\/by\/4.0\/"
+      }
+    ],
+    "content-domain": {
+      "domain": ["alz-journals.onlinelibrary.wiley.com"],
+      "crossmark-restriction": true
+    },
+    "short-container-title": ["Alzheimer's &amp;amp; Dementia"],
+    "published-print": { "date-parts": [[2025, 4]] },
+    "abstract": "<jats:title>Abstract<\/jats:title><jats:sec><jats:label\/><jats:p>Prediction models have been developed to identify mild cognitive impairment (MCI) cases likely to convert to dementia. This systematic review summarizes multi\u2010source prediction models for MCI to dementia conversion. PubMed and Embase were searched for model development and validation studies from inception up to January 18 2024. Models were assessed for included predictors, predictive performance, risk of bias, and generalizability. 62 studies were included: 41 machine learning models, 11 regression models, and 5 disease state indexes. The number of predictors in the models ranged from 2 to 60; magnetic resonance imaging (MRI) and cognitive scores were the most common sources. Performance measures indicate reasonable predictive capabilities (area under the curve [AUC] range: 0.58\u20130.98, accuracy range: 66.1\u201396.3%); however, most studies are at high risk of bias and 47 studies lack external validation. Currently, no highly valid prediction model is available for MCI to dementia conversion risk due to limited generalizability and high risk of bias in most studies.<\/jats:p><\/jats:sec><jats:sec><jats:title>Highlights<\/jats:title><jats:p><jats:list list-type=\"bullet\">\n<jats:list-item><jats:p>Numerous models have been developed to predict the likelihood of conversion to dementia in individuals with MCI.<\/jats:p><\/jats:list-item>\n<jats:list-item><jats:p>Prediction models seem to have a reasonably good performance in predicting conversion to dementia, however, external validation and generalizability is often lacking.<\/jats:p><\/jats:list-item>\n<jats:list-item><jats:p>There is no prediction model available with a low risk for bias and that has been externally validated to accurately predict the risk of MCI to dementia conversion.<\/jats:p><\/jats:list-item>\n<jats:list-item><jats:p>For MCI to dementia conversion prediction models, more emphasis should be directed towards external validation, generalizability, and clinical applicability.<\/jats:p><\/jats:list-item>\n<\/jats:list><\/jats:p><\/jats:sec>",
+    "DOI": "10.1002\/alz.70069",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [[2025, 4, 7]],
+      "date-time": "2025-04-07T00:31:32Z",
+      "timestamp": 1743985892000
+    },
+    "update-policy": "https:\/\/doi.org\/10.1002\/crossmark_policy",
+    "source": "Crossref",
+    "is-referenced-by-count": 25,
+    "title": [
+      "Limited generalizability and high risk of bias in multivariable models predicting conversion risk from mild cognitive impairment to dementia: A systematic review"
+    ],
+    "prefix": "10.1002",
+    "volume": "21",
+    "author": [
+      {
+        "ORCID": "https:\/\/orcid.org\/0000-0003-3054-8459",
+        "authenticated-orcid": false,
+        "given": "Robin Jeanna",
+        "family": "Vermeulen",
+        "sequence": "first",
+        "affiliation": [
+          {
+            "name": "Department of Medical Imaging Radboud University Medical Centre  Nijmegen The Netherlands"
+          }
+        ],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "given": "Vebj\u00f8rn",
+        "family": "Andersson",
+        "sequence": "additional",
+        "affiliation": [
+          { "name": "Department of Neurology Oslo University Hospital  Oslo Norway" }
+        ],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "given": "Jimmy",
+        "family": "Banken",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Department of Medical Imaging Radboud University Medical Centre  Nijmegen The Netherlands"
+          }
+        ],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "given": "Gerjon",
+        "family": "Hannink",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Department of Medical Imaging Radboud University Medical Centre  Nijmegen The Netherlands"
+          }
+        ],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "given": "Tim Martin",
+        "family": "Govers",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Department of Medical Imaging Radboud University Medical Centre  Nijmegen The Netherlands"
+          }
+        ],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "given": "Maroeska Mariet",
+        "family": "Rovers",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Department of Medical Imaging Radboud University Medical Centre  Nijmegen The Netherlands"
+          }
+        ],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "given": "Marcel Gerardus Maria Olde",
+        "family": "Rikkert",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Radboudumc Alzheimer Centre Department of Geriatrics Radboud University Medical Centre  Nijmegen The Netherlands"
+          }
+        ],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      }
+    ],
+    "member": "311",
+    "published-online": { "date-parts": [[2025, 4, 6]] },
+    "reference": [
+      {
+        "key": "e_1_2_7_2_1",
+        "article-title": "Impact of dementia on informal care: a systematic review of family caregivers' perceptions",
+        "author": "Lindeza P",
+        "year": "2020",
+        "journal-title": "BMJ Support Palliat Care"
+      },
+      {
+        "key": "e_1_2_7_3_1",
+        "volume-title": "Global status report on the public health response to dementia",
+        "author": "WHO",
+        "year": "2021"
+      },
+      {
+        "key": "e_1_2_7_4_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/S2468-2667(21)00249-8"
+      },
+      {
+        "key": "e_1_2_7_5_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/S1474-4422(09)70299-6"
+      },
+      {
+        "key": "e_1_2_7_6_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1126\/scitranslmed.3002609"
+      },
+      {
+        "key": "e_1_2_7_7_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1001\/jamainternmed.2023.6279"
+      },
+      { "key": "e_1_2_7_8_1", "doi-asserted-by": "publisher", "DOI": "10.1007\/s40266-015-0266-9" },
+      { "key": "e_1_2_7_9_1", "doi-asserted-by": "publisher", "DOI": "10.1177\/1756285612461679" },
+      {
+        "key": "e_1_2_7_10_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1017\/S1092852918001347"
+      },
+      {
+        "key": "e_1_2_7_11_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1111\/j.1365-2796.2004.01388.x"
+      },
+      {
+        "key": "e_1_2_7_12_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1001\/archneur.58.12.1985"
+      },
+      {
+        "key": "e_1_2_7_13_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1080\/15622975.2019.1696473"
+      },
+      { "key": "e_1_2_7_14_1", "doi-asserted-by": "publisher", "DOI": "10.1136\/jnnp-2014-310095" },
+      { "key": "e_1_2_7_15_1", "doi-asserted-by": "publisher", "DOI": "10.1136\/jnnp-2018-318212" },
+      {
+        "key": "e_1_2_7_16_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1523\/JNEUROSCI.3785-09.2010"
+      },
+      {
+        "key": "e_1_2_7_17_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1212\/WNL.0b013e3181e8e8b8"
+      },
+      {
+        "key": "e_1_2_7_18_1",
+        "doi-asserted-by": "crossref",
+        "DOI": "10.1136\/bmj-2022-073538",
+        "article-title": "Transparent reporting of multivariable prediction models for individual prognosis or diagnosis: checklist for systematic reviews and meta\u2010analyses (TRIPOD\u2010SRMA)",
+        "volume": "381",
+        "author": "Snell KIE",
+        "year": "2023",
+        "journal-title": "Bmj"
+      },
+      { "key": "e_1_2_7_19_1", "doi-asserted-by": "publisher", "DOI": "10.1002\/jrsm.1563" },
+      {
+        "key": "e_1_2_7_20_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1186\/s13643-016-0384-4"
+      },
+      { "key": "e_1_2_7_21_1", "doi-asserted-by": "publisher", "DOI": "10.7326\/M18-1377" },
+      { "key": "e_1_2_7_22_1", "doi-asserted-by": "publisher", "DOI": "10.7326\/M18-1376" },
+      {
+        "key": "e_1_2_7_23_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1371\/journal.pmed.1001744"
+      },
+      {
+        "key": "e_1_2_7_24_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.jalz.2011.03.005"
+      },
+      {
+        "key": "e_1_2_7_25_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1212\/WNL.0b013e3181cb3e25"
+      },
+      {
+        "key": "e_1_2_7_26_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.neuroimage.2017.10.034"
+      },
+      {
+        "issue": "1",
+        "key": "e_1_2_7_27_1",
+        "article-title": "Machine learning approach for improved longitudinal prediction of progression from mild cognitive impairment to Alzheimer's disease",
+        "volume": "14",
+        "author": "Adelson RP",
+        "year": "2023",
+        "journal-title": "Diagnostics (Basel)"
+      },
+      { "key": "e_1_2_7_28_1", "doi-asserted-by": "publisher", "DOI": "10.3233\/JAD-160594" },
+      { "key": "e_1_2_7_29_1", "doi-asserted-by": "publisher", "DOI": "10.3233\/JAD-230893" },
+      {
+        "key": "e_1_2_7_30_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.jalz.2013.12.014"
+      },
+      {
+        "key": "e_1_2_7_31_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.2967\/jnumed.119.230797"
+      },
+      { "key": "e_1_2_7_32_1", "doi-asserted-by": "publisher", "DOI": "10.3233\/JAD-170833" },
+      { "key": "e_1_2_7_33_1", "doi-asserted-by": "publisher", "DOI": "10.3390\/brainsci13111535" },
+      {
+        "key": "e_1_2_7_34_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.nbd.2023.106310"
+      },
+      {
+        "key": "e_1_2_7_35_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1080\/13803395.2022.2115015"
+      },
+      {
+        "key": "e_1_2_7_36_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.3389\/fnagi.2022.898940"
+      },
+      {
+        "key": "e_1_2_7_37_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.biopsych.2008.06.020"
+      },
+      { "key": "e_1_2_7_38_1", "doi-asserted-by": "publisher", "DOI": "10.3233\/JAD-215640" },
+      {
+        "key": "e_1_2_7_39_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41598-021-82098-3"
+      },
+      {
+        "key": "e_1_2_7_40_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.neuroscience.2023.01.029"
+      },
+      {
+        "key": "e_1_2_7_41_1",
+        "first-page": "1",
+        "article-title": "Predictive modeling of Alzheimer's disease prognosis using anatomical & diffusion MRI",
+        "volume": "2023",
+        "author": "Goel N",
+        "year": "2023",
+        "journal-title": "Annu Int Conf IEEE Eng Med Biol Soc"
+      },
+      { "key": "e_1_2_7_42_1", "doi-asserted-by": "publisher", "DOI": "10.3389\/fneur.2019.00756" },
+      {
+        "key": "e_1_2_7_43_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.2174\/1567205012666141218123829"
+      },
+      {
+        "key": "e_1_2_7_44_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1186\/s12967-023-04646-x"
+      },
+      { "key": "e_1_2_7_45_1", "doi-asserted-by": "publisher", "DOI": "10.3233\/JAD-170507" },
+      { "key": "e_1_2_7_46_1", "doi-asserted-by": "publisher", "DOI": "10.3389\/fnins.2018.00260" },
+      { "key": "e_1_2_7_47_1", "doi-asserted-by": "publisher", "DOI": "10.3233\/JAD-215266" },
+      {
+        "key": "e_1_2_7_48_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1371\/journal.pone.0138866"
+      },
+      {
+        "key": "e_1_2_7_49_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1371\/journal.pone.0113535"
+      },
+      {
+        "key": "e_1_2_7_50_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41598-018-37769-z"
+      },
+      {
+        "key": "e_1_2_7_51_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.dadm.2018.09.002"
+      },
+      { "key": "e_1_2_7_52_1", "doi-asserted-by": "publisher", "DOI": "10.3233\/JAD-2012-120934" },
+      {
+        "key": "e_1_2_7_53_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.neurad.2017.05.008"
+      },
+      { "key": "e_1_2_7_54_1", "doi-asserted-by": "publisher", "DOI": "10.1159\/000354074" },
+      { "key": "e_1_2_7_55_1", "doi-asserted-by": "publisher", "DOI": "10.14283\/jpad.2023.10" },
+      {
+        "key": "e_1_2_7_56_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.3389\/fneur.2022.906257"
+      },
+      {
+        "key": "e_1_2_7_57_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.acra.2022.12.033"
+      },
+      {
+        "key": "e_1_2_7_58_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.jneumeth.2020.108698"
+      },
+      {
+        "key": "e_1_2_7_59_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1007\/s11682-020-00366-8"
+      },
+      { "key": "e_1_2_7_60_1", "doi-asserted-by": "publisher", "DOI": "10.3233\/JAD-130359" },
+      {
+        "key": "e_1_2_7_61_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1177\/17562864211029551"
+      },
+      {
+        "key": "e_1_2_7_62_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.neurobiolaging.2018.05.006"
+      },
+      {
+        "key": "e_1_2_7_63_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1093\/gigascience\/giz055"
+      },
+      { "key": "e_1_2_7_64_1", "doi-asserted-by": "publisher", "DOI": "10.1002\/jmri.27689" },
+      {
+        "key": "e_1_2_7_65_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41598-019-38793-3"
+      },
+      { "key": "e_1_2_7_66_1", "doi-asserted-by": "publisher", "DOI": "10.3233\/JAD-160102" },
+      {
+        "key": "e_1_2_7_67_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.jclinepi.2023.03.009"
+      },
+      {
+        "key": "e_1_2_7_68_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.pscychresns.2014.08.005"
+      },
+      { "key": "e_1_2_7_69_1", "doi-asserted-by": "publisher", "DOI": "10.1093\/ageing\/afad182" },
+      { "key": "e_1_2_7_70_1", "doi-asserted-by": "publisher", "DOI": "10.3233\/JAD-151010" },
+      {
+        "key": "e_1_2_7_71_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1371\/journal.pone.0047406"
+      },
+      { "key": "e_1_2_7_72_1", "doi-asserted-by": "publisher", "DOI": "10.1186\/1471-2377-12-46" },
+      {
+        "key": "e_1_2_7_73_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.nicl.2019.102121"
+      },
+      {
+        "key": "e_1_2_7_74_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1371\/journal.pone.0021896"
+      },
+      { "key": "e_1_2_7_75_1", "doi-asserted-by": "publisher", "DOI": "10.3233\/JAD-150570" },
+      { "key": "e_1_2_7_76_1", "doi-asserted-by": "publisher", "DOI": "10.3233\/JAD-190262" },
+      { "key": "e_1_2_7_77_1", "doi-asserted-by": "publisher", "DOI": "10.3233\/JAD-140942" },
+      {
+        "key": "e_1_2_7_78_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1007\/s00702-012-0812-0"
+      },
+      {
+        "key": "e_1_2_7_79_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.neurobiolaging.2018.04.009"
+      },
+      {
+        "key": "e_1_2_7_80_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1109\/TBME.2016.2549363"
+      },
+      {
+        "key": "e_1_2_7_81_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1001\/jamaneurol.2017.2712"
+      },
+      {
+        "key": "e_1_2_7_82_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.dadm.2019.04.011"
+      },
+      {
+        "key": "e_1_2_7_83_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.neuroimage.2012.04.056"
+      },
+      {
+        "key": "e_1_2_7_84_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.nicl.2013.05.004"
+      },
+      { "key": "e_1_2_7_85_1", "doi-asserted-by": "publisher", "DOI": "10.1155\/2012\/483469" },
+      {
+        "key": "e_1_2_7_86_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1371\/journal.pone.0055246"
+      },
+      { "key": "e_1_2_7_87_1", "doi-asserted-by": "publisher", "DOI": "10.3233\/JAD-150548" },
+      {
+        "key": "e_1_2_7_88_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/S1474-4422(19)30283-2"
+      },
+      {
+        "key": "e_1_2_7_89_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/S2589-7500(20)30200-4"
+      },
+      {
+        "key": "e_1_2_7_90_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1186\/s12874-022-01754-y"
+      },
+      {
+        "key": "e_1_2_7_91_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.bionps.2019.100005"
+      },
+      {
+        "key": "e_1_2_7_92_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1186\/s12962-021-00300-9"
+      },
+      { "key": "e_1_2_7_93_1", "doi-asserted-by": "publisher", "DOI": "10.3390\/jpm10030114" },
+      {
+        "key": "e_1_2_7_94_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.jalz.2007.07.011"
+      },
+      {
+        "key": "e_1_2_7_95_1",
+        "unstructured": "ADNI.Alzheimer's Disease Neuroimaging Initiative [8\u20104\u20102024].Alzheimer's Disease Neuroimaging Initiative.https:\/\/adni.loni.usc.edu\/"
+      },
+      { "key": "e_1_2_7_96_1", "doi-asserted-by": "publisher", "DOI": "10.1002\/alz.12640" },
+      {
+        "key": "e_1_2_7_97_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1111\/j.1600-0447.2008.01326.x"
+      },
+      { "key": "e_1_2_7_98_1", "doi-asserted-by": "publisher", "DOI": "10.1002\/sim.7992" },
+      { "key": "e_1_2_7_99_1", "doi-asserted-by": "publisher", "DOI": "10.1177\/0962280218784726" },
+      {
+        "key": "e_1_2_7_100_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1186\/s13195-019-0482-3"
+      },
+      { "key": "e_1_2_7_101_1", "doi-asserted-by": "publisher", "DOI": "10.1136\/bmj.d5928" },
+      {
+        "key": "e_1_2_7_102_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1136\/bmjopen-2020-048008"
+      },
+      {
+        "key": "e_1_2_7_103_1",
+        "doi-asserted-by": "crossref",
+        "DOI": "10.1136\/bmj-2023-078378",
+        "article-title": "TRIPOD+AI statement: updated guidance for reporting clinical prediction models that use regression or machine learning methods",
+        "volume": "385",
+        "author": "Collins GS",
+        "year": "2024",
+        "journal-title": "BMJ"
+      },
+      { "key": "e_1_2_7_104_1", "doi-asserted-by": "publisher", "DOI": "10.7326\/M14-0698" },
+      {
+        "key": "e_1_2_7_105_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1371\/journal.pone.0032844"
+      },
+      {
+        "key": "e_1_2_7_106_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1186\/s13643-017-0644-y"
+      },
+      { "key": "e_1_2_7_107_1", "doi-asserted-by": "publisher", "DOI": "10.1096\/fj.07-9492LSF" },
+      {
+        "key": "e_1_2_7_108_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.3389\/fnagi.2022.840386"
+      },
+      {
+        "issue": "10",
+        "key": "e_1_2_7_109_1",
+        "first-page": "1083",
+        "article-title": "Application of MR radiomics in predicting the prognosis of amnestic mild cognitive impairment patients",
+        "volume": "56",
+        "author": "Li X",
+        "year": "2022",
+        "journal-title": "Chin J Radiol (China)"
+      },
+      {
+        "key": "e_1_2_7_110_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/S0140-6736(20)30367-6"
+      },
+      {
+        "key": "e_1_2_7_111_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1186\/s12963-016-0107-z"
+      }
+    ],
+    "container-title": ["Alzheimer's &amp; Dementia"],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "https:\/\/alz-journals.onlinelibrary.wiley.com\/doi\/pdf\/10.1002\/alz.70069",
+        "content-type": "unspecified",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2025, 10, 8]],
+      "date-time": "2025-10-08T20:57:01Z",
+      "timestamp": 1759957021000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https:\/\/alz-journals.onlinelibrary.wiley.com\/doi\/10.1002\/alz.70069"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": { "date-parts": [[2025, 4]] },
+    "references-count": 110,
+    "journal-issue": { "issue": "4", "published-print": { "date-parts": [[2025, 4]] } },
+    "alternative-id": ["10.1002\/alz.70069"],
+    "URL": "https:\/\/doi.org\/10.1002\/alz.70069",
+    "archive": ["Portico"],
+    "relation": {},
+    "ISSN": ["1552-5260", "1552-5279"],
+    "issn-type": [
+      { "value": "1552-5260", "type": "print" },
+      { "value": "1552-5279", "type": "electronic" }
+    ],
+    "subject": [],
+    "published": { "date-parts": [[2025, 4]] },
+    "assertion": [
+      {
+        "value": "2024-06-19",
+        "order": 0,
+        "name": "received",
+        "label": "Received",
+        "group": { "name": "publication_history", "label": "Publication History" }
+      },
+      {
+        "value": "2025-02-09",
+        "order": 2,
+        "name": "accepted",
+        "label": "Accepted",
+        "group": { "name": "publication_history", "label": "Publication History" }
+      },
+      {
+        "value": "2025-04-06",
+        "order": 3,
+        "name": "published",
+        "label": "Published",
+        "group": { "name": "publication_history", "label": "Publication History" }
+      }
+    ],
+    "article-number": "e70069"
+  }
+}

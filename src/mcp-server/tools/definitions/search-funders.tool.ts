@@ -52,7 +52,7 @@ const FunderSchema = z
       .number()
       .optional()
       .describe(
-        "Works asserting this registry ID alone — the total a crossref_search_works funder filter on this ID returns, not counting the funder's registry descendants. Returned on a funder_doi lookup; name-query rows omit it.",
+        'The Funder Registry record\'s own work count for this ID, not counting the funder\'s registry descendants. It can differ from the total a crossref_search_works funder filter on the ID returns, which counts the works asserting it: for that exact figure, call crossref_search_works with filter {"funder": "<id>"} and rows: 0, and read totalResults. Returned on a funder_doi lookup; name-query rows omit it.',
       ),
     replacedBy: z
       .array(z.string())
@@ -64,7 +64,7 @@ const FunderSchema = z
       .array(z.string())
       .optional()
       .describe(
-        'Registry IDs this funder supersedes. Present only when the funder has absorbed a deprecated entry; works registered against those IDs are not counted here.',
+        'Registry IDs this funder supersedes. Present only when the funder has absorbed a deprecated entry. A work asserting only one of these IDs is counted by neither the funded-works list nor a crossref_search_works funder filter on this ID; OR them with this ID in that filter to count the funder\'s whole history: {"funder": "<id>,funder:<replaced>,…"}.',
       ),
     descendants: z
       .array(z.string())
@@ -96,7 +96,7 @@ const WorkSummarySchema = z
 export const searchFundersTool = tool('crossref_search_funders', {
   title: 'Search Funders',
   description:
-    'Finds funders registered in the Crossref Funder Registry by name or funder DOI. Provide funder_doi for an exact single-funder lookup — the full DOI ("10.13039/100000001"), the bare registry ID ("100000001"), or either behind a doi: or https://doi.org/ prefix — or query for name-based search. Name-query results page with offset — the nextOffset enrichment carries the value for the following page, up to offset + rows = 100000. Set include_works to true to also return a page of the most recent works funded by the matched funder; that list pages two ways, in two orders. works_offset is the simple one: newest published first, capped ten times lower at works_offset + rows = 10000. works_cursor has no ceiling and reaches the whole funded-works list, newest registered first — ordered by the date each DOI was registered with Crossref, since Crossref does not walk a publication-date sort by cursor: pass works_cursor="*" on the first call, then chain the nextWorksCursor token from each response. The two cannot be combined, and a cursor walk always starts at the most recently registered work — it cannot resume from an offset. This list also counts works funded by the funder\'s registry descendants, which a crossref_search_works filter on {"funder": "10.13039/<id>"} does not; a funder_doi lookup returns those descendants\' registry IDs as descendants, and the funder\'s own ID OR\'d with each of them in the funder filter ({"funder": "<id>,funder:<descendant>,…"}) counts the same scope with date, type, or other filters. Returns funder name, registry ID, country, and alternate names, plus the work count of the ID alone on a funder_doi lookup. The Funder Registry supersedes entries, and a deprecated one answers to the same names as its successor while carrying only a fraction of its works: such a record carries replacedBy with the superseding registry ID and the response carries a notice naming it. The replacement is never followed automatically — re-run with funder_doi set to that ID to get the current entry.',
+    'Finds funders registered in the Crossref Funder Registry by name or funder DOI. Provide funder_doi for an exact single-funder lookup — the full DOI ("10.13039/100000001"), the bare registry ID ("100000001"), or either behind a doi: or https://doi.org/ prefix — or query for name-based search. Name-query results page with offset — the nextOffset enrichment carries the value for the following page, up to offset + rows = 100000. Set include_works to true to also return a page of the most recent works funded by the matched funder; that list pages two ways, in two orders. works_offset is the simple one: newest published first, capped ten times lower at works_offset + rows = 10000. works_cursor has no ceiling and reaches the whole funded-works list, newest registered first — ordered by the date each DOI was registered with Crossref, since Crossref does not walk a publication-date sort by cursor: pass works_cursor="*" on the first call, then chain the nextWorksCursor token from each response. The two cannot be combined, and a cursor walk always starts at the most recently registered work — it cannot resume from an offset. This list also counts works funded by the funder\'s registry descendants, which a crossref_search_works filter on {"funder": "10.13039/<id>"} does not; a funder_doi lookup returns those descendants\' registry IDs as descendants, and the funder\'s own ID OR\'d with each of them in the funder filter ({"funder": "<id>,funder:<descendant>,…"}) counts the same scope with date, type, or other filters. Returns funder name, registry ID, country, and alternate names, plus the Funder Registry\'s own work count for the ID on a funder_doi lookup. The Funder Registry supersedes entries, and a deprecated one answers to the same names as its successor while carrying only a fraction of its works: such a record carries replacedBy with the superseding registry ID and the response carries a notice naming it. The replacement is never followed automatically — re-run with funder_doi set to that ID to get the current entry.',
   annotations: { readOnlyHint: true, openWorldHint: true },
 
   errors: [
@@ -559,7 +559,7 @@ export const searchFundersTool = tool('crossref_search_funders', {
       if (f.uri) lines.push(`**URI:** ${f.uri}`);
       if (f.country) lines.push(`**Country:** ${mdText(f.country)}`);
       if (f.altNames?.length) lines.push(`**Also known as:** ${f.altNames.map(mdText).join(', ')}`);
-      if (f.worksCount !== undefined) lines.push(`**Works in Crossref:** ${f.worksCount}`);
+      if (f.worksCount !== undefined) lines.push(`**Registry work count:** ${f.worksCount}`);
       if (f.replacedBy?.length)
         lines.push(`**Deprecated — replaced by:** ${f.replacedBy.join(', ')}`);
       if (f.replaces?.length) lines.push(`**Replaces:** ${f.replaces.join(', ')}`);

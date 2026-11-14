@@ -142,6 +142,15 @@ const BLOCK_OPENER = new RegExp(
      * `format()` wrote above it and turns that into a heading.
      */
     '[-=]+$',
+    /**
+     * A link reference definition: a bracketed label, then `:`. The renderer consumes it whole,
+     * label and destination alike. The colon is either the value's own or the one `format()`
+     * writes after a value that ends on the label — a facet line is `- <value>: <count>` — so a
+     * label that ends the value opens one too. A label holds no unescaped bracket and, in
+     * CommonMark, at most 999 characters, so the look-ahead stops there rather than reading a
+     * long value to its end.
+     */
+    String.raw`\[(?=(?:[^\\\[\]]|\\.){0,999}\](?::|$))`,
   ].join('|')})`,
 );
 

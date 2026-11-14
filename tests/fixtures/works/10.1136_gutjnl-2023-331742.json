@@ -1,0 +1,986 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2026, 11, 3]],
+      "date-time": "2026-11-03T19:27:05Z",
+      "timestamp": 1793734025549,
+      "version": "4.6.1"
+    },
+    "reference-count": 116,
+    "publisher": "BMJ",
+    "issue": "9",
+    "license": [
+      {
+        "start": {
+          "date-parts": [[2025, 2, 23]],
+          "date-time": "2025-02-23T00:00:00Z",
+          "timestamp": 1740268800000
+        },
+        "content-version": "unspecified",
+        "delay-in-days": 0,
+        "URL": "http:\/\/creativecommons.org\/licenses\/by-nc\/4.0\/"
+      }
+    ],
+    "funder": [
+      {
+        "DOI": "10.13039\/501100020082",
+        "name": "Direcci\u00f3n General de Industria, Energia y Proyectos Estrategicos S3, Gobierno de Navarra",
+        "doi-asserted-by": "publisher",
+        "award": ["0011\u20131411-2023"],
+        "award-info": [{ "award-number": ["0011\u20131411-2023"] }],
+        "id": [{ "id": "10.13039\/501100020082", "id-type": "DOI", "asserted-by": "publisher" }]
+      },
+      {
+        "DOI": "10.13039\/100019533",
+        "name": "Moderna",
+        "doi-asserted-by": "publisher",
+        "award": ["X"],
+        "award-info": [{ "award-number": ["X"] }],
+        "id": [{ "id": "10.13039\/100019533", "id-type": "DOI", "asserted-by": "publisher" }]
+      },
+      {
+        "name": "Ministerio de Ciencia Innovaci\u00f3n y Universidades. Spain",
+        "award": ["CPP2023-010787"],
+        "award-info": [{ "award-number": ["CPP2023-010787"] }]
+      },
+      {
+        "DOI": "10.13039\/501100004587",
+        "name": "Instituto de Salud Carlos III",
+        "doi-asserted-by": "publisher",
+        "award": ["PI21\/00546"],
+        "award-info": [{ "award-number": ["PI21\/00546"] }],
+        "id": [{ "id": "10.13039\/501100004587", "id-type": "DOI", "asserted-by": "publisher" }]
+      },
+      {
+        "DOI": "10.13039\/501100004587",
+        "name": "Instituto de Salud Carlos III",
+        "doi-asserted-by": "publisher",
+        "award": ["PI22\/00147"],
+        "award-info": [{ "award-number": ["PI22\/00147"] }],
+        "id": [{ "id": "10.13039\/501100004587", "id-type": "DOI", "asserted-by": "publisher" }]
+      },
+      {
+        "DOI": "10.13039\/501100004587",
+        "name": "Instituto de Salud Carlos III",
+        "doi-asserted-by": "publisher",
+        "award": ["PI24\/00489"],
+        "award-info": [{ "award-number": ["PI24\/00489"] }],
+        "id": [{ "id": "10.13039\/501100004587", "id-type": "DOI", "asserted-by": "publisher" }]
+      }
+    ],
+    "content-domain": { "domain": ["bmj.com"], "crossmark-restriction": true },
+    "short-container-title": ["Gut"],
+    "accepted": { "date-parts": [[2025, 1, 28]] },
+    "published-print": { "date-parts": [[2025, 9]] },
+    "abstract": "<jats:p>RNA-based therapeutics have rapidly emerged over the past decade, offering a new class of medicines that differ significantly from conventional drugs. These therapies can be programmed to target or restore defective genes, allowing for more personalised treatments and reducing side effects. Notably, RNA therapies have made significant progress in the treatment of genetic liver diseases, exemplified by small interfering RNA treatments for hereditary transthyretin amyloidosis, which use liver-targeting strategies such as GalNAc conjugation to improve efficacy and safety. RNA-based gene-editing technologies, such as base editor and prime editor clustered regularly interspaced short palindromic repeats systems, also show promise with their ability to minimise genomic rearrangements and cancer risk. While RNA therapies offer high precision, challenges remain in optimising delivery methods and ensuring long-term safety and efficacy. Lipid nanoparticle-mRNA therapeutics, particularly for protein replacement in rare diseases, have gained support from preclinical successes. Compared with viral gene therapies, mRNA therapies present a safer profile with reduced risks of genomic integration and oncogene activation. However, clinical trials, especially for rare diseases, face limitations such as small sample sizes and short observation periods. Further preclinical studies, including non-human primates, will be essential for refining trial designs. Despite their potential, the high costs of RNA therapies pose a challenge that will require cost\u2013utility models to guide pricing and accessibility. Here, we discuss the fundamental aspects of RNA-based therapeutics and showcase the most relevant preclinical and clinical developments in genetic liver metabolic diseases.<\/jats:p>",
+    "DOI": "10.1136\/gutjnl-2023-331742",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [[2025, 2, 23]],
+      "date-time": "2025-02-23T13:20:41Z",
+      "timestamp": 1740316841000
+    },
+    "page": "1514-1527",
+    "update-policy": "https:\/\/doi.org\/10.1136\/crossmarkpolicy",
+    "source": "Crossref",
+    "is-referenced-by-count": 25,
+    "title": ["RNA-based therapies in liver metabolic diseases"],
+    "prefix": "10.1136",
+    "volume": "74",
+    "clinical-trial-number": [
+      { "clinical-trial-number": "nct03997383", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct01960348", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct03759379", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct04153149", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct04136184", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct04136171", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct04136184", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct03681184", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct04042402", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct04555486", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct03338816", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct02658175", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct04929249", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct01598948", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct00694109", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct00607373", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct00794664", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct00770146", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct01475825", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct03945292", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct06239714", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct04641299", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct04823611", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct04964557", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct06397001", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct04459767", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct04516291", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct04899310", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct06147856", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct05095727", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct04990388", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct03767270", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct04442347", "registry": "10.18810\/clinical-trials-gov" },
+      { "clinical-trial-number": "nct06488313", "registry": "10.18810\/clinical-trials-gov" }
+    ],
+    "author": [
+      {
+        "given": "Antonio",
+        "family": "Fontanellas",
+        "sequence": "first",
+        "affiliation": [
+          {
+            "name": "Hepatology, Porphyrias and Carcinogenesis Laboratory, Solid Tumors Program, CIMA, CCUN, University of Navarra, Pamplona, Spain"
+          },
+          {
+            "name": "Centro de Investigaci\u00f3n Biom\u00e9dica en Red, Area de Enfermedades Hep\u00e1ticas y Digestivas (CIBERehd), Madrid, Spain"
+          },
+          { "name": "Instituto de Investigaciones Sanitarias de Navarra (IdiSNA), Pamplona, Spain" }
+        ],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "ORCID": "https:\/\/orcid.org\/0000-0001-7410-1865",
+        "authenticated-orcid": false,
+        "given": "Pedro",
+        "family": "Berraondo",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Instituto de Investigaciones Sanitarias de Navarra (IdiSNA), Pamplona, Spain"
+          },
+          {
+            "name": "Immunology and Immunotherapy Program, CIMA, CCUN, University of Navarra, Pamplona, Spain"
+          },
+          {
+            "name": "Centro de Investigaci\u00f3n Biom\u00e9dica en Red, Area de Oncologia (CIBERonc), Madrid, Spain"
+          }
+        ],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "given": "Francesco",
+        "family": "Urigo",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Hepatology, Porphyrias and Carcinogenesis Laboratory, Solid Tumors Program, CIMA, CCUN, University of Navarra, Pamplona, Spain"
+          }
+        ],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "given": "Daniel",
+        "family": "Jeric\u00f3",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Hepatology, Porphyrias and Carcinogenesis Laboratory, Solid Tumors Program, CIMA, CCUN, University of Navarra, Pamplona, Spain"
+          }
+        ],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "given": "Paolo G V",
+        "family": "Martini",
+        "sequence": "additional",
+        "affiliation": [{ "name": "ReAlta Life Sciences, Norfolk, Virginia, USA" }],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "given": "Fernando",
+        "family": "Pastor",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Molecular Therapeutics Program, CIMA, CCUN, University of Navarra, Pamplona, Spain"
+          }
+        ],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "ORCID": "https:\/\/orcid.org\/0000-0001-6570-3557",
+        "authenticated-orcid": false,
+        "given": "Matias A",
+        "family": "Avila",
+        "sequence": "additional",
+        "affiliation": [
+          {
+            "name": "Centro de Investigaci\u00f3n Biom\u00e9dica en Red, Area de Enfermedades Hep\u00e1ticas y Digestivas (CIBERehd), Madrid, Spain"
+          },
+          {
+            "name": "Instituto de Investigaciones Sanitarias de Navarra (IdiSNA), Pamplona, Spain"
+          },
+          {
+            "name": "Hepatology Laboratory, Solid Tumors Program, CIMA, CCUN, University of Navarra, Pamplona, Spain"
+          }
+        ],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      }
+    ],
+    "member": "239",
+    "published-online": { "date-parts": [[2025, 2, 23]] },
+    "reference": [
+      {
+        "key": "2026073008001260000_74.9.1514.1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s12276-022-00757-5"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.2",
+        "doi-asserted-by": "crossref",
+        "DOI": "10.15252\/embj.2023114760",
+        "article-title": "RNA-based medicine: from molecular mechanisms to therapy",
+        "volume": "42",
+        "author": "Sparmann",
+        "year": "2023",
+        "journal-title": "EMBO J"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.3",
+        "doi-asserted-by": "crossref",
+        "DOI": "10.1038\/s41525-023-00387-4",
+        "article-title": "Breaking the mold with RNA-a \u201cRNAissance\u201d of life science",
+        "volume": "9",
+        "author": "Jones",
+        "year": "2024",
+        "journal-title": "NPJ Genom Med"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.4",
+        "doi-asserted-by": "crossref",
+        "DOI": "10.3390\/pharmaceutics15010166",
+        "article-title": "mRNA in the Context of Protein Replacement Therapy",
+        "volume": "15",
+        "author": "Vavilis",
+        "year": "2023",
+        "journal-title": "Pharmaceutics"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.5",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41587-022-01491-z"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.6",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1093\/nar\/gkad067"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.7",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.cell.2022.03.045"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.8",
+        "doi-asserted-by": "crossref",
+        "DOI": "10.3390\/ijms25126742",
+        "article-title": "Therapeutic Applications of Aptamers",
+        "volume": "25",
+        "author": "Santarpia",
+        "year": "2024",
+        "journal-title": "Int J Mol Sci"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.9",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/mt.2010.85"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.10",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41576-021-00439-4"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.11",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41573-023-00827-x"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.12",
+        "doi-asserted-by": "crossref",
+        "DOI": "10.1002\/adbi.202300584",
+        "article-title": "Aptamers: Promising Reagents in Biomedicine Application",
+        "volume": "8",
+        "author": "Zhou",
+        "year": "2024",
+        "journal-title": "Adv Biol (Weinh)"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.13",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1007\/s12033-023-01030-4"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.14",
+        "doi-asserted-by": "crossref",
+        "DOI": "10.1002\/wrna.1768",
+        "article-title": "Innovative approaches in transforming microRNAs into therapeutic tools",
+        "volume": "14",
+        "author": "Samad",
+        "year": "2023",
+        "journal-title": "Wiley Interdiscip Rev RNA"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.15",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.tig.2022.02.006"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.16",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.omtn.2024.102224"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.17",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41573-020-0075-7"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.18",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41573-024-00912-9"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.19",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41577-021-00577-0"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.20",
+        "doi-asserted-by": "crossref",
+        "DOI": "10.3389\/fimmu.2020.625833",
+        "article-title": "Signaling Through Nucleic Acid Sensors and Their Roles in Inflammatory Diseases",
+        "volume": "11",
+        "author": "Okude",
+        "year": "2020",
+        "journal-title": "Front Immunol"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.21",
+        "article-title": "Unlocking the Therapeutic Applicability of LNP-mRNA: Chemistry, Formulation, and Clinical Strategies",
+        "volume": "7",
+        "author": "Huang",
+        "year": "2024",
+        "journal-title": "Research (Wash D C)"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.22",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.ymthe.2016.10.019"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.23",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1089\/nat.2022.0004"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.24",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1093\/nar\/gkaa670"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.25",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1261\/rna.079507.122"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.26",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1007\/s40120-021-00235-6"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.27",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1056\/NEJMoa1912387"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.28",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41467-023-37465-1"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.29",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1021\/acs.chemrev.3c00611"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.30",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1007\/s00239-004-0046-3"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.31",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41586-020-1978-5"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.32",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1093\/nar\/gkae1025"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.33",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/ncb3452"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.34",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.cell.2017.04.005"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.35",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41587-020-0561-9"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.36",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1007\/s11684-023-1013-y"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.37",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41467-023-35886-6"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.38",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Adlat S , V\u00e1zquez Salgado AM , Lee M , et al . Emerging and potential use of CRISPR in human liver disease. Hepatology 2023. doi:10.1097\/HEP.0000000000000578",
+        "DOI": "10.1097\/HEP.0000000000000578"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.39",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.addr.2023.115026"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.40",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.cell.2021.12.021"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.41",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.3390\/biom13101497"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.42",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41586-023-06800-3"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.43",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1056\/NEJMcibr2009737"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.44",
+        "doi-asserted-by": "crossref",
+        "DOI": "10.1093\/jmcb\/mjad031",
+        "article-title": "Biological functions and applications of circRNAs-next generation of RNA-based therapy",
+        "volume": "15",
+        "author": "Sun",
+        "year": "2023",
+        "journal-title": "J Mol Cell Biol"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.45",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1146\/annurev-cellbio-120420-125117"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.46",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1089\/nat.2018.0734"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.47",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41565-024-01765-4"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.48",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1021\/acs.nanolett.4c01458"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.49",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41591-018-0199-z"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.50",
+        "doi-asserted-by": "crossref",
+        "first-page": "1265",
+        "DOI": "10.1042\/CS20241137",
+        "article-title": "Non-mitogenic FGF19 mRNA-based therapy for the treatment of experimental metabolic dysfunction-associated steatotic liver disease (MASLD)",
+        "volume": "138",
+        "author": "Lopez-Pascual",
+        "year": "2024",
+        "journal-title": "Clin Sci"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.51",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1021\/jacs.1c09822"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.52",
+        "doi-asserted-by": "crossref",
+        "first-page": "2800",
+        "DOI": "10.1039\/D4PY00234B",
+        "article-title": "Advancing nucleic acid delivery through cationic polymer design: non-cationic building blocks from the toolbox",
+        "volume": "15",
+        "author": "Porello",
+        "year": "2024",
+        "journal-title": "Polym Chem"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.53",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1063\/1.3009263"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.54",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1021\/acs.nanolett.7b02664"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.55",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.addr.2023.114898"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.56",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1515\/mr-2023-0069"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.57",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1186\/s12951-024-02634-x"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.58",
+        "doi-asserted-by": "crossref",
+        "DOI": "10.3390\/pharmaceutics15020598",
+        "article-title": "Exosome-Based Carrier for RNA Delivery: Progress and Challenges",
+        "volume": "15",
+        "author": "Lu",
+        "year": "2023",
+        "journal-title": "Pharmaceutics"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.59",
+        "doi-asserted-by": "crossref",
+        "first-page": "998",
+        "DOI": "10.1016\/S0140-6736(10)60284-X",
+        "article-title": "Mipomersen, an apolipoprotein B synthesis inhibitor, for lowering of LDL cholesterol concentrations in patients with homozygous familial hypercholesterolaemia: a randomised, double-blind, placebo-controlled trial",
+        "volume": "375",
+        "author": "Raal",
+        "year": "2010",
+        "journal-title": "The Lancet"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.60",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1007\/s40259-024-00665-2"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.61",
+        "first-page": "1349",
+        "article-title": "Volanesorsen: First Global Approval",
+        "volume": "79",
+        "author": "Paik",
+        "year": "2019",
+        "journal-title": "Drugs (Abingdon Engl)"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.62",
+        "article-title": "RNA Interference Therapeutics for Hereditary Amyloidosis: A Narrative Review of Clinical Trial Outcomes and Future Directions",
+        "volume": "16",
+        "author": "Dave",
+        "year": "2024",
+        "journal-title": "Cureus"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.63",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1124\/molpharm.124.000895"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.64",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1056\/NEJMoa1716153"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.65",
+        "first-page": "1419",
+        "article-title": "Vutrisiran: First Approval",
+        "volume": "82",
+        "author": "Keam",
+        "year": "2022",
+        "journal-title": "Drugs (Abingdon Engl)"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.66",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1056\/NEJMoa2205416"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.67",
+        "first-page": "1858",
+        "article-title": "Recent Insights into the Pathogenesis of Acute Porphyria Attacks and Increasing Hepatic PBGD as an Etiological Treatment",
+        "volume": "12",
+        "author": "Jeric\u00f3",
+        "year": "2022",
+        "journal-title": "Life (Basel)"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.68",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1056\/NEJMoa1913147"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.69",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1056\/NEJMoa2021712"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.70",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1097\/MNH.0000000000000987"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.71",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1007\/s00240-023-01453-3"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.72",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.ekir.2024.02.1439"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.73",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1056\/NEJMoa1615758"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.74",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1097\/MOL.0000000000000954"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.75",
+        "first-page": "2348",
+        "article-title": "Gene editing in liver diseases",
+        "volume": "598",
+        "author": "Torella",
+        "year": "2024",
+        "journal-title": "FEBS Lett"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.76",
+        "doi-asserted-by": "crossref",
+        "DOI": "10.1126\/scitranslmed.abl9238",
+        "article-title": "In vivo prime editing of a metabolic liver disease in mice",
+        "volume": "14",
+        "author": "B\u00f6ck",
+        "year": "2022",
+        "journal-title": "Sci Transl Med"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.77",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41467-023-39246-2"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.78",
+        "first-page": "100253",
+        "article-title": "A base editing strategy using mRNA-LNPs for in vivo correction of the most frequent phenylketonuria variant",
+        "volume": "5",
+        "author": "Brooks",
+        "year": "2024",
+        "journal-title": "HGG Adv"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.79",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1056\/NEJMoa2107454"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.80",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1080\/13543784.2024.2369747"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.81",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/d41586-023-03543-z"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.82",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Qin S , Tang X , Chen Y , et al . mRNA-based therapeutics: powerful and versatile tools to combat diseases. Sig Transduct Target Ther 2022;7. doi:10.1038\/s41392-022-01007-w",
+        "DOI": "10.1038\/s41392-022-01007-w"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.83",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.jhep.2020.12.010"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.84",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Cheng Q , Wei T , Jia Y , et al . Dendrimer\u2010Based Lipid Nanoparticles Deliver Therapeutic FAH mRNA to Normalize Liver Function and Extend Survival in a Mouse Model of Hepatorenal Tyrosinemia Type I. Adv Mater Weinheim 2018;30. doi:10.1002\/adma.201805308",
+        "DOI": "10.1002\/adma.201805308"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.85",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.ymthe.2018.01.006"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.86",
+        "doi-asserted-by": "crossref",
+        "DOI": "10.1038\/s41467-021-23318-2",
+        "article-title": "mRNA therapy restores euglycemia and prevents liver tumors in murine model of glycogen storage disease",
+        "volume": "12",
+        "author": "Cao",
+        "year": "2021",
+        "journal-title": "Nat Commun"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.87",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41598-020-64017-0"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.88",
+        "doi-asserted-by": "crossref",
+        "first-page": "8247935",
+        "DOI": "10.1155\/2018\/8247935",
+        "article-title": "SERPINA1 mRNA as a Treatment for Alpha-1 Antitrypsin Deficiency",
+        "volume": "2018",
+        "author": "Connolly",
+        "year": "2018",
+        "journal-title": "J Nucleic Acids"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.89",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41467-020-19156-3"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.90",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1089\/nat.2022.0036"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.91",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.ymthe.2017.12.024"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.92",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.omtn.2023.06.023"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.93",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1089\/nat.2018.0740"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.94",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.celrep.2017.11.081"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.95",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1007\/s13346-024-01583-0"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.96",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.ymthe.2019.03.001"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.97",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.ajhg.2019.02.003"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.98",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1089\/hum.2024.047"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.99",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.omtn.2022.04.012"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.100",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1073\/pnas.1906182116"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.101",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.ymthe.2019.04.017"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.102",
+        "doi-asserted-by": "crossref",
+        "first-page": "294",
+        "DOI": "10.1016\/j.omtm.2022.07.006",
+        "article-title": "mRNA-based therapy proves superior to the standard of care for treating hereditary tyrosinemia 1 in a mouse model",
+        "volume": "26",
+        "author": "Cacicedo",
+        "year": "2022",
+        "journal-title": "Mol Ther Methods Clin Dev"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.103",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1136\/gutjnl-2024-332619"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.104",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.omtn.2021.05.010"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.105",
+        "doi-asserted-by": "crossref",
+        "first-page": "519",
+        "DOI": "10.1016\/j.ebiom.2019.07.003",
+        "article-title": "Long-term efficacy and safety of mRNA therapy in two murine models of methylmalonic acidemia",
+        "volume": "45",
+        "author": "An",
+        "year": "2019",
+        "journal-title": "EBioMedicine"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.106",
+        "doi-asserted-by": "crossref",
+        "DOI": "10.1126\/scitranslmed.adh1334",
+        "article-title": "mRNA therapy corrects defective glutathione metabolism and restores ureagenesis in preclinical argininosuccinic aciduria",
+        "volume": "16",
+        "author": "Gurung",
+        "year": "2024",
+        "journal-title": "Sci Transl Med"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.107",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Yu H , Brewer E , Shields M , et al . Restoring ornithine transcarbamylase (OTC) activity in an OTC\u2010deficient mouse model using LUNAR\u2010OTC mRNA. Clinical and Translational Dis 2022;2. doi:10.1002\/ctd2.33",
+        "DOI": "10.1002\/ctd2.33"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.108",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.ymgme.2024.108560"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.109",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1002\/psp4.12301"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.110",
+        "doi-asserted-by": "crossref",
+        "first-page": "32",
+        "DOI": "10.1016\/j.omtm.2023.02.007",
+        "article-title": "Lipid nanoparticle-encapsulated mRNA therapy corrects serum total bilirubin level in Crigler-Najjar syndrome mouse model",
+        "volume": "29",
+        "author": "Greig",
+        "year": "2023",
+        "journal-title": "Mol Ther Methods Clin Dev"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.111",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41467-024-47460-9"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.112",
+        "doi-asserted-by": "crossref",
+        "first-page": "101191",
+        "DOI": "10.1016\/j.omtm.2024.101191",
+        "article-title": "Whole-body galactose oxidation as a robust functional assay to assess the efficacy of gene-based therapies in a mouse model of Galactosemia",
+        "volume": "32",
+        "author": "Balakrishnan",
+        "year": "2024",
+        "journal-title": "Mol Ther Methods Clin Dev"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.113",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.ymthe.2019.09.018"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.114",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41586-024-07266-7"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.115",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1111\/bph.15040"
+      },
+      {
+        "key": "2026073008001260000_74.9.1514.116",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1007\/s40261-024-01363-1"
+      }
+    ],
+    "container-title": ["Gut"],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "https:\/\/syndication.highwire.org\/content\/doi\/10.1136\/gutjnl-2023-331742",
+        "content-type": "unspecified",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2026, 7, 30]],
+      "date-time": "2026-07-30T18:37:48Z",
+      "timestamp": 1785436668000
+    },
+    "score": 1,
+    "resource": {
+      "primary": { "URL": "https:\/\/gut.bmj.com\/lookup\/doi\/10.1136\/gutjnl-2023-331742" }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": { "date-parts": [[2025, 2, 23]] },
+    "references-count": 116,
+    "journal-issue": {
+      "issue": "9",
+      "published-online": { "date-parts": [[2025, 8, 7]] },
+      "published-print": { "date-parts": [[2025, 9]] }
+    },
+    "alternative-id": ["10.1136\/gutjnl-2023-331742"],
+    "URL": "https:\/\/doi.org\/10.1136\/gutjnl-2023-331742",
+    "relation": {},
+    "ISSN": ["0017-5749", "1468-3288"],
+    "issn-type": [
+      { "value": "0017-5749", "type": "print" },
+      { "value": "1468-3288", "type": "electronic" }
+    ],
+    "subject": [],
+    "published": { "date-parts": [[2025, 2, 23]] }
+  }
+}

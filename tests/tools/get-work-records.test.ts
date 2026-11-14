@@ -11,7 +11,7 @@ import { createFetchMock, runToolContract } from '@cyanheads/mcp-ts-core/testing
 import { HtmlRenderer, Parser } from 'commonmark';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderedText } from '../helpers/content.js';
-import { type ToolResult, textOf } from '../helpers/crossref-responses.js';
+import { type ToolResult, textOf, workList } from '../helpers/crossref-responses.js';
 
 vi.mock('@/config/server-config.js', () => ({
   getServerConfig: vi.fn().mockReturnValue({
@@ -21,7 +21,7 @@ vi.mock('@/config/server-config.js', () => ({
   }),
 }));
 
-import { getWorkTool } from '@/mcp-server/tools/definitions/index.js';
+import { getWorkTool, searchWorksTool } from '@/mcp-server/tools/definitions/index.js';
 import { initCrossrefService } from '@/services/crossref/crossref-service.js';
 
 /** Every captured record, by the DOI it is requested under. */
@@ -100,6 +100,15 @@ const ORIGIN_KEYS = [
   'groupTitle',
 ] as const;
 
+/**
+ * The deposited fields added after those: the clinical trial registrations a work names, and the
+ * Crossmark assertions its publisher attaches — article history, ethics statements, peer review.
+ */
+const TRIAL_AND_ASSERTION_FIELDS = ['clinical-trial-number', 'assertion'] as const;
+
+/** The output keys those fields project to. */
+const TRIAL_AND_ASSERTION_KEYS = ['clinicalTrialNumbers', 'assertions'] as const;
+
 type Message = Record<string, unknown>;
 
 /** A captured `/works/{doi}` response body. */
@@ -110,13 +119,18 @@ function captured(doi: string): { message: Message } {
 }
 
 /**
- * The same record with every citation, update, relation, and origin field, and its member,
- * removed.
+ * The same record with every citation, update, relation, origin, trial, and assertion field, and
+ * its member, removed.
  */
 function stripped(doi: string): { message: Message } {
   const body = captured(doi);
   const message = { ...body.message };
-  for (const field of [...CITATION_AND_LINK_FIELDS, ...ORIGIN_FIELDS]) delete message[field];
+  for (const field of [
+    ...CITATION_AND_LINK_FIELDS,
+    ...ORIGIN_FIELDS,
+    ...TRIAL_AND_ASSERTION_FIELDS,
+  ])
+    delete message[field];
   delete message.member;
   return { ...body, message };
 }
@@ -166,11 +180,11 @@ function commonmark(markdown: string): string {
 /**
  * What every captured record returned before the citation, update, and relation fields existed.
  * The first file holds each record's structured output minus the keys those fields, the
- * container and member fields, and the origin fields add, and the notice on the records whose
- * notice now also names their updates. The second holds both whole surfaces for each record with
- * those fields and its member removed from the deposit — a record depositing none of them has to
- * come back byte-identical, rendered text included, beside the `containerTitles` its one
- * container title now also fills.
+ * container and member fields, the origin fields, and the trial and assertion fields add, and
+ * the notice on the records whose notice now also names their updates. The second holds both
+ * whole surfaces for each record with those fields and its member removed from the deposit — a
+ * record depositing none of them has to come back byte-identical, rendered text included, beside
+ * the `containerTitles` its one container title now also fills.
  */
 describe('crossref_get_work output that predates the citation and update fields', () => {
   it('keeps the value and shape of every existing field on every captured record', async () => {
@@ -178,7 +192,12 @@ describe('crossref_get_work output that predates the citation and update fields'
     const out: Record<string, unknown> = {};
     for (const doi of CAPTURED) {
       const sc = structured(await getWork(doi));
-      for (const key of [...CITATION_AND_LINK_KEYS, ...CONTAINER_AND_MEMBER_KEYS, ...ORIGIN_KEYS])
+      for (const key of [
+        ...CITATION_AND_LINK_KEYS,
+        ...CONTAINER_AND_MEMBER_KEYS,
+        ...ORIGIN_KEYS,
+        ...TRIAL_AND_ASSERTION_KEYS,
+      ])
         delete sc[key];
       if (captured(doi).message['updated-by'] !== undefined) delete sc.notice;
       out[doi] = sc;
@@ -650,6 +669,290 @@ describe('crossref_get_work approval date', () => {
     expect(structured(result)).not.toHaveProperty('approved');
     expect(structured(result).published).toEqual({ year: 1996, month: 2, day: 1 });
     expect(textOf(result)).not.toContain('**Approved:**');
+  });
+});
+
+/**
+ * A structured abstract's lists and empty sections, read through both tools the abstract
+ * normalizer serves. medRxiv deposits its highlights as list items with no closing punctuation,
+ * then a "Visual Abstract:" section holding only a figure; BMC closes on a "Graphical Abstract"
+ * section holding nothing.
+ */
+describe('crossref_get_work and crossref_search_works on a structured abstract', () => {
+  const HIGHLIGHTED = '10.1101/2025.10.16.25338155';
+  const HIGHLIGHTS =
+    'Highlights: This systematic review investigated whether greenspace protects against respiratory health harms from air pollution; We identified 12 eligible cohort studies, all rated "good" quality; Results mixed but generally suggested greenspace is protective; More consistent findings for mediated pathways, suggesting greenspace reduces pollution in local environment';
+
+  beforeEach(() => serve(captured));
+
+  it('joins list items and drops a figure-only section, on both tools and both surfaces', async () => {
+    http.route({
+      match: /^https:\/\/api\.crossref\.test\/works\?/,
+      respond: () => workList([captured(HIGHLIGHTED).message]),
+    });
+    const single = await getWork(HIGHLIGHTED);
+    const search = await runToolContract(searchWorksTool, {
+      filter: { doi: HIGHLIGHTED },
+      fields: ['DOI', 'abstract'],
+    });
+    expect(search.isError).toBeFalsy();
+
+    const abstract = String(structured(single).abstract);
+    expect(abstract.slice(-HIGHLIGHTS.length - 1)).toBe(` ${HIGHLIGHTS}`);
+    const works = (search.structuredContent as { works: Array<{ abstract?: string }> }).works;
+    expect(works[0]?.abstract).toBe(abstract);
+    for (const result of [single, search]) {
+      const text = renderedText(textOf(result));
+      expect(text).toContain(`${HIGHLIGHTS}\n`);
+      expect(text).not.toContain('Visual Abstract');
+    }
+  });
+
+  it('drops a closing section that holds no text, on both surfaces', async () => {
+    const result = await getWork('10.1186/s13071-025-06765-4');
+    const closing =
+      'Therefore, we recommend using Aquatain in mosquito control programs as a complementary malaria vector control tool.';
+
+    const abstract = String(structured(result).abstract);
+    expect(abstract.endsWith(closing)).toBe(true);
+    expect(abstract).not.toContain('Graphical Abstract');
+    const lines = renderedText(textOf(result)).split('\n');
+    expect(lines[lines.indexOf('Abstract:') + 1]).toBe(abstract);
+  });
+});
+
+/**
+ * The lines of the labelled list `label` opens in a result's `content[]`: every line after it up
+ * to the blank line that closes the list.
+ */
+function listUnder(result: ToolResult, label: string): string[] {
+  const lines = textOf(result).split('\n');
+  const start = lines.indexOf(label);
+  if (start < 0) return [];
+  const end = lines.indexOf('', start);
+  return lines.slice(start + 1, end < 0 ? undefined : end);
+}
+
+const TRIAL = '10.1038/s41598-025-13404-6';
+const TRIAL_HEADING = '**Clinical trial numbers:**';
+const ASSERTION_HEADING = '**Assertions:**';
+
+/**
+ * Clinical trial numbers and Crossmark assertions, returned whole in deposited order. Springer
+ * Nature tells its ethics statements apart only by group label — every one is `name: "Ethics"` in
+ * group `EthicsHeading` — and deposits a value-less "Declarations" entry heading them.
+ */
+describe('crossref_get_work clinical trial numbers and assertions', () => {
+  beforeEach(() => serve(captured));
+
+  it('returns the trial number and all seven assertions in deposited order on both surfaces', async () => {
+    const result = await getWork(TRIAL);
+
+    expect(structured(result).clinicalTrialNumbers).toEqual([
+      { number: 'nct04861831', registry: '10.18810/clinical-trials-gov' },
+    ]);
+    const history = { group: 'ArticleHistory', groupLabel: 'Article History' };
+    const ethics = { name: 'Ethics', group: 'EthicsHeading' };
+    expect(structured(result).assertions).toEqual([
+      { name: 'received', value: '20 January 2025', label: 'Received', ...history },
+      { name: 'accepted', value: '23 July 2025', label: 'Accepted', ...history },
+      { name: 'first_online', value: '7 August 2025', label: 'First Online', ...history },
+      { ...ethics, groupLabel: 'Declarations' },
+      {
+        ...ethics,
+        groupLabel: 'Competing interests',
+        value:
+          'Author Jay Goldfarb is the Founder and Director of Legacy of Wisdom, one of the organisations that provided funding for this study. Jay Goldfarb was involved only in the design of the intervention and in the organisation of the training sessions. He had no involvement in data cleaning, data management, analysis, or interpretation of the results. All other authors declare no competing interests.',
+      },
+      {
+        ...ethics,
+        groupLabel: 'Ethical approval',
+        value:
+          'The trial was conducted according to the principles outlined in the Declaration of Helsinki and was approved by the local Ethics Committee (Ethikkommission Nordwest- und Zentralschweiz EKNZ, BASEC ID 2018-00067) and has been registered on (NCT04861831). All participants provided written informed consent prior to their inclusion in the study.',
+      },
+      {
+        ...ethics,
+        groupLabel: 'Informed consent',
+        value:
+          'Informed consent was obtained from all individual participants included in the study prior to its commencement.',
+      },
+    ]);
+
+    expect(listUnder(result, TRIAL_HEADING)).toEqual([
+      '- nct04861831 — 10.18810/clinical-trials-gov',
+    ]);
+    const assertions = listUnder(result, ASSERTION_HEADING);
+    expect(assertions).toHaveLength(7);
+    expect(assertions.slice(0, 4)).toEqual([
+      '- Article History (ArticleHistory) — Received (received): 20 January 2025',
+      '- Article History (ArticleHistory) — Accepted (accepted): 23 July 2025',
+      '- Article History (ArticleHistory) — First Online (first_online): 7 August 2025',
+      '- Declarations (EthicsHeading) — Ethics',
+    ]);
+    expect(assertions[4]).toMatch(/^- Competing interests \(EthicsHeading\) — Ethics: Author Jay/);
+    expect(assertions[5]).toMatch(/^- Ethical approval \(EthicsHeading\) — Ethics: The trial was/);
+    expect(assertions[6]).toMatch(/^- Informed consent \(EthicsHeading\) — Ethics: Informed/);
+  });
+
+  it('renders both lists after the funders, each opened by a blank line', async () => {
+    const lines = textOf(await getWork(TRIAL)).split('\n');
+    const funders = lines.indexOf('**Funders:**');
+    const trials = lines.indexOf(TRIAL_HEADING);
+    const assertions = lines.indexOf(ASSERTION_HEADING);
+
+    expect(funders).toBeGreaterThan(-1);
+    expect(trials).toBeGreaterThan(funders);
+    expect(assertions).toBeGreaterThan(trials);
+    expect(lines[trials - 1]).toBe('');
+    expect(lines[assertions - 1]).toBe('');
+    expect(lines.indexOf('**Licenses:**')).toBeGreaterThan(assertions);
+  });
+
+  it('reads a value deposited with inline markup as plain text on both surfaces', async () => {
+    const result = await getWork('10.1186/s40425-019-0765-z');
+    const approval = (structured(result).assertions as Array<{ value?: string }>)[3]?.value ?? '';
+
+    expect(approval).toContain(
+      'guidance issued in ‘Responsibility in the case of Animals in Bioscience research: expectations of the major research council and charitable funding bodies.’',
+    );
+    expect(approval).not.toMatch(/[<>\n]/);
+    expect(renderedText(textOf(result))).toContain(
+      `Ethics approval and consent to participate (EthicsHeading) — Ethics: ${approval}\n`,
+    );
+  });
+
+  it('relays a URL that differs from its value, and collapses a value with whitespace runs', async () => {
+    const result = await getWork('10.1039/c8tx00041g');
+
+    expect(structured(result).assertions).toEqual([
+      {
+        name: 'similarity_check',
+        value: 'This document is Similarity Check deposited',
+        group: 'similarity_check',
+        groupLabel: 'SIMILARITY CHECK',
+        explanationUrl: 'https://www.crossref.org/services/similarity-check/',
+      },
+      {
+        name: 'related_data',
+        value: 'Supplementary Information',
+        url: 'https://doi.org/10.1039/C8TX00041G',
+        group: 'related_data',
+        groupLabel: 'RELATED DATA',
+      },
+      {
+        name: 'identifier',
+        value: 'Ali H. Alhasan (ORCID)',
+        url: 'http://orcid.org/0000-0001-9181-3792',
+        group: 'author_identifiers',
+        groupLabel: 'IDENTIFIERS',
+      },
+      {
+        name: 'peer_review_method',
+        value: 'Single-blind',
+        group: 'peer_review_method',
+        groupLabel: 'PEER REVIEW METHOD',
+      },
+      {
+        name: 'history',
+        value:
+          'Received 29 January 2018; Accepted 22 May 2018; Accepted Manuscript published 23 May 2018; Advance Article published 14 June 2018; Version of Record published 28 August 2018',
+        group: 'publication_history',
+        groupLabel: 'PUBLICATION HISTORY',
+      },
+    ]);
+    expect(listUnder(result, ASSERTION_HEADING).slice(0, 3)).toEqual([
+      '- SIMILARITY CHECK (similarity_check) — similarity_check: This document is Similarity Check deposited — explanation: https://www.crossref.org/services/similarity-check/',
+      '- RELATED DATA (related_data) — related_data: Supplementary Information — URL: https://doi.org/10.1039/C8TX00041G',
+      '- IDENTIFIERS (author_identifiers) — identifier: Ali H. Alhasan (ORCID) — URL: http://orcid.org/0000-0001-9181-3792',
+    ]);
+  });
+
+  it('relays an explanation URL, and a group deposited without a label', async () => {
+    const result = await getWork('10.22261/jea.5gsnt8');
+    const assertions = structured(result).assertions as Array<Record<string, string>>;
+
+    expect(assertions).toHaveLength(8);
+    expect(assertions[0]).toEqual({
+      name: 'content_type',
+      value: 'Original paper',
+      label: 'Content type',
+      group: 'content_type',
+    });
+    expect(assertions[7]).toMatchObject({
+      name: 'license',
+      label: 'License',
+      group: 'copyright_and_licensing',
+      groupLabel: 'Copyright and licensing',
+      explanationUrl: 'https://creativecommons.org/licenses/by-nc/4.0/',
+    });
+    const lines = listUnder(result, ASSERTION_HEADING);
+    expect(lines[0]).toBe('- content_type — Content type (content_type): Original paper');
+    expect(lines[7]).toMatch(
+      /^- Copyright and licensing \(copyright_and_licensing\) — License \(license\): This is an open access article .* — explanation: https:\/\/creativecommons\.org\/licenses\/by-nc\/4\.0\/$/,
+    );
+  });
+
+  it('returns all 34 trial numbers in deposited order, the repeated one included', async () => {
+    const deposited = captured('10.1136/gutjnl-2023-331742').message[
+      'clinical-trial-number'
+    ] as Array<{
+      'clinical-trial-number': string;
+    }>;
+    const result = await getWork('10.1136/gutjnl-2023-331742');
+    const trials = structured(result).clinicalTrialNumbers as Array<{ number: string }>;
+
+    expect(trials).toHaveLength(34);
+    expect(trials.map((t) => t.number)).toEqual(deposited.map((t) => t['clinical-trial-number']));
+    expect(trials.filter((t) => t.number === 'nct04136184')).toHaveLength(2);
+    expect(trials[4]?.number).toBe('nct04136184');
+    expect(trials[6]?.number).toBe('nct04136184');
+    const lines = listUnder(result, TRIAL_HEADING);
+    expect(lines).toHaveLength(34);
+    expect(lines.filter((line) => line.startsWith('- nct04136184 — '))).toHaveLength(2);
+    expect(structured(result)).not.toHaveProperty('assertions');
+    expect(textOf(result)).not.toContain(ASSERTION_HEADING);
+  });
+
+  /** Both lists are returned whole: the author page bounds the author list and nothing else. */
+  it('returns every entry whatever author page is requested, past the end of the list included', async () => {
+    const whole = await getWork('10.1136/gutjnl-2023-331742');
+    const small = await getWork('10.1136/gutjnl-2023-331742', { limit: 1 });
+    const past = await getWork('10.1136/gutjnl-2023-331742', { offset: 100_000 });
+
+    expect(structured(whole).clinicalTrialNumbers).toHaveLength(34);
+    for (const result of [small, past]) {
+      expect(structured(result).clinicalTrialNumbers).toEqual(
+        structured(whole).clinicalTrialNumbers,
+      );
+      expect(listUnder(result, TRIAL_HEADING)).toEqual(listUnder(whole, TRIAL_HEADING));
+    }
+  });
+
+  it('omits both keys, and both lists, on a record depositing neither', async () => {
+    const deposited = captured('10.7554/elife.03714').message;
+    expect(deposited).not.toHaveProperty('assertion');
+    expect(deposited).not.toHaveProperty('clinical-trial-number');
+    const result = await getWork('10.7554/elife.03714');
+
+    expect(structured(result)).not.toHaveProperty('clinicalTrialNumbers');
+    expect(structured(result)).not.toHaveProperty('assertions');
+    expect(textOf(result)).not.toContain(TRIAL_HEADING);
+    expect(textOf(result)).not.toContain(ASSERTION_HEADING);
+  });
+
+  it('omits each list deposited empty, like one never deposited', async () => {
+    serve(stripped);
+    const absent = await getWork(TRIAL);
+    serve((doi) => {
+      const body = stripped(doi);
+      return { ...body, message: { ...body.message, assertion: [], 'clinical-trial-number': [] } };
+    });
+    const empty = await getWork(TRIAL);
+
+    expect(empty.structuredContent).not.toHaveProperty('clinicalTrialNumbers');
+    expect(empty.structuredContent).not.toHaveProperty('assertions');
+    expect(empty.structuredContent).toEqual(absent.structuredContent);
+    expect(textOf(empty)).toBe(textOf(absent));
   });
 });
 

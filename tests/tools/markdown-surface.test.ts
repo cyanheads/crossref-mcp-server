@@ -298,6 +298,46 @@ describe('the Markdown surface of every tool', () => {
   });
 
   /**
+   * A facet value is relayed as Crossref indexes it, unnormalized, and it opens its list item's
+   * content, where a block marker is consumed — an affiliation deposited as `-` is a real value —
+   * so it takes the line-start escape, and a CommonMark reader reads back what
+   * `structuredContent` carries, as one flat list. `[unlisted]`, an affiliation value Crossref
+   * indexes, is followed on its line by `: <count>`, which together read as a link reference
+   * definition: the item renders empty unless its bracket is escaped.
+   */
+  it('escapes every facet value crossref_search_works renders, block markers included', async () => {
+    const raw = [NORMALIZED, '-', '# Heading', '> quoted', '1.', 'A&amp;B', '[unlisted]'];
+    const values = raw.map((value, i) => ({ value, count: raw.length - i }));
+    service.searchWorks.mockResolvedValue({
+      totalResults: 9,
+      itemsPerPage: 0,
+      items: [],
+      facets: [{ name: 'affiliation', values }],
+    });
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'probe',
+      rows: 0,
+      facets: { affiliation: '*' },
+    });
+
+    expect(result.structuredContent).toMatchObject({ facets: [{ name: 'affiliation', values }] });
+    const markdown = blockText(result.content[0]);
+    expect(markdown.split('\n')).toContain(`- ${ESCAPED_AT_LINE_START}: 7`);
+    const read = renderedText(markdown).split('\n');
+    for (const { value, count } of values) expect(read).toContain(`${value}: ${count}`);
+    const kinds: string[] = [];
+    const walker = new Parser().parse(markdown).walker();
+    for (let step = walker.next(); step; step = walker.next()) {
+      if (step.entering) kinds.push(step.node.type);
+    }
+    expect(kinds.filter((kind) => kind === 'item')).toHaveLength(raw.length);
+    expect(kinds.filter((kind) => kind === 'list')).toHaveLength(1);
+    expect(kinds).not.toContain('heading');
+    expect(kinds).not.toContain('block_quote');
+  });
+
+  /**
    * A value ending in a backslash, on a label line another line follows: CommonMark reads the
    * backslash before the line break as a hard break and drops it.
    */

@@ -132,6 +132,40 @@ describe('upstream failure classification', () => {
     expect(textOf(result)).toContain(MALFORMED_RESPONSE.recovery);
   });
 
+  /**
+   * A facet block in a shape the server does not read is no count it can report, so the search
+   * fails — after one request, since the same request returns the same block — and the hint
+   * names the call that still works: the same search without facets.
+   */
+  it('fails a search whose facet block it cannot read as malformed_response, naming the route', async () => {
+    http.route({
+      match: WORKS_ROUTE,
+      respond: () =>
+        Response.json({
+          status: 'ok',
+          message: {
+            'total-results': 3,
+            'items-per-page': 0,
+            items: [],
+            facets: { published: { 'value-count': 1, values: { '2023': 'three' } } },
+          },
+        }),
+    });
+
+    const result = await settle(
+      runToolContract(searchWorksTool, { query: 'q', rows: 0, facets: { published: '*' } }),
+    );
+    const error = errorOf(result);
+
+    expect(error.code).toBe(JsonRpcErrorCode.SerializationError);
+    expect(error.data).toMatchObject({ reason: 'malformed_response', retryable: false });
+    expect(http.calls).toHaveLength(1);
+    const hint = 'Send it without facets to read the works and totalResults';
+    expect(JSON.stringify(error.data)).toContain(hint);
+    expect(renderedText(textOf(result))).toContain(hint);
+    expect(textOf(result)).not.toContain(MALFORMED_RESPONSE.recovery);
+  });
+
   it('classifies a network-level failure as ServiceUnavailable and names its cause', async () => {
     http.route({
       match: WORKS_ROUTE,

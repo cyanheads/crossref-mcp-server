@@ -243,6 +243,7 @@ src/
       metadata-coverage.ts              # Coverage schema, projection, and renderer — member and journal tools
       page-size.ts                      # Per-input page-size caps + clampPageSize — a value above its cap is clamped with a notice
       registration-agency.ts            # notFoundDetail — not-found text branched on the DOI registry's answer, plus the citation of a DOI another agency registered (citationOf, citationSentence)
+      work-assertions.ts                # clinicalTrialNumbers / assertions — fields, projection, lines
       work-dates.ts                     # event / approved — fields, projection, line
       work-locators.ts                  # volume / issue / page / articleNumber — fields, projection, line
       work-updates.ts                   # updatedBy / updateTo — fields, projection, line
@@ -419,7 +420,7 @@ import { getCrossrefService } from '@/services/crossref/crossref-service.js';
 - [ ] `crossref_get_references` extracts `reference[]` from the full `/works/{doi}` response body, not via a `select` shortcut
 - [ ] Cursor and offset cannot be combined — throw `cursor_offset_conflict` (`crossref_search_works`) or `works_cursor_offset_conflict` (the journal/funder works lists) if both are supplied
 - [ ] Cursor continuation tokens (`nextCursor`, `nextWorksCursor`) are withheld on an empty page — the guard keys on the page's item count, never on `totalResults`
-- [ ] A search tool's `format()` returns no block for a page with no records, so the enrichment trailer and its notice lead `content[]`; a handler with more than one notice source collects them into one `ctx.enrich.notice` call (`notice` is last-wins)
+- [ ] A search tool's `format()` returns no block for a page with no records — and, on `crossref_search_works`, no facets — so the enrichment trailer and its notice lead `content[]`; a `crossref_search_works` page carrying facets renders them with or without works; a handler with more than one notice source collects them into one `ctx.enrich.notice` call (`notice` is last-wins)
 - [ ] Search handlers read each optional string input through `nonBlank` at their head, and a page that dropped blanks down to no search criterion carries the unfiltered-listing notice
 - [ ] `crossref_search_works.fields` admits only the select names the summary projects — a name joins the enum together with its output field and its `format()` line
 - [ ] Registered in `createApp()` arrays (directly or via barrel exports)

@@ -343,6 +343,27 @@ describe('crossref_search_works fields', () => {
     expect(firstWork(result)).toEqual({ doi: '10.5555/t', title: 'T' });
   });
 
+  /** facet= counts the match set; it rides beside the selection and never changes it. */
+  it.each([
+    ['a written selection', { fields: ['DOI', 'update-to'] }, ['DOI', 'update-to']],
+    ['no selection', {}, ACCEPTED],
+  ])('sends facet= beside the select= of %s, unchanged', async (_label, extra, select) => {
+    http.route({ match: WORKS, respond: () => workList([{ DOI: '10.5555/t' }]) });
+
+    const result = await runToolContract(searchWorksTool, {
+      filter: { 'update-type': 'retraction' },
+      rows: 1,
+      facets: { published: '*', 'publisher-name': 10 },
+      ...extra,
+    } as never);
+
+    expect(result.isError).toBeFalsy();
+    expect(selected()).toEqual(select);
+    expect(new URL(http.calls[0]?.request.url ?? '').searchParams.get('facet')).toBe(
+      'published:*,publisher-name:10',
+    );
+  });
+
   /** Answer with the captured Lancet record cut to the `select=` names, as Crossref does. */
   function selectFromLancet(request: Request): Response {
     const file = new URL('../fixtures/works/10.1016_s0140-6736_20_31180-6.json', import.meta.url);

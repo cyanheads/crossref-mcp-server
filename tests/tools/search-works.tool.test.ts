@@ -633,9 +633,13 @@ describe('searchWorksTool', () => {
     expect(text).toContain('### In vivo CRISPR biosensing\n');
   });
 
-  it('accepts valid rows range (1–250)', () => {
-    expect(() => searchWorksTool.input.parse({ query: 'test', rows: 1 })).not.toThrow();
-    expect(() => searchWorksTool.input.parse({ query: 'test', rows: 250 })).not.toThrow();
+  it('accepts rows 0 through 1000 and refuses either side of them', () => {
+    for (const rows of [0, 1, 500, 1000]) {
+      expect(() => searchWorksTool.input.parse({ query: 'test', rows })).not.toThrow();
+    }
+    for (const rows of [-1, 1001]) {
+      expect(() => searchWorksTool.input.parse({ query: 'test', rows })).toThrow();
+    }
   });
 
   it('allows cursor="*" for the initial deep-page call', async () => {
@@ -713,28 +717,28 @@ function makeItems(count: number, start = 0) {
 }
 
 describe('searchWorksTool page-size clamp', () => {
-  it('clamps rows above 250 and names the next offset on both surfaces', async () => {
+  it('clamps rows above 500 and names the next offset on both surfaces', async () => {
     mockSearchWorks.mockResolvedValue(
-      makeSearchResult({ totalResults: 1500, items: makeItems(250) }),
+      makeSearchResult({ totalResults: 1500, items: makeItems(500) }),
     );
 
-    const result = await runToolContract(searchWorksTool, { query: 'test', rows: 251 });
+    const result = await runToolContract(searchWorksTool, { query: 'test', rows: 501 });
 
     expect(mockSearchWorks).toHaveBeenCalledWith(
-      expect.objectContaining({ rows: 250 }),
+      expect.objectContaining({ rows: 500 }),
       expect.anything(),
     );
     const structured = result.structuredContent as { works: unknown[]; notice?: string };
-    expect(structured.works).toHaveLength(250);
+    expect(structured.works).toHaveLength(500);
     const notice =
-      'rows 251 is above the per-call cap of 250, so 250 was applied. Pass offset=250 for the next page — the offset after the 250 records returned, not after the 251 requested.';
+      'rows 501 is above the per-call cap of 500, so 500 was applied. Pass offset=500 for the next page — the offset after the 500 records returned, not after the 501 requested.';
     expect(structured.notice).toBe(notice);
     expect(result.content.map(blockText).join('\n')).toContain(notice);
   });
 
   it('names offset + returned, not offset + requested, on a later offset page', async () => {
     mockSearchWorks.mockResolvedValue(
-      makeSearchResult({ totalResults: 1500, items: makeItems(250, 200) }),
+      makeSearchResult({ totalResults: 1500, items: makeItems(500, 200) }),
     );
 
     const result = await runToolContract(searchWorksTool, {
@@ -744,48 +748,48 @@ describe('searchWorksTool page-size clamp', () => {
     });
 
     const notice = (result.structuredContent as { notice?: string }).notice;
-    expect(notice).toContain('Pass offset=450 for the next page');
+    expect(notice).toContain('Pass offset=700 for the next page');
     expect(notice).not.toContain('offset=1200');
   });
 
   it('accepts a numeric string and clamps it', async () => {
-    mockSearchWorks.mockResolvedValue(makeSearchResult({ items: makeItems(250) }));
+    mockSearchWorks.mockResolvedValue(makeSearchResult({ items: makeItems(500) }));
 
-    const result = await runToolContract(searchWorksTool, { query: 'test', rows: '251' } as never);
+    const result = await runToolContract(searchWorksTool, { query: 'test', rows: '501' } as never);
 
     expect(result.isError).toBeFalsy();
     expect(mockSearchWorks).toHaveBeenCalledWith(
-      expect.objectContaining({ rows: 250 }),
+      expect.objectContaining({ rows: 500 }),
       expect.anything(),
     );
     expect((result.structuredContent as { notice?: string }).notice).toMatch(
-      /^rows 251 is above the per-call cap of 250, so 250 was applied\. /,
+      /^rows 501 is above the per-call cap of 500, so 500 was applied\. /,
     );
   });
 
-  it('evaluates the offset ceiling on the clamped rows: offset 9750 + rows 251 succeeds', async () => {
+  it('evaluates the offset ceiling on the clamped rows: offset 9500 + rows 501 succeeds', async () => {
     mockSearchWorks.mockResolvedValue(
-      makeSearchResult({ totalResults: 50_000, items: makeItems(250, 9750) }),
+      makeSearchResult({ totalResults: 50_000, items: makeItems(500, 9500) }),
     );
 
     const result = await runToolContract(searchWorksTool, {
       query: 'test',
-      offset: 9750,
-      rows: 251,
+      offset: 9500,
+      rows: 501,
     });
 
     expect(result.isError).toBeFalsy();
     expect(mockSearchWorks).toHaveBeenCalledWith(
-      expect.objectContaining({ rows: 250, offset: 9750 }),
+      expect.objectContaining({ rows: 500, offset: 9500 }),
       expect.anything(),
     );
     // offset 10000 is unusable for any rows, so the page routes to the cursor alone.
     expect((result.structuredContent as { notice?: string }).notice).toBe(
-      'rows 251 is above the per-call cap of 250, so 250 was applied. Records past offset 10000 are beyond the ~10000 offset limit. To read them, walk the list with cursor="*" and chain nextCursor; the walk starts at the first record, not at offset 10000.',
+      'rows 501 is above the per-call cap of 500, so 500 was applied. Records past offset 10000 are beyond the ~10000 offset limit. To read them, walk the list with cursor="*" and chain nextCursor; the walk starts at the first record, not at offset 10000.',
     );
   });
 
-  it('applies the 200 rows that fit at offset 9800 + rows 251, naming the cap and the window once', async () => {
+  it('applies the 200 rows that fit at offset 9800 + rows 501, naming the cap and the window once', async () => {
     mockSearchWorks.mockResolvedValue(
       makeSearchResult({ totalResults: 50_000, items: makeItems(200, 9800) }),
     );
@@ -793,7 +797,7 @@ describe('searchWorksTool page-size clamp', () => {
     const result = await runToolContract(searchWorksTool, {
       query: 'test',
       offset: 9800,
-      rows: 251,
+      rows: 501,
     });
 
     expect(result.isError).toBeFalsy();
@@ -802,26 +806,26 @@ describe('searchWorksTool page-size clamp', () => {
       expect.anything(),
     );
     expect((result.structuredContent as { notice?: string }).notice).toBe(
-      'rows 251 is above the per-call cap of 250, and offset 9800 + 250 would pass the ~10000 limit Crossref puts on offset + rows, so 200 was applied — the last records offset paging reaches. To read past them, walk the list with cursor="*" and chain nextCursor; the walk starts at the first record, not after these.',
+      'rows 501 is above the per-call cap of 500, and offset 9800 + 500 would pass the ~10000 limit Crossref puts on offset + rows, so 200 was applied — the last records offset paging reaches. To read past them, walk the list with cursor="*" and chain nextCursor; the walk starts at the first record, not after these.',
     );
   });
 
   it('omits the next offset on a cursor page and on a page that ends the list', async () => {
     mockSearchWorks.mockResolvedValue(
-      makeSearchResult({ totalResults: 1500, items: makeItems(250), nextCursor: 'AoE=' }),
+      makeSearchResult({ totalResults: 1500, items: makeItems(500), nextCursor: 'AoE=' }),
     );
     const cursorPage = await runToolContract(searchWorksTool, {
       query: 'test',
       cursor: '*',
-      rows: 251,
+      rows: 501,
     });
     const cursorNotice = (cursorPage.structuredContent as { notice?: string }).notice;
-    expect(cursorNotice).toBe('rows 251 is above the per-call cap of 250, so 250 was applied.');
+    expect(cursorNotice).toBe('rows 501 is above the per-call cap of 500, so 500 was applied.');
 
     mockSearchWorks.mockResolvedValue(makeSearchResult({ totalResults: 60, items: makeItems(60) }));
-    const lastPage = await runToolContract(searchWorksTool, { query: 'test', rows: 251 });
+    const lastPage = await runToolContract(searchWorksTool, { query: 'test', rows: 501 });
     expect((lastPage.structuredContent as { notice?: string }).notice).toBe(
-      'rows 251 is above the per-call cap of 250, so 250 was applied.',
+      'rows 501 is above the per-call cap of 500, so 500 was applied.',
     );
   });
 
@@ -851,33 +855,34 @@ describe('searchWorksTool page-size clamp', () => {
   });
 
   it('leaves every in-cap value untouched and notice-free', async () => {
-    mockSearchWorks.mockResolvedValue(makeSearchResult({ items: makeItems(250) }));
+    mockSearchWorks.mockResolvedValue(makeSearchResult({ items: makeItems(500) }));
 
     const result = await runToolContract(searchWorksTool, {
       query: 'test',
-      rows: 250,
+      rows: 500,
       authorLimit: 500,
     });
 
     expect(mockSearchWorks).toHaveBeenCalledWith(
-      expect.objectContaining({ rows: 250 }),
+      expect.objectContaining({ rows: 500 }),
       expect.anything(),
     );
-    expect((result.structuredContent as { works: unknown[] }).works).toHaveLength(250);
+    expect((result.structuredContent as { works: unknown[] }).works).toHaveLength(500);
     expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
   });
 });
 
 /**
- * `rows` is capped by what the selection carries: 250 when it includes `abstract` or `author` —
- * as an omitted or empty `fields` does, selecting every field — and 600 when it names neither.
- * The tier keys on those two names alone, so every other selectable field falls in the 600 tier.
+ * `rows` is capped by what the selection carries: 500 when it includes `abstract` or `author` —
+ * as an omitted or empty `fields` does, selecting every field — and not at all when it names
+ * neither, beyond the schema's 1000. The cap keys on those two names alone, so every other
+ * selectable field takes Crossref's full page.
  */
 describe('searchWorksTool rows cap by selection', () => {
-  const LIGHT_TIER =
-    'That cap holds for a fields selection naming neither abstract nor author; one including either is capped at 250.';
   const HEAVY_TIER =
-    'That cap holds for a fields selection including abstract or author; one naming neither takes rows up to 600.';
+    'That cap holds for a fields selection including abstract or author; one naming neither takes rows up to 1000.';
+  const ROUTE =
+    'the last records offset paging reaches. To read past them, walk the list with cursor="*" and chain nextCursor; the walk starts at the first record, not after these.';
   const selectable = (
     z.toJSONSchema(searchWorksTool.input, { io: 'input' }) as unknown as {
       properties: { fields: { items: { enum: string[] } } };
@@ -887,123 +892,136 @@ describe('searchWorksTool rows cap by selection', () => {
 
   it.each([
     ['DOI and title', ['DOI', 'title']],
+    ['DOI and update-to', ['DOI', 'update-to']],
     ['DOI alone', ['DOI']],
     ['every field but abstract and author', light],
-  ])('passes rows up to 600 through untouched for %s', async (_label, fields) => {
+  ])('returns 1000 works and no clamp notice at rows 1000 for %s', async (_label, fields) => {
     mockSearchWorks.mockResolvedValue(
-      makeSearchResult({ totalResults: 5000, items: makeItems(600) }),
+      makeSearchResult({ totalResults: 5000, items: makeItems(1000) }),
     );
 
     const result = await runToolContract(searchWorksTool, {
       query: 'test',
       fields,
-      rows: 600,
+      rows: 1000,
     } as never);
 
     expect(mockSearchWorks).toHaveBeenCalledWith(
-      expect.objectContaining({ rows: 600 }),
+      expect.objectContaining({ rows: 1000 }),
       expect.anything(),
     );
-    expect((result.structuredContent as { works: unknown[] }).works).toHaveLength(600);
+    expect((result.structuredContent as { works: unknown[] }).works).toHaveLength(1000);
     expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
+    expect(contentText(result.content)).not.toContain('per-call cap');
   });
-
-  it.each([601, 1000])(
-    'clamps rows %i to 600 for a selection naming neither, naming both caps on both surfaces',
-    async (rows) => {
-      mockSearchWorks.mockResolvedValue(
-        makeSearchResult({ totalResults: 5000, items: makeItems(600) }),
-      );
-
-      const result = await runToolContract(searchWorksTool, {
-        query: 'test',
-        fields: ['DOI', 'title'],
-        rows,
-      });
-
-      expect(mockSearchWorks).toHaveBeenCalledWith(
-        expect.objectContaining({ rows: 600 }),
-        expect.anything(),
-      );
-      const notice = `rows ${rows} is above the per-call cap of 600, so 600 was applied. ${LIGHT_TIER} Pass offset=600 for the next page — the offset after the 600 records returned, not after the ${rows} requested.`;
-      expect((result.structuredContent as { notice?: string }).notice).toBe(notice);
-      expect(contentText(result.content)).toContain(notice);
-    },
-  );
 
   it.each([
     ['abstract', ['DOI', 'abstract']],
     ['author', ['DOI', 'author']],
     ['both', ['author', 'abstract', 'title']],
+  ])('passes rows 500 through untouched once the selection includes %s', async (_label, fields) => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ totalResults: 5000, items: makeItems(500) }),
+    );
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'test',
+      fields,
+      rows: 500,
+    } as never);
+
+    expect(mockSearchWorks).toHaveBeenCalledWith(
+      expect.objectContaining({ rows: 500 }),
+      expect.anything(),
+    );
+    expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
+  });
+
+  it.each([
+    ['abstract', ['DOI', 'abstract'], 501],
+    ['author', ['DOI', 'author'], 1000],
+    ['both', ['author', 'abstract', 'title'], 750],
   ])(
-    'clamps rows at 250 once the selection includes %s, naming the 600 route',
-    async (_label, fields) => {
+    'clamps rows at 500 once the selection includes %s, naming the 1000 route',
+    async (_label, fields, rows) => {
       mockSearchWorks.mockResolvedValue(
-        makeSearchResult({ totalResults: 5000, items: makeItems(250) }),
+        makeSearchResult({ totalResults: 5000, items: makeItems(500) }),
       );
 
       const result = await runToolContract(searchWorksTool, {
         query: 'test',
         fields,
-        rows: 1000,
+        rows,
       } as never);
 
       expect(mockSearchWorks).toHaveBeenCalledWith(
-        expect.objectContaining({ rows: 250 }),
+        expect.objectContaining({ rows: 500 }),
         expect.anything(),
       );
-      const notice = `rows 1000 is above the per-call cap of 250, so 250 was applied. ${HEAVY_TIER} Pass offset=250 for the next page — the offset after the 250 records returned, not after the 1000 requested.`;
+      const notice = `rows ${rows} is above the per-call cap of 500, so 500 was applied. ${HEAVY_TIER} Pass offset=500 for the next page — the offset after the 500 records returned, not after the ${rows} requested.`;
       expect((result.structuredContent as { notice?: string }).notice).toBe(notice);
-      expect(contentText(result.content)).toContain(notice);
+      expect(renderedText(contentText(result.content))).toContain(notice);
     },
   );
 
-  it('clamps an empty fields at 250 as an omitted one is, every field selected', async () => {
+  it.each([
+    ['an empty fields', { fields: [] }],
+    ['an omitted fields', {}],
+  ])('clamps %s at 500 with no selection advice, every field selected', async (_label, extra) => {
     mockSearchWorks.mockResolvedValue(
-      makeSearchResult({ totalResults: 5000, items: makeItems(250) }),
+      makeSearchResult({ totalResults: 5000, items: makeItems(500) }),
     );
 
-    const result = await runToolContract(searchWorksTool, { query: 'test', fields: [], rows: 601 });
+    const result = await runToolContract(searchWorksTool, { query: 'test', rows: 601, ...extra });
 
     expect(mockSearchWorks).toHaveBeenCalledWith(
-      expect.objectContaining({ rows: 250 }),
+      expect.objectContaining({ rows: 500 }),
       expect.anything(),
     );
     expect((result.structuredContent as { notice?: string }).notice).toBe(
-      'rows 601 is above the per-call cap of 250, so 250 was applied. Pass offset=250 for the next page — the offset after the 250 records returned, not after the 601 requested.',
+      'rows 601 is above the per-call cap of 500, so 500 was applied. Pass offset=500 for the next page — the offset after the 500 records returned, not after the 601 requested.',
     );
   });
 
-  it('fits a light page into the offset window on the cap that applied, routing to the cursor', async () => {
-    mockSearchWorks.mockResolvedValue(
-      makeSearchResult({ totalResults: 50_000, items: makeItems(500, 9500) }),
-    );
+  it.each([
+    [9200, 800],
+    [9500, 500],
+  ])(
+    'fits a light page at offset %i + rows 1000 into the offset window as %i works, naming the cursor route',
+    async (offset, applied) => {
+      mockSearchWorks.mockResolvedValue(
+        makeSearchResult({ totalResults: 50_000, items: makeItems(applied, offset) }),
+      );
 
-    const result = await runToolContract(searchWorksTool, {
-      query: 'test',
-      fields: ['DOI'],
-      offset: 9500,
-      rows: 1000,
-    });
+      const result = await runToolContract(searchWorksTool, {
+        query: 'test',
+        fields: ['DOI', 'update-to'],
+        offset,
+        rows: 1000,
+      });
 
-    expect(result.isError).toBeFalsy();
-    expect(mockSearchWorks).toHaveBeenCalledWith(
-      expect.objectContaining({ offset: 9500, rows: 500 }),
-      expect.anything(),
-    );
-    const notice =
-      'rows 1000 is above the per-call cap of 600, and offset 9500 + 600 would pass the ~10000 limit Crossref puts on offset + rows, so 500 was applied — the last records offset paging reaches. To read past them, walk the list with cursor="*" and chain nextCursor; the walk starts at the first record, not after these.';
-    expect((result.structuredContent as { notice?: string }).notice).toBe(notice);
-    expect(renderedText(contentText(result.content))).toContain(notice);
-  });
+      expect(result.isError).toBeFalsy();
+      expect(mockSearchWorks).toHaveBeenCalledWith(
+        expect.objectContaining({ offset, rows: applied }),
+        expect.anything(),
+      );
+      expect((result.structuredContent as { works: unknown[] }).works).toHaveLength(applied);
+      const notice = `offset ${offset} + rows 1000 would pass the ~10000 limit Crossref puts on offset + rows, so ${applied} was applied — ${ROUTE}`;
+      expect((result.structuredContent as { notice?: string }).notice).toBe(notice);
+      expect(renderedText(contentText(result.content))).toContain(notice);
+    },
+  );
 
-  it('states both caps in the rows description', () => {
+  it('states the cap and the selection that lifts it in the rows description', () => {
     const schema = z.toJSONSchema(searchWorksTool.input, { io: 'input' }) as unknown as {
       properties: { rows: { description: string } };
     };
     const { description } = schema.properties.rows;
-    expect(description).toContain('1–250 per call');
-    expect(description).toContain('1–600 when fields names neither abstract nor author');
+    expect(description).toContain(
+      '0–500 per call when fields names abstract or author, or is omitted or empty',
+    );
+    expect(description).toContain('0–1000 when fields names neither');
+    expect(description).not.toContain('600');
   });
 });
 
@@ -1019,17 +1037,17 @@ describe('searchWorksTool offset-ceiling recipes', () => {
 
   it('names a next offset the same rows can follow when the clamped page ends 50 short of the ceiling', async () => {
     mockSearchWorks.mockResolvedValue(
-      makeSearchResult({ totalResults: 371_635, items: makeItems(250, 9700) }),
+      makeSearchResult({ totalResults: 371_635, items: makeItems(500, 9450) }),
     );
 
     const page = await runToolContract(searchWorksTool, {
       filter: { issn: '0028-0836' },
-      offset: 9700,
-      rows: 251,
+      offset: 9450,
+      rows: 501,
     });
 
     const notice =
-      'rows 251 is above the per-call cap of 250, so 250 was applied. Pass offset=9950 for the next page — the offset after the 250 records returned, not after the 251 requested.';
+      'rows 501 is above the per-call cap of 500, so 500 was applied. Pass offset=9950 for the next page — the offset after the 500 records returned, not after the 501 requested.';
     expect((page.structuredContent as { notice?: string }).notice).toBe(notice);
     expect(renderedText(contentText(page.content))).toContain(notice);
 
@@ -1039,7 +1057,7 @@ describe('searchWorksTool offset-ceiling recipes', () => {
     const next = await runToolContract(searchWorksTool, {
       filter: { issn: '0028-0836' },
       offset: 9950,
-      rows: 251,
+      rows: 501,
     });
     expect(next.isError).toBeFalsy();
     expect(mockSearchWorks).toHaveBeenLastCalledWith(
@@ -1117,28 +1135,31 @@ describe('searchWorksTool offset window', () => {
     [9999, 1, 1, 'none', 1],
     [9999, 100, 1, 'cut', null],
     [9999, 101, 1, 'cut', null],
-    [9999, 250, 1, 'cut', null],
-    [9999, 251, 1, 'cap+cut', null],
+    [9999, 500, 1, 'cut', null],
+    [9999, 501, 1, 'cap+cut', null],
     [9999, 1000, 1, 'cap+cut', null],
     [9950, 1, 1, 'none', 1],
     [9950, 100, 50, 'cut', null],
     [9950, 101, 50, 'cut', null],
-    [9950, 250, 50, 'cut', null],
-    [9950, 251, 50, 'cap+cut', null],
+    [9950, 500, 50, 'cut', null],
+    [9950, 501, 50, 'cap+cut', null],
     [9950, 1000, 50, 'cap+cut', null],
     [9900, 1, 1, 'none', 1],
     [9900, 100, 100, 'none', 100],
     [9900, 101, 100, 'cut', 100],
-    [9900, 250, 100, 'cut', 100],
-    [9900, 251, 100, 'cap+cut', 100],
+    [9900, 500, 100, 'cut', 100],
+    [9900, 501, 100, 'cap+cut', 100],
     [9900, 1000, 100, 'cap+cut', 100],
     [9899, 1, 1, 'none', 1],
     [9899, 100, 100, 'none', 100],
     [9899, 101, 101, 'none', 100],
-    [9899, 250, 101, 'cut', 100],
-    [9899, 251, 101, 'cap+cut', 100],
+    [9899, 500, 101, 'cut', 100],
+    [9899, 501, 101, 'cap+cut', 100],
     [9899, 1000, 101, 'cap+cut', 100],
-    ...[1, 100, 101, 250, 251, 1000].flatMap((rows) => [
+    [9500, 500, 500, 'none', 100],
+    [9501, 500, 499, 'cut', 100],
+    [9501, 1000, 499, 'cap+cut', 100],
+    ...[1, 100, 101, 500, 501, 1000].flatMap((rows) => [
       [10_000, rows, null, 'none', null] as [number, number, null, Notice, null],
       [10_001, rows, null, 'none', null] as [number, number, null, Notice, null],
     ]),
@@ -1180,7 +1201,7 @@ describe('searchWorksTool offset window', () => {
       const expected = {
         none: undefined,
         cut: `offset ${offset} + rows ${rows} would pass the ~10000 limit Crossref puts on offset + rows, so ${applied} was applied — ${ROUTE}`,
-        'cap+cut': `rows ${rows} is above the per-call cap of 250, and offset ${offset} + 250 would pass the ~10000 limit Crossref puts on offset + rows, so ${applied} was applied — ${ROUTE}`,
+        'cap+cut': `rows ${rows} is above the per-call cap of 500, and offset ${offset} + 500 would pass the ~10000 limit Crossref puts on offset + rows, so ${applied} was applied — ${ROUTE}`,
       }[notice];
       expect(structured.notice).toBe(expected);
     },
@@ -1197,7 +1218,7 @@ describe('searchWorksTool offset window', () => {
       works: Array<{ doi: string }>;
       notice?: string;
     };
-    const notice = `rows 1000 is above the per-call cap of 250, and offset 9900 + 250 would pass the ~10000 limit Crossref puts on offset + rows, so 100 was applied — ${ROUTE}`;
+    const notice = `rows 1000 is above the per-call cap of 500, and offset 9900 + 500 would pass the ~10000 limit Crossref puts on offset + rows, so 100 was applied — ${ROUTE}`;
     expect(structured.notice).toBe(notice);
     const lines = renderedText(contentText(result.content)).split('\n');
     expect(lines.some((line) => line.endsWith(notice))).toBe(true);
@@ -1254,17 +1275,17 @@ describe('searchWorksTool offset window', () => {
 
   it('leaves the cursor page untouched by the window', async () => {
     mockSearchWorks.mockResolvedValue(
-      makeSearchResult({ totalResults: TOTAL, items: makeItems(250), nextCursor: 'AoE=' }),
+      makeSearchResult({ totalResults: TOTAL, items: makeItems(500), nextCursor: 'AoE=' }),
     );
 
     const result = await runToolContract(searchWorksTool, {
       query: 'test',
       cursor: '*',
-      rows: 250,
+      rows: 500,
     });
 
     expect(mockSearchWorks).toHaveBeenCalledWith(
-      expect.objectContaining({ cursor: '*', rows: 250 }),
+      expect.objectContaining({ cursor: '*', rows: 500 }),
       expect.anything(),
     );
     expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
@@ -1652,5 +1673,326 @@ describe('searchWorksTool member', () => {
     expect(lines.filter((line) => line.startsWith('Member ID:'))).toEqual(
       memberId === undefined ? [] : [`Member ID: ${memberId}`],
     );
+  });
+});
+
+/**
+ * Facet counts: each name and limit reaches the service in the caller's order, a count above the
+ * 1000 values Crossref returns per facet goes as 1000, and every facet whose values reached its
+ * limit is named with the route to the rest. The service hands values back already ordered.
+ */
+describe('searchWorksTool facets', () => {
+  /** `count` values for one facet, highest count first. */
+  function facetValues(count: number) {
+    return Array.from({ length: count }, (_, i) => ({ value: `v${i}`, count: count - i }));
+  }
+  const noticeOf = (result: { structuredContent?: unknown }) =>
+    (result.structuredContent as { notice?: string }).notice;
+
+  it('sends each facet with its limit, in the order given, beside the rest of the request', async () => {
+    mockSearchWorks.mockResolvedValue(makeSearchResult({ facets: [] }));
+
+    await runToolContract(searchWorksTool, {
+      query: 'CRISPR',
+      filter: { type: 'journal-article' },
+      sort: 'published',
+      order: 'desc',
+      fields: ['DOI', 'title'],
+      offset: 40,
+      rows: 5,
+      facets: { 'publisher-name': 10, published: '*' },
+    });
+
+    expect(mockSearchWorks).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: 'CRISPR',
+        filter: { type: 'journal-article' },
+        sort: 'published',
+        order: 'desc',
+        fields: ['DOI', 'title'],
+        offset: 40,
+        rows: 5,
+        facets: [
+          { name: 'publisher-name', limit: 10 },
+          { name: 'published', limit: '*' },
+        ],
+      }),
+      expect.anything(),
+    );
+  });
+
+  it.each([
+    ['omitted', {}],
+    ['empty', { facets: {} }],
+  ])('sends no facets and returns no facets field when facets is %s', async (_label, extra) => {
+    mockSearchWorks.mockResolvedValue(makeSearchResult());
+
+    const result = await runToolContract(searchWorksTool, { query: 'CRISPR', ...extra });
+
+    expect(mockSearchWorks.mock.calls[0]?.[0]).not.toHaveProperty('facets');
+    expect(result.structuredContent).not.toHaveProperty('facets');
+    expect(contentText(result.content)).not.toContain('Facet');
+  });
+
+  it('returns the facets in the order requested, on both surfaces, whatever order Crossref sent', async () => {
+    const published = [
+      { value: '2023', count: 15_590 },
+      { value: '2024', count: 9710 },
+    ];
+    const publishers = [{ value: 'Elsevier BV', count: 20_587 }];
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        totalResults: 81_613,
+        items: [],
+        facets: [
+          { name: 'publisher-name', values: publishers },
+          { name: 'published', values: published },
+        ],
+      }),
+    );
+
+    const result = await runToolContract(searchWorksTool, {
+      filter: { 'update-type': 'retraction' },
+      rows: 0,
+      facets: { published: '*', 'publisher-name': 10 },
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(result.structuredContent).toMatchObject({
+      works: [],
+      totalResults: 81_613,
+      returned: 0,
+      facets: [
+        { name: 'published', values: published },
+        { name: 'publisher-name', values: publishers },
+      ],
+    });
+    expect(blockText(result.content[0]).split('\n')).toEqual([
+      '**Facet:** published — 2 values',
+      '- 2023: 15590',
+      '- 2024: 9710',
+      '',
+      '**Facet:** publisher-name — 1 value',
+      '- Elsevier BV: 20587',
+      '',
+    ]);
+    expect(blockText(result.content[1])).toContain('81613');
+  });
+
+  it('sends a count above 1000 as 1000, naming the count requested and applied on both surfaces', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ facets: [{ name: 'affiliation', values: facetValues(3) }] }),
+    );
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'q',
+      facets: { affiliation: 1500 },
+    });
+
+    expect(mockSearchWorks).toHaveBeenCalledWith(
+      expect.objectContaining({ facets: [{ name: 'affiliation', limit: 1000 }] }),
+      expect.anything(),
+    );
+    const notice =
+      'facets.affiliation 1500 is above the 1000 values Crossref returns per facet, so 1000 was applied.';
+    expect(noticeOf(result)).toBe(notice);
+    expect(renderedText(contentText(result.content))).toContain(notice);
+  });
+
+  it('sends 1000 and "*" as given, with no clamp notice', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        facets: [
+          { name: 'orcid', values: facetValues(4) },
+          { name: 'issn', values: facetValues(4) },
+        ],
+      }),
+    );
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'q',
+      facets: { orcid: 1000, issn: '*' },
+    });
+
+    expect(mockSearchWorks).toHaveBeenCalledWith(
+      expect.objectContaining({
+        facets: [
+          { name: 'orcid', limit: 1000 },
+          { name: 'issn', limit: '*' },
+        ],
+      }),
+      expect.anything(),
+    );
+    expect(noticeOf(result)).toBeUndefined();
+  });
+
+  it('names a facet that returned as many values as its count, and none that returned fewer', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        facets: [
+          { name: 'publisher-name', values: facetValues(10) },
+          { name: 'published', values: facetValues(62) },
+          { name: 'type-name', values: facetValues(12) },
+          { name: 'orcid', values: facetValues(999) },
+        ],
+      }),
+    );
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'q',
+      facets: { 'publisher-name': 10, published: '*', 'type-name': 20, orcid: '*' },
+    });
+
+    const notice =
+      'Facet publisher-name (10) returned as many values as its limit and may have more: a larger count, up to 1000, or "*" returns more.';
+    expect(noticeOf(result)).toBe(notice);
+    expect(renderedText(contentText(result.content))).toContain(notice);
+  });
+
+  it('names every facet that reached a count below 1000 in one sentence', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        facets: [
+          { name: 'publisher-name', values: facetValues(10) },
+          { name: 'orcid', values: facetValues(20) },
+          { name: 'funder-name', values: facetValues(5) },
+        ],
+      }),
+    );
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'q',
+      facets: { 'publisher-name': 10, orcid: 20, 'funder-name': 5 },
+    });
+
+    expect(noticeOf(result)).toBe(
+      'Facets publisher-name (10), orcid (20), and funder-name (5) returned as many values as their limits and may have more: a larger count, up to 1000, or "*" returns more.',
+    );
+  });
+
+  it.each([
+    ['"*"', '*'],
+    ['1000', 1000],
+    ['a count of 5000, applied as 1000', 5000],
+  ])(
+    'names a facet that returned 1000 values under %s with the narrowing route alone',
+    async (_label, limit) => {
+      mockSearchWorks.mockResolvedValue(
+        makeSearchResult({ facets: [{ name: 'affiliation', values: facetValues(1000) }] }),
+      );
+
+      const result = await runToolContract(searchWorksTool, {
+        query: 'q',
+        facets: { affiliation: limit },
+      } as never);
+
+      const notice = noticeOf(result) ?? '';
+      expect(notice).toContain(
+        'Facet affiliation returned 1000 values, the most Crossref returns per facet, and may have more: only a narrower query or filter reaches the rest.',
+      );
+      expect(notice).not.toContain('larger count');
+      expect(renderedText(contentText(result.content))).toContain(notice);
+    },
+  );
+
+  it('carries the clamp and both kinds of filled facet in one notice', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        facets: [
+          { name: 'affiliation', values: facetValues(1000) },
+          { name: 'publisher-name', values: facetValues(10) },
+          { name: 'container-title', values: facetValues(1000) },
+        ],
+      }),
+    );
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'q',
+      facets: { affiliation: 1500, 'publisher-name': 10, 'container-title': '*' },
+    });
+
+    expect(noticeOf(result)).toBe(
+      'facets.affiliation 1500 is above the 1000 values Crossref returns per facet, so 1000 was applied. Facet publisher-name (10) returned as many values as its limit and may have more: a larger count, up to 1000, or "*" returns more. Facets affiliation and container-title returned 1000 values, the most Crossref returns per facet, and may have more: only a narrower query or filter reaches the rest.',
+    );
+  });
+
+  it('sends rows 0 and returns no works and no nextCursor, even beside a token Crossref sent', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        totalResults: 81_613,
+        items: [],
+        nextCursor: 'AoE=',
+        facets: [{ name: 'type-name', values: facetValues(3) }],
+      }),
+    );
+
+    const result = await runToolContract(searchWorksTool, {
+      filter: { 'update-type': 'retraction' },
+      cursor: '*',
+      rows: 0,
+      facets: { 'type-name': '*' },
+    });
+
+    expect(mockSearchWorks).toHaveBeenCalledWith(
+      expect.objectContaining({ rows: 0, cursor: '*' }),
+      expect.anything(),
+    );
+    expect(result.structuredContent).toMatchObject({ works: [], returned: 0 });
+    expect(result.structuredContent).not.toHaveProperty('nextCursor');
+    expect(contentText(result.content)).not.toContain('Next cursor');
+  });
+
+  it('renders the facets ahead of the works, and the cursor line ahead of both', () => {
+    const blocks = searchWorksTool.format!({
+      works: [{ doi: '10.1000/a', title: 'A work' }],
+      nextCursor: 'AoE=',
+      facets: [
+        { name: 'type-name', values: [{ value: 'Journal Article', count: 3 }] },
+        { name: 'category-name', values: [] },
+      ],
+    });
+
+    expect(blockText(blocks[0]).split('\n')).toEqual([
+      '**Next cursor:** `AoE=`',
+      '',
+      '**Facet:** type-name — 1 value',
+      '- Journal Article: 3',
+      '',
+      '**Facet:** category-name — no values',
+      '',
+      '### A work',
+      '**DOI:** 10.1000/a',
+      '',
+    ]);
+  });
+
+  it('renders every value of a 1000-value facet, one list item each', () => {
+    const values = facetValues(1000);
+    const [block] = searchWorksTool.format!({
+      works: [],
+      facets: [{ name: 'affiliation', values }],
+    });
+
+    const items = blockText(block)
+      .split('\n')
+      .filter((line) => line.startsWith('- '));
+    expect(items).toHaveLength(1000);
+    expect(items[0]).toBe('- v0: 1000');
+    expect(items.at(-1)).toBe('- v999: 1');
+  });
+
+  it('declares facets on the wire schema clients receive', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ facets: [{ name: 'published', values: facetValues(2) }] }),
+    );
+    const ctx = createMockContext({ errors: searchWorksTool.errors });
+
+    const result = await searchWorksTool.handler(
+      searchWorksTool.input.parse({ query: 'q', facets: { published: '*' } }),
+      ctx,
+    );
+
+    const wire = wireSchema.parse({ ...result, ...getEnrichment(ctx) });
+    expect(wire.facets).toEqual([{ name: 'published', values: facetValues(2) }]);
   });
 });

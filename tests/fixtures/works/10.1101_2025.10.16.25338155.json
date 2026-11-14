@@ -1,0 +1,314 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "institution": [{ "name": "medRxiv" }],
+    "indexed": {
+      "date-parts": [[2026, 9, 16]],
+      "date-time": "2026-09-16T16:43:40Z",
+      "timestamp": 1789577020476,
+      "version": "build-2803163510"
+    },
+    "posted": { "date-parts": [[2025, 10, 19]] },
+    "group-title": "Occupational and Environmental Health",
+    "reference-count": 42,
+    "publisher": "openRxiv",
+    "license": [
+      {
+        "start": {
+          "date-parts": [[2025, 10, 19]],
+          "date-time": "2025-10-19T00:00:00Z",
+          "timestamp": 1760832000000
+        },
+        "content-version": "vor",
+        "delay-in-days": 0,
+        "URL": "http:\/\/creativecommons.org\/licenses\/by\/4.0\/"
+      }
+    ],
+    "content-domain": { "domain": [], "crossmark-restriction": false },
+    "short-container-title": [],
+    "accepted": { "date-parts": [[2025, 10, 19]] },
+    "abstract": "<jats:title>Abstract<\/jats:title>\n                <jats:p>Exposure to greenspace is associated with improved health outcomes, with proposed mechanisms including improved local air quality and health effects that reduce personal susceptibility to air pollution. This systematic review synthesises cohort study evidence on whether greenspace protects against air pollution effects on respiratory-related health outcomes. We conducted a systematic review of cohort studies, searching Medline, Embase, and Scopus databases published up to December 2024. Study quality was evaluated using the Newcastle-Ottawa Scale. Twelve studies met the inclusion criteria, all of which were rated as \u201cgood\u201d quality. Cohorts mostly originated from Europe, with outcomes including respiratory-related mortality, lung function, and non-infectious respiratory diseases. In general, exposure to greenspace was protective against air pollution-associated respiratory mortality, with effects more consistently detected through mediation than moderation. Residential greenspace appears to reduce the harm associated with air pollutants on respiratory health outcomes, including related mortality. The stronger association detected through mediation analysis suggests that the mechanism is through improvements in local air quality rather than the direct effects of greenspace on health to enhance individual resilience to the effects of air pollution.<\/jats:p>\n                <jats:sec>\n                  <jats:title>Highlights<\/jats:title>\n                  <jats:list list-type=\"bullet\">\n                    <jats:list-item>\n                      <jats:p>This systematic review investigated whether greenspace protects against respiratory health harms from air pollution<\/jats:p>\n                    <\/jats:list-item>\n                    <jats:list-item>\n                      <jats:p>We identified 12 eligible cohort studies, all rated \"good\" quality<\/jats:p>\n                    <\/jats:list-item>\n                    <jats:list-item>\n                      <jats:p>Results mixed but generally suggested greenspace is protective<\/jats:p>\n                    <\/jats:list-item>\n                    <jats:list-item>\n                      <jats:p>More consistent findings for mediated pathways, suggesting greenspace reduces pollution in local environment<\/jats:p>\n                    <\/jats:list-item>\n                  <\/jats:list>\n                <\/jats:sec>\n                <jats:sec>\n                  <jats:title>Visual Abstract:<\/jats:title>\n                  <jats:fig id=\"ufig1\" position=\"float\" orientation=\"portrait\" fig-type=\"figure\">\n                    <jats:graphic xmlns:xlink=\"http:\/\/www.w3.org\/1999\/xlink\" xlink:href=\"25338155v1_ufig1\" position=\"float\" orientation=\"portrait\"\/>\n                  <\/jats:fig>\n                <\/jats:sec>",
+    "DOI": "10.1101\/2025.10.16.25338155",
+    "type": "posted-content",
+    "created": {
+      "date-parts": [[2025, 10, 20]],
+      "date-time": "2025-10-20T06:10:16Z",
+      "timestamp": 1760940616000
+    },
+    "source": "Crossref",
+    "is-referenced-by-count": 2,
+    "title": [
+      "Greenspace, air pollution, and respiratory health outcomes: A systematic review of cohort studies"
+    ],
+    "prefix": "10.64898",
+    "author": [
+      {
+        "ORCID": "https:\/\/orcid.org\/0009-0004-1511-2643",
+        "authenticated-orcid": false,
+        "given": "Mae",
+        "family": "Vance",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "ORCID": "https:\/\/orcid.org\/0000-0001-6089-1827",
+        "authenticated-orcid": false,
+        "given": "Tyler",
+        "family": "Lane",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "ORCID": "https:\/\/orcid.org\/0000-0001-5405-7051",
+        "authenticated-orcid": false,
+        "given": "Tingting",
+        "family": "Ye",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      }
+    ],
+    "member": "54368",
+    "reference": [
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/S0140-6736(17)30505-6"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.2",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1056\/EVIDra2200068"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.3",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1371\/journal.pone.0174050"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.4",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.ebiom.2022.103994"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.5",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1038\/s41416-025-02999-2"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.6",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/S2542-5196(23)00008-6"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.7",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.landurbplan.2016.09.024"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.8",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.3390\/ijerph182111028"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.9",
+        "unstructured": "World Health Organization, 2024. Ambient (outdoor) air pollution. https:\/\/www.who.int\/news-room\/fact-sheets\/detail\/ambient-(outdoor)-air-quality-and-health. Accessed 9 Sept 2025"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.10",
+        "unstructured": "World Health Organization , 2025. Climate change, air pollution, pollen and health. World Health Organization, Geneva"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.11",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.atmosenv.2016.12.015"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.12",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.ecoenv.2016.01.030"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.13",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.envres.2019.04.019"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.14",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.envpol.2014.05.028"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.15",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/S1352-2310(99)00394-5"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.16",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.3390\/plants10112305"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.17",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.envres.2017.06.028"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.18",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1088\/1748-9326\/ac0e61"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.19",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Vance M , Ye T , 2024. Greenspace, air pollution and respiratory health outcomes: a systematic review. PROSPERO. https:\/\/www.crd.york.ac.uk\/PROSPERO\/view\/CRD42024618469. Accessed 6 May 2025",
+        "DOI": "10.1101\/2025.10.16.25338155"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.20",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1136\/bmj.n71"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.21",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.scitotenv.2022.159952"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.22",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.envpol.2023.121041"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.23",
+        "unstructured": "Veritas Health Innovation. Covidence systematic review software"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.24",
+        "unstructured": "Wells GA , Shea B , O\u2019Connell D , Peterson J , Welch V , Losos M , Tugwell P , 2013. The Newcastle-Ottawa Scale (NOS) for assessing the quality of nonrandomised studies in meta-analyses. https:\/\/www.ohri.ca\/programs\/clinical_epidemiology\/oxford.asp"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.25",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.envres.2023.117984"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.26",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.envint.2022.107654"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.27",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.ecoenv.2023.115299"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.28",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.2196\/56059"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.29",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.scitotenv.2023.165588"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.30",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.jare.2024.05.025"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.31",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.envint.2023.108036"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.32",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.envint.2020.106365"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.33",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1186\/s12889-024-18752-y"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.34",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1289\/ehp.1510363"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.35",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.envint.2020.105749"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.36",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.envres.2024.119240"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.37",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1177\/1403494815615444"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.38",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.etap.2017.08.022"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.39",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.scitotenv.2009.10.050"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.40",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.envres.2022.114100"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.41",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1136\/thoraxjnl-2020-214767"
+      },
+      {
+        "key": "2025102210201093000_2025.10.16.25338155v1.42",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1016\/j.ecoenv.2023.114868"
+      }
+    ],
+    "container-title": [],
+    "original-title": [],
+    "link": [
+      {
+        "URL": "https:\/\/syndication.highwire.org\/content\/doi\/10.1101\/2025.10.16.25338155",
+        "content-type": "unspecified",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2026, 1, 15]],
+      "date-time": "2026-01-15T20:48:57Z",
+      "timestamp": 1768510137000
+    },
+    "score": 1,
+    "resource": {
+      "primary": { "URL": "http:\/\/medrxiv.org\/lookup\/doi\/10.1101\/2025.10.16.25338155" }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": { "date-parts": [[2025, 10, 19]] },
+    "references-count": 42,
+    "URL": "https:\/\/doi.org\/10.1101\/2025.10.16.25338155",
+    "relation": {},
+    "subject": [],
+    "published": { "date-parts": [[2025, 10, 19]] },
+    "subtype": "preprint"
+  }
+}

@@ -181,6 +181,136 @@ describe('crossref_search_works empty pages', () => {
   });
 });
 
+/** A `/works` list with no items and the facets block `facet=` adds, `value-count` included. */
+function facetPage(
+  total: number,
+  facets: Record<string, Record<string, number>>,
+  nextCursor?: string,
+): Response {
+  return Response.json({
+    status: 'ok',
+    'message-type': 'work-list',
+    message: {
+      facets: Object.fromEntries(
+        Object.entries(facets).map(([name, values]) => [
+          name,
+          { 'value-count': Object.keys(values).length, values },
+        ]),
+      ),
+      'total-results': total,
+      'items-per-page': 0,
+      items: [],
+      ...(nextCursor !== undefined && { 'next-cursor': nextCursor }),
+    },
+  });
+}
+
+/**
+ * A rows: 0 page is empty by request, so it is none of the three empty pages above: its offset is
+ * past nothing and it ends no walk. It names only a match set with nothing in it, and beside a
+ * cursor, that it did not move the walk.
+ */
+describe('crossref_search_works rows: 0 pages', () => {
+  const sent = () => new URL(http.calls[0]?.request.url ?? '').searchParams;
+
+  it('renders the facets first and carries no empty-page notice when records matched', async () => {
+    http.route({
+      match: WORKS,
+      respond: () =>
+        facetPage(81_613, {
+          'type-name': { 'Journal Article': 67_796, 'Conference Paper': 12_986 },
+        }),
+    });
+
+    const result = await runToolContract(searchWorksTool, {
+      filter: { 'update-type': 'retraction' },
+      rows: 0,
+      facets: { 'type-name': '*' },
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(sent().get('rows')).toBe('0');
+    expect(sent().get('facet')).toBe('type-name:*');
+    expect(result.structuredContent).not.toHaveProperty('notice');
+    expect(result.content).toHaveLength(2);
+    expect(blockText(result.content[0]).split('\n').slice(0, 3)).toEqual([
+      '**Facet:** type-name — 2 values',
+      '- Journal Article: 67796',
+      '- Conference Paper: 12986',
+    ]);
+    expect(blockText(result.content[1])).toContain('81613');
+    expect(blankTextBlocks(result)).toEqual([]);
+  });
+
+  it('leads with the trailer when it carries no facets', async () => {
+    http.route({ match: WORKS, respond: () => workList([], 7) });
+
+    const result = await runToolContract(searchWorksTool, { query: 'q', rows: 0 });
+
+    expect(result.isError).toBeFalsy();
+    expect(result.structuredContent).toMatchObject({ works: [], totalResults: 7, returned: 0 });
+    expect(result.structuredContent).not.toHaveProperty('notice');
+    expect(result.content).toHaveLength(1);
+    expect(blockText(result.content[0])).toContain('7');
+    expect(blankTextBlocks(result)).toEqual([]);
+  });
+
+  it.each([
+    ['an offset page', {}],
+    ['a cursor page', { cursor: '*' }],
+  ])('names only that nothing matched at totalResults 0, on %s', async (_label, selector) => {
+    http.route({ match: WORKS, respond: () => facetPage(0, { published: {} }) });
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'zzzqqq',
+      rows: 0,
+      facets: { published: '*' },
+      ...selector,
+    });
+
+    const notice = noticeOf(result);
+    expect(notice).toBe(
+      'No results matched the query. Try broadening the search terms or removing filters.',
+    );
+    expect(blockText(result.content[0])).toBe('**Facet:** published — no values\n');
+    expect(occurrences(result, notice)).toBe(1);
+  });
+
+  it('says beside a cursor that the page does not advance the walk, withholding any token', async () => {
+    http.route({ match: WORKS, respond: () => workList([], 100, 'recycled') });
+
+    const result = await runToolContract(searchWorksTool, { query: 'q', rows: 0, cursor: '*' });
+
+    const notice = expectLeadingNotice(result);
+    expect(notice).toBe(
+      'rows 0 returns no works, so this page does not advance the cursor walk: nextCursor is absent because no record was read, not because the walk is complete. Pass the same cursor with rows of 1 or more to continue it.',
+    );
+    expect(result.structuredContent).not.toHaveProperty('nextCursor');
+    expect(textOf(result)).not.toContain('recycled');
+  });
+
+  it('gives an unrecognized cursor no restart advice, which asks for records it has not got', async () => {
+    http.route({ match: WORKS, respond: () => workList([], 100) });
+
+    const result = await runToolContract(searchWorksTool, { query: 'q', rows: 0, cursor: 'bogus' });
+
+    const notice = noticeOf(result);
+    expect(notice).toMatch(/^rows 0 returns no works, so this page does not advance/);
+    expect(notice).not.toContain('may have restarted');
+    expect(sent().get('cursor')).toBe('bogus');
+  });
+
+  it('carries no past-the-end notice at an offset past the end', async () => {
+    http.route({ match: WORKS, respond: () => workList([], 1) });
+
+    const result = await runToolContract(searchWorksTool, { query: 'q', offset: 5, rows: 0 });
+
+    expect(result.isError).toBeFalsy();
+    expect(sent().get('offset')).toBe('5');
+    expect(result.structuredContent).not.toHaveProperty('notice');
+  });
+});
+
 describe.each([
   ['crossref_search_journals', searchJournalsTool, JOURNALS, 'journal', /No journals matched/],
   ['crossref_search_funders', searchFundersTool, FUNDERS, 'funder', /No funders matched/],

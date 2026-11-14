@@ -94,7 +94,15 @@ export type WorksSearchOptions = {
   cursor?: string;
   sort?: string;
   order?: string;
+  /** Facets to count over the match set, sent as `facet=`; an empty list sends none. */
+  facets?: readonly WorksFacetRequest[];
 };
+
+/** One facet to count: a Crossref facet name and how many values to return (`*` is up to 1000). */
+export type WorksFacetRequest = { name: string; limit: number | '*' };
+
+/** One facet's values over the match set, highest count first. */
+export type WorksFacet = { name: string; values: Array<{ value: string; count: number }> };
 
 /** Crossref journals search options. `offset` applies to the title-query path only. */
 export type JournalsSearchOptions = {
@@ -132,6 +140,8 @@ export type WorksSearchResult = {
   itemsPerPage: number;
   nextCursor?: string | undefined;
   items: RawCrossrefWork[];
+  /** Present when the response carried facet counts, in the order Crossref sent the facets. */
+  facets?: WorksFacet[];
 };
 
 /** Result of a journal/funder name search, carrying the upstream total so callers can page. */
@@ -702,6 +712,11 @@ export class CrossrefService {
       params.set('select', fields.join(','));
     }
 
+    // Beside select=, never in place of it: the counts cover the whole match set either way.
+    if (opts.facets?.length) {
+      params.set('facet', opts.facets.map(({ name, limit }) => `${name}:${limit}`).join(','));
+    }
+
     const qs = params.toString();
     const envelope = await this.request<CrossrefListMessage<RawCrossrefWork>>(
       `/works${qs ? `?${qs}` : ''}`,
@@ -1033,12 +1048,59 @@ function worksListPageParams(opts: WorksListOptions): URLSearchParams {
 function toWorksSearchResult(
   msg: CrossrefListMessage<RawCrossrefWork>['message'],
 ): WorksSearchResult {
+  const facets = msg.facets === undefined ? undefined : readFacets(msg.facets);
   return {
     totalResults: msg['total-results'],
     itemsPerPage: msg['items-per-page'],
     items: msg.items,
     ...(msg['next-cursor'] !== undefined && { nextCursor: msg['next-cursor'] }),
+    ...(facets !== undefined && { facets }),
   };
+}
+
+/**
+ * An object read as its own entries. A facet value is upstream text — an affiliation or a
+ * container title can be spelled `constructor` or `__proto__` — so it stays a string in a pair:
+ * never a key looked up on `{}`, and never one a record schema drops when it copies the object.
+ * Anything else reaches the pair schema as `null` and fails it — a list included, which would
+ * otherwise pass as pairs already made.
+ */
+function ownEntries<T extends z.ZodType>(value: T) {
+  return z.preprocess(
+    (raw) =>
+      raw !== null && typeof raw === 'object' && !Array.isArray(raw) ? Object.entries(raw) : null,
+    z.array(z.tuple([z.string(), value])),
+  );
+}
+
+/** `message.facets`: each facet name mapped to `{ "value-count": n, values: { value: count } }`. */
+const FacetsSchema = ownEntries(z.object({ values: ownEntries(z.number().int().nonnegative()) }));
+
+/**
+ * Each facet with its values highest count first, a tie broken by value in descending code-unit
+ * order — the order Crossref sends them in, matched on every facet of every capture taken.
+ * `JSON.parse` cannot keep that order: it moves integer-like keys (a year, an issue or volume
+ * number) ahead of every other key, ascending, so `published` would otherwise open on its oldest
+ * year. A block in any other shape fails the call rather than reading as counts it does not hold.
+ */
+function readFacets(raw: unknown): WorksFacet[] {
+  const parsed = FacetsSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw upstreamError(
+      MALFORMED_RESPONSE,
+      'Crossref returned HTTP 200 with facet counts in a shape this server does not read.',
+      {
+        hint: 'Do not repeat the call unchanged — the same request returns the same facet block. Send it without facets to read the works and totalResults, or report the query that reproduces it.',
+        cause: parsed.error,
+      },
+    );
+  }
+  return parsed.data.map(([name, { values }]) => ({
+    name,
+    values: values
+      .map(([value, count]) => ({ value, count }))
+      .sort((a, b) => b.count - a.count || (a.value < b.value ? 1 : a.value > b.value ? -1 : 0)),
+  }));
 }
 
 // --- Init/accessor pattern ---

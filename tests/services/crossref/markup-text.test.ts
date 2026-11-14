@@ -7,6 +7,7 @@
  * @module tests/services/crossref/markup-text.test
  */
 
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   ELEMENT_VERDICTS,
@@ -274,9 +275,10 @@ describe('normalizeMarkupText', () => {
 });
 
 /**
- * The abstract's own pass: the JATS pass, plus a delimiter after each section heading and no
- * leading "Abstract" label. Every other field keeps `normalizeMarkupText`, whose pins above and
- * in the `differing` table below stay as they are.
+ * The abstract's own pass: the JATS pass, plus a delimiter after each section heading, no
+ * leading "Abstract" label, no heading whose section holds no text, and a delimiter between the
+ * items of one list. Every other field keeps `normalizeMarkupText`, whose pins above and in the
+ * `differing` table below stay as they are.
  */
 describe('normalizeAbstract', () => {
   it.each([
@@ -332,9 +334,12 @@ describe('normalizeAbstract', () => {
     ],
     // A heading kept before it is text before it, though no prose separates the two.
     [
-      '<sec><title>Highlights</title></sec><title>Abstract</title><p>x</p>',
-      'Highlights: Abstract: x',
+      '<sec><title>Highlights</title><p>h</p></sec><title>Abstract</title><p>x</p>',
+      'Highlights: h Abstract: x',
     ],
+    ['<title>Summary</title><title>Abstract</title><p>x</p>', 'Summary: Abstract: x'],
+    // A heading dropped before it is not: the label is then the first thing left.
+    ['<sec><title>Highlights</title></sec><title>Abstract</title><p>x</p>', 'x'],
     // Only a heading reading just "Abstract" is the label; one that names more is a heading.
     ['<title>Graphical abstract</title><p>x</p>', 'Graphical abstract: x'],
     // Any other leading label is a heading like the rest.
@@ -346,8 +351,9 @@ describe('normalizeAbstract', () => {
     // A label typed into the text is the publisher's text.
     ['<jats:p>Abstract. Text follows.</jats:p>', 'Abstract. Text follows.'],
     ['<jats:p>ABSTRACT Objective: x</jats:p>', 'ABSTRACT Objective: x'],
-    // A heading with nothing after it still reads as one.
-    ['<p>Body.</p><title>Conclusions</title>', 'Body. Conclusions:'],
+    // A heading at the root with nothing after it before the abstract ends heads nothing.
+    ['<p>Body.</p><title>Conclusions</title>', 'Body.'],
+    ['<p>Body.</p><title>Conclusions</title><p/>&#160;\n', 'Body.'],
     // A title nested in another is part of the outer heading, past the first level.
     ['<title><title>A</title> B</title><p>x</p>', 'A B: x'],
     ['<title><title><title>A</title></title> B</title><p>x</p>', 'A B: x'],
@@ -367,6 +373,10 @@ describe('normalizeAbstract', () => {
     '<title>Abstract</title><p>&#160;</p>',
     '<p>\n  </p>',
     '',
+    '<sec><title>Graphical Abstract</title></sec>',
+    '<jats:title>Abstract</jats:title><jats:sec><jats:title>Visual Abstract:</jats:title><jats:fig><jats:graphic xlink:href="f1"/></jats:fig></jats:sec>',
+    '<sec><title>P</title><sec><title>C</title><p/></sec></sec>',
+    '<list><list-item></list-item><list-item><p/></list-item></list>',
   ])('returns nothing for %j, which leaves no text', (raw) => {
     expect(normalizeAbstract(raw)).toBeUndefined();
   });
@@ -392,6 +402,209 @@ describe('normalizeAbstract', () => {
     }
   });
 
+  /**
+   * A heading heads the text after it up to the end of its `sec`, or, outside any `sec`, up to
+   * the end of the abstract. One with no text there — a section holding only a figure, an empty
+   * paragraph, or nothing — heads nothing and is dropped. Text in a nested section is text of
+   * the section around it, so a parent heading over subsections keeps its title, at any depth.
+   */
+  it.each([
+    // A trailing section with no text, in each shape deposits leave one.
+    ['<sec><title>A</title><p>x.</p></sec><sec><title>Graphical Abstract</title></sec>', 'A: x.'],
+    ['<sec><title>A</title><p>x.</p></sec><sec><title>CLINICALTRIAL</title><p/></sec>', 'A: x.'],
+    [
+      '<sec><title>A</title><p>x.</p></sec><sec><title>Figure 1</title>\n  <p>&#160;</p>\n</sec>',
+      'A: x.',
+    ],
+    [
+      '<jats:sec><jats:title>A</jats:title><jats:p>x.</jats:p></jats:sec><jats:sec><jats:title>Visual Abstract:</jats:title><jats:fig id="f"><jats:graphic xlink:href="g"/></jats:fig></jats:sec>',
+      'A: x.',
+    ],
+    // One in the middle goes the same way, and leaves its neighbours alone.
+    [
+      '<sec><title>A</title><p>x.</p></sec><sec><title>B</title></sec><sec><title>C</title><p>y.</p></sec>',
+      'A: x. C: y.',
+    ],
+    // A heading after the last text of its own section heads nothing, though text follows it.
+    ['<sec><title>A</title><p>x.</p><title>B</title></sec><p>y.</p>', 'A: x. y.'],
+    // Text after a later heading of the same section is text after the earlier one too.
+    ['<sec><title>A</title><title>B</title><p>x.</p></sec>', 'A: B: x.'],
+    // A parent whose text sits only in nested sections keeps its title, past the first level.
+    ['<sec><title>P</title><sec><title>C</title><p>x.</p></sec></sec>', 'P: C: x.'],
+    [
+      '<sec><title>P</title><sec><title>Q</title><sec><title>R</title><p>x.</p></sec></sec></sec>',
+      'P: Q: R: x.',
+    ],
+    // A parent whose subsections hold no text heads nothing either, at any depth.
+    ['<p>y.</p><sec><title>P</title><sec><title>C</title></sec></sec>', 'y.'],
+    [
+      '<p>y.</p><sec><title>P</title><sec><title>Q</title><sec><title>R</title></sec></sec></sec>',
+      'y.',
+    ],
+    // A nested empty section is dropped and its parent keeps the text after it.
+    ['<sec><title>P</title><sec><title>C</title></sec><p>x.</p></sec>', 'P: x.'],
+    // A section the deposit never closes runs to the end of the abstract.
+    ['<p>x.</p><sec><title>A</title>', 'x.'],
+    ['<sec><title>A</title><p>x.</p>', 'A: x.'],
+    ['<sec><sec><title>A</title></sec><p>x.</p>', 'x.'],
+    // A closing tag with no opener closes no section, and is text the heading heads.
+    ['<title>A</title></sec>', 'A: </sec>'],
+    // End tags with whitespace before the bracket close like any other.
+    ['<jats:sec ><jats:title>A</jats:title ></jats:sec ><jats:p>x.</jats:p>', 'x.'],
+  ])('drops a heading with no text in its section: %j as %j', (raw, expected) => {
+    expect(normalizeAbstract(raw)).toBe(expected);
+  });
+
+  /**
+   * Consecutive items of one list are joined by `; `, unless the earlier item already ends in
+   * `.`, `,`, `;`, `:`, `?`, or `!` — the last character only, as a heading is read. The end of
+   * a list stays a plain block boundary, like a paragraph's, and an item with no text is not an
+   * item the delimiter separates.
+   */
+  it.each([
+    [
+      '<jats:list list-type="bullet"><jats:list-item><jats:p>a</jats:p></jats:list-item><jats:list-item><jats:p>b</jats:p></jats:list-item><jats:list-item><jats:p>c</jats:p></jats:list-item></jats:list>',
+      'a; b; c',
+    ],
+    // Every closing mark the earlier item carries already separates it.
+    ['<list><list-item>a.</list-item><list-item>b</list-item></list>', 'a. b'],
+    ['<list><list-item>a,</list-item><list-item>b</list-item></list>', 'a, b'],
+    ['<list><list-item>a;</list-item><list-item>b</list-item></list>', 'a; b'],
+    ['<list><list-item>a:</list-item><list-item>b</list-item></list>', 'a: b'],
+    ['<list><list-item>a?</list-item><list-item>b</list-item></list>', 'a? b'],
+    ['<list><list-item>a!</list-item><list-item>b</list-item></list>', 'a! b'],
+    // Only the last character counts, and only those six.
+    ['<list><list-item>a.b</list-item><list-item>c</list-item></list>', 'a.b; c'],
+    ['<list><list-item>a (b.)</list-item><list-item>c</list-item></list>', 'a (b.); c'],
+    [
+      '<list><list-item>rated "good" quality</list-item><list-item>c</list-item></list>',
+      'rated "good" quality; c',
+    ],
+    // Whitespace and markup at the item's edge are not its last character.
+    [
+      '<list>\n  <list-item>\n    <p>a <italic>b</italic></p>\n  </list-item>\n  <list-item><p>c</p></list-item>\n</list>',
+      'a b; c',
+    ],
+    ['<list><list-item>a&#160;</list-item><list-item>b</list-item></list>', 'a; b'],
+    // A list's end is a block boundary: nothing joins its last item to what follows.
+    ['<list><list-item>a</list-item><list-item>b</list-item></list><p>c</p>', 'a; b c'],
+    ['<list><list-item>a</list-item></list><list><list-item>b</list-item></list>', 'a b'],
+    ['<p>x</p><list><list-item>a</list-item></list>', 'x a'],
+    // An item with no text separates nothing — first, last, or between two that do.
+    ['<list><list-item>a</list-item><list-item></list-item></list><p>b</p>', 'a b'],
+    ['<list><list-item><p/></list-item><list-item>b</list-item></list>', 'b'],
+    ['<list><list-item>a</list-item><list-item/><list-item>c</list-item></list>', 'a; c'],
+    [
+      '<list><list-item>a</list-item><list-item> </list-item><list-item>c</list-item></list>',
+      'a; c',
+    ],
+    // An item holding several paragraphs is still one item.
+    ['<list><list-item><p>a</p><p>b</p></list-item><list-item>c</list-item></list>', 'a b; c'],
+    // A nested list separates its own items, and the outer item around it is one item.
+    [
+      '<list><list-item>a<list><list-item>b</list-item><list-item>c</list-item></list></list-item><list-item>d</list-item></list>',
+      'a b; c; d',
+    ],
+    [
+      '<list><list-item>a<list><list-item>b<list><list-item>c</list-item><list-item>d</list-item></list></list-item><list-item>e</list-item></list></list-item><list-item>f</list-item></list>',
+      'a b c; d; e; f',
+    ],
+    // Text between two items of one list is not an item, and nothing joins it to them.
+    ['<list><list-item>a</list-item> x <list-item>b</list-item></list>', 'a x b'],
+    // Items with no list around them are still consecutive items.
+    ['<list-item>a</list-item><list-item>b</list-item>', 'a; b'],
+    // A list title is a heading, and a heading in an item follows the delimiter.
+    [
+      '<list><title>Key points</title><list-item>a</list-item><list-item>b</list-item></list>',
+      'Key points: a; b',
+    ],
+    ['<list><list-item>a</list-item><list-item><title>H</title>b</list-item></list>', 'a; H: b'],
+    // An item holding only a heading carries no text, so the next item owes nothing.
+    ['<list><list-item><title>H</title></list-item><list-item>b</list-item></list>', 'H: b'],
+    // End tags with whitespace before the bracket close like any other.
+    ['<jats:list-item >a</jats:list-item ><jats:list-item>b</jats:list-item >', 'a; b'],
+    // An item opener the deposit never closes leaves its item open, so no item follows it.
+    ['<list><list-item>a<list-item>b</list>', 'a b'],
+    // A CDATA section or a comment is text to the JATS pass, and ends the item as text.
+    [
+      '<list><list-item><![CDATA[x]]></list-item><list-item>b</list-item></list>',
+      '<![CDATA[x]]>; b',
+    ],
+    ['<list><list-item>a<!-- c --></list-item><list-item>b</list-item></list>', 'a<!-- c -->; b'],
+  ])('joins the items of one list: %j as %j', (raw, expected) => {
+    expect(normalizeAbstract(raw)).toBe(expected);
+  });
+
+  /** The validator's captured abstracts, as deposited. */
+  describe('on captured deposits', () => {
+    function depositedAbstract(name: string): string {
+      const file = new URL(`../../fixtures/works/${name}.json`, import.meta.url);
+      const { message } = JSON.parse(readFileSync(file, 'utf8')) as {
+        message: { abstract: string };
+      };
+      return message.abstract;
+    }
+
+    it('joins unpunctuated highlights and drops the figure-only section after them', () => {
+      const abstract = normalizeAbstract(depositedAbstract('10.1101_2025.10.16.25338155')) ?? '';
+      const highlights =
+        ' Highlights: This systematic review investigated whether greenspace protects against respiratory health harms from air pollution; We identified 12 eligible cohort studies, all rated "good" quality; Results mixed but generally suggested greenspace is protective; More consistent findings for mediated pathways, suggesting greenspace reduces pollution in local environment';
+      expect(abstract.slice(-highlights.length)).toBe(highlights);
+      expect(abstract.startsWith('Exposure to greenspace is associated with improved')).toBe(true);
+      expect(abstract).not.toContain('Visual Abstract');
+    });
+
+    it('reads highlights that already end in periods as before', () => {
+      const abstract = normalizeAbstract(depositedAbstract('10.1002_alz.70069')) ?? '';
+      const highlights =
+        ' high risk of bias in most studies. Highlights: Numerous models have been developed to predict the likelihood of conversion to dementia in individuals with MCI. Prediction models seem to have a reasonably good performance in predicting conversion to dementia, however, external validation and generalizability is often lacking. There is no prediction model available with a low risk for bias and that has been externally validated to accurately predict the risk of MCI to dementia conversion. For MCI to dementia conversion prediction models, more emphasis should be directed towards external validation, generalizability, and clinical applicability.';
+      expect(abstract.slice(-highlights.length)).toBe(highlights);
+      expect(abstract.startsWith('Prediction models have been developed')).toBe(true);
+    });
+
+    it('keeps a parent heading over subsections and reads lists inside paragraphs as before', () => {
+      const abstract = normalizeAbstract(depositedAbstract('10.1111_1460-6984.13007')) ?? '';
+      expect(abstract).toContain(
+        'for standardisation for clinical and research purposes. WHAT THIS PAPER ADDS: What is already known on the subject: Inducible laryngeal obstruction causes narrowing',
+      );
+      expect(abstract).toContain(
+        'interventions in inducible laryngeal obstruction (ILO). What this paper adds to existing knowledge: Assessment of health',
+      );
+      const tail =
+        ' develop future health outcomes. What are the potential or actual clinical implications of this work? The review will document evidence of health outcomes measured in inducible laryngeal obstruction, identifying measurement characteristics and potential utility. Collating studies may identify gaps in coverage, the need for novel tools and for standardisation for clinical and research purposes.';
+      expect(abstract.slice(-tail.length)).toBe(tail);
+      expect(abstract).not.toContain(';  ');
+    });
+
+    it.each([
+      [
+        '10.1186_s13071-025-06765-4',
+        'Graphical Abstract',
+        ' Therefore, we recommend using Aquatain in mosquito control programs as a complementary malaria vector control tool.',
+      ],
+      [
+        '10.1093_esj_aakag023.1154',
+        'Figure 1',
+        ' Conflict of interest: Talia Bergaglio: nothing to disclose. Lukas Otto: nothing to disclose. Simone Huber: nothing to disclose. Hannah-Lea Handelsmann: nothing to disclose. Hakim Baazaoui: nothing to disclose. Peter Nirmalraj: nothing to disclose. Susanne Wegener: nothing to disclose.',
+      ],
+    ])('drops the trailing section of %s that holds no text (%s)', (name, dropped, tail) => {
+      const abstract = normalizeAbstract(depositedAbstract(name)) ?? '';
+      expect(abstract.slice(-tail.length)).toBe(tail);
+      expect(abstract).not.toContain(dropped);
+    });
+
+    /** The other passes read the same deposits exactly as they did. */
+    it('leaves the title and reference passes as they were on the same deposits', () => {
+      const raw = depositedAbstract('10.1101_2025.10.16.25338155');
+      expect(normalizeMarkupText(raw)).toContain(
+        'Highlights This systematic review investigated whether greenspace protects against respiratory health harms from air pollution We identified 12 eligible cohort studies, all rated "good" quality Results mixed but generally suggested greenspace is protective More consistent findings for mediated pathways, suggesting greenspace reduces pollution in local environment Visual Abstract:',
+      );
+      expect(normalizeReferenceText(raw)).toContain(
+        '<jats:list-item> This systematic review investigated whether greenspace protects against respiratory health harms from air pollution </jats:list-item>',
+      );
+    });
+  });
+
   describe('on adversarial heading input', () => {
     const shapes: Array<[string, (size: number) => string]> = [
       ['title openers that never close', (size) => repeatTo('<jats:title>a', size)],
@@ -409,6 +622,49 @@ describe('normalizeAbstract', () => {
       ],
       ['breaks throughout', (size) => repeatTo('  \r\n', size)],
       ['breaks throughout headings', (size) => repeatTo('<title>  \r\n</title>  \r\n', size)],
+      /**
+       * The section and list bookkeeping: a heading waits for text until its section closes, and
+       * an item waits for text before it owes a delimiter, so openers that never close, sections
+       * that close in a burst, and deep nesting are where that waiting could grow quadratic.
+       */
+      ['list-item openers that never close', (size) => repeatTo('<jats:list-item>a', size)],
+      ['sec openers that never close', (size) => repeatTo('<jats:sec>a', size)],
+      [
+        'headed sec openers that never close',
+        (size) => repeatTo('<jats:sec><jats:title>H</jats:title>', size),
+      ],
+      [
+        'headed sec openers that never close, each with text',
+        (size) => repeatTo('<jats:sec><jats:title>H</jats:title>a', size),
+      ],
+      ['nested sections', (size) => nestTo('<sec><title>H</title>', 'x', '</sec>', size)],
+      ['nested empty sections', (size) => nestTo('<sec><title>H</title>', '', '</sec>', size)],
+      [
+        'nested lists',
+        (size) =>
+          nestTo('<list><list-item>a', 'x', '</list-item><list-item>b</list-item></list>', size),
+      ],
+      ['closed list items', (size) => repeatWhole('<list-item><p>a</p></list-item>', size)],
+      ['empty list items', (size) => `a${repeatWhole('<list-item></list-item>', size - 1)}`],
+      ['empty sections', (size) => repeatWhole('<sec><title>H</title></sec>', size)],
+      [
+        'root headings before a run of section closes',
+        (size) =>
+          `${repeatWhole('<title>H</title>', size / 2)}${repeatWhole('<sec></sec>', size / 2)}`,
+      ],
+      [
+        'one long list item ending in a break',
+        (size) =>
+          `<list><list-item>a</list-item><list-item>${repeatTo('§1 x', size - 62)}\ny</list-item></list>`,
+      ],
+      [
+        'list items across breaks',
+        (size) => repeatTo('<list-item>\r\n  a\r\n</list-item>\r\n', size),
+      ],
+      [
+        'sections across breaks',
+        (size) => repeatTo('<sec>\r\n<title>H</title>\r\n<p>a</p>\r\n</sec>\r\n', size),
+      ],
     ];
 
     it.each(shapes)(
@@ -1092,6 +1348,17 @@ describe('the JATS pass and the reference pass', () => {
       ],
       ['a<subject>b</subject>c', 'a b c', 'a<subject>b</subject>c'],
       ['<list><list-item>One</list-item></list>', 'One', '<list><list-item>One</list-item></list>'],
+      // The abstract's item delimiter and empty-section rule are the abstract's alone.
+      [
+        '<list><list-item>a</list-item><list-item>b</list-item></list>',
+        'a b',
+        '<list><list-item>a</list-item><list-item>b</list-item></list>',
+      ],
+      [
+        '<p>x</p><sec><title>Graphical Abstract</title></sec>',
+        'x Graphical Abstract',
+        'x <sec><title>Graphical Abstract</title></sec>',
+      ],
       [
         'Cold Spring Harbor, <volume>876</volume> pp.',
         'Cold Spring Harbor, 876 pp.',

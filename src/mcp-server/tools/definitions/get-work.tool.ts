@@ -7,9 +7,10 @@
  * publisher may assert any of them through the ROR registry instead of by name — so each is
  * projected with the identifier standing in for the name it lacks, on both surfaces, rather than
  * as a blank entry.
- * Editors, update links, and related identifiers are returned whole: none approaches the author
- * tail, and each is relayed entry for entry as deposited. Update links also feed the notice,
- * which shares its one string with the author-paging guidance.
+ * Editors, update links, related identifiers, clinical trial numbers, and Crossmark assertions are
+ * returned whole: none approaches the author tail, and each is relayed entry for entry as
+ * deposited. Update links also feed the notice, which shares its one string with the
+ * author-paging guidance.
  * @module mcp-server/tools/definitions/get-work.tool
  */
 
@@ -22,6 +23,11 @@ import {
   GET_WORK_LIMIT_CAP,
 } from '@/mcp-server/tools/page-size.js';
 import { notFoundDetail } from '@/mcp-server/tools/registration-agency.js';
+import {
+  assertionFields,
+  assertionSections,
+  projectAssertions,
+} from '@/mcp-server/tools/work-assertions.js';
 import {
   approvedFields,
   approvedLine,
@@ -183,7 +189,7 @@ const RelationSchema = z
 export const getWorkTool = tool('crossref_get_work', {
   title: 'Get Work by DOI',
   description:
-    'Resolves a DOI to its full Crossref metadata record: title, authors, editors, affiliations, abstract (when deposited), journal or container with the volume, issue, pages, and article number that locate the work in it, ISSNs and ISBNs, publication date, type, license, full-text links, and funder acknowledgements. Where the record deposits them it also carries the conference event of a proceedings paper (event), the approval date that dissertations and most standards deposit in place of a publication date (approved, never read into published), the institutions a record names (the awarding institution of a thesis, the server of a preprint, the laboratories behind a report) and the degree of a thesis, and the subtype and group title of posted content such as a preprint. The author list is paged: authorCount is the full deposited total, offset and limit select the page (25 authors by default), and when authors remain the response carries a nextOffset to pass back as offset — large-collaboration papers deposit thousands. Post-publication updates are relayed as Crossref records them: updatedBy names each correction, retraction, expression of concern, or new version issued against this work, with its notice DOI and whether the publisher or Retraction Watch recorded it, and updateTo names the works this record is itself a notice for. An absent updatedBy does not mean the work was never updated — coverage depends on those deposits. relations lists related identifiers, such as a preprint and its published version, grouped by relation type; only the Crossref-registered DOIs among them resolve through crossref_get_work. memberId is the Crossref member that holds the DOI now — pass it to crossref_get_member for the publisher record and its deposit coverage; the prefix of the DOI names the member that registered the prefix, which for a transferred title is a former publisher. Outgoing references are reported as a count in referencesCount; the reference entries themselves come from crossref_get_references. The isReferencedByCount field reports the total incoming citation count from Crossref; the citing works themselves are not available through Crossref — use OpenAlex for citation graphs.',
+    'Resolves a DOI to its full Crossref metadata record: title, authors, editors, affiliations, abstract (when deposited), journal or container with the volume, issue, pages, and article number that locate the work in it, ISSNs and ISBNs, publication date, type, license, full-text links, and funder acknowledgements. Where the record deposits them it also carries the conference event of a proceedings paper (event), the approval date that dissertations and most standards deposit in place of a publication date (approved, never read into published), the institutions a record names (the awarding institution of a thesis, the server of a preprint, the laboratories behind a report) and the degree of a thesis, and the subtype and group title of posted content such as a preprint. The author list is paged: authorCount is the full deposited total, offset and limit select the page (25 authors by default), and when authors remain the response carries a nextOffset to pass back as offset — large-collaboration papers deposit thousands. Post-publication updates are relayed as Crossref records them: updatedBy names each correction, retraction, expression of concern, or new version issued against this work, with its notice DOI and whether the publisher or Retraction Watch recorded it, and updateTo names the works this record is itself a notice for. An absent updatedBy does not mean the work was never updated — coverage depends on those deposits. relations lists related identifiers, such as a preprint and its published version, grouped by relation type; only the Crossref-registered DOIs among them resolve through crossref_get_work. clinicalTrialNumbers lists the trial registrations the work names, each with its registry where deposited, and assertions the Crossmark entries its publisher attaches — received, revised, and accepted dates, ethics and competing-interest statements, peer-review details — both returned whole in deposited order; an absent clinicalTrialNumbers does not mean the work reports no trial. memberId is the Crossref member that holds the DOI now — pass it to crossref_get_member for the publisher record and its deposit coverage; the prefix of the DOI names the member that registered the prefix, which for a transferred title is a former publisher. Outgoing references are reported as a count in referencesCount; the reference entries themselves come from crossref_get_references. The isReferencedByCount field reports the total incoming citation count from Crossref; the citing works themselves are not available through Crossref — use OpenAlex for citation graphs.',
   annotations: { readOnlyHint: true, idempotentHint: true },
 
   input: z.object({
@@ -264,7 +270,7 @@ export const getWorkTool = tool('crossref_get_work', {
       .string()
       .optional()
       .describe(
-        'Abstract when deposited by the publisher. Many records lack abstracts, and one whose deposit holds no text is omitted the same way. Publishers deposit it as JATS XML, so this is the text of that deposit with markup removed and character references decoded; each section heading of a structured abstract is followed by a colon ("Objectives: …") unless it already ends in a period, colon, question mark, or exclamation mark, and the "Abstract" heading a deposit opens with is dropped; numeric JATS superscripts retain caret notation (10^{16}, GeV^2), a link keeps its tag only where its href holds an address the text it wraps does not already carry, and each formula appears once — MathML as the TeX annotation it carries, otherwise written out linearly (x_i, A^{−1}, √(m), (a+b)/c), and TeX deposited beside MathML in whichever notation comes first.',
+        'Abstract when deposited by the publisher. Many records lack abstracts, and one whose deposit holds no text is omitted the same way. Publishers deposit it as JATS XML, so this is the text of that deposit with markup removed and character references decoded; each section heading of a structured abstract is followed by a colon ("Objectives: …") unless it already ends in a period, colon, question mark, or exclamation mark, a heading whose section holds no text (a figure-only "Graphical Abstract") is dropped, the "Abstract" heading a deposit opens with is dropped, and the items of one list are joined by "; " unless an item already ends in a period, comma, semicolon, colon, question mark, or exclamation mark; numeric JATS superscripts retain caret notation (10^{16}, GeV^2), a link keeps its tag only where its href holds an address the text it wraps does not already carry, and each formula appears once — MathML as the TeX annotation it carries, otherwise written out linearly (x_i, A^{−1}, √(m), (a+b)/c), and TeX deposited beside MathML in whichever notation comes first.',
       ),
     isReferencedByCount: z
       .number()
@@ -325,6 +331,7 @@ export const getWorkTool = tool('crossref_get_work', {
     ),
     ...approvedFields,
     funders: z.array(FunderSchema).optional().describe('Funding acknowledgements'),
+    ...assertionFields,
     licenses: z.array(LicenseSchema).optional().describe('License terms'),
     links: z.array(LinkSchema).optional().describe('Registered full-text links'),
     url: z.string().optional().describe('DOI resolution URL'),
@@ -487,6 +494,7 @@ export const getWorkTool = tool('crossref_get_work', {
       ...(published !== undefined && { published }),
       ...projectApproved(raw),
       ...(raw.funder && { funders: raw.funder.map(normalizeFunder) }),
+      ...projectAssertions(raw),
       ...(raw.license && {
         licenses: raw.license.map((l) => ({
           url: l.URL,
@@ -600,6 +608,8 @@ export const getWorkTool = tool('crossref_get_work', {
         lines.push(`- ${label}${ids.length > 0 ? ` — ${ids.join(' ')}` : ''}${awards}`);
       }
     }
+
+    for (const section of assertionSections(result)) lines.push('', ...section);
 
     if (result.licenses?.length) {
       lines.push('');

@@ -17,24 +17,22 @@ import {
   GET_REFERENCES_LIMIT_CAP,
   GET_WORK_LIMIT_CAP,
   ROWS_CEILING,
-  SEARCH_JOURNALS_ROWS_CAP,
   SEARCH_WORKS_AUTHOR_LIMIT_CAP,
-  SEARCH_WORKS_LIGHT_ROWS_CAP,
   SEARCH_WORKS_ROWS_CAP,
 } from '@/mcp-server/tools/page-size.js';
 
+/**
+ * Each cap is sized on one caller surface — `structuredContent`, the heavier on every page
+ * measured — at Crossref's page maximum where the heaviest page measured there stays near 1 MB,
+ * otherwise at the largest round size where it does. An input with no cap below its schema
+ * ceiling has no constant here.
+ */
 describe('page-size caps and ceilings', () => {
   it.each([
-    ['crossref_search_works rows', SEARCH_WORKS_ROWS_CAP, 250],
-    [
-      'crossref_search_works rows naming neither abstract nor author',
-      SEARCH_WORKS_LIGHT_ROWS_CAP,
-      600,
-    ],
-    ['crossref_search_journals rows on a title query', SEARCH_JOURNALS_ROWS_CAP, 500],
+    ['crossref_search_works rows with abstract or author selected', SEARCH_WORKS_ROWS_CAP, 500],
     ['crossref_search_works authorLimit', SEARCH_WORKS_AUTHOR_LIMIT_CAP, 500],
     ['crossref_get_work limit', GET_WORK_LIMIT_CAP, 10_000],
-    ['crossref_get_references limit', GET_REFERENCES_LIMIT_CAP, 2500],
+    ['crossref_get_references limit', GET_REFERENCES_LIMIT_CAP, 4000],
     ['the rows schema ceiling', ROWS_CEILING, 1000],
     ['the entry-list schema ceiling', ENTRY_LIMIT_CEILING, 100_000],
   ])('%s is %d', (_label, actual, expected) => {
@@ -44,18 +42,19 @@ describe('page-size caps and ceilings', () => {
 
 describe('clampPageSize', () => {
   it.each([
-    ['below the cap', 1, 250],
-    ['one under the cap', 249, 250],
-    ['at the cap', 250, 250],
+    ['below the cap', 1, 500],
+    ['one under the cap', 499, 500],
+    ['at the cap', 500, 500],
     ['at the largest cap', 10_000, 10_000],
   ])('passes a value %s through with no notice', (_label, requested, cap) => {
     expect(clampPageSize('rows', requested, cap)).toEqual({ value: requested });
   });
 
   it.each([
-    ['rows', 251, 250],
+    ['rows', 501, 500],
     ['rows', 1000, 500],
-    ['limit', 2501, 2500],
+    ['limit', 4001, 4000],
+    ['limit', 100_000, 4000],
     ['limit', 100_000, 10_000],
     ['authorLimit', 100_000, 500],
   ])('cuts %s %d to the cap of %d and names both values', (name, requested, cap) => {
@@ -67,35 +66,59 @@ describe('clampPageSize', () => {
 });
 
 /**
- * The six page-size inputs: tool, input, the per-call caps its description states (the first is
- * the one that applies by default), the schema ceiling, and the unchanged default.
- * `crossref_search_works` `rows` takes a higher cap when `fields` names neither abstract nor
- * author; `crossref_search_journals` `rows` caps the title-query journal list alone, its works
- * list taking every value up to the ceiling. `crossref_search_funders` `rows` caps at Crossref's
- * own page maximum, which is also its schema ceiling, so no value it accepts is clamped.
+ * The six page-size inputs: tool, input, the smallest value the schema takes, the per-call caps
+ * its description states (the first is the one that applies by default), the schema ceiling, and
+ * the unchanged default. `crossref_search_works` `rows` takes every value up to the ceiling when
+ * `fields` names neither abstract nor author, and 0 for a count-only page.
+ * `crossref_search_journals` and `crossref_search_funders` `rows` cap at Crossref's own page
+ * maximum, which is also their schema ceiling, so no value either accepts is clamped.
  */
 const PAGE_SIZE_INPUTS = [
-  { tool: 'crossref_search_works', field: 'rows', caps: [250, 600], ceiling: 1000, fallback: 20 },
+  {
+    tool: 'crossref_search_works',
+    field: 'rows',
+    floor: 0,
+    caps: [500, 1000],
+    ceiling: 1000,
+    fallback: 20,
+  },
   {
     tool: 'crossref_search_journals',
     field: 'rows',
-    caps: [500, 1000],
+    floor: 1,
+    caps: [1000],
     ceiling: 1000,
     fallback: 10,
   },
-  { tool: 'crossref_search_funders', field: 'rows', caps: [1000], ceiling: 1000, fallback: 10 },
+  {
+    tool: 'crossref_search_funders',
+    field: 'rows',
+    floor: 1,
+    caps: [1000],
+    ceiling: 1000,
+    fallback: 10,
+  },
   {
     tool: 'crossref_search_works',
     field: 'authorLimit',
+    floor: 1,
     caps: [500],
     ceiling: 100_000,
     fallback: 25,
   },
-  { tool: 'crossref_get_work', field: 'limit', caps: [10_000], ceiling: 100_000, fallback: 25 },
+  {
+    tool: 'crossref_get_work',
+    field: 'limit',
+    floor: 1,
+    caps: [10_000],
+    ceiling: 100_000,
+    fallback: 25,
+  },
   {
     tool: 'crossref_get_references',
     field: 'limit',
-    caps: [2500],
+    floor: 1,
+    caps: [4000],
     ceiling: 100_000,
     fallback: 100,
   },
@@ -116,7 +139,7 @@ function definitionOf(name: string) {
 }
 
 describe.each(PAGE_SIZE_INPUTS)('$tool $field schema', (input) => {
-  const { tool, field, caps, ceiling, fallback } = input;
+  const { tool, field, floor, caps, ceiling, fallback } = input;
   const [cap, ...otherCaps] = caps;
   const definition = definitionOf(tool);
 
@@ -125,35 +148,34 @@ describe.each(PAGE_SIZE_INPUTS)('$tool $field schema', (input) => {
       properties: Record<string, { description?: string }>;
     };
     const description = schema.properties[field]?.description ?? '';
-    expect(description).toContain(`(1–${cap}`);
-    for (const other of otherCaps) expect(description).toContain(`1–${other}`);
-    // Only an input whose cap sits below its ceiling has a clamp to disclose.
+    for (const each of caps) expect(description).toContain(`${floor}–${each}`);
+    // Only an input whose default cap sits below its ceiling has a clamp to disclose.
     if (cap < ceiling) {
-      expect(description).toContain(`up to ${ceiling}`);
-      // A single cap is named as the value returned; two are each named as a range above.
-      expect(description).toContain(
-        otherCaps.length === 0 ? `${cap} and says so in notice` : 'says so in notice',
-      );
+      // The ceiling is named — as the most accepted, or as the range a lighter selection takes.
+      if (!otherCaps.some((other) => other === ceiling)) {
+        expect(description).toContain(`up to ${ceiling}`);
+      }
+      expect(description).toContain(`${cap} and says so in notice`);
     } else {
       expect(description).not.toContain('notice');
     }
   });
 
-  it(`advertises an integer from 1 to ${ceiling} with its default unchanged`, () => {
+  it(`advertises an integer from ${floor} to ${ceiling} with its default unchanged`, () => {
     const schema = z.toJSONSchema(definition.input, { io: 'input' }) as {
       properties: Record<string, Record<string, unknown>>;
       required?: string[];
     };
     expect(schema.properties[field]).toMatchObject({
       type: 'integer',
-      minimum: 1,
+      minimum: floor,
       maximum: ceiling,
       default: fallback,
     });
     expect(schema.required ?? []).not.toContain(field);
   });
 
-  it.each([0, -5, 2.5, ceiling + 1])(`refuses ${field} %s`, (value) => {
+  it.each([floor - 1, -5, 2.5, ceiling + 1])(`refuses ${field} %s`, (value) => {
     expect(definition.input.safeParse({ ...REQUIRED[tool], [field]: value }).success).toBe(false);
   });
 

@@ -14,6 +14,7 @@
  * @module tests/services/crossref/crossref-service.test
  */
 
+import { readFileSync } from 'node:fs';
 import { createFetchMock, createMockContext } from '@cyanheads/mcp-ts-core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -329,6 +330,216 @@ describe('CrossrefService', () => {
     expect(qs.get('query.title')).toBe('Array programming with NumPy');
     expect(qs.get('query.author')).toBe('Charles R. Harris');
     expect(qs.get('query.container-title')).toBe('Nature');
+  });
+
+  describe('searchWorks facets', () => {
+    /** A captured Crossref body, as the bytes arrived — key order included. */
+    function capture(name: string): string {
+      return readFileSync(
+        new URL(`../../fixtures/works/facets/${name}.json`, import.meta.url),
+        'utf8',
+      );
+    }
+
+    /**
+     * The order Crossref sent each facet's values in, read off the raw text by a route that
+     * shares nothing with the service: every integer-like key is renamed before `JSON.parse`,
+     * which would otherwise move those keys to the front in ascending order.
+     */
+    function wireOrder(text: string): Record<string, string[]> {
+      const facets = (
+        JSON.parse(text.replace(/"(\d+)":/g, '"#$1":')) as {
+          message: { facets: Record<string, { values: Record<string, number> }> };
+        }
+      ).message.facets;
+      return Object.fromEntries(
+        Object.entries(facets).map(([name, facet]) => [
+          name,
+          Object.keys(facet.values).map((key) => key.replace(/^#/, '')),
+        ]),
+      );
+    }
+
+    it('sends facet= beside select= and leaves the selection as sent', async () => {
+      serve(makeListEnvelope([], 81_613));
+
+      await service.searchWorks(
+        {
+          filter: { 'update-type': 'retraction' },
+          fields: ['DOI', 'title'],
+          rows: 0,
+          facets: [
+            { name: 'published', limit: '*' },
+            { name: 'publisher-name', limit: 10 },
+          ],
+        },
+        createMockContext(),
+      );
+
+      const qs = requestedParams();
+      expect(qs.get('facet')).toBe('published:*,publisher-name:10');
+      expect(qs.get('select')).toBe('DOI,title');
+      expect(qs.get('rows')).toBe('0');
+      expect(qs.get('filter')).toBe('update-type:retraction');
+    });
+
+    it.each([
+      ['no facets option', {}],
+      ['an empty facets list', { facets: [] }],
+    ])('sends no facet= with %s', async (_label, extra) => {
+      serve(makeListEnvelope([]));
+
+      await service.searchWorks({ query: 'CRISPR', ...extra }, createMockContext());
+
+      expect(requestedUrl()).not.toContain('facet');
+    });
+
+    it('returns no facets key when the response carries none', async () => {
+      serve(makeListEnvelope([{ DOI: '10.1038/nature12373' }]));
+
+      const result = await service.searchWorks({ query: 'CRISPR' }, createMockContext());
+
+      expect(result).not.toHaveProperty('facets');
+    });
+
+    it('returns each facet with its values highest count first, in the order Crossref sent', async () => {
+      const text = capture('retraction-published-publisher-name');
+      serveRaw(text, { status: 200 });
+
+      const result = await service.searchWorks({ rows: 0 }, createMockContext());
+
+      const facets = result.facets ?? [];
+      const byName = new Map(facets.map((facet) => [facet.name, facet.values]));
+      const published = byName.get('published') ?? [];
+      expect(published).toHaveLength(62);
+      expect(published.slice(0, 4)).toEqual([
+        { value: '2023', count: 15_590 },
+        { value: '2024', count: 9710 },
+        { value: '2025', count: 7647 },
+        { value: '2021', count: 7444 },
+      ]);
+      expect(published.at(-1)).toEqual({ value: '1922', count: 1 });
+      expect(byName.get('publisher-name')?.slice(0, 2)).toEqual([
+        { value: 'Elsevier BV', count: 20_587 },
+        { value: 'Wiley', count: 16_768 },
+      ]);
+      const wire = wireOrder(text);
+      for (const facet of facets) {
+        expect(
+          facet.values.map((v) => v.value),
+          facet.name,
+        ).toEqual(wire[facet.name]);
+      }
+    });
+
+    it('restores the wire order of a facet mixing integer-like and other values', async () => {
+      const text = capture('retraction-journal-issue');
+      serveRaw(text, { status: 200 });
+
+      const result = await service.searchWorks({ rows: 0 }, createMockContext());
+
+      const values = result.facets?.[0]?.values ?? [];
+      expect(values).toHaveLength(511);
+      expect(values.slice(0, 8).map((v) => v.value)).toEqual([
+        '1',
+        '4',
+        '3',
+        '2',
+        '6',
+        '5',
+        'S1',
+        '8',
+      ]);
+      expect(values.map((v) => v.value)).toEqual(wireOrder(text)['journal-issue']);
+    });
+
+    it('breaks a count tie by value, descending, character code by character code', async () => {
+      serveRaw(
+        '{"message":{"total-results":11,"items":[],"items-per-page":0,"facets":{"journal-issue":{"value-count":5,"values":{"10":2,"9":2,"a":2,"c":5,"b":2}}}}}',
+        { status: 200 },
+      );
+
+      const result = await service.searchWorks({ rows: 0 }, createMockContext());
+
+      expect(result.facets).toEqual([
+        {
+          name: 'journal-issue',
+          values: [
+            { value: 'c', count: 5 },
+            { value: 'b', count: 2 },
+            { value: 'a', count: 2 },
+            { value: '9', count: 2 },
+            { value: '10', count: 2 },
+          ],
+        },
+      ]);
+    });
+
+    it('keeps a value spelled like an Object.prototype member as a value', async () => {
+      serveRaw(
+        '{"message":{"total-results":9,"items":[],"items-per-page":0,"facets":{"affiliation":{"value-count":3,"values":{"__proto__":4,"constructor":3,"toString":2}}}}}',
+        { status: 200 },
+      );
+
+      const result = await service.searchWorks({ rows: 0 }, createMockContext());
+
+      expect(result.facets?.[0]?.values).toEqual([
+        { value: '__proto__', count: 4 },
+        { value: 'constructor', count: 3 },
+        { value: 'toString', count: 2 },
+      ]);
+    });
+
+    it('returns a facet Crossref answered with no values as an empty list', async () => {
+      serve(
+        makeListEnvelope([], 81_613, {
+          facets: { 'category-name': { 'value-count': 0, values: {} } },
+        }),
+      );
+
+      const result = await service.searchWorks({ rows: 0 }, createMockContext());
+
+      expect(result.facets).toEqual([{ name: 'category-name', values: [] }]);
+    });
+
+    it.each([
+      [
+        'a count that is not a number',
+        { published: { 'value-count': 1, values: { '2023': '7' } } },
+      ],
+      ['a negative count', { published: { 'value-count': 1, values: { '2023': -7 } } }],
+      ['a fractional count', { published: { 'value-count': 1, values: { '2023': 7.5 } } }],
+      ['a facet without values', { published: { 'value-count': 1 } }],
+      ['a facets block that is a list', [{ published: {} }]],
+      /**
+       * Only an object reads as a block of entries. A list is refused even when each element is the
+       * pair an entry would be, and an empty list is no empty block: it would read as holding none
+       * of the facets the request named.
+       */
+      ['a facets block that is a list of pairs', [['published', { values: { '2023': 7 } }]]],
+      ['a facets block that is an empty list', []],
+      [
+        'values that are a list of pairs',
+        { published: { 'value-count': 1, values: [['2023', 7]] } },
+      ],
+    ])('fails as malformed_response on %s, in one request', async (_label, facets) => {
+      serve(makeListEnvelope([], 7, { facets }));
+
+      await expect(service.searchWorks({ rows: 0 }, createMockContext())).rejects.toMatchObject({
+        code: JsonRpcErrorCode.SerializationError,
+        data: { reason: 'malformed_response' },
+      });
+      expect(http.calls).toHaveLength(1);
+    });
+
+    it('reads an empty facets object, the block a request without facet= is answered with, as no facets', async () => {
+      serve(makeListEnvelope([{ DOI: '10.1038/nature12373' }], 1, { facets: {} }));
+
+      const result = await service.searchWorks({ query: 'CRISPR' }, createMockContext());
+
+      expect(result.facets).toEqual([]);
+      expect(result.items).toHaveLength(1);
+    });
   });
 
   it('sorts journal works by publication date descending in getJournalWorks', async () => {

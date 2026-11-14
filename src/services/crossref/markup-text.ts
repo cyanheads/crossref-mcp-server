@@ -1,7 +1,8 @@
 /**
  * @fileoverview The text normalization every tool projects free-text values through —
  * `normalizeText` for the baseline pass, `normalizeMarkupText` for the JATS-deposited fields
- * (with `normalizeAbstract` keeping an abstract's section headings apart from their text),
+ * (with `normalizeAbstract` keeping an abstract's section headings and list items apart from the
+ * text around them),
  * and `normalizeReferenceText` for the deposited citation strings. The two markup passes are
  * one rule over one implementation (`stripMarkup`): a bracket is removed only when it is
  * recognizable as markup, by its shape, by sitting inside a markup region, or by its element
@@ -475,6 +476,18 @@ function readNumericSuperscripts(text: string): string {
 }
 
 /**
+ * Where a structured abstract's structure sits in the text the strip pass returns, as offsets
+ * into that text: each outermost heading's content, each section's end, and each list item's
+ * two ends. Sections, lists, and items carry ids from one counter, so a later-opened one always
+ * has the larger id, and a heading names the innermost section open where it starts (-1 at the
+ * root), an item the innermost list (-1 outside any list).
+ */
+type OutlineMark =
+  | { kind: 'title'; start: number; end: number; section: number }
+  | { kind: 'section-end'; at: number; section: number }
+  | { kind: 'item-start' | 'item-end'; at: number; item: number; list: number };
+
+/**
  * Classify every well-formed tag in a string and remove the ones this surface recognizes as
  * markup, leaving the separator its class calls for. `unlisted` is the verdict for a name on
  * none of the class lists, and it is the only thing that varies between surfaces.
@@ -491,16 +504,14 @@ function readNumericSuperscripts(text: string): string {
  * closing tag follows the opener on the same bookkeeping as every other element. A self-closing
  * link wraps no text at all, so nothing there can carry the address.
  *
- * Given `titles`, the pass also records where each outermost `title` element it removed sits in
- * what it returns: the offsets its content starts and ends at. A title nested in another belongs
- * to the outer one's content, and one the deposit never closes records nothing. The offsets are
- * counted as the tags are replaced, so finding them costs nothing beyond the pass.
+ * Given `outline`, the pass also records, in document order, where the structure it removed sits
+ * in what it returns — see `OutlineMark`. A `title` nested in another belongs to the outer one's
+ * content, and one the deposit never closes keeps an `end` of -1. Each closing tag is paired with
+ * the opener the strip itself paired it with, the last unclosed one of its name, so the outline
+ * never disagrees with which tags came out. The offsets are counted as the tags are replaced, so
+ * finding them costs nothing beyond the pass.
  */
-function stripTags(
-  text: string,
-  unlisted: Verdict,
-  titles?: Array<[start: number, end: number]>,
-): string {
+function stripTags(text: string, unlisted: Verdict, outline?: OutlineMark[]): string {
   text = readNumericSuperscripts(text);
   const removed: string[] = [];
   /**
@@ -547,19 +558,61 @@ function stripTags(
     if (verdict === 'block') return ' ';
     return separateWords(tag, offset, whole);
   };
-  if (!titles) return text.replace(TAG, strip);
+  if (!outline) return text.replace(TAG, strip);
   // How much longer the output is than the input, up to the tag being replaced.
   let shift = 0;
-  let depth = 0;
-  let start = 0;
+  let ids = 0;
+  let titleDepth = 0;
+  // Replaced at every outermost opener, before the closer that ends it can be reached.
+  let heading: Extract<OutlineMark, { kind: 'title' }> = {
+    kind: 'title',
+    start: 0,
+    end: -1,
+    section: -1,
+  };
+  const sections: number[] = [];
+  const lists: number[] = [];
+  const items: Array<{ item: number; list: number }> = [];
+  /** Record a removed opener or closer of one of the outlined elements, `at` its offset. */
+  const record = (close: string, name: string, at: number, replaced: number): void => {
+    switch (name) {
+      case 'title':
+        if (!close && titleDepth++ === 0) {
+          heading = {
+            kind: 'title',
+            start: at + replaced,
+            end: -1,
+            section: sections.at(-1) ?? -1,
+          };
+          outline.push(heading);
+        } else if (close && --titleDepth === 0) {
+          heading.end = at;
+        }
+        break;
+      case 'sec':
+        if (close) outline.push({ kind: 'section-end', at, section: sections.pop() as number });
+        else sections.push(ids++);
+        break;
+      case 'list':
+        if (close) lists.pop();
+        else lists.push(ids++);
+        break;
+      case 'list-item':
+        if (close) {
+          outline.push({ kind: 'item-end', at, ...(items.pop() as (typeof items)[number]) });
+        } else {
+          const opened = { item: ids++, list: lists.at(-1) ?? -1 };
+          items.push(opened);
+          outline.push({ kind: 'item-start', at, ...opened });
+        }
+        break;
+    }
+  };
   return text.replace(TAG, (...args: Parameters<typeof strip>) => {
     const [tag, close, rawName, selfClose, offset] = args;
     const out = strip(...args);
     // A tag returned whole was not removed; a closer is removed only beside its opener.
-    if (out !== tag && !selfClose && rawName.toLowerCase() === 'title') {
-      if (!close && depth++ === 0) start = offset + shift + out.length;
-      else if (close && --depth === 0) titles.push([start, offset + shift]);
-    }
+    if (out !== tag && !selfClose) record(close, rawName.toLowerCase(), offset + shift, out.length);
     shift += out.length - tag.length;
     return out;
   });
@@ -662,39 +715,107 @@ export function normalizeMarkupText(raw: string): string {
   return normalizeText(stripJats(raw));
 }
 
+/** The marks that already separate a list item from the one after it. */
+const ITEM_END = /[.,;:?!]/;
+
 /**
  * Normalize an abstract: the pass `normalizeMarkupText` applies, plus what a structured
- * abstract's section headings need to stay apart from the text they head. `undefined` when no
- * text is left, so an abstract with none reads like one never deposited.
+ * abstract's headings and lists need to read apart from the text around them. `undefined` when
+ * no text is left, so an abstract with none reads like one never deposited.
  *
  * A JATS deposit marks each heading as a `title`, which the JATS pass removes as a block boundary
  * like any other structure, so the heading runs straight into the first sentence of its section —
  * "Design A realist review" reads as prose. Here each heading ends with `: ` instead, unless its
- * text already ends in `.`, `:`, `?`, or `!`, and an empty one adds nothing. A heading with no
- * text before it that reads just "Abstract", in any letter case, is dropped: it labels the field
- * it sits in. A label typed into the text itself, and a leading "Summary", are the publisher's
- * text and stay.
+ * text already ends in `.`, `:`, `?`, or `!`, and an empty one adds nothing. A heading heads the
+ * text after it up to the end of its `sec`, or, outside any `sec`, up to the end of the abstract;
+ * one with no text there — a section holding only a figure, an empty paragraph, or nothing — is
+ * dropped, while text in a nested section counts for every section around it, so a parent heading
+ * over subsections stays. A heading with no text kept before it that reads just "Abstract", in any
+ * letter case, is dropped too: it labels the field it sits in. A label typed into the text itself,
+ * and a leading "Summary", are the publisher's text and stay.
  *
- * The headings are located by the strip pass itself, and each piece between them is normalized on
- * its own. A heading's tags are block boundaries and no character reference spans a tag, so the
- * pieces joined by a space read exactly as the whole would: nothing outside the headings changes,
- * and nothing is decoded twice.
+ * The JATS pass likewise leaves a `list-item` boundary a bare space, so items that carry no
+ * closing punctuation run together as one sentence. Here consecutive items of one list are joined
+ * by `; ` unless the earlier one already ends in `.`, `,`, `;`, `:`, `?`, or `!` — its last
+ * character only, as a heading's is read. An item with no text separates nothing, text between
+ * two items is not an item, and a list's end stays a plain block boundary, like a paragraph's.
+ *
+ * The structure is located by the strip pass itself, and each piece of text between two marks is
+ * normalized on its own. Every outlined tag is a block boundary and no character reference spans
+ * a tag, so the pieces joined by a space read exactly as the whole would: nothing changes but the
+ * headings and the item delimiters, and nothing is decoded twice. A heading is held until text
+ * reaches its section or the section ends, so each is decided once, in one walk of the marks.
  */
 export function normalizeAbstract(raw: string): string | undefined {
-  const titles: Array<[start: number, end: number]> = [];
-  const stripped = stripTags(readRegions(raw), 'block', titles);
+  const outline: OutlineMark[] = [];
+  const stripped = stripTags(readRegions(raw), 'block', outline);
   const parts: string[] = [];
+  /** Headings still waiting for text in their section, the innermost section's last. */
+  const pending: Array<{ heading: string; section: number }> = [];
+  /** Per open item, how many text pieces had been kept when it started. */
+  const itemStart = new Map<number, number>();
+  /** Per list, the value of `recorded` when its last item that carried text ended. */
+  const itemEnd = new Map<number, number>();
+  /** The item that owes its list's delimiter before its first text, if one does. */
+  let owed: number | undefined;
+  /** Text pieces kept and headings recorded so far: nothing came between two equal readings. */
+  let recorded = 0;
+  let texts = 0;
   let cursor = 0;
-  for (const [start, end] of titles) {
-    const before = normalizeText(stripped.slice(cursor, start));
-    const heading = normalizeText(stripped.slice(start, end));
+
+  /** Keep the text up to `end`, and decide everything waiting on whether there is any. */
+  const flush = (end: number): void => {
+    if (end <= cursor) return;
+    const text = normalizeText(stripped.slice(cursor, end));
     cursor = end;
-    if (before !== '') parts.push(before);
-    if (heading === '' || (parts.length === 0 && /^abstract$/i.test(heading))) continue;
-    parts.push(/[.:?!]$/.test(heading) ? heading : `${heading}:`);
+    if (text === '') return;
+    if (owed !== undefined) {
+      const last = parts.length - 1;
+      const earlier = parts[last] as string;
+      if (!ITEM_END.test(earlier.charAt(earlier.length - 1))) parts[last] = `${earlier};`;
+      owed = undefined;
+    }
+    for (const { heading } of pending) {
+      if (parts.length === 0 && /^abstract$/i.test(heading)) continue;
+      parts.push(/[.:?!]$/.test(heading) ? heading : `${heading}:`);
+    }
+    pending.length = 0;
+    parts.push(text);
+    recorded++;
+    texts++;
+  };
+
+  for (const mark of outline) {
+    switch (mark.kind) {
+      case 'title': {
+        if (mark.end < 0) break;
+        flush(mark.start);
+        const heading = normalizeText(stripped.slice(mark.start, mark.end));
+        cursor = mark.end;
+        if (heading === '') break;
+        pending.push({ heading, section: mark.section });
+        recorded++;
+        break;
+      }
+      case 'section-end':
+        flush(mark.at);
+        // A section opened after this one, still waiting here, is nested inside it.
+        while ((pending.at(-1)?.section ?? -1) >= mark.section) pending.pop();
+        break;
+      case 'item-start':
+        flush(mark.at);
+        itemStart.set(mark.item, texts);
+        if (itemEnd.get(mark.list) === recorded) owed = mark.item;
+        break;
+      case 'item-end':
+        flush(mark.at);
+        if (texts > (itemStart.get(mark.item) as number)) itemEnd.set(mark.list, recorded);
+        itemStart.delete(mark.item);
+        if (owed === mark.item) owed = undefined;
+        break;
+    }
   }
-  const rest = normalizeText(stripped.slice(cursor));
-  if (rest !== '') parts.push(rest);
+  flush(stripped.length);
   return parts.length > 0 ? parts.join(' ') : undefined;
 }
 

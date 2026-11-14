@@ -1,0 +1,644 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2025, 9, 11]],
+      "date-time": "2025-09-11T20:21:53Z",
+      "timestamp": 1757622113514,
+      "version": "3.44.0"
+    },
+    "reference-count": 39,
+    "publisher": "Springer Science and Business Media LLC",
+    "issue": "1",
+    "license": [
+      {
+        "start": {
+          "date-parts": [[2025, 8, 7]],
+          "date-time": "2025-08-07T00:00:00Z",
+          "timestamp": 1754524800000
+        },
+        "content-version": "tdm",
+        "delay-in-days": 0,
+        "URL": "https:\/\/creativecommons.org\/licenses\/by-nc-nd\/4.0"
+      },
+      {
+        "start": {
+          "date-parts": [[2025, 8, 7]],
+          "date-time": "2025-08-07T00:00:00Z",
+          "timestamp": 1754524800000
+        },
+        "content-version": "vor",
+        "delay-in-days": 0,
+        "URL": "https:\/\/creativecommons.org\/licenses\/by-nc-nd\/4.0"
+      }
+    ],
+    "funder": [
+      { "name": "Christian Toggenburger Foundation" },
+      { "name": "Legacy of Wisdom Swiss Association" }
+    ],
+    "content-domain": { "domain": ["link.springer.com"], "crossmark-restriction": false },
+    "short-container-title": ["Sci Rep"],
+    "DOI": "10.1038\/s41598-025-13404-6",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [[2025, 8, 7]],
+      "date-time": "2025-08-07T15:18:00Z",
+      "timestamp": 1754579880000
+    },
+    "update-policy": "https:\/\/doi.org\/10.1007\/springer_crossmark_policy",
+    "source": "Crossref",
+    "is-referenced-by-count": 0,
+    "title": [
+      "Efficacy of the power centering for seniors intervention on physical functional performance in older community-dwelling adults: a secondary analysis of a randomised controlled trial"
+    ],
+    "prefix": "10.1038",
+    "volume": "15",
+    "clinical-trial-number": [
+      { "clinical-trial-number": "nct04861831", "registry": "10.18810\/clinical-trials-gov" }
+    ],
+    "author": [
+      {
+        "ORCID": "https:\/\/orcid.org\/0000-0002-6763-0694",
+        "authenticated-orcid": false,
+        "given": "Roland",
+        "family": "R\u00f6ssler",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "ORCID": "https:\/\/orcid.org\/0000-0002-8799-5607",
+        "authenticated-orcid": false,
+        "given": "Mathias",
+        "family": "Birrer",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "ORCID": "https:\/\/orcid.org\/0009-0000-2279-5703",
+        "authenticated-orcid": false,
+        "given": "Aaron",
+        "family": "Haslbauer",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "ORCID": "https:\/\/orcid.org\/0009-0009-7624-7310",
+        "authenticated-orcid": false,
+        "given": "Jay",
+        "family": "Goldfarb",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "ORCID": "https:\/\/orcid.org\/0000-0002-3681-2807",
+        "authenticated-orcid": false,
+        "given": "Anton",
+        "family": "De Spiegeleer",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "ORCID": "https:\/\/orcid.org\/0000-0003-3201-3968",
+        "authenticated-orcid": false,
+        "given": "Irene",
+        "family": "H\u00e4rdi",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "ORCID": "https:\/\/orcid.org\/0000-0002-3215-7681",
+        "authenticated-orcid": false,
+        "given": "Reto W.",
+        "family": "Kressig",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      }
+    ],
+    "member": "297",
+    "published-online": { "date-parts": [[2025, 8, 7]] },
+    "reference": [
+      {
+        "issue": "2",
+        "key": "13404_CR1",
+        "doi-asserted-by": "publisher",
+        "first-page": "237",
+        "DOI": "10.1016\/j.apmr.2011.08.042",
+        "volume": "93",
+        "author": "CH Chou",
+        "year": "2012",
+        "unstructured": "Chou, C. H., Hwang, C. L. & Wu, Y. T. Effect of exercise on physical function, daily living activities, and quality of life in the frail older adults: A meta-analysis. Arch. Phys. Med. Rehabil. 93(2), 237\u2013244 (2012).",
+        "journal-title": "Arch. Phys. Med. Rehabil."
+      },
+      {
+        "issue": "Suppl 2",
+        "key": "13404_CR2",
+        "first-page": "S308",
+        "volume": "58",
+        "author": "TM Gill",
+        "year": "2010",
+        "unstructured": "Gill, T. M. Assessment of function and disability in longitudinal studies. J. Am. Geriatr. Soc. 58(Suppl 2), S308\u2013S312 (2010).",
+        "journal-title": "J. Am. Geriatr. Soc."
+      },
+      {
+        "issue": "9838",
+        "key": "13404_CR3",
+        "doi-asserted-by": "publisher",
+        "first-page": "219",
+        "DOI": "10.1016\/S0140-6736(12)61031-9",
+        "volume": "380",
+        "author": "IM Lee",
+        "year": "2012",
+        "unstructured": "Lee, I. M. et al. Effect of physical inactivity on major non-communicable diseases worldwide: An analysis of burden of disease and life expectancy. Lancet 380(9838), 219\u2013229 (2012).",
+        "journal-title": "Lancet"
+      },
+      {
+        "key": "13404_CR4",
+        "unstructured": "World Health Organisation clinical consortium on healthy ageing. Report of consortium meeting held virtually, 18\u201319 November 2020 (2021)."
+      },
+      {
+        "key": "13404_CR5",
+        "doi-asserted-by": "crossref",
+        "unstructured": "American College of Sports Medicine, Chodzko-Zajko, W.J., Proctor, D.N., Fiatarone Singh, M.A., Minson, C.T., Nigg, C.R., et al. American College of Sports Medicine position stand. Exercise and physical activity for older adults. Med. Sci. Sports Exerc. 41(7),1510\u20131530 (2009).",
+        "DOI": "10.1249\/MSS.0b013e3181a0c95c"
+      },
+      {
+        "key": "13404_CR6",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1155\/2011\/180704",
+        "volume": "2011",
+        "author": "AS Chan",
+        "year": "2011",
+        "unstructured": "Chan, A. S., Cheung, M. C., Sze, S. L., Leung, W. W. & Shi, D. Shaolin dan tian breathing fosters relaxed and attentive mind: A randomized controlled neuro-electrophysiological study. Evid. Based Complement Alternat. Med. 2011, 180704 (2011).",
+        "journal-title": "Evid. Based Complement Alternat. Med."
+      },
+      {
+        "issue": "5",
+        "key": "13404_CR7",
+        "doi-asserted-by": "publisher",
+        "first-page": "E75",
+        "DOI": "10.1097\/HNP.0000000000000598",
+        "volume": "37",
+        "author": "HH Liu",
+        "year": "2023",
+        "unstructured": "Liu, H. H., Nichols, C. & Zhang, H. Understanding Yin-Yang philosophic concept behind Tai Chi practice. Holist. Nurs. Pract. 37(5), E75\u2013E82 (2023).",
+        "journal-title": "Holist. Nurs. Pract."
+      },
+      {
+        "issue": "4",
+        "key": "13404_CR8",
+        "first-page": "69",
+        "volume": "4",
+        "author": "P Klein",
+        "year": "2017",
+        "unstructured": "Klein, P., Picard, G., Baumgarden, J. & Schneider, R. Meditative movement, energetic, and physical analyses of three qigong exercises: Unification of eastern and western mechanistic exercise theory. Medicines (Basel) 4(4), 69 (2017).",
+        "journal-title": "Medicines (Basel)"
+      },
+      {
+        "issue": "11",
+        "key": "13404_CR9",
+        "first-page": "881",
+        "volume": "62",
+        "author": "P Huston",
+        "year": "2016",
+        "unstructured": "Huston, P. & McFarlane, B. Health benefits of tai chi: What is the evidence?. Can. Fam. Phys. 62(11), 881\u2013890 (2016).",
+        "journal-title": "Can. Fam. Phys."
+      },
+      {
+        "issue": "2",
+        "key": "13404_CR10",
+        "doi-asserted-by": "publisher",
+        "first-page": "142",
+        "DOI": "10.1111\/j.1532-5415.1991.tb01616.x",
+        "volume": "39",
+        "author": "D Podsiadlo",
+        "year": "1991",
+        "unstructured": "Podsiadlo, D. & Richardson, S. The timed \u201cUp & Go\u201d: A test of basic functional mobility for frail elderly persons. J. Am. Geriatr. Soc. 39(2), 142\u2013148 (1991).",
+        "journal-title": "J. Am. Geriatr. Soc."
+      },
+      {
+        "issue": "2",
+        "key": "13404_CR11",
+        "doi-asserted-by": "publisher",
+        "first-page": "M85",
+        "DOI": "10.1093\/geronj\/49.2.M85",
+        "volume": "49",
+        "author": "JM Guralnik",
+        "year": "1994",
+        "unstructured": "Guralnik, J. M. et al. A short physical performance battery assessing lower extremity function: Association with self-reported disability and prediction of mortality and nursing home admission. J. Gerontol. 49(2), M85-94 (1994).",
+        "journal-title": "J. Gerontol."
+      },
+      {
+        "issue": "10",
+        "key": "13404_CR12",
+        "doi-asserted-by": "publisher",
+        "first-page": "1675",
+        "DOI": "10.1111\/j.1532-5415.2005.53501.x",
+        "volume": "53",
+        "author": "M Cesari",
+        "year": "2005",
+        "unstructured": "Cesari, M. et al. Prognostic value of usual gait speed in well-functioning older people\u2013results from the health, aging and body composition study. J. Am. Geriatr. Soc. 53(10), 1675\u20131680 (2005).",
+        "journal-title": "J. Am. Geriatr. Soc."
+      },
+      {
+        "issue": "1",
+        "key": "13404_CR13",
+        "doi-asserted-by": "publisher",
+        "first-page": "16",
+        "DOI": "10.1093\/ageing\/afy169",
+        "volume": "48",
+        "author": "AJ Cruz-Jentoft",
+        "year": "2019",
+        "unstructured": "Cruz-Jentoft, A. J. et al. Sarcopenia: Revised European consensus on definition and diagnosis. Age Ageing 48(1), 16\u201331 (2019).",
+        "journal-title": "Age Ageing"
+      },
+      {
+        "issue": "12",
+        "key": "13404_CR14",
+        "doi-asserted-by": "publisher",
+        "first-page": "1243",
+        "DOI": "10.1016\/S0003-9993(96)90187-2",
+        "volume": "77",
+        "author": "ME Cress",
+        "year": "1996",
+        "unstructured": "Cress, M. E. et al. Continuous-scale physical functional performance in healthy older adults: A validation study. Arch. Phys. Med. Rehabil. 77(12), 1243\u20131250 (1996).",
+        "journal-title": "Arch. Phys. Med. Rehabil."
+      },
+      {
+        "issue": "4",
+        "key": "13404_CR15",
+        "doi-asserted-by": "publisher",
+        "first-page": "323",
+        "DOI": "10.1093\/ptj\/85.4.323",
+        "volume": "85",
+        "author": "ME Cress",
+        "year": "2005",
+        "unstructured": "Cress, M. E., Petrella, J. K., Moore, T. L. & Schenkman, M. L. Continuous-scale physical functional performance test: Validity, reliability, and sensitivity of data for the short version. Phys. Ther. 85(4), 323\u2013335 (2005).",
+        "journal-title": "Phys. Ther."
+      },
+      {
+        "key": "13404_CR16",
+        "doi-asserted-by": "publisher",
+        "first-page": "9575214",
+        "DOI": "10.1155\/2017\/9575214",
+        "volume": "2017",
+        "author": "I Hardi",
+        "year": "2017",
+        "unstructured": "Hardi, I., Bridenbaugh, S. A., Cress, M. E. & Kressig, R. W. Validity of the German version of the continuous-scale physical functional performance 10 test. J. Aging Res. 2017, 9575214 (2017).",
+        "journal-title": "J. Aging Res."
+      },
+      {
+        "issue": "6",
+        "key": "13404_CR17",
+        "doi-asserted-by": "publisher",
+        "first-page": "712",
+        "DOI": "10.1093\/ageing\/afs099",
+        "volume": "41",
+        "author": "E Freiberger",
+        "year": "2012",
+        "unstructured": "Freiberger, E. et al. Performance-based physical function in older community-dwelling persons: A systematic review of instruments. Age Ageing 41(6), 712\u2013721 (2012).",
+        "journal-title": "Age Ageing"
+      },
+      {
+        "issue": "1",
+        "key": "13404_CR18",
+        "doi-asserted-by": "publisher",
+        "first-page": "37",
+        "DOI": "10.1093\/ptj\/83.1.37",
+        "volume": "83",
+        "author": "ME Cress",
+        "year": "2003",
+        "unstructured": "Cress, M. E. & Meyer, M. Maximal voluntary and functional performance levels needed for independence in adults aged 65 to 97 years. Phys. Ther. 83(1), 37\u201348 (2003).",
+        "journal-title": "Phys. Ther."
+      },
+      {
+        "issue": "2",
+        "key": "13404_CR19",
+        "doi-asserted-by": "publisher",
+        "first-page": "672",
+        "DOI": "10.1152\/japplphysiol.00804.2001",
+        "volume": "92",
+        "author": "M Brochu",
+        "year": "2002",
+        "unstructured": "Brochu, M. et al. Effects of resistance training on physical function in older disabled women with coronary heart disease. J. Appl. Physiol. 92(2), 672\u2013678 (2002).",
+        "journal-title": "J. Appl. Physiol."
+      },
+      {
+        "issue": "5",
+        "key": "13404_CR20",
+        "doi-asserted-by": "publisher",
+        "first-page": "M242",
+        "DOI": "10.1093\/gerona\/54.5.M242",
+        "volume": "54",
+        "author": "ME Cress",
+        "year": "1999",
+        "unstructured": "Cress, M. E. et al. Exercise: Effects on physical functional performance in independent older adults. J. Gerontol. A Biol. Sci. Med. Sci. 54(5), M242\u2013M248 (1999).",
+        "journal-title": "J. Gerontol. A Biol. Sci. Med. Sci."
+      },
+      {
+        "key": "13404_CR21",
+        "unstructured": "Pinheiro, J., Bates, D., DebRoy, S., et al. R Package \u2018nlme.\u2019 Linear Nonlinear Mix Eff Models Version 31\u2013162 (2023)."
+      },
+      {
+        "issue": "24",
+        "key": "13404_CR22",
+        "doi-asserted-by": "publisher",
+        "first-page": "1750",
+        "DOI": "10.1136\/bjsports-2016-096547",
+        "volume": "51",
+        "author": "C Sherrington",
+        "year": "2017",
+        "unstructured": "Sherrington, C. et al. Exercise to prevent falls in older adults: An updated systematic review and meta-analysis. Br. J. Sports Med. 51(24), 1750\u20131758 (2017).",
+        "journal-title": "Br. J. Sports Med."
+      },
+      {
+        "issue": "3",
+        "key": "13404_CR23",
+        "doi-asserted-by": "publisher",
+        "first-page": "127",
+        "DOI": "10.1519\/JPT.0b013e3182abe784",
+        "volume": "37",
+        "author": "ME Hackney",
+        "year": "2014",
+        "unstructured": "Hackney, M. E. & Wolf, S. L. Impact of Tai Chi Chu\u2019an practice on balance and mobility in older adults: An integrative review of 20 years of research. J. Geriatr. Phys. Ther. 37(3), 127\u2013135 (2014).",
+        "journal-title": "J. Geriatr. Phys. Ther."
+      },
+      {
+        "key": "13404_CR24",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Panel on Prevention of Falls in Older Persons AGS, British Geriatrics Society. Summary of the Updated American Geriatrics Society\/British Geriatrics Society clinical practice guideline for prevention of falls in older persons. J. Am. Geriatr. Soc. 59,148\u201357 (2011).",
+        "DOI": "10.1111\/j.1532-5415.2010.03234.x"
+      },
+      {
+        "issue": "7",
+        "key": "13404_CR25",
+        "doi-asserted-by": "publisher",
+        "first-page": "1168",
+        "DOI": "10.1111\/j.1532-5415.2005.53375.x",
+        "volume": "53",
+        "author": "RW Sattin",
+        "year": "2005",
+        "unstructured": "Sattin, R. W., Easley, K. A., Wolf, S. L., Chen, Y. & Kutner, M. H. Reduction in fear of falling through intense tai chi exercise training in older, transitionally frail adults. J. Am. Geriatr. Soc. 53(7), 1168\u20131178 (2005).",
+        "journal-title": "J. Am. Geriatr. Soc."
+      },
+      {
+        "issue": "12",
+        "key": "13404_CR26",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1371\/journal.pone.0114731",
+        "volume": "9",
+        "author": "PM Wayne",
+        "year": "2014",
+        "unstructured": "Wayne, P. M. et al. Complexity-based measures inform effects of Tai Chi training on standing postural control: Cross-sectional and randomized trial studies. PLoS ONE 9(12), e114731 (2014).",
+        "journal-title": "PLoS ONE"
+      },
+      {
+        "key": "13404_CR27",
+        "doi-asserted-by": "publisher",
+        "first-page": "1",
+        "DOI": "10.1186\/s12966-019-0789-2",
+        "volume": "16",
+        "author": "D Sivaramakrishnan",
+        "year": "2019",
+        "unstructured": "Sivaramakrishnan, D. et al. The effects of yoga compared to active and inactive controls on physical function and health related quality of life in older adults-systematic review and meta-analysis of randomised controlled trials. Int. J. Behav. Nutr. Phys. Act. 16, 1\u201322 (2019).",
+        "journal-title": "Int. J. Behav. Nutr. Phys. Act."
+      },
+      {
+        "issue": "11",
+        "key": "13404_CR28",
+        "doi-asserted-by": "publisher",
+        "first-page": "1983",
+        "DOI": "10.1007\/s40279-020-01331-7",
+        "volume": "50",
+        "author": "J Grgic",
+        "year": "2020",
+        "unstructured": "Grgic, J. et al. Effects of resistance training on muscle size and strength in very elderly adults: A systematic review and meta-analysis of randomized controlled trials. Sports Med. 50(11), 1983\u20131999 (2020).",
+        "journal-title": "Sports Med."
+      },
+      {
+        "issue": "5",
+        "key": "13404_CR29",
+        "doi-asserted-by": "publisher",
+        "first-page": "426",
+        "DOI": "10.1016\/j.jamda.2016.01.019",
+        "volume": "17",
+        "author": "FJ Tarazona-Santabalbina",
+        "year": "2016",
+        "unstructured": "Tarazona-Santabalbina, F. J. et al. A multicomponent exercise intervention that reverses frailty and improves cognition, emotion, and social networking in the community-dwelling frail elderly: A randomized clinical trial. J. Am. Med. Dir. Assoc. 17(5), 426\u2013433 (2016).",
+        "journal-title": "J. Am. Med. Dir. Assoc."
+      },
+      {
+        "issue": "12",
+        "key": "13404_CR30",
+        "doi-asserted-by": "publisher",
+        "first-page": "1685",
+        "DOI": "10.1046\/j.1532-5415.2003.51551.x",
+        "volume": "51",
+        "author": "SR Lord",
+        "year": "2003",
+        "unstructured": "Lord, S. R. et al. The effect of group exercise on physical functioning and falls in frail older people living in retirement villages: A randomized, controlled trial. J. Am. Geriatr. Soc. 51(12), 1685\u20131692 (2003).",
+        "journal-title": "J. Am. Geriatr. Soc."
+      },
+      {
+        "issue": "4",
+        "key": "13404_CR31",
+        "doi-asserted-by": "publisher",
+        "first-page": "407",
+        "DOI": "10.1093\/ageing\/32.4.407",
+        "volume": "32",
+        "author": "A Barnett",
+        "year": "2003",
+        "unstructured": "Barnett, A., Smith, B., Lord, S. R., Williams, M. & Baumand, A. Community-based group exercise improves balance and reduces falls in at-risk older people: A randomised controlled trial. Age Ageing 32(4), 407\u2013414 (2003).",
+        "journal-title": "Age Ageing"
+      },
+      {
+        "issue": "7 Suppl 3",
+        "key": "13404_CR32",
+        "doi-asserted-by": "publisher",
+        "first-page": "S52",
+        "DOI": "10.1016\/j.apmr.2004.03.012",
+        "volume": "85",
+        "author": "EM Phillips",
+        "year": "2004",
+        "unstructured": "Phillips, E. M., Schneider, J. C. & Mercer, G. R. Motivating elders to initiate and maintain exercise. Arch. Phys. Med. Rehabil. 85(7 Suppl 3), S52\u2013S57 (2004).",
+        "journal-title": "Arch. Phys. Med. Rehabil."
+      },
+      {
+        "issue": "2",
+        "key": "13404_CR33",
+        "doi-asserted-by": "publisher",
+        "first-page": "187",
+        "DOI": "10.1093\/gerona\/60.2.187",
+        "volume": "60",
+        "author": "F Li",
+        "year": "2005",
+        "unstructured": "Li, F. et al. Tai Chi and fall reductions in older adults: A randomized controlled trial. J. Gerontol. A Biol. Sci. Med. Sci. 60(2), 187\u2013194 (2005).",
+        "journal-title": "J. Gerontol. A Biol. Sci. Med. Sci."
+      },
+      {
+        "issue": "5",
+        "key": "13404_CR34",
+        "doi-asserted-by": "publisher",
+        "first-page": "905",
+        "DOI": "10.1046\/j.1532-5415.2002.50218.x",
+        "volume": "50",
+        "author": "MC Robertson",
+        "year": "2002",
+        "unstructured": "Robertson, M. C., Campbell, A. J., Gardner, M. M. & Devlin, N. Preventing injuries in older people by preventing falls: A meta-analysis of individual-level data. J. Am. Geriatr. Soc. 50(5), 905\u2013911 (2002).",
+        "journal-title": "J. Am. Geriatr. Soc."
+      },
+      {
+        "issue": "6",
+        "key": "13404_CR35",
+        "doi-asserted-by": "publisher",
+        "first-page": "681",
+        "DOI": "10.1093\/ageing\/afq102",
+        "volume": "39",
+        "author": "S Thomas",
+        "year": "2010",
+        "unstructured": "Thomas, S., Mackintosh, S. & Halbert, J. Does the \u2018Otago exercise programme\u2019 reduce mortality and falls in older adults?: A systematic review and meta-analysis. Age Ageing 39(6), 681\u2013687 (2010).",
+        "journal-title": "Age Ageing"
+      },
+      {
+        "key": "13404_CR36",
+        "first-page": "1",
+        "volume": "1",
+        "author": "M Henning",
+        "year": "2017",
+        "unstructured": "Henning, M., Kr\u00e4geloh, C. & Webster, C. Mindfulness and taijiquan. Ann. Cognit. Sci. 1, 1\u20136 (2017).",
+        "journal-title": "Ann. Cognit. Sci."
+      },
+      {
+        "key": "13404_CR37",
+        "doi-asserted-by": "publisher",
+        "first-page": "1381009",
+        "DOI": "10.3389\/fpsyg.2024.1381009",
+        "volume": "15",
+        "author": "P Qu",
+        "year": "2024",
+        "unstructured": "Qu, P. et al. The effects of mindfulness enhanced Tai Chi Chuan training on mental and physical health among beginners: A randomized controlled trial. Front. Psychol. 15, 1381009 (2024).",
+        "journal-title": "Front. Psychol."
+      },
+      {
+        "issue": "12",
+        "key": "13404_CR38",
+        "doi-asserted-by": "publisher",
+        "first-page": "1962",
+        "DOI": "10.1249\/01.MSS.0000099110.17311.A2",
+        "volume": "35",
+        "author": "WW Tsang",
+        "year": "2003",
+        "unstructured": "Tsang, W. W. & Hui-Chan, C. W. Effects of tai chi on joint proprioception and stability limits in elderly subjects. Med. Sci. Sports Exerc. 35(12), 1962\u20131971 (2003).",
+        "journal-title": "Med. Sci. Sports Exerc."
+      },
+      {
+        "key": "13404_CR39",
+        "doi-asserted-by": "publisher",
+        "first-page": "3620534",
+        "DOI": "10.1155\/2020\/3620534",
+        "volume": "2020",
+        "author": "J Yang",
+        "year": "2020",
+        "unstructured": "Yang, J. et al. Tai Chi is effective in delaying cognitive decline in older adults with mild cognitive impairment: Evidence from a systematic review and meta-analysis. Evid. Based Complement Alternat. Med. 2020, 3620534 (2020).",
+        "journal-title": "Evid. Based Complement Alternat. Med."
+      }
+    ],
+    "container-title": ["Scientific Reports"],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "https:\/\/www.nature.com\/articles\/s41598-025-13404-6.pdf",
+        "content-type": "application\/pdf",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "https:\/\/www.nature.com\/articles\/s41598-025-13404-6",
+        "content-type": "text\/html",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "https:\/\/www.nature.com\/articles\/s41598-025-13404-6.pdf",
+        "content-type": "application\/pdf",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2025, 9, 8]],
+      "date-time": "2025-09-08T17:32:42Z",
+      "timestamp": 1757352762000
+    },
+    "score": 1,
+    "resource": { "primary": { "URL": "https:\/\/www.nature.com\/articles\/s41598-025-13404-6" } },
+    "subtitle": [],
+    "short-title": [],
+    "issued": { "date-parts": [[2025, 8, 7]] },
+    "references-count": 39,
+    "journal-issue": { "issue": "1", "published-online": { "date-parts": [[2025, 12]] } },
+    "alternative-id": ["13404"],
+    "URL": "https:\/\/doi.org\/10.1038\/s41598-025-13404-6",
+    "relation": {},
+    "ISSN": ["2045-2322"],
+    "issn-type": [{ "type": "electronic", "value": "2045-2322" }],
+    "subject": [],
+    "published": { "date-parts": [[2025, 8, 7]] },
+    "assertion": [
+      {
+        "value": "20 January 2025",
+        "order": 1,
+        "name": "received",
+        "label": "Received",
+        "group": { "name": "ArticleHistory", "label": "Article History" }
+      },
+      {
+        "value": "23 July 2025",
+        "order": 2,
+        "name": "accepted",
+        "label": "Accepted",
+        "group": { "name": "ArticleHistory", "label": "Article History" }
+      },
+      {
+        "value": "7 August 2025",
+        "order": 3,
+        "name": "first_online",
+        "label": "First Online",
+        "group": { "name": "ArticleHistory", "label": "Article History" }
+      },
+      {
+        "order": 1,
+        "name": "Ethics",
+        "group": { "name": "EthicsHeading", "label": "Declarations" }
+      },
+      {
+        "value": "Author Jay Goldfarb is the Founder and Director of Legacy of Wisdom, one of the organisations that provided funding for this study. Jay Goldfarb was involved only in the design of the intervention and in the organisation of the training sessions. He had no involvement in data cleaning, data management, analysis, or interpretation of the results. All other authors declare no competing interests.",
+        "order": 2,
+        "name": "Ethics",
+        "group": { "name": "EthicsHeading", "label": "Competing interests" }
+      },
+      {
+        "value": "The trial was conducted according to the principles outlined in the Declaration of Helsinki and was approved by the local Ethics Committee (Ethikkommission Nordwest- und Zentralschweiz EKNZ, BASEC ID 2018-00067) and has been registered on  (NCT04861831). All participants provided written informed consent prior to their inclusion in the study.",
+        "order": 3,
+        "name": "Ethics",
+        "group": { "name": "EthicsHeading", "label": "Ethical approval" }
+      },
+      {
+        "value": "Informed consent was obtained from all individual participants included in the study prior to its commencement.",
+        "order": 4,
+        "name": "Ethics",
+        "group": { "name": "EthicsHeading", "label": "Informed consent" }
+      }
+    ],
+    "article-number": "28908"
+  }
+}

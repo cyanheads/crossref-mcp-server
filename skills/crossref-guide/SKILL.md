@@ -4,7 +4,7 @@ description: Judgment for the crossref_* tools — confirming a citation match, 
 license: Apache-2.0
 metadata:
   author: cyanheads
-  version: "1.0"
+  version: "1.1"
 ---
 
 ## Scope
@@ -13,7 +13,7 @@ Crossref holds the metadata publishers deposit for Crossref-registered DOIs: jou
 
 Reach elsewhere for:
 
-- Aggregations (works per year, per institution, per topic), author disambiguation, institutions, and topics — OpenAlex. Crossref answers counts only one filtered call at a time.
+- Aggregations over what Crossref does not hold (works per topic or per disambiguated institution), author disambiguation, institutions, and topics — OpenAlex. A breakdown by a field Crossref does hold — year, publisher, type, funder name, affiliation string, ORCID, update type — is one call: `facets` on crossref_search_works.
 - Citation counts as a measure of influence — OpenAlex. `isReferencedByCount` counts only the citing works Crossref matched from deposited reference lists, so it differs from other indexes.
 - Biomedical abstracts — PubMed. A DOI registered with DataCite — a DataCite source. crossref_get_work and crossref_get_references on a DOI another agency registered answer `doi_not_found` naming that agency, and for DataCite, JaLC, mEDRA, KISTI, and OP they also carry the work's citation (title, authors, container, date, publisher, type) when doi.org serves one.
 
@@ -31,9 +31,9 @@ Reach elsewhere for:
 ## Gates
 
 - **A bibliographic hit is a candidate, not a match.** crossref_search_works ranks results for any citation string, including one for a work that does not exist, and same-titled records (reprints, later items) rank beside the original. Before adopting a DOI, confirm title, first author, year, and container against the citation. Scores rank one query's results and carry no threshold across queries.
-- **Absent is not "none".** A missing abstract, reference list, funder, ORCID, or affiliation means the publisher did not deposit it. Before reporting that a venue lacks something, read the `coverage` fractions on its crossref_search_journals or crossref_get_member record — a venue that deposits no funding metadata is invisible to the `funder` filter however many of its papers name a funder.
+- **Absent is not "none".** A missing abstract, reference list, funder, ORCID, or affiliation means the publisher did not deposit it. Before reporting that a venue lacks something, read the `coverage` fractions on its crossref_search_journals or crossref_get_member record — a venue that deposits no funding metadata is invisible to the `funder` filter however many of its papers name a funder. The same holds for a work: a missing `clinicalTrialNumbers` does not mean the work reports no trial, only that its publisher deposited no registration number.
 - **A DOI's prefix names who first registered it, not who owns it now.** A journal that changes publisher keeps its DOIs, and they move to the new member, so crossref_get_prefix on the DOI's own prefix can name the former publisher, and the record's `publisher` field is the depositor's text. The current owner is the `memberId` crossref_get_work returns for the DOI; pass it to crossref_get_member for the publisher record.
-- **Say which funder scope a count uses.** The funded-works list on crossref_search_funders includes the funder's registry descendants; the `funder` filter on crossref_search_works counts only works asserting that exact ID, and the funder record's `worksCount` tracks the filter, not the list. For a filtered count that includes sub-agencies, look the funder up by `funder_doi`, which returns its `descendants`, and OR the funder's ID with every one of them in the `funder` filter — that reproduces the list's scope and takes the other filters.
+- **Say which funder scope a count uses.** The funded-works list on crossref_search_funders includes the funder's registry descendants; the `funder` filter on crossref_search_works counts only works asserting that exact ID. The funder record's `worksCount` is the registry's own figure and can differ from the filter's total by tens of thousands of works, so take an exact count from crossref_search_works with `rows: 0` and read `totalResults`. For a filtered count that includes sub-agencies, look the funder up by `funder_doi`, which returns its `descendants`, and OR the funder's ID with every one of them in the `funder` filter — that reproduces the list's scope and takes the other filters. Works registered against a superseded ID sit in neither the list nor the filter: the lookup's `replaces` IDs, OR'd in the same way, count the funder's whole history.
 - **The update-type filter finds notices.** `{"update-type":"retraction"}` matches the records carrying the update: retraction notices, whose `updateTo` names the retracted DOI, and works retracted in place, which point at themselves. To screen known DOIs, read `updatedBy` on those works instead — several at once through an OR `doi` filter (below).
 
 ## Workflows
@@ -47,7 +47,7 @@ The works lists on crossref_search_journals and crossref_search_funders take no 
 | Newest works, no filter, or a funder's total with sub-agencies | The tool's own works list (`include_works`) |
 | A date range, a type, or `has-abstract` | crossref_search_works with `issn` or `funder` filters |
 
-For a journal through crossref_search_works, pass every ISSN its record lists as one OR filter (below); for a funder with its sub-agencies, its ID and every ID in its `descendants`.
+For a journal through crossref_search_works, pass every ISSN its record lists as one OR filter (below); for a funder with its sub-agencies, its ID and every ID in its `descendants`, plus every ID in its `replaces` for its whole history.
 
 ### Filter syntax
 
@@ -55,4 +55,4 @@ For a journal through crossref_search_works, pass every ISSN its record lists as
 - **Dates.** `from-pub-date` and `until-pub-date` take `YYYY`, `YYYY-MM`, or `YYYY-MM-DD`; a bare year covers the whole year. `from-created-date` bounds when the DOI was registered rather than published. Dissertations and most standards deposit their date as `approved` rather than a publication date, so a pub-date filter finds none of them — bound them with `from-approved-date` and `until-approved-date`. A recorded publication date can lie in the future, so a newest-published list can lead with dates that have not arrived.
 - **Types.** Crossref's own type names: a preprint is `posted-content`. An unknown type comes back as `invalid_parameter` listing every valid one.
 - **Publisher scope.** `member` (numeric ID) matches the works a publisher holds now, under every prefix, including titles transferred to it; `prefix` matches a DOI's own prefix, whoever holds it now.
-- **Counting.** For "how many", call crossref_search_works with `rows: 1` and `fields: ["DOI"]` and read `totalResults`; one call per bucket (per year, per type).
+- **Counting.** For "how many", call crossref_search_works with `rows: 0` and read `totalResults`. For a breakdown (per year, per type, per publisher), add `facets` — `{"published":"*","publisher-name":10}` — in the same call: each facet is that field's values with their counts over every record `totalResults` counts, highest first. A work carrying several values (affiliations, update types) counts under each and one carrying none under none, so a facet's counts need not sum to `totalResults`. A facet whose values fill its limit may have more: `notice` names it, and a larger count (up to 1000) or a narrower filter reaches the rest.

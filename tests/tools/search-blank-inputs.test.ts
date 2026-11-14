@@ -213,6 +213,29 @@ describe('crossref_search_works form-blank payload', () => {
     expect(noticeOf(result)).toBeUndefined();
   });
 
+  it('reads a blank facet limit as omitted, sending only the facets filled in', async () => {
+    const result = await runToolContract(searchWorksTool, {
+      query: 'crispr',
+      rows: 1,
+      facets: { published: '', 'type-name': '*' },
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(sent().params.facet).toBe('type-name:*');
+  });
+
+  it('sends no facet= and returns no facets field when every facet limit is blank', async () => {
+    const result = await runToolContract(searchWorksTool, {
+      query: 'crispr',
+      rows: 1,
+      facets: { published: '', 'publisher-name': '' },
+    });
+
+    expect(sent().params).toEqual({ query: 'crispr', rows: '1', ...ANY_SELECT });
+    expect(result.structuredContent).not.toHaveProperty('facets');
+    expect(noticeOf(result)).toBeUndefined();
+  });
+
   it('keeps both the blank-term and the author-cap notices on one page', async () => {
     http.reset();
     const crowded = {

@@ -444,9 +444,9 @@ describe('searchJournalsTool', () => {
     expect(text).toContain('55');
   });
 
-  it('accepts rows between 1 and 500', () => {
+  it('accepts rows between 1 and 1000', () => {
     expect(() => searchJournalsTool.input.parse({ query: 'test', rows: 1 })).not.toThrow();
-    expect(() => searchJournalsTool.input.parse({ query: 'test', rows: 500 })).not.toThrow();
+    expect(() => searchJournalsTool.input.parse({ query: 'test', rows: 1000 })).not.toThrow();
   });
 
   it('accepts valid ISSN formats — with and without hyphen, uppercase X check digit', () => {
@@ -1041,33 +1041,62 @@ describe('searchJournalsTool', () => {
   });
 });
 
-describe('searchJournalsTool page-size clamp', () => {
-  const CLAMP = 'rows 501 is above the per-call cap of 500, so 500 was applied.';
-  const journals = (count: number) =>
-    Array.from({ length: count }, (_, i) => ({ ...RAW_JOURNAL, title: `Journal ${i}` }));
+/**
+ * Neither list carries a per-call cap below the schema maximum: 1000 journals with their coverage
+ * measure 1,047,062 B of structuredContent and 646,439 B of content[] (title query "journal",
+ * 2026-11-14), and the works list's summary is lighter still, so Crossref's own page maximum bounds
+ * both, as on crossref_search_funders. Only an offset window ever cuts the rows requested.
+ */
+describe('searchJournalsTool rows up to the schema maximum', () => {
+  const journals = titled;
+  type Structured = {
+    journals: Array<{ title?: string }>;
+    journalCount?: number;
+    nextOffset?: number;
+    notice?: string;
+  };
 
-  it('clamps rows above 500 on the journal list, continuing nextOffset after the page returned', async () => {
-    mockSearchJournals.mockResolvedValue(journalList(journals(500), 5000));
+  it('returns 1000 journals for a title query at rows 1000, with no cap notice on either surface', async () => {
+    mockSearchJournals.mockResolvedValue(journalList(journals(1000), 5000));
+
+    const result = await runToolContract(searchJournalsTool, { query: 'Journal', rows: 1000 });
+
+    expect(result.isError).toBeFalsy();
+    expect(mockSearchJournals).toHaveBeenCalledWith(
+      expect.objectContaining({ rows: 1000, offset: 0 }),
+      expect.anything(),
+    );
+    const structured = result.structuredContent as Structured;
+    expect(structured.journals).toHaveLength(1000);
+    expect(structured).toMatchObject({ journalCount: 1000, nextOffset: 1000 });
+    expect(structured.notice).toBeUndefined();
+    const lines = renderedText(contentText(result.content)).split('\n');
+    expect(lines).toContain('Journal 0');
+    expect(lines).toContain('Journal 999');
+    expect(contentText(result.content)).not.toContain('per-call cap');
+  });
+
+  it.each([501, 750, 999])('sends rows %i whole, continuing nextOffset after it', async (rows) => {
+    mockSearchJournals.mockResolvedValue(journalList(journals(rows), 5000));
 
     const result = await runToolContract(searchJournalsTool, {
       query: 'Journal',
-      rows: 501,
+      rows,
       offset: 40,
     });
 
     expect(mockSearchJournals).toHaveBeenCalledWith(
-      expect.objectContaining({ rows: 500, offset: 40 }),
+      expect.objectContaining({ rows, offset: 40 }),
       expect.anything(),
     );
-    expect(result.structuredContent).toMatchObject({ journalCount: 500, nextOffset: 540 });
-    expect((result.structuredContent as { notice?: string }).notice).toBe(CLAMP);
-    expect(result.content.map(blockText).join('\n')).toContain(CLAMP);
+    const structured = result.structuredContent as Structured;
+    expect(structured).toMatchObject({ journalCount: rows, nextOffset: 40 + rows });
+    expect(structured.notice).toBeUndefined();
   });
 
-  it('checks the title-search offset ceiling against the clamped rows', async () => {
-    mockSearchJournals.mockResolvedValue(journalList(journals(500), 169_103));
+  it('fits rows 1000 at offset 99400 to the 600 the title-search ceiling leaves, more than 0.5.2 sent', async () => {
+    mockSearchJournals.mockResolvedValue(journalList(journals(600), 169_103));
 
-    // 99400 + the requested 1000 would pass the 100000 ceiling; the 500 applied does not.
     const result = await runToolContract(searchJournalsTool, {
       query: 'Journal',
       rows: 1000,
@@ -1075,13 +1104,22 @@ describe('searchJournalsTool page-size clamp', () => {
     });
 
     expect(result.isError).toBeFalsy();
+    // 0.5.2 clamped rows to 500 first and sent { rows: 500, offset: 99400 }.
     expect(mockSearchJournals).toHaveBeenCalledWith(
-      expect.objectContaining({ rows: 500, offset: 99_400 }),
+      expect.objectContaining({ rows: 600, offset: 99_400 }),
       expect.anything(),
     );
+    const structured = result.structuredContent as Structured;
+    const notice =
+      'offset 99400 + rows 1000 would pass the 100000 ceiling Crossref puts on offset + rows on journal title search, so 600 was applied — the last journal page reachable by offset, and 169103 journals matched. Narrow the query to bring the rest into reach.';
+    expect(structured.journalCount).toBe(600);
+    expect(structured.nextOffset).toBeUndefined();
+    expect(structured.notice).toBe(notice);
+    const lines = renderedText(contentText(result.content)).split('\n');
+    expect(lines.some((line) => line.endsWith(notice))).toBe(true);
   });
 
-  it('applies the 400 rows that fit at offset 99600 + rows 501, naming the cap and the window once', async () => {
+  it('applies the 400 rows that fit at offset 99600 + rows 501, naming the window alone', async () => {
     mockSearchJournals.mockResolvedValue(journalList(journals(400), 169_103));
 
     const result = await runToolContract(searchJournalsTool, {
@@ -1097,16 +1135,58 @@ describe('searchJournalsTool page-size clamp', () => {
     );
     const notice = (result.structuredContent as { notice?: string }).notice;
     expect(notice).toBe(
-      'rows 501 is above the per-call cap of 500, and offset 99600 + 500 would pass the 100000 ceiling Crossref puts on offset + rows on journal title search, so 400 was applied — the last journal page reachable by offset, and 169103 journals matched. Narrow the query to bring the rest into reach.',
+      'offset 99600 + rows 501 would pass the 100000 ceiling Crossref puts on offset + rows on journal title search, so 400 was applied — the last journal page reachable by offset, and 169103 journals matched. Narrow the query to bring the rest into reach.',
     );
-    expect(notice).not.toContain(CLAMP);
   });
 
   /**
-   * The works list carries no per-call cap: its summary is small enough that Crossref's own page
-   * maximum bounds it, as on crossref_search_funders. The journal list beside it holds one
-   * journal, so no clamp is named either.
+   * Every notice source on a journal-list page, at the largest rows the schema takes: each
+   * carries its own sentence and nothing about a cap — a cap no call can reach is no lever.
    */
+  it.each([
+    [
+      'a query nothing matched',
+      { query: 'ZZZ', rows: 1000 },
+      journalList([], 0),
+      'No journals matched the query. Try a shorter title or check the ISSN format (xxxx-xxxx).',
+    ],
+    [
+      'an offset past the end of the matches',
+      { query: 'Nature', rows: 1000, offset: 500 },
+      journalList([], 223),
+      'Offset 500 is past the end of this result list — 223 journals matched. Request an offset below 223.',
+    ],
+    [
+      'only blank search terms',
+      { query: '  ', rows: 1000 },
+      journalList(journals(3), 3),
+      'Every search term supplied was blank, so none was sent — this page is an unfiltered listing of every journal in Crossref (3 records), not a match. Supply a non-blank query or issn to search.',
+    ],
+  ])('carries the %s notice alone at rows 1000', async (_label, input, page, notice) => {
+    mockSearchJournals.mockResolvedValue(page);
+
+    const result = await runToolContract(searchJournalsTool, input);
+
+    expect(result.isError).toBeFalsy();
+    expect(mockSearchJournals).toHaveBeenCalledWith(
+      expect.objectContaining({ rows: 1000 }),
+      expect.anything(),
+    );
+    expect((result.structuredContent as Structured).notice).toBe(notice);
+    expect(renderedText(contentText(result.content))).toContain(notice);
+    expect(contentText(result.content)).not.toContain('per-call cap');
+  });
+
+  it('states one 1–1000 range for rows and no per-call cap in the rows or notice descriptions', () => {
+    const rows = searchJournalsTool.input.shape.rows.description ?? '';
+    expect(rows).toContain('(1–1000, default 10)');
+    expect(rows).not.toMatch(/\b500\b|per-call|notice/);
+    const notice = searchJournalsTool.enrichment?.notice?.description ?? '';
+    expect(notice).not.toContain('per-call cap');
+    expect(notice).toContain('so the page lists every journal unfiltered. Absent otherwise.');
+  });
+
+  /** The works list beside a matched journal takes rows whole, and the journal list names no cap either. */
   it('returns up to 1000 works on an issn lookup with include_works, naming no clamp', async () => {
     mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
     mockGetJournalWorks.mockResolvedValue({
@@ -1178,26 +1258,11 @@ describe('searchJournalsTool page-size clamp', () => {
     expect(contentText(result.content)).not.toContain('per-call cap');
   });
 
-  it('clamps a title query at rows 1000 to 500 journals, with the same notice', async () => {
-    mockSearchJournals.mockResolvedValue(journalList(journals(500), 5000));
-
-    const result = await runToolContract(searchJournalsTool, { query: 'Journal', rows: 1000 });
-
-    expect(mockSearchJournals).toHaveBeenCalledWith(
-      expect.objectContaining({ rows: 500 }),
-      expect.anything(),
-    );
-    expect(result.structuredContent).toMatchObject({ journalCount: 500, nextOffset: 500 });
-    const notice = 'rows 1000 is above the per-call cap of 500, so 500 was applied.';
-    expect((result.structuredContent as { notice?: string }).notice).toBe(notice);
-    expect(contentText(result.content)).toContain(notice);
-  });
-
   /**
-   * A title query reaching include_works matched one journal — more is refused as ambiguous — so
-   * the journal-list cap cut nothing worth naming, and the works list beside it takes rows whole.
+   * A title query reaching include_works matched one journal — more is refused as ambiguous — and
+   * both of its lists take rows whole.
    */
-  it('takes rows whole on the works list of a title query that matched one journal', async () => {
+  it('takes rows whole on both lists of a title query that matched one journal', async () => {
     mockSearchJournals.mockResolvedValue(journalList([RAW_JOURNAL], 1));
     mockGetJournalWorks.mockResolvedValue({
       totalResults: 90_000,
@@ -1212,7 +1277,7 @@ describe('searchJournalsTool page-size clamp', () => {
 
     expect(result.isError).toBeFalsy();
     expect(mockSearchJournals).toHaveBeenCalledWith(
-      expect.objectContaining({ query: 'Nature', rows: 500 }),
+      expect.objectContaining({ query: 'Nature', rows: 1000 }),
       expect.anything(),
     );
     expect(mockGetJournalWorks).toHaveBeenCalledWith(
@@ -1248,19 +1313,6 @@ describe('searchJournalsTool page-size clamp', () => {
       'works_offset 9550 + rows 501 would pass the 10000 ceiling Crossref puts on works_offset + rows on a journal works list, so 450 was applied — the last works page reachable by works_offset, and 90000 works exist. Re-run with works_cursor="*" and chain nextWorksCursor to read the whole list; the walk restarts at the most recently registered work and runs by registration date, not publication date.',
     );
     expect(notice).not.toContain('per-call cap');
-  });
-
-  it('leaves rows 500 untouched and notice-free', async () => {
-    mockSearchJournals.mockResolvedValue(journalList(journals(500), 5000));
-
-    const result = await runToolContract(searchJournalsTool, { query: 'Journal', rows: 500 });
-
-    expect(mockSearchJournals).toHaveBeenCalledWith(
-      expect.objectContaining({ rows: 500 }),
-      expect.anything(),
-    );
-    expect(result.structuredContent).toMatchObject({ journalCount: 500, nextOffset: 500 });
-    expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
   });
 });
 
@@ -1397,46 +1449,53 @@ describe('searchJournalsTool offset-ceiling recipes', () => {
  * Crossref does: the records when `offset + rows` fits the route's ceiling, a rejection when it
  * does not (live: `offset + rows` exactly at the ceiling → 200, one past → 400, on both routes).
  * Offsets are written relative to the ceiling, which differs by an order of magnitude between the
- * two lists, so one table drives both guards. The per-call cap of 500 is the journal list's alone:
- * a row the journal list answers with `cap+cut` the works list answers with `cut`, every page in
- * the table fitting under both caps either way. `applied`
+ * two lists, so one table drives both guards. Neither list has a per-call cap below the schema
+ * maximum, so the window alone cuts a page, and both lists answer every row alike. `applied`
  * is the page returned and `next` the continuation offset handed out (null: withheld at the
  * ceiling). `v050` is what the published 0.5.0 returned — rows capped at 100, the window checked
- * on the capped rows, every pair that passed it refused. A pair 0.5.0 answered is answered here
+ * on the capped rows, every pair that passed it refused. `v052` is what 0.5.2 returned on the
+ * journal list, whose rows it capped at 500 before fitting the window (its works list already took
+ * rows whole, so `applied` is its figure there). A pair either release answered is answered here
  * with at least as many records.
  */
 describe('searchJournalsTool offset windows', () => {
-  type Notice = 'none' | 'last' | 'cut' | 'cap+cut';
-  // [offset - ceiling, rows, applied (null: refused), next - ceiling (null: withheld), notice, 0.5.0 applied]
-  type Row = [number, number, number | null, number | null, Notice, number | null];
+  type Notice = 'none' | 'last' | 'cut';
+  // [offset - ceiling, rows, applied (null: refused), next - ceiling (null: withheld), notice, 0.5.0 applied, 0.5.2 journal-list applied]
+  type Row = [number, number, number | null, number | null, Notice, number | null, number | null];
   const WINDOW: Row[] = [
-    [-1, 1, 1, null, 'last', 1],
-    [-1, 100, 1, null, 'cut', null],
-    [-1, 101, 1, null, 'cut', null],
-    [-1, 500, 1, null, 'cut', null],
-    [-1, 501, 1, null, 'cap+cut', null],
-    [-1, 1000, 1, null, 'cap+cut', null],
-    [-50, 1, 1, -49, 'none', 1],
-    [-50, 100, 50, null, 'cut', null],
-    [-50, 101, 50, null, 'cut', null],
-    [-50, 500, 50, null, 'cut', null],
-    [-50, 501, 50, null, 'cap+cut', null],
-    [-50, 1000, 50, null, 'cap+cut', null],
-    [-100, 1, 1, -99, 'none', 1],
-    [-100, 100, 100, null, 'last', 100],
-    [-100, 101, 100, null, 'cut', 100],
-    [-100, 500, 100, null, 'cut', 100],
-    [-100, 501, 100, null, 'cap+cut', 100],
-    [-100, 1000, 100, null, 'cap+cut', 100],
-    [-101, 1, 1, -100, 'none', 1],
-    [-101, 100, 100, -1, 'none', 100],
-    [-101, 101, 101, null, 'last', 100],
-    [-101, 500, 101, null, 'cut', 100],
-    [-101, 501, 101, null, 'cap+cut', 100],
-    [-101, 1000, 101, null, 'cap+cut', 100],
+    [-1, 1, 1, null, 'last', 1, 1],
+    [-1, 100, 1, null, 'cut', null, 1],
+    [-1, 101, 1, null, 'cut', null, 1],
+    [-1, 500, 1, null, 'cut', null, 1],
+    [-1, 501, 1, null, 'cut', null, 1],
+    [-1, 1000, 1, null, 'cut', null, 1],
+    [-50, 1, 1, -49, 'none', 1, 1],
+    [-50, 100, 50, null, 'cut', null, 50],
+    [-50, 101, 50, null, 'cut', null, 50],
+    [-50, 500, 50, null, 'cut', null, 50],
+    [-50, 501, 50, null, 'cut', null, 50],
+    [-50, 1000, 50, null, 'cut', null, 50],
+    [-100, 1, 1, -99, 'none', 1, 1],
+    [-100, 100, 100, null, 'last', 100, 100],
+    [-100, 101, 100, null, 'cut', 100, 100],
+    [-100, 500, 100, null, 'cut', 100, 100],
+    [-100, 501, 100, null, 'cut', 100, 100],
+    [-100, 1000, 100, null, 'cut', 100, 100],
+    [-101, 1, 1, -100, 'none', 1, 1],
+    [-101, 100, 100, -1, 'none', 100, 100],
+    [-101, 101, 101, null, 'last', 100, 101],
+    [-101, 500, 101, null, 'cut', 100, 101],
+    [-101, 501, 101, null, 'cut', 100, 101],
+    [-101, 1000, 101, null, 'cut', 100, 101],
+    // Where 0.5.2's journal-list cap of 500 cut below what the window allows.
+    [-500, 501, 500, null, 'cut', 100, 500],
+    [-500, 1000, 500, null, 'cut', 100, 500],
+    [-800, 1000, 800, null, 'cut', 100, 500],
+    [-1000, 1000, 1000, null, 'last', 100, 500],
+    [-1001, 1000, 1000, -1, 'none', 100, 500],
     ...[1, 100, 101, 500, 501, 1000].flatMap((rows): Row[] => [
-      [0, rows, null, null, 'none', null],
-      [1, rows, null, null, 'none', null],
+      [0, rows, null, null, 'none', null, null],
+      [1, rows, null, null, 'none', null, null],
     ]),
   ];
   const works = (count: number) =>
@@ -1465,8 +1524,8 @@ describe('searchJournalsTool offset windows', () => {
     });
 
     it.each(WINDOW)(
-      'offset 100000 + (%i), rows %i → %s journals (next: 100000 + (%s); notice: %s; 0.5.0: %s)',
-      async (delta, rows, applied, nextDelta, notice, v050) => {
+      'offset 100000 + (%i), rows %i → %s journals (next: 100000 + (%s); notice: %s; 0.5.0: %s; 0.5.2: %s)',
+      async (delta, rows, applied, nextDelta, notice, v050, v052) => {
         const offset = CEILING + delta;
         const result = await runToolContract(searchJournalsTool, { query: 'a', rows, offset });
         const structured = result.structuredContent as Structured;
@@ -1483,12 +1542,12 @@ describe('searchJournalsTool offset windows', () => {
         );
         expect(structured.journalCount).toBe(applied);
         if (v050 !== null) expect(applied).toBeGreaterThanOrEqual(v050);
+        if (v052 !== null) expect(applied).toBeGreaterThanOrEqual(v052);
         expect(structured.nextOffset).toBe(nextDelta === null ? undefined : CEILING + nextDelta);
         const expected = {
           none: undefined,
           last: 'This is the last journal page reachable by offset — Crossref caps offset + rows at 100000 on journal search and 200000 journals matched. Narrow the query to bring the rest into reach.',
           cut: `offset ${offset} + rows ${rows} would pass the 100000 ceiling Crossref puts on offset + rows on journal title search, so ${applied} was applied — ${ROUTE}`,
-          'cap+cut': `rows ${rows} is above the per-call cap of 500, and offset ${offset} + 500 would pass the 100000 ceiling Crossref puts on offset + rows on journal title search, so ${applied} was applied — ${ROUTE}`,
         }[notice];
         expect(structured.notice).toBe(expected);
       },
@@ -1504,7 +1563,7 @@ describe('searchJournalsTool offset windows', () => {
       const structured = result.structuredContent as Structured & {
         journals: Array<{ title?: string }>;
       };
-      const notice = `rows 1000 is above the per-call cap of 500, and offset 99900 + 500 would pass the 100000 ceiling Crossref puts on offset + rows on journal title search, so 100 was applied — ${ROUTE}`;
+      const notice = `offset 99900 + rows 1000 would pass the 100000 ceiling Crossref puts on offset + rows on journal title search, so 100 was applied — ${ROUTE}`;
       expect(structured.notice).toBe(notice);
       const lines = renderedText(contentText(result.content)).split('\n');
       expect(lines.some((line) => line.endsWith(notice))).toBe(true);
@@ -1579,12 +1638,11 @@ describe('searchJournalsTool offset windows', () => {
         expect(structured.nextWorksOffset).toBe(
           nextDelta === null ? undefined : CEILING + nextDelta,
         );
-        // The works list has no per-call cap, so only its window ever cuts the rows requested.
         const expected = {
           none: undefined,
           last: 'This is the last works page reachable by works_offset — Crossref caps works_offset + rows at 10000 on a journal works list and 250000 works exist. Re-run with works_cursor="*" and chain nextWorksCursor to read the whole list; the walk restarts at the most recently registered work and runs by registration date, not publication date.',
           cut: `works_offset ${worksOffset} + rows ${rows} would pass the 10000 ceiling Crossref puts on works_offset + rows on a journal works list, so ${applied} was applied — ${ROUTE}`,
-        }[notice === 'cap+cut' ? 'cut' : notice];
+        }[notice];
         expect(structured.notice).toBe(expected);
       },
     );

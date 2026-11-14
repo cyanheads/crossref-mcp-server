@@ -146,6 +146,33 @@ export type CrossrefEvent = {
   end?: CrossrefDateParts;
 };
 
+/**
+ * One clinical trial registration a work names. Crossref lowercases the number (`nct04861831`);
+ * `registry` is the registry's DOI and `type` the trial stage the work reports on (`preResults`,
+ * `results`, `postResults`), deposited on few entries.
+ */
+export type CrossrefClinicalTrialNumber = {
+  'clinical-trial-number': string;
+  registry?: string;
+  type?: string;
+};
+
+/**
+ * One Crossmark assertion a publisher attaches to a work: a dated article-history step, an ethics
+ * or competing-interest statement, peer-review details, boilerplate. `name` is a machine code and
+ * `value` free text, absent on an entry that only heads its group. `order` restarts in every
+ * group and repeats within one, so the array order is the sequence.
+ */
+export type CrossrefAssertion = {
+  name: string;
+  value?: string;
+  label?: string;
+  order?: number;
+  group?: { name?: string; label?: string };
+  URL?: string;
+  explanation?: { URL?: string };
+};
+
 /** Raw upstream work shape from the Crossref REST API. All optional except DOI; type can be null. */
 export type RawCrossrefWork = {
   DOI: string;
@@ -212,6 +239,8 @@ export type RawCrossrefWork = {
   subtype?: string;
   /** The collection or subject a posted-content server files the work under. */
   'group-title'?: string;
+  'clinical-trial-number'?: CrossrefClinicalTrialNumber[];
+  assertion?: CrossrefAssertion[];
 };
 
 /** Raw journal record from Crossref /journals endpoint. */
@@ -312,7 +341,12 @@ export type CrossrefListMessage<T> = {
   'message-type': string;
   'message-version': string;
   message: {
-    facets?: Record<string, unknown>;
+    /**
+     * Present when the request named `facet=`: each facet name mapped to
+     * `{ "value-count": n, values: { "<value>": count } }`. Read only through the service's
+     * facets schema, which checks that shape and keeps every upstream value a value.
+     */
+    facets?: unknown;
     'total-results': number;
     items: T[];
     'items-per-page': number;

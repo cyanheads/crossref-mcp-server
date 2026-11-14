@@ -1041,62 +1041,145 @@ describe('getReferencesTool book, series, issue, edition, and DOI-provenance fie
 });
 
 describe('getReferencesTool page-size clamp', () => {
-  const CLAMP = 'limit 2501 is above the per-call cap of 2500, so 2500 was applied.';
+  const CLAMP = 'limit 4001 is above the per-call cap of 4000, so 4000 was applied.';
   const refs = (count: number) =>
     Array.from({ length: count }, (_, i) => ({ key: `r${i}`, unstructured: `Ref ${i}.` }));
 
-  it('clamps limit above 2500: pages 2500 references, reports cap 2500, and advances nextOffset by the page', async () => {
-    mockGetWork.mockResolvedValue({ DOI: '10.1038/nature12373', reference: refs(6000) });
+  /**
+   * The longest deposited list sampled: `10.1016/b978-0-12-397189-0.00123-3` carries 25,814
+   * references, 893,694 B of structuredContent at 4,000 and 5.9 MB whole (2026-11-14). Synthetic
+   * entries in four deposited shapes — a resolved DOI, a bare citation string, a structured
+   * journal citation, a book citation — stand in for it, so every page mixes them as the live list does.
+   */
+  const BIBLIOGRAPHY_DOI = '10.1016/b978-0-12-397189-0.00123-3';
+  const bibliography = (count: number) =>
+    Array.from({ length: count }, (_, i) => {
+      const key = `r${i}`;
+      switch (i % 4) {
+        case 0:
+          return { key, DOI: `10.1000/cited${i}`, 'doi-asserted-by': 'crossref' };
+        case 1:
+          return { key, unstructured: `Author ${i}. Title ${i}. 1999.` };
+        case 2:
+          return {
+            key,
+            author: `Author ${i}`,
+            year: '2001',
+            'article-title': `Article ${i}`,
+            'journal-title': 'Journal of Tests',
+            volume: '7',
+            'first-page': `${i}`,
+            ISSN: 'https://id.crossref.org/issn/1234-5678',
+          };
+        default:
+          return { key, 'volume-title': `Book ${i}`, edition: '2', 'series-title': 'Series' };
+      }
+    });
+  type Page = {
+    references: Array<{ key?: string }>;
+    referenceCount: number;
+    offset: number;
+    nextOffset?: number;
+    truncated?: boolean;
+    shown?: number;
+    cap?: number;
+    notice?: string;
+  };
+
+  it('clamps limit above 4000: pages 4000 references, reports cap 4000, and advances nextOffset by the page', async () => {
+    mockGetWork.mockResolvedValue({ DOI: '10.1038/nature12373', reference: refs(9000) });
 
     const result = await runToolContract(getReferencesTool, {
       doi: '10.1038/nature12373',
       offset: 500,
-      limit: 2501,
+      limit: 4001,
     });
 
-    const structured = result.structuredContent as {
-      references: Array<{ key?: string }>;
-      notice?: string;
-    };
-    expect(structured.references).toHaveLength(2500);
+    const structured = result.structuredContent as Page;
+    expect(structured.references).toHaveLength(4000);
     expect(structured.references[0]?.key).toBe('r500');
-    expect(structured.references.at(-1)?.key).toBe('r2999');
-    expect(result.structuredContent).toMatchObject({
-      truncated: true,
-      shown: 2500,
-      cap: 2500,
-      nextOffset: 3000,
-    });
+    expect(structured.references.at(-1)?.key).toBe('r4499');
+    expect(structured).toMatchObject({ truncated: true, shown: 4000, cap: 4000, nextOffset: 4500 });
     expect(structured.notice).toBe(
-      `${CLAMP} Showing references 501–3000 of 6000. Call again with offset=3000 for the next page.`,
+      `${CLAMP} Showing references 501–4500 of 9000. Call again with offset=4500 for the next page.`,
     );
     const text = result.content.map(blockText).join('\n');
     expect(text).toContain(CLAMP);
-    expect(text).toContain('3000. [3000] key:r2999 | Ref 2999.');
-    expect(text).not.toContain('key:r3000');
+    expect(text).toContain('4500. [4500] key:r4499 | Ref 4499.');
+    expect(text).not.toContain('key:r4500');
   });
 
-  it('pages a 25,814-reference list at 2500 when limit is the schema maximum', async () => {
-    mockGetWork.mockResolvedValue({
-      DOI: '10.1016/b978-0-12-397189-0.00123-3',
-      reference: refs(25_814),
-    });
+  it(`returns 4000 of ${BIBLIOGRAPHY_DOI}'s 25,814 references at limit 100000, naming the cap`, async () => {
+    mockGetWork.mockResolvedValue({ DOI: BIBLIOGRAPHY_DOI, reference: bibliography(25_814) });
 
     const result = await runToolContract(getReferencesTool, {
-      doi: '10.1016/b978-0-12-397189-0.00123-3',
+      doi: BIBLIOGRAPHY_DOI,
       limit: 100_000,
     });
 
-    const structured = result.structuredContent as {
-      references: unknown[];
-      referenceCount: number;
-      notice?: string;
-    };
-    expect(structured.references).toHaveLength(2500);
+    expect(result.isError).toBeFalsy();
+    const structured = result.structuredContent as Page;
+    expect(structured.references).toHaveLength(4000);
     expect(structured.referenceCount).toBe(25_814);
-    expect(result.structuredContent).toMatchObject({ nextOffset: 2500, cap: 2500 });
+    expect(structured).toMatchObject({ nextOffset: 4000, cap: 4000, shown: 4000, truncated: true });
+    const notice =
+      'limit 100000 is above the per-call cap of 4000, so 4000 was applied. Showing references 1–4000 of 25814. Call again with offset=4000 for the next page.';
+    expect(structured.notice).toBe(notice);
+    const text = result.content.map(blockText).join('\n');
+    expect(text).toContain(notice);
+    expect(text).toContain('**References:** showing 4000 of 25814, starting at index 0');
+    // The page's last entry (index 3999, a book citation) is rendered; the next one is not.
+    expect(text).toContain('4000. Book 3999 series:Series edition:2 key:r3999');
+    expect(text).not.toContain('key:r4000');
+  });
+
+  it('walks the whole 25,814-reference list by nextOffset at limit 100000: six full pages and a 1,814 tail', async () => {
+    mockGetWork.mockResolvedValue({ DOI: BIBLIOGRAPHY_DOI, reference: bibliography(25_814) });
+
+    const sizes: number[] = [];
+    const keys: string[] = [];
+    let last: Page | undefined;
+    for (let offset: number | undefined = 0; offset !== undefined; offset = last?.nextOffset) {
+      const result = await runToolContract(getReferencesTool, {
+        doi: BIBLIOGRAPHY_DOI,
+        offset,
+        limit: 100_000,
+      });
+      last = result.structuredContent as Page;
+      expect(last.offset).toBe(offset);
+      sizes.push(last.references.length);
+      for (const ref of last.references) keys.push(ref.key ?? '');
+      // content[] carries the same page: its first and last positions, and the clamp.
+      const text = result.content.map(blockText).join('\n');
+      expect(text).toContain(`\n${offset + 1}. `);
+      expect(text).toContain(`\n${offset + last.references.length}. `);
+      expect(text).not.toContain(`\n${offset + last.references.length + 1}. `);
+      expect(text).toContain(
+        'limit 100000 is above the per-call cap of 4000, so 4000 was applied.',
+      );
+      if (sizes.length > 10) throw new Error('walk did not end');
+    }
+
+    expect(sizes).toEqual([4000, 4000, 4000, 4000, 4000, 4000, 1814]);
+    expect(keys).toEqual(Array.from({ length: 25_814 }, (_, i) => `r${i}`));
+    // The tail page ends the list: the clamp alone, no continuation.
+    expect(last?.notice).toBe(
+      'limit 100000 is above the per-call cap of 4000, so 4000 was applied.',
+    );
+    expect(last).not.toHaveProperty('nextOffset');
+    expect(last).not.toHaveProperty('truncated');
+  });
+
+  it('takes a limit between 2501 and 4000 whole, which 0.5.2 cut to 2500', async () => {
+    mockGetWork.mockResolvedValue({ DOI: BIBLIOGRAPHY_DOI, reference: bibliography(25_814) });
+
+    const result = await runToolContract(getReferencesTool, { doi: BIBLIOGRAPHY_DOI, limit: 3000 });
+
+    const structured = result.structuredContent as Page;
+    expect(structured.references).toHaveLength(3000);
+    expect(structured).toMatchObject({ nextOffset: 3000, cap: 3000 });
     expect(structured.notice).toBe(
-      'limit 100000 is above the per-call cap of 2500, so 2500 was applied. Showing references 1–2500 of 25814. Call again with offset=2500 for the next page.',
+      'Showing references 1–3000 of 25814. Call again with offset=3000 for the next page.',
     );
   });
 
@@ -1105,7 +1188,7 @@ describe('getReferencesTool page-size clamp', () => {
 
     const result = await runToolContract(getReferencesTool, {
       doi: '10.1038/nature12373',
-      limit: 2501,
+      limit: 4001,
     });
 
     expect((result.structuredContent as { references: unknown[] }).references).toHaveLength(300);
@@ -1117,7 +1200,7 @@ describe('getReferencesTool page-size clamp', () => {
     mockGetWork.mockResolvedValue({ DOI: '10.1038/nature12373', reference: [] });
     const empty = await runToolContract(getReferencesTool, {
       doi: '10.1038/nature12373',
-      limit: 2501,
+      limit: 4001,
     });
     expect((empty.structuredContent as { notice?: string }).notice).toBe(
       `${CLAMP} No reference list indexed for this work. Coverage varies by publisher and era; pre-2000 works and non-participating publishers often have no indexed references. Try OpenAlex for alternative reference data.`,
@@ -1127,22 +1210,22 @@ describe('getReferencesTool page-size clamp', () => {
     const past = await runToolContract(getReferencesTool, {
       doi: '10.1038/nature12373',
       offset: 50,
-      limit: 2501,
+      limit: 4001,
     });
     expect((past.structuredContent as { notice?: string }).notice).toBe(
       `${CLAMP} Offset 50 is past the end of this reference list (10 references). Request an offset below 10.`,
     );
   });
 
-  it('leaves limit 2500 untouched and notice-free on a list that fits it exactly', async () => {
-    mockGetWork.mockResolvedValue({ DOI: '10.1038/nature12373', reference: refs(2500) });
+  it('leaves limit 4000 untouched and notice-free on a list that fits it exactly', async () => {
+    mockGetWork.mockResolvedValue({ DOI: '10.1038/nature12373', reference: refs(4000) });
 
     const result = await runToolContract(getReferencesTool, {
       doi: '10.1038/nature12373',
-      limit: 2500,
+      limit: 4000,
     });
 
-    expect((result.structuredContent as { references: unknown[] }).references).toHaveLength(2500);
+    expect((result.structuredContent as { references: unknown[] }).references).toHaveLength(4000);
     expect(result.structuredContent).not.toHaveProperty('nextOffset');
     expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
   });

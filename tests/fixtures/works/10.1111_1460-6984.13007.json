@@ -1,0 +1,200 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2025, 10, 1]],
+      "date-time": "2025-10-01T16:23:17Z",
+      "timestamp": 1759335797667,
+      "version": "build-2065373602"
+    },
+    "reference-count": 7,
+    "publisher": "Wiley",
+    "issue": "4",
+    "license": [
+      {
+        "start": {
+          "date-parts": [[2024, 1, 16]],
+          "date-time": "2024-01-16T00:00:00Z",
+          "timestamp": 1705363200000
+        },
+        "content-version": "vor",
+        "delay-in-days": 0,
+        "URL": "http:\/\/creativecommons.org\/licenses\/by\/4.0\/"
+      }
+    ],
+    "content-domain": { "domain": ["onlinelibrary.wiley.com"], "crossmark-restriction": true },
+    "short-container-title": ["Intl J Lang &amp;amp; Comm Disor"],
+    "published-print": { "date-parts": [[2024, 7]] },
+    "abstract": "<jats:title>Abstract<\/jats:title><jats:sec><jats:title>Background<\/jats:title><jats:p>Inducible laryngeal obstruction causes narrowing of the laryngeal aperture in response to external triggers. Outcomes are measured in inducible laryngeal obstruction to monitor changes in health status over time.<\/jats:p><\/jats:sec><jats:sec><jats:title>Methods<\/jats:title><jats:p>This study is a scoping review based on Preferred Reporting Items for Systematic Reviews and Meta\u2010Analyses (PRISMA) methodology. The review will be guided by the following research question: \u2018What health outcomes are measured in studies including people with inducible laryngeal obstruction?\u2019 The research question was validated using the Population\u2010Concept\u2010Context framework according to the methodology for Joanna Briggs Institution Scoping Reviews. Relevant peer\u2010reviewed studies and grey literature conducted over the last 40 years will be identified from electronic databases including AMED, CINAHL, Embase, EMCARE, MEDLINE, OVID, PubMed and PsycINFO. The search strings \u2018inducible laryngeal obstruction\u2019, \u2018ILO\u2019, \u2018vocal cord dysfunction\u2019, \u2018VCD\u2019, \u2018paradoxical vocal fold motion\u2019, \u2018PVFM\u2019, \u2018outcome\u2019, \u2018measure\u2019, \u2018measurement instrument\u2019, \u2018assessment\u2019, \u2018scale\u2019, \u2018questionnaire\u2019 will be combined using Boolean logic. An independent reviewer will conduct title screening; two independent reviewers will conduct abstract and full article screening, followed by data extraction by two reviewers. Analyses will be conducted appropriate to the findings.<\/jats:p><\/jats:sec><jats:sec><jats:title>Discussion<\/jats:title><jats:p>The review will document evidence of health outcomes measured in inducible laryngeal obstruction, identifying measurement characteristics and potential utility. Collating studies may identify gaps in coverage, the need for novel tools, and for standardisation for clinical and research purposes.<\/jats:p><\/jats:sec><jats:sec><jats:title>WHAT THIS PAPER ADDS<\/jats:title><jats:sec><jats:title>What is already known on the subject<\/jats:title><jats:p><jats:list list-type=\"bullet\">\n<jats:list-item><jats:p>Inducible laryngeal obstruction causes narrowing of the laryngeal aperture in response to external triggers. Outcomes are measured in inducible laryngeal obstruction to monitor changes in health status over time. Currently, there are no standardised outcome measures for measuring the effects of interventions in inducible laryngeal obstruction (ILO).<\/jats:p><\/jats:list-item><\/jats:list><\/jats:p><\/jats:sec><jats:sec><jats:title>What this paper adds to existing knowledge<\/jats:title><jats:p><jats:list list-type=\"bullet\">\n<jats:list-item><jats:p>Assessment of health can be measured in a variety of ways. Physiological, radiological and biochemical measurements of impairment are more common historically but there are a lot of outcomes of other factors now including subjective measures of functional status and health\u2010related quality of life, with data collected directly from patients. This study will allow us to scope the literature to see the health outcomes being measured in ILO to attempt to standardise and develop future health outcomes.<\/jats:p><\/jats:list-item><\/jats:list><\/jats:p><\/jats:sec><jats:sec><jats:title>What are the potential or actual clinical implications of this work?<\/jats:title><jats:p><jats:list list-type=\"bullet\">\n<jats:list-item><jats:p>The review will document evidence of health outcomes measured in inducible laryngeal obstruction, identifying measurement characteristics and potential utility. Collating studies may identify gaps in coverage, the need for novel tools and for standardisation for clinical and research purposes.<\/jats:p><\/jats:list-item><\/jats:list><\/jats:p><\/jats:sec><\/jats:sec>",
+    "DOI": "10.1111\/1460-6984.13007",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [[2024, 1, 16]],
+      "date-time": "2024-01-16T13:49:11Z",
+      "timestamp": 1705412951000
+    },
+    "page": "1398-1403",
+    "update-policy": "https:\/\/doi.org\/10.1002\/crossmark_policy",
+    "source": "Crossref",
+    "is-referenced-by-count": 0,
+    "title": [
+      "Protocol for a scoping review to map health outcomes in individuals with inducible laryngeal obstruction"
+    ],
+    "prefix": "10.1111",
+    "volume": "59",
+    "author": [
+      {
+        "ORCID": "https:\/\/orcid.org\/0000-0002-4128-9651",
+        "authenticated-orcid": false,
+        "given": "Siobhan",
+        "family": "Ludlow",
+        "sequence": "first",
+        "affiliation": [
+          { "name": "Manchester University NHS Foundation, Trust  Manchester UK" },
+          { "name": "University of Manchester  Manchester UK" }
+        ],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "Leanne\u2010Jo",
+        "family": "Holmes",
+        "sequence": "additional",
+        "affiliation": [
+          { "name": "Manchester University NHS Foundation, Trust  Manchester UK" },
+          { "name": "University of Manchester  Manchester UK" }
+        ],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "Lauren",
+        "family": "Simpson",
+        "sequence": "additional",
+        "affiliation": [{ "name": "Patient and Public Involvement, (PPI)" }],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "Stephen J.",
+        "family": "Fowler",
+        "sequence": "additional",
+        "affiliation": [
+          { "name": "Manchester University NHS Foundation, Trust  Manchester UK" },
+          { "name": "University of Manchester  Manchester UK" }
+        ],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "Lucie",
+        "family": "Byrne\u2010Davis",
+        "sequence": "additional",
+        "affiliation": [{ "name": "University of Manchester  Manchester UK" }],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      }
+    ],
+    "member": "311",
+    "published-online": { "date-parts": [[2024, 1, 16]] },
+    "reference": [
+      {
+        "key": "e_1_2_7_2_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1080\/1364557032000119616"
+      },
+      {
+        "key": "e_1_2_7_3_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1097\/MOO.0000000000000452"
+      },
+      {
+        "key": "e_1_2_7_4_1",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1164\/rccm.201606-1249CI"
+      },
+      {
+        "issue": "69",
+        "key": "e_1_2_7_5_1",
+        "first-page": "2",
+        "article-title": "Scoping studies: advancing the methodology",
+        "volume": "5",
+        "author": "Levac D.",
+        "year": "2010",
+        "journal-title": "BMC Implementation Science"
+      },
+      {
+        "volume-title": "The Joanna Briggs Institute Reviewers' Manual 2015: Methodology for JBI Scoping Reviews",
+        "year": "2015",
+        "author": "Peters M.",
+        "key": "e_1_2_7_6_1"
+      },
+      {
+        "key": "e_1_2_7_7_1",
+        "unstructured": "World Health Organization. (1998)Health promotion glossary.Geneva:World Health Organization. Available to download at: Health promotion glossary (who.int)."
+      },
+      {
+        "volume-title": "International classification of functioning, disability, and Health (ICF)",
+        "year": "2001",
+        "author": "World Health Organisation",
+        "key": "e_1_2_7_8_1"
+      }
+    ],
+    "container-title": ["International Journal of Language &amp; Communication Disorders"],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "https:\/\/onlinelibrary.wiley.com\/doi\/pdf\/10.1111\/1460-6984.13007",
+        "content-type": "unspecified",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2025, 10, 1]],
+      "date-time": "2025-10-01T08:04:08Z",
+      "timestamp": 1759305848000
+    },
+    "score": 1,
+    "resource": {
+      "primary": { "URL": "https:\/\/onlinelibrary.wiley.com\/doi\/10.1111\/1460-6984.13007" }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": { "date-parts": [[2024, 1, 16]] },
+    "references-count": 7,
+    "journal-issue": { "issue": "4", "published-print": { "date-parts": [[2024, 7]] } },
+    "alternative-id": ["10.1111\/1460-6984.13007"],
+    "URL": "https:\/\/doi.org\/10.1111\/1460-6984.13007",
+    "archive": ["Portico"],
+    "relation": {},
+    "ISSN": ["1368-2822", "1460-6984"],
+    "issn-type": [
+      { "type": "print", "value": "1368-2822" },
+      { "type": "electronic", "value": "1460-6984" }
+    ],
+    "subject": [],
+    "published": { "date-parts": [[2024, 1, 16]] },
+    "assertion": [
+      {
+        "value": "2023-11-16",
+        "order": 0,
+        "name": "received",
+        "label": "Received",
+        "group": { "name": "publication_history", "label": "Publication History" }
+      },
+      {
+        "value": "2024-01-02",
+        "order": 2,
+        "name": "accepted",
+        "label": "Accepted",
+        "group": { "name": "publication_history", "label": "Publication History" }
+      },
+      {
+        "value": "2024-01-16",
+        "order": 3,
+        "name": "published",
+        "label": "Published",
+        "group": { "name": "publication_history", "label": "Publication History" }
+      }
+    ]
+  }
+}

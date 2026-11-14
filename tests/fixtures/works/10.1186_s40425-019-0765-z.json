@@ -1,0 +1,952 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2025, 12, 3]],
+      "date-time": "2025-12-03T17:51:37Z",
+      "timestamp": 1764784297437,
+      "version": "3.37.3"
+    },
+    "reference-count": 57,
+    "publisher": "BMJ",
+    "issue": "1",
+    "license": [
+      {
+        "start": {
+          "date-parts": [[2019, 10, 29]],
+          "date-time": "2019-10-29T00:00:00Z",
+          "timestamp": 1572307200000
+        },
+        "content-version": "tdm",
+        "delay-in-days": 0,
+        "URL": "http:\/\/creativecommons.org\/licenses\/by\/4.0\/"
+      }
+    ],
+    "funder": [
+      {
+        "DOI": "10.13039\/100015846",
+        "name": "Welsh Government",
+        "doi-asserted-by": "crossref",
+        "award": ["HE0915\/1009"],
+        "award-info": [{ "award-number": ["HE0915\/1009"] }],
+        "id": [{ "id": "10.13039\/100015846", "id-type": "DOI", "asserted-by": "crossref" }]
+      },
+      {
+        "name": "National Research Network in Drug Discovery PhD Studentship",
+        "award": ["N\/A"],
+        "award-info": [{ "award-number": ["N\/A"] }]
+      },
+      {
+        "DOI": "10.13039\/501100000723",
+        "name": "Tenovus",
+        "doi-asserted-by": "publisher",
+        "award": ["PhD2011\/L28"],
+        "award-info": [{ "award-number": ["PhD2011\/L28"] }],
+        "id": [{ "id": "10.13039\/501100000723", "id-type": "DOI", "asserted-by": "publisher" }]
+      },
+      {
+        "DOI": "10.13039\/100012068",
+        "name": "Health and Care Research Wales",
+        "doi-asserted-by": "publisher",
+        "id": [{ "id": "10.13039\/100012068", "id-type": "DOI", "asserted-by": "publisher" }]
+      },
+      {
+        "DOI": "10.13039\/100009250",
+        "name": "National Institute for Social Care and Health Research",
+        "doi-asserted-by": "publisher",
+        "id": [{ "id": "10.13039\/100009250", "id-type": "DOI", "asserted-by": "publisher" }]
+      }
+    ],
+    "content-domain": { "domain": ["link.springer.com"], "crossmark-restriction": false },
+    "short-container-title": ["j. immunotherapy cancer"],
+    "published-print": { "date-parts": [[2019, 12]] },
+    "DOI": "10.1186\/s40425-019-0765-z",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [[2019, 10, 30]],
+      "date-time": "2019-10-30T20:44:07Z",
+      "timestamp": 1572468247000
+    },
+    "update-policy": "https:\/\/doi.org\/10.1007\/springer_crossmark_policy",
+    "source": "Crossref",
+    "is-referenced-by-count": 22,
+    "title": [
+      "Antibody drug conjugates against the receptor for advanced glycation end products (RAGE), a novel therapeutic target in endometrial cancer"
+    ],
+    "prefix": "10.1136",
+    "volume": "7",
+    "author": [
+      {
+        "ORCID": "https:\/\/orcid.org\/0000-0001-9531-1220",
+        "authenticated-orcid": false,
+        "given": "Gareth D.",
+        "family": "Healey",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "Belen",
+        "family": "Pan-Castillo",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "Jezabel",
+        "family": "Garcia-Parra",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "Julia",
+        "family": "Davies",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "Shaun",
+        "family": "Roberts",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "Eilir",
+        "family": "Jones",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "Kalyan",
+        "family": "Dhar",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "Sarika",
+        "family": "Nandanan",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "Nasima",
+        "family": "Tofazzal",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "Luke",
+        "family": "Piggott",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "Richard",
+        "family": "Clarkson",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "Gillian",
+        "family": "Seaton",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "Asa",
+        "family": "Frostell",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "Tim",
+        "family": "Fagge",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "Colin",
+        "family": "McKee",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "Lavinia",
+        "family": "Margarit",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "R. Steven",
+        "family": "Conlan",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      },
+      {
+        "given": "Deyarina",
+        "family": "Gonzalez",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "role": "author", "vocabulary": "crossref" }]
+      }
+    ],
+    "member": "239",
+    "published-online": { "date-parts": [[2019, 10, 29]] },
+    "reference": [
+      {
+        "key": "765_CR1",
+        "unstructured": "Ferlay J, Soerjomataram I, Ervik M, Dikshit R, Eser S, Mathers C, et al. GLOBOCAN 2012 v1.0, Cancer Incidence and Mortality Worldwide: IARC CancerBase No. 11. Lyon; 2013. Available from: http:\/\/globocan.iarc.fr . Accessed Sept 2018."
+      },
+      {
+        "issue": "1",
+        "key": "765_CR2",
+        "doi-asserted-by": "publisher",
+        "first-page": "1",
+        "DOI": "10.1007\/s00280-015-2758-z",
+        "volume": "76",
+        "author": "JL Silva",
+        "year": "2015",
+        "unstructured": "Silva JL, Paulino E, Dias MF, Melo AC. Endometrial cancer: redefining the molecular-targeted approach. Cancer Chemother Pharmacol. 2015;76(1):1\u201311 2015\/05\/04.",
+        "journal-title": "Cancer Chemother Pharmacol"
+      },
+      {
+        "key": "765_CR3",
+        "doi-asserted-by": "publisher",
+        "first-page": "5174",
+        "DOI": "10.1038\/srep05174",
+        "volume": "4",
+        "author": "CO Sung",
+        "year": "2014",
+        "unstructured": "Sung CO, Sohn I. The expression pattern of 19 genes predicts the histology of endometrial carcinoma. Sci Rep. 2014;4:5174 2014\/06\/05.",
+        "journal-title": "Sci Rep"
+      },
+      {
+        "issue": "1",
+        "key": "765_CR4",
+        "doi-asserted-by": "publisher",
+        "first-page": "10",
+        "DOI": "10.1016\/0090-8258(83)90111-7",
+        "volume": "15",
+        "author": "JV Bokhman",
+        "year": "1983",
+        "unstructured": "Bokhman JV. Two pathogenetic types of endometrial carcinoma. Gynecol Oncol. 1983;15(1):10\u20137 1983\/02\/01.",
+        "journal-title": "Gynecol Oncol"
+      },
+      {
+        "key": "765_CR5",
+        "doi-asserted-by": "publisher",
+        "first-page": "14051",
+        "DOI": "10.1038\/srep14051",
+        "volume": "5",
+        "author": "TT Gong",
+        "year": "2015",
+        "unstructured": "Gong TT, Wang YL, Ma XX. Age at menarche and endometrial cancer risk: a dose-response meta-analysis of prospective studies. Sci Rep. 2015;5:14051 2015\/09\/12.",
+        "journal-title": "Sci Rep"
+      },
+      {
+        "issue": "9484",
+        "key": "765_CR6",
+        "doi-asserted-by": "publisher",
+        "first-page": "491",
+        "DOI": "10.1016\/S0140-6736(05)67063-8",
+        "volume": "366",
+        "author": "F Amant",
+        "year": "2005",
+        "unstructured": "Amant F, Moerman P, Neven P, Timmerman D, Van Limbergen E, Vergote I. Endometrial cancer. Lancet. 2005;366(9484):491\u2013505. https:\/\/doi.org\/10.1016\/S0140-6736(05)67063-8 .",
+        "journal-title": "Lancet"
+      },
+      {
+        "issue": "4",
+        "key": "765_CR7",
+        "doi-asserted-by": "publisher",
+        "first-page": "379",
+        "DOI": "10.1016\/0002-9378(84)90147-9",
+        "volume": "149",
+        "author": "C Trope",
+        "year": "1984",
+        "unstructured": "Trope C, Johnsson JE, Simonsen E, Christiansen H, Cavallin-Stahl E, Horvath G. Treatment of recurrent endometrial adenocarcinoma with a combination of doxorubicin and cisplatin. Am J Obstet Gynecol. 1984;149(4):379\u201381 1984\/06\/15.",
+        "journal-title": "Am J Obstet Gynecol"
+      },
+      {
+        "issue": "1",
+        "key": "765_CR8",
+        "doi-asserted-by": "publisher",
+        "first-page": "38",
+        "DOI": "10.1177\/107327480901600106",
+        "volume": "16",
+        "author": "SM Temkin",
+        "year": "2009",
+        "unstructured": "Temkin SM, Fleming G. Current treatment of metastatic endometrial cancer. Cancer Control. 2009;16(1):38\u201345 2008\/12\/17.",
+        "journal-title": "Cancer Control"
+      },
+      {
+        "issue": "5",
+        "key": "765_CR9",
+        "doi-asserted-by": "publisher",
+        "first-page": "441",
+        "DOI": "10.3109\/00016348409156700",
+        "volume": "63",
+        "author": "Antti Kauppila",
+        "year": "1984",
+        "unstructured": "Kauppila A. rogestin therapy of endometrial, breast and ovarian carcinoma. A review of clinical observations. Acta Obstet Gynecol Scand. 1984;63(5):441\u201350 1984\/01\/01.",
+        "journal-title": "Acta Obstetricia et Gynecologica Scandinavica"
+      },
+      {
+        "issue": "13",
+        "key": "765_CR10",
+        "doi-asserted-by": "publisher",
+        "first-page": "3244",
+        "DOI": "10.1200\/JCO.2001.19.13.3244",
+        "volume": "19",
+        "author": "EL Sievers",
+        "year": "2001",
+        "unstructured": "Sievers EL, Larson RA, Stadtmauer EA, Estey E, Lowenberg B, Dombret H, et al. Efficacy and safety of gemtuzumab ozogamicin in patients with CD33-positive acute myeloid leukemia in first relapse. J Clin Oncol. 2001;19(13):3244\u201354 Available from: http:\/\/www.ncbi.nlm.nih.gov\/pubmed\/11432892 . 2001\/07\/04.",
+        "journal-title": "J Clin Oncol"
+      },
+      {
+        "issue": "7",
+        "key": "765_CR11",
+        "doi-asserted-by": "publisher",
+        "first-page": "631",
+        "DOI": "10.1038\/nbt.2289",
+        "volume": "30",
+        "author": "PD Senter",
+        "year": "2012",
+        "unstructured": "Senter PD, Sievers EL. The discovery and development of brentuximab vedotin for use in relapsed Hodgkin lymphoma and systemic anaplastic large cell lymphoma. Nat Biotechnol. 2012;30(7):631\u20137 Available from: http:\/\/www.ncbi.nlm.nih.gov\/pubmed\/22781692 . 2012\/07\/12.",
+        "journal-title": "Nat Biotechnol"
+      },
+      {
+        "issue": "19",
+        "key": "765_CR12",
+        "doi-asserted-by": "publisher",
+        "first-page": "1783",
+        "DOI": "10.1056\/NEJMoa1209124",
+        "volume": "367",
+        "author": "S Verma",
+        "year": "2012",
+        "unstructured": "Verma S, Miles D, Gianni L, Krop IE, Welslau M, Baselga J, et al. Trastuzumab emtansine for HER2-positive advanced breast cancer. N Engl J Med. 2012;367(19):1783\u201391 Available from: http:\/\/www.ncbi.nlm.nih.gov\/pubmed\/23020162 . 2012\/10\/02.",
+        "journal-title": "N Engl J Med"
+      },
+      {
+        "issue": "14",
+        "key": "765_CR13",
+        "doi-asserted-by": "publisher",
+        "first-page": "1603",
+        "DOI": "10.1007\/s40265-017-0802-5",
+        "volume": "77",
+        "author": "YN Lamb",
+        "year": "2017",
+        "unstructured": "Lamb YN. Inotuzumab Ozogamicin: First Global Approval. Drugs. 2017;77(14):1603\u201310.",
+        "journal-title": "Drugs"
+      },
+      {
+        "key": "765_CR14",
+        "unstructured": "Gonzalez D, Conlan RS. Therapeutic agents and use thereof. The United States Patent and Trademark Office. United States; 2015."
+      },
+      {
+        "issue": "11",
+        "key": "765_CR15",
+        "doi-asserted-by": "publisher",
+        "first-page": "1641",
+        "DOI": "10.1172\/JCI200418704",
+        "volume": "113",
+        "author": "B Liliensiek",
+        "year": "2004",
+        "unstructured": "Liliensiek B, Weigand MA, Bierhaus A, Nicklas W, Kasper M, Hofer S, et al. Receptor for advanced glycation end products (RAGE) regulates sepsis but not the adaptive immune response. J Clin Invest. 2004;113(11):1641\u201350.",
+        "journal-title": "J Clin Invest"
+      },
+      {
+        "issue": "1",
+        "key": "765_CR16",
+        "doi-asserted-by": "publisher",
+        "first-page": "79",
+        "DOI": "10.1007\/s00441-009-0791-0",
+        "volume": "337",
+        "author": "JV Gefter",
+        "year": "2009",
+        "unstructured": "Gefter JV, Shaufl AL, Fink MP, Delude RL. Comparison of distinct protein isoforms of the receptor for advanced glycation end-products expressed in murine tissues and cell lines. Cell Tissue Res. 2009;337(1):79\u201389 Available from: https:\/\/www.scopus.com\/inward\/record.uri?eid=2-s2.0-70349579527&partnerID=40&md5=fba50e7136be99441e8d3a2a7ca7d8ff .",
+        "journal-title": "Cell Tissue Res"
+      },
+      {
+        "issue": "2",
+        "key": "765_CR17",
+        "doi-asserted-by": "publisher",
+        "first-page": "315",
+        "DOI": "10.1016\/j.jss.2016.01.019",
+        "volume": "202",
+        "author": "S Hofer",
+        "year": "2016",
+        "unstructured": "Hofer S, Uhle F, Fleming T, Hell C, Schmoch T, Bruckner T, et al. RAGE-mediated inflammation in patients with septic shock. J Surg Res. 2016;202(2):315\u201327 2016\/05\/28.",
+        "journal-title": "J Surg Res"
+      },
+      {
+        "issue": "2",
+        "key": "765_CR18",
+        "doi-asserted-by": "publisher",
+        "first-page": "275",
+        "DOI": "10.1084\/jem.20070679",
+        "volume": "205",
+        "author": "C Gebhardt",
+        "year": "2008",
+        "unstructured": "Gebhardt C, Riehl A, Durchdewald M, Nemeth J, Furstenberger G, Muller-Decker K, et al. RAGE signaling sustains inflammation and promotes tumor development. J Exp Med. 2008;205(2):275\u201385 Available from: http:\/\/www.ncbi.nlm.nih.gov\/pubmed\/18208974 . 2008\/01\/23.",
+        "journal-title": "J Exp Med"
+      },
+      {
+        "issue": "6784",
+        "key": "765_CR19",
+        "doi-asserted-by": "publisher",
+        "first-page": "354",
+        "DOI": "10.1038\/35012626",
+        "volume": "405",
+        "author": "A Taguchi",
+        "year": "2000",
+        "unstructured": "Taguchi A, Blood DC, del Toro G, Canet A, Lee DC, Qu W, et al. Blockade of RAGE-amphoterin signalling suppresses tumour growth and metastases. Nature. 2000;405(6784):354\u201360 Available from: http:\/\/www.ncbi.nlm.nih.gov\/pubmed\/10830965 . 2000\/06\/01.",
+        "journal-title": "Nature"
+      },
+      {
+        "issue": "3",
+        "key": "765_CR20",
+        "doi-asserted-by": "publisher",
+        "first-page": "923",
+        "DOI": "10.1245\/s10434-007-9698-8",
+        "volume": "15",
+        "author": "K Hiwatashi",
+        "year": "2008",
+        "unstructured": "Hiwatashi K, Ueno S, Abeyama K, Kubo F, Sakoda M, Maruyama I, et al. A novel function of the receptor for advanced glycation end-products (RAGE) in association with tumorigenesis and tumor differentiation of HCC. Ann Surg Oncol. 2008;15(3):923\u201333 Available from: http:\/\/www.ncbi.nlm.nih.gov\/pubmed\/18080716 . 2007\/12\/18.",
+        "journal-title": "Ann Surg Oncol"
+      },
+      {
+        "issue": "7",
+        "key": "765_CR21",
+        "doi-asserted-by": "publisher",
+        "first-page": "511",
+        "DOI": "10.1002\/eji.1830060713",
+        "volume": "6",
+        "author": "G K\u00f6hler",
+        "year": "1976",
+        "unstructured": "K\u00f6hler G, Milstein C. Derivation of specific antibody-producing tissue culture and tumor lines by cell fusion. Eur J Immunol. 1976;6(7):511\u20139. https:\/\/doi.org\/10.1002\/eji.1830060713 .",
+        "journal-title": "Eur J Immunol"
+      },
+      {
+        "issue": "12",
+        "key": "765_CR22",
+        "doi-asserted-by": "publisher",
+        "first-page": "5320",
+        "DOI": "10.1210\/jc.2010-0603",
+        "volume": "95",
+        "author": "L Margarit",
+        "year": "2010",
+        "unstructured": "Margarit L, Taylor A, Roberts MH, Hopkins L, Davies C, Brenton AG, et al. MUC1 as a discriminator between endometrium from fertile and infertile patients with PCOS and endometriosis. J Clin Endocrinol Metab. 2010;95(12):5320\u20139 Available from: http:\/\/www.ncbi.nlm.nih.gov\/pubmed\/20826587 . 2010\/09\/10.",
+        "journal-title": "J Clin Endocrinol Metab"
+      },
+      {
+        "issue": "1",
+        "key": "765_CR23",
+        "doi-asserted-by": "publisher",
+        "first-page": "7",
+        "DOI": "10.3390\/antib8010007",
+        "volume": "8",
+        "author": "Gareth D. Healey",
+        "year": "2019",
+        "unstructured": "Healey GD, Frostell A, Fagge T, Gonzalez D, Conlan RS. A RAGE-targeted antibody-drug conjugate: surface Plasmon resonance as a platform for accelerating effective ADC design and development. Antibodies. 2019;8:7.",
+        "journal-title": "Antibodies"
+      },
+      {
+        "key": "765_CR24",
+        "doi-asserted-by": "publisher",
+        "first-page": "11",
+        "DOI": "10.1016\/j.jim.2016.02.001",
+        "volume": "431",
+        "author": "N Nath",
+        "year": "2016",
+        "unstructured": "Nath N, Godat B, Zimprich C, Dwight SJ, Corona C, McDougall M, et al. Homogeneous plate based antibody internalization assay using pH sensor fluorescent dye. J Immunol Methods. 2016;431:11\u201321.",
+        "journal-title": "J Immunol Methods"
+      },
+      {
+        "issue": "6",
+        "key": "765_CR25",
+        "doi-asserted-by": "publisher",
+        "first-page": "3993",
+        "DOI": "10.1529\/biophysj.103.038422",
+        "volume": "86",
+        "author": "SV Costes",
+        "year": "2004",
+        "unstructured": "Costes SV, Daelemans D, Cho EH, Dobbin Z, Pavlakis G, Lockett S. Automatic and quantitative measurement of protein-protein\\nColocalization in live cells. Biophys J. 2004;86(6):3993\u20134003.",
+        "journal-title": "Biophys J"
+      },
+      {
+        "issue": "4",
+        "key": "765_CR26",
+        "doi-asserted-by": "publisher",
+        "first-page": "C723",
+        "DOI": "10.1152\/ajpcell.00462.2010",
+        "volume": "300",
+        "author": "KW Dunn",
+        "year": "2011",
+        "unstructured": "Dunn KW, Kamocka MM, McDonald JH. A practical guide to evaluating colocalization in biological microscopy. AJP Cell Physiol. 2011;300(4):C723\u201342 Available from: http:\/\/ajpcell.physiology.org\/cgi\/doi\/10.1152\/ajpcell.00462.2010 .",
+        "journal-title": "AJP Cell Physiol"
+      },
+      {
+        "issue": "10",
+        "key": "765_CR27",
+        "first-page": "2877",
+        "volume": "5",
+        "author": "R Srinivasan",
+        "year": "1999",
+        "unstructured": "Srinivasan R, Benton E, McCormick F, Thomas H, Gullick WJ. Expression of the c-erbB-3\/HER-3 and c-erbB-4\/HER-4 growth factor receptors and their ligands, neuregulin-1 alpha, neuregulin-1 beta, and betacellulin, in normal endometrium and endometrial cancer. Clin Cancer Res. 1999;5(10):2877\u201383 1999\/10\/28.",
+        "journal-title": "Clin Cancer Res"
+      },
+      {
+        "issue": "2",
+        "key": "765_CR28",
+        "doi-asserted-by": "publisher",
+        "first-page": "179",
+        "DOI": "10.1016\/0090-8258(92)90103-P",
+        "volume": "47",
+        "author": "DJ Hetzel",
+        "year": "1992",
+        "unstructured": "Hetzel DJ, Wilson TO, Keeney GL, Roche PC, Cha SS, Podratz KC. HER-2\/neu expression: a major prognostic factor in endometrial cancer. Gynecol Oncol. 1992;47(2):179\u201385 1992\/11\/01.",
+        "journal-title": "Gynecol Oncol"
+      },
+      {
+        "issue": "12",
+        "key": "765_CR29",
+        "doi-asserted-by": "publisher",
+        "first-page": "961",
+        "DOI": "10.1016\/S1470-2045(05)70463-0",
+        "volume": "6",
+        "author": "S Acharya",
+        "year": "2005",
+        "unstructured": "Acharya S, Hensley ML, Montag AC, Fleming GF. Rare uterine cancers. Lancet Oncol. 2005;6(12):961\u201371 2005\/12\/03.",
+        "journal-title": "Lancet Oncol"
+      },
+      {
+        "issue": "6",
+        "key": "765_CR30",
+        "doi-asserted-by": "publisher",
+        "first-page": "1076",
+        "DOI": "10.1038\/sj.bjc.6604278",
+        "volume": "98",
+        "author": "GE Konecny",
+        "year": "2008",
+        "unstructured": "Konecny GE, Venkatesan N, Yang G, Dering J, Ginther C, Finn R, et al. Activity of lapatinib a novel HER2 and EGFR dual kinase inhibitor in human endometrial cancer cells. Br J Cancer. 2008;98(6):1076\u201384 Available from: http:\/\/www.ncbi.nlm.nih.gov\/pmc\/articles\/PMC2275492\/ .",
+        "journal-title": "Br J Cancer"
+      },
+      {
+        "issue": "10",
+        "key": "765_CR31",
+        "doi-asserted-by": "publisher",
+        "first-page": "1026",
+        "DOI": "10.1634\/theoncologist.2010-0087",
+        "volume": "15",
+        "author": "KM Moxley",
+        "year": "2010",
+        "unstructured": "Moxley KM, McMeekin DS. Endometrial carcinoma: a review of chemotherapy, drug resistance, and the search for new agents. Oncologist. 2010;15(10):1026\u201333 2010\/10\/12.",
+        "journal-title": "Oncologist"
+      },
+      {
+        "issue": "9",
+        "key": "765_CR32",
+        "doi-asserted-by": "publisher",
+        "first-page": "1898",
+        "DOI": "10.1016\/j.bbagen.2015.05.020",
+        "volume": "1850",
+        "author": "P Malik",
+        "year": "2015",
+        "unstructured": "Malik P, Chaudhry N, Mittal R, Mukherjee TK. Role of receptor for advanced glycation end products in the complication and progression of various types of cancers. Biochim Biophys Acta. 2015;1850(9):1898\u2013904 2015\/06\/02.",
+        "journal-title": "Biochim Biophys Acta"
+      },
+      {
+        "issue": "18",
+        "key": "765_CR33",
+        "doi-asserted-by": "publisher",
+        "first-page": "7031",
+        "DOI": "10.1073\/pnas.1113865109",
+        "volume": "109",
+        "author": "R Kang",
+        "year": "2012",
+        "unstructured": "Kang R, Loux T, Tang D, Schapiro NE, Vernon P, Livesey KM, et al. The expression of the receptor for advanced glycation endproducts (RAGE) is permissive for early pancreatic neoplasia. Proc Natl Acad Sci U S A. 2012;109(18):7031\u20136 Available from: http:\/\/www.ncbi.nlm.nih.gov\/pubmed\/22509024 . 2012\/04\/18.",
+        "journal-title": "Proc Natl Acad Sci U S A"
+      },
+      {
+        "key": "765_CR34",
+        "doi-asserted-by": "publisher",
+        "first-page": "163",
+        "DOI": "10.1002\/path.1031",
+        "volume": "196",
+        "author": "H Kuniyasu",
+        "year": "2002",
+        "unstructured": "Kuniyasu H, Oue N, Wakikawa A, Shigeishi H, Matsutani N, Kuraoka K, et al. Expression of receptors for advanced glycation end-products (RAGE) is closely associated with the invasive and metastatic activity of gastric cancer. J Pathol. 2002;196:163\u201370.",
+        "journal-title": "J Pathol"
+      },
+      {
+        "key": "765_CR35",
+        "doi-asserted-by": "publisher",
+        "first-page": "525",
+        "DOI": "10.1159\/000350073",
+        "volume": "31",
+        "author": "S Zhang",
+        "year": "2013",
+        "unstructured": "Zhang S, Hou X, Zi S, Wang Y, Chen L, Kong B. Polymorphisms of receptor for advanced glycation end products and risk of epithelial ovarian cancer in Chinese patients. Cell Physiol Biochem. 2013;31:525\u201331.",
+        "journal-title": "Cell Physiol Biochem"
+      },
+      {
+        "key": "765_CR36",
+        "doi-asserted-by": "publisher",
+        "first-page": "748",
+        "DOI": "10.1002\/pros.20736",
+        "volume": "68",
+        "author": "E Uetz-Von Allmen",
+        "year": "2008",
+        "unstructured": "Uetz-Von Allmen E, Koch M, Fritz G, Legler DF. V domain of RAGE interacts with AGEs on prostate carcinoma cells. Prostate. 2008;68:748\u201358.",
+        "journal-title": "Prostate"
+      },
+      {
+        "key": "765_CR37",
+        "doi-asserted-by": "publisher",
+        "first-page": "1712",
+        "DOI": "10.4238\/2012.June.29.3",
+        "volume": "11",
+        "author": "T Lertwittayapon",
+        "year": "2012",
+        "unstructured": "Lertwittayapon T, Tencomnao T, Santiyanont R. Inhibitory effect of alternatively spliced RAGEv1 on the expression of NF-\u03baB and TNF-\u03b1 in hepatocellular carcinoma cells. Genet Mol Res. 2012;11:1712\u201320.",
+        "journal-title": "Genet Mol Res"
+      },
+      {
+        "key": "765_CR38",
+        "doi-asserted-by": "publisher",
+        "first-page": "468",
+        "DOI": "10.1016\/j.acthis.2015.01.004",
+        "volume": "117",
+        "author": "A Poljicanin",
+        "year": "2015",
+        "unstructured": "Poljicanin A, Filipovic N, Vukusic Pusic T, Soljic V, Caric A, Saraga-Babic M, et al. Expression pattern of RAGE and IGF-1 in the human fetal ovary and ovarian serous carcinoma. Acta Histochem. 2015;117:468\u201376.",
+        "journal-title": "Acta Histochem"
+      },
+      {
+        "key": "765_CR39",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Nasser MW, Ahirwar DK, Ganju RK. RAGE: A novel target for breast cancer growth and metastasis. Oncoscience. 2016.",
+        "DOI": "10.18632\/oncoscience.294"
+      },
+      {
+        "issue": "8",
+        "key": "765_CR40",
+        "doi-asserted-by": "publisher",
+        "first-page": "777",
+        "DOI": "10.2174\/156652407783220697",
+        "volume": "7",
+        "author": "CD Logsdon",
+        "year": "2007",
+        "unstructured": "Logsdon CD, Fuentes MK, Huang EH, Arumugam T. RAGE and RAGE ligands in cancer. Curr Mol Med. 2007;7(8):777\u201389 2008\/03\/12.",
+        "journal-title": "Curr Mol Med"
+      },
+      {
+        "issue": "3",
+        "key": "765_CR41",
+        "doi-asserted-by": "publisher",
+        "first-page": "1083",
+        "DOI": "10.1016\/j.bbagen.2013.11.014",
+        "volume": "1840",
+        "author": "K Lata",
+        "year": "2014",
+        "unstructured": "Lata K, Mukherjee TK. Knockdown of receptor for advanced glycation end products attenuate 17\u03b1-ethinyl-estradiol dependent proliferation and survival of MCF-7 breast cancer cells. Biochim Biophys Acta. 2014;1840(3):1083\u201391 Available from: http:\/\/www.sciencedirect.com\/science\/article\/pii\/S0304416513004972 .",
+        "journal-title": "Biochim Biophys Acta"
+      },
+      {
+        "issue": "6",
+        "key": "765_CR42",
+        "doi-asserted-by": "publisher",
+        "first-page": "1",
+        "DOI": "10.1186\/cc6184",
+        "volume": "11",
+        "author": "EC Lutterloh",
+        "year": "2007",
+        "unstructured": "Lutterloh EC, Opal SM, Pittman DD, Keith JC, Tan X-Y, Clancy BM, et al. Inhibition of the RAGE products increases survival in experimental models of severe sepsis and systemic infection. Crit Care. 2007;11(6):1\u20139. https:\/\/doi.org\/10.1186\/cc6184 .",
+        "journal-title": "Crit Care"
+      },
+      {
+        "issue": "9",
+        "key": "765_CR43",
+        "doi-asserted-by": "publisher",
+        "first-page": "1229",
+        "DOI": "10.1002\/bjs.9188",
+        "volume": "100",
+        "author": "A Kuhla",
+        "year": "2013",
+        "unstructured": "Kuhla A, Norden J, Abshagen K, Menger MD, Vollmar B. RAGE blockade and hepatic microcirculation in experimental endotoxaemic liver failure. Br J Surg. 2013;100(9):1229\u201339 2013\/06\/28.",
+        "journal-title": "Br J Surg"
+      },
+      {
+        "issue": "8",
+        "key": "765_CR44",
+        "doi-asserted-by": "crossref",
+        "first-page": "2109",
+        "DOI": "10.1681\/ASN.V1482109",
+        "volume": "14",
+        "author": "AS Vriese De",
+        "year": "2003",
+        "unstructured": "De Vriese AS, Flyvbjerg A, Mortier S, Tilton RG, Lameire NH. Inhibition of the interaction of AGE-RAGE prevents hyperglycemia-induced fibrosis of the peritoneal membrane. J Am Soc Nephrol. 2003;14(8):2109\u201318 2003\/07\/23.",
+        "journal-title": "J Am Soc Nephrol"
+      },
+      {
+        "issue": "2",
+        "key": "765_CR45",
+        "doi-asserted-by": "publisher",
+        "first-page": "461",
+        "DOI": "10.1046\/j.0022-202X.2004.22218.x",
+        "volume": "122",
+        "author": "R Abe",
+        "year": "2004",
+        "unstructured": "Abe R, Shimizu T, Sugawara H, Watanabe H, Nakamura H, Choei H, et al. Regulation of human melanoma growth and metastasis by AGE-AGE receptor interactions. J Invest Dermatol. 2004;122(2):461\u20137 2004\/03\/11.",
+        "journal-title": "J Invest Dermatol"
+      },
+      {
+        "issue": "1",
+        "key": "765_CR46",
+        "doi-asserted-by": "publisher",
+        "first-page": "24",
+        "DOI": "10.1016\/j.ygyno.2005.03.041",
+        "volume": "98",
+        "author": "AD Santin",
+        "year": "2005",
+        "unstructured": "Santin AD, Bellone S, Van Stedum S, Bushen W, De Las Casas LE, Korourian S, et al. Determination of HER2\/neu status in uterine serous papillary carcinoma: Comparative analysis of immunohistochemistry and fluorescence in situ hybridization. Gynecol Oncol. 2005;98(1):24\u201330 2005\/05\/17.",
+        "journal-title": "Gynecol Oncol"
+      },
+      {
+        "issue": "7",
+        "key": "765_CR47",
+        "doi-asserted-by": "publisher",
+        "first-page": "869",
+        "DOI": "10.1016\/j.drudis.2013.11.004",
+        "volume": "19",
+        "author": "HL Perez",
+        "year": "2014",
+        "unstructured": "Perez HL, Cardarelli PM, Deshpande S, Gangwar S, Schroeder GM, Vite GD, et al. Antibody-drug conjugates: current status and future directions. Drug Discov Today. 2014;19(7):869\u201381 2013\/11\/19.",
+        "journal-title": "Drug Discov Today"
+      },
+      {
+        "issue": "10",
+        "key": "765_CR48",
+        "doi-asserted-by": "publisher",
+        "first-page": "1342",
+        "DOI": "10.1016\/j.str.2010.05.017",
+        "volume": "18",
+        "author": "M Koch",
+        "year": "2010",
+        "unstructured": "Koch M, Chitayat S, Dattilo BM, Schiefner A, Diez J, Chazin WJ, et al. Structural basis for ligand recognition and activation of RAGE. Structure. 2010;18(10):1342\u201352 2010\/10\/16.",
+        "journal-title": "Structure"
+      },
+      {
+        "issue": "23",
+        "key": "765_CR49",
+        "doi-asserted-by": "publisher",
+        "first-page": "6957",
+        "DOI": "10.1021\/bi7003735",
+        "volume": "46",
+        "author": "BM Dattilo",
+        "year": "2007",
+        "unstructured": "Dattilo BM, Fritz G, Leclerc E, Kooi CW, Heizmann CW, Chazin WJ. The extracellular region of the receptor for advanced glycation end products is composed of two independent structural units. Biochemistry. 2007;46(23):6957\u201370 2007\/05\/19.",
+        "journal-title": "Biochemistry"
+      },
+      {
+        "issue": "43",
+        "key": "765_CR50",
+        "doi-asserted-by": "publisher",
+        "first-page": "31317",
+        "DOI": "10.1074\/jbc.M703951200",
+        "volume": "282",
+        "author": "E Leclerc",
+        "year": "2007",
+        "unstructured": "Leclerc E, Fritz G, Weibel M, Heizmann CW, Galichet A. S100B and S100A6 differentially modulate cell survival by interacting with distinct RAGE (receptor for advanced glycation end products) immunoglobulin domains. J Biol Chem. 2007;282(43):31317\u201331 2007\/08\/30.",
+        "journal-title": "J Biol Chem"
+      },
+      {
+        "issue": "13",
+        "key": "765_CR51",
+        "doi-asserted-by": "publisher",
+        "first-page": "2339",
+        "DOI": "10.1084\/jem.20120873",
+        "volume": "209",
+        "author": "V Rai",
+        "year": "2012",
+        "unstructured": "Rai V, Toure F, Chitayat S, Pei R, Song F, Li Q, et al. Lysophosphatidic acid targets vascular and oncogenic pathways via RAGE signaling. J Exp Med. 2012;209(13):2339\u201350 2012\/12\/05.",
+        "journal-title": "J Exp Med"
+      },
+      {
+        "issue": "1",
+        "key": "765_CR52",
+        "doi-asserted-by": "publisher",
+        "first-page": "55",
+        "DOI": "10.1189\/jlb.1012519",
+        "volume": "94",
+        "author": "K Kierdorf",
+        "year": "2013",
+        "unstructured": "Kierdorf K, Fritz G. RAGE regulation and signaling in inflammation and beyond. J Leukoc Biol. 2013;94(1):55\u201368 Available from: http:\/\/www.jleukbio.org\/content\/94\/1\/55.abstract .",
+        "journal-title": "J Leukoc Biol"
+      },
+      {
+        "issue": "3",
+        "key": "765_CR53",
+        "doi-asserted-by": "publisher",
+        "first-page": "949",
+        "DOI": "10.1016\/j.bbrc.2004.02.135",
+        "volume": "316",
+        "author": "HL Hsieh",
+        "year": "2004",
+        "unstructured": "Hsieh HL, Schafer BW, Weigle B, Heizmann CW. S100 protein translocation in response to extracellular S100 is mediated by receptor for advanced glycation endproducts in human endothelial cells. Biochem Biophys Res Commun. 2004;316(3):949\u201359 2004\/03\/23.",
+        "journal-title": "Biochem Biophys Res Commun"
+      },
+      {
+        "issue": "2",
+        "key": "765_CR54",
+        "doi-asserted-by": "publisher",
+        "first-page": "189",
+        "DOI": "10.1515\/cclm-2013-0578",
+        "volume": "52",
+        "author": "E Marinakis",
+        "year": "2014",
+        "unstructured": "Marinakis E, Bagkos G, Piperi C, Roussou P, Diamanti-Kandarakis E. Critical role of RAGE in lung physiology and tumorigenesis: a potential target of therapeutic intervention? Clin Chem Lab Med. 2014;52(2):189\u2013200 2013\/10\/11.",
+        "journal-title": "Clin Chem Lab Med"
+      },
+      {
+        "key": "765_CR55",
+        "doi-asserted-by": "publisher",
+        "first-page": "17",
+        "DOI": "10.1186\/1479-5876-7-17",
+        "volume": "7",
+        "author": "LJ Sparvero",
+        "year": "2009",
+        "unstructured": "Sparvero LJ, Asafu-Adjei D, Kang R, Tang D, Amin N, Im J, et al. RAGE (Receptor for Advanced Glycation Endproducts), RAGE ligands, and their role in cancer and inflammation. J Transl Med. 2009;7:17 2009\/03\/19.",
+        "journal-title": "J Transl Med"
+      },
+      {
+        "issue": "1",
+        "key": "765_CR56",
+        "doi-asserted-by": "publisher",
+        "first-page": "117",
+        "DOI": "10.1016\/j.ccell.2015.12.008",
+        "volume": "29",
+        "author": "JY Li",
+        "year": "2016",
+        "unstructured": "Li JY, Perry SR, Muniz-Medina V, Wang X, Wetzel LK, Rebelatto MC, et al. A biparatopic HER2-targeting antibody-drug conjugate induces tumor regression in primary models refractory to or ineligible for HER2-Targeted therapy. Cancer Cell. 2016;29(1):117\u201329 2016\/01\/15.",
+        "journal-title": "Cancer Cell"
+      },
+      {
+        "issue": "4",
+        "key": "765_CR57",
+        "doi-asserted-by": "publisher",
+        "first-page": "859",
+        "DOI": "10.4161\/mabs.28965",
+        "volume": "6",
+        "author": "A Deslandes",
+        "year": "2014",
+        "unstructured": "Deslandes A. Comparative clinical pharmacokinetics of antibody-drug conjugates in first-in-human phase 1 studies. MAbs. 2014;6(4):859\u201370 Available from: http:\/\/www.ncbi.nlm.nih.gov\/pmc\/articles\/PMC4171021\/ .",
+        "journal-title": "MAbs"
+      }
+    ],
+    "container-title": ["Journal for ImmunoTherapy of Cancer"],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "http:\/\/link.springer.com\/content\/pdf\/10.1186\/s40425-019-0765-z.pdf",
+        "content-type": "application\/pdf",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "http:\/\/link.springer.com\/article\/10.1186\/s40425-019-0765-z\/fulltext.html",
+        "content-type": "text\/html",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "http:\/\/link.springer.com\/content\/pdf\/10.1186\/s40425-019-0765-z.pdf",
+        "content-type": "application\/pdf",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2022, 10, 3]],
+      "date-time": "2022-10-03T01:03:45Z",
+      "timestamp": 1664759025000
+    },
+    "score": 1,
+    "resource": {
+      "primary": { "URL": "https:\/\/jitc.bmj.com\/lookup\/doi\/10.1186\/s40425-019-0765-z" }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": { "date-parts": [[2019, 10, 29]] },
+    "references-count": 57,
+    "journal-issue": { "issue": "1", "published-print": { "date-parts": [[2019, 12]] } },
+    "alternative-id": ["765"],
+    "URL": "https:\/\/doi.org\/10.1186\/s40425-019-0765-z",
+    "relation": {},
+    "ISSN": ["2051-1426"],
+    "issn-type": [{ "type": "electronic", "value": "2051-1426" }],
+    "subject": [],
+    "published": { "date-parts": [[2019, 10, 29]] },
+    "assertion": [
+      {
+        "value": "3 September 2018",
+        "order": 1,
+        "name": "received",
+        "label": "Received",
+        "group": { "name": "ArticleHistory", "label": "Article History" }
+      },
+      {
+        "value": "5 October 2019",
+        "order": 2,
+        "name": "accepted",
+        "label": "Accepted",
+        "group": { "name": "ArticleHistory", "label": "Article History" }
+      },
+      {
+        "value": "29 October 2019",
+        "order": 3,
+        "name": "first_online",
+        "label": "First Online",
+        "group": { "name": "ArticleHistory", "label": "Article History" }
+      },
+      {
+        "value": "Ethical approval for immunohistochemistry analysis of FFPE EC patient samples within the study was obtained through Local Research Ethics Committee (reference 07\/WMW02\/50) for the collection of biopsies from consented EC patients (prospective analysis). Formal written consent was obtained from all patients at the time of recruitment into the study.All procedures involving animals were performed in accordance with the Animals (Scientific Procedures) Act 1986, and the guidance issued in <i>\u2018Responsibility in the case of Animals in Bioscience research: expectations of the major research council and charitable funding bodies.\u2019<\/i>",
+        "order": 1,
+        "name": "Ethics",
+        "group": { "name": "EthicsHeading", "label": "Ethics approval and consent to participate" }
+      },
+      {
+        "value": "Not applicable.",
+        "order": 2,
+        "name": "Ethics",
+        "group": { "name": "EthicsHeading", "label": "Consent for publication" }
+      },
+      {
+        "value": "The authors declare that they have no competing interests.",
+        "order": 3,
+        "name": "Ethics",
+        "group": { "name": "EthicsHeading", "label": "Competing interests" }
+      }
+    ],
+    "article-number": "280"
+  }
+}

@@ -1,0 +1,1105 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2026, 9, 19]],
+      "date-time": "2026-09-19T01:40:19Z",
+      "timestamp": 1789782019951,
+      "version": "4.0.1"
+    },
+    "reference-count": 88,
+    "publisher": "MDPI AG",
+    "issue": "1",
+    "license": [
+      {
+        "start": {
+          "date-parts": [[2018, 3, 29]],
+          "date-time": "2018-03-29T00:00:00Z",
+          "timestamp": 1522281600000
+        },
+        "content-version": "vor",
+        "delay-in-days": 0,
+        "URL": "https:\/\/creativecommons.org\/licenses\/by-nc\/4.0\/"
+      },
+      {
+        "start": {
+          "date-parts": [[2018, 3, 29]],
+          "date-time": "2018-03-29T00:00:00Z",
+          "timestamp": 1522281600000
+        },
+        "content-version": "am",
+        "delay-in-days": 0,
+        "URL": "https:\/\/creativecommons.org\/licenses\/by-nc\/4.0\/"
+      },
+      {
+        "start": {
+          "date-parts": [[2018, 3, 29]],
+          "date-time": "2018-03-29T00:00:00Z",
+          "timestamp": 1522281600000
+        },
+        "content-version": "tdm",
+        "delay-in-days": 0,
+        "URL": "https:\/\/creativecommons.org\/licenses\/by-nc\/4.0\/"
+      }
+    ],
+    "funder": [
+      { "name": "Funding for the project was provided by the Alfred-Wegener Institute, Germany." }
+    ],
+    "content-domain": { "domain": ["www.veruscript.com"], "crossmark-restriction": false },
+    "short-container-title": ["JEA"],
+    "abstract": "<jats:p>Both marine mammals and hydroacoustic instruments employ underwater sound to communicate, navigate or infer information about the marine environment. Concurrent timing of acoustic activities using similar frequency regimes may result in (potentially mutual) interference of acoustic signals when both sources are within audible range of the recipient. While marine mammal fitness might be negatively impacted upon, both on individual and population level, hydroacoustic studies may generate low quality data or suffer data loss as a result of bioacoustic interference. This article pursues, in analogy to landscape planning, the concept of marine soundscape planning to reconcile potentially competing uses of acoustic space by managing the anthropogenic sound sources. We here present a conceptual framework exploring the potential of soundscape planning in reducing (mutual) acoustic interference between hydroacoustic instrumentation and marine mammals. The basis of this framework is formed by the various mechanisms by which acoustic niche formation (i.e., the partitioning of the acoustic space) occurs in species-rich communities that acoustically coexist while maintaining high fidelity (hi-fi) soundscapes, i.e., by acoustically partitioning the environment on the basis of time, space, frequency and signal structure. Hydroacoustic measurements often exhibit certain flexibility in their timing, and even instrument positioning, potentially offering the opportunity to minimize the ecological imprint of their operation. This study explores how the principle of acoustic niches could contribute to reduce potential (mutual) acoustic interference based on actual acoustic data from three recording locations in polar oceans. By employing marine soundscape planning strategies, entailing shifting the timing or position of hydroacoustic experiments, or adapting signal structure or frequency, we exemplify the potential efficacy of smart planning for four different hydroacoustic instrumentation types: multibeam echosounders, air guns, RAFOS (Ranging and Fixing of Sound) and tomographic sound sources.<\/jats:p>",
+    "DOI": "10.22261\/jea.5gsnt8",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [[2018, 3, 28]],
+      "date-time": "2018-03-28T15:30:38Z",
+      "timestamp": 1522251038000
+    },
+    "page": "1-1",
+    "update-policy": "https:\/\/doi.org\/10.22261\/763y49",
+    "source": "Crossref",
+    "is-referenced-by-count": 13,
+    "title": ["Marine soundscape planning: Seeking acoustic niches for anthropogenic sound"],
+    "prefix": "10.35995",
+    "volume": "2",
+    "author": [
+      {
+        "given": "Ilse Van",
+        "family": "Lillis",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "given": "Olaf",
+        "family": "Boebel",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      }
+    ],
+    "member": "1968",
+    "published-online": { "date-parts": [[2018, 3, 29]] },
+    "reference": [
+      {
+        "issue": "1\u20132",
+        "key": "20180413131424_fn1",
+        "doi-asserted-by": "crossref",
+        "first-page": "97",
+        "DOI": "10.1016\/j.marpolbul.2017.09.019",
+        "article-title": "The underwater soundscape in western Fram Strait: Breeding ground of Spitsbergen\u2019s endangered bowhead whales.",
+        "volume": "123",
+        "author": "Ahonen",
+        "year": "2017",
+        "journal-title": "Marine Pollution Bulletin"
+      },
+      {
+        "issue": "41",
+        "key": "20180413131424_fn2",
+        "doi-asserted-by": "crossref",
+        "first-page": "17058",
+        "DOI": "10.1073\/pnas.1104773108",
+        "article-title": "Acoustic interference and recognition space within a complex assemblage of dendrobatid frogs.",
+        "volume": "108",
+        "author": "Am\u00e9zquita",
+        "year": "2011",
+        "journal-title": "Proceedings of the National Academy of Sciences of the United States of America"
+      },
+      {
+        "key": "20180413131424_fn3",
+        "volume-title": "American national standard acoustical terminology",
+        "author": "ANSI",
+        "year": "1994"
+      },
+      {
+        "issue": "4",
+        "key": "20180413131424_fn4",
+        "doi-asserted-by": "crossref",
+        "first-page": "675",
+        "DOI": "10.1007\/s00265-015-1879-z",
+        "article-title": "Noisy neighbours at the frog pond: Effects of invasive cane toads on the calling behaviour of native Australian frogs",
+        "volume": "69",
+        "author": "Bleach",
+        "year": "2015",
+        "journal-title": "Behavioral Ecology and Sociobiology"
+      },
+      {
+        "key": "20180413131424_fn5",
+        "doi-asserted-by": "crossref",
+        "DOI": "10.1007\/978-3-319-60156-4_24",
+        "article-title": "Chapter 3.7 Input of energy\/underwater sound.",
+        "volume-title": "Handbook on Marine Environment Protection: Science, Impacts and Sustainable Management",
+        "author": "Boebel",
+        "year": "2018"
+      },
+      {
+        "issue": "36",
+        "key": "20180413131424_fn6",
+        "doi-asserted-by": "crossref",
+        "first-page": "361",
+        "DOI": "10.1029\/2006EO360002",
+        "article-title": "Real-time underwater sounds from the Southern Ocean.",
+        "volume": "87",
+        "author": "Boebel",
+        "year": "2006",
+        "journal-title": "Eos, Transactions American Geophysical Union"
+      },
+      {
+        "key": "20180413131424_fn7",
+        "doi-asserted-by": "crossref",
+        "first-page": "101",
+        "DOI": "10.1016\/j.dsr.2014.05.017",
+        "article-title": "Predictive habitat modelling of humpback (Megaptera novaeangliae) and Antarctic minke (Balaenoptera bonaerensis) whales in the Southern Ocean as a planning tool for seismic surveys.",
+        "volume": "91",
+        "author": "Bombosch",
+        "year": "2014",
+        "journal-title": "Deep Sea Research Part I: Oceanographic Research Papers"
+      },
+      {
+        "key": "20180413131424_fn8",
+        "volume-title": "Animal Communication",
+        "author": "Bradbury",
+        "year": "1998"
+      },
+      {
+        "issue": "2",
+        "key": "20180413131424_fn9",
+        "doi-asserted-by": "crossref",
+        "first-page": "505",
+        "DOI": "10.1111\/j.1365-246X.2008.03831.x",
+        "article-title": "Broad-band calibration of marine seismic sources used by R\/V Polarstern for academic research in polar regions.",
+        "volume": "174",
+        "author": "Breitzke",
+        "year": "2008",
+        "journal-title": "Geophysical Journal International"
+      },
+      {
+        "issue": "2",
+        "key": "20180413131424_fn10",
+        "doi-asserted-by": "crossref",
+        "first-page": "73",
+        "DOI": "10.20855\/ijav.2012.17.2302",
+        "article-title": "A review of progress in soundscapes and an approach to soundscape planning.",
+        "volume": "17",
+        "author": "Brown",
+        "year": "2012",
+        "journal-title": "International Journal of Acoustics and Vibration"
+      },
+      {
+        "key": "20180413131424_fn11",
+        "doi-asserted-by": "crossref",
+        "first-page": "151",
+        "DOI": "10.1016\/S0065-3454(05)35004-2",
+        "article-title": "Acoustic communication in noise.",
+        "volume": "35",
+        "author": "Brumm",
+        "year": "2005",
+        "journal-title": "Advances in the Study of Behavior"
+      },
+      {
+        "issue": "12",
+        "key": "20180413131424_fn12",
+        "doi-asserted-by": "crossref",
+        "first-page": "1279",
+        "DOI": "10.1007\/s00359-006-0158-x",
+        "article-title": "Signaling through acoustic windows: Nightingales avoid interspecific competition by short-term adjustment of song timing.",
+        "volume": "192",
+        "author": "Brumm",
+        "year": "2006",
+        "journal-title": "Journal of Comparative Physiology A"
+      },
+      {
+        "issue": "3",
+        "key": "20180413131424_fn13",
+        "doi-asserted-by": "crossref",
+        "first-page": "1101",
+        "DOI": "10.1121\/1.1345696",
+        "article-title": "Informational and energetic masking effects in the perception of two simultaneous talkers.",
+        "volume": "109",
+        "author": "Brungart",
+        "year": "2001",
+        "journal-title": "The Journal of the Acoustical Society of America"
+      },
+      {
+        "issue": "2",
+        "key": "20180413131424_fn14",
+        "doi-asserted-by": "crossref",
+        "first-page": "447",
+        "DOI": "10.1007\/s10682-009-9317-1",
+        "article-title": "Community convergence in bird song.",
+        "volume": "24",
+        "author": "Cardoso",
+        "year": "2010",
+        "journal-title": "Evolutionary Ecology"
+      },
+      {
+        "issue": "3",
+        "key": "20180413131424_fn15",
+        "doi-asserted-by": "crossref",
+        "first-page": "235",
+        "DOI": "10.1046\/j.1461-0248.2003.00420.x",
+        "article-title": "Mating signal partitioning in multi-species assemblages: A null model test using frogs.",
+        "volume": "6",
+        "author": "Chek",
+        "year": "2003",
+        "journal-title": "Ecology Letters"
+      },
+      {
+        "key": "20180413131424_fn16",
+        "doi-asserted-by": "crossref",
+        "first-page": "201",
+        "DOI": "10.3354\/meps08402",
+        "article-title": "Acoustic masking in marine ecosystems: Intuitions, analysis, and implication.",
+        "volume": "395",
+        "author": "Clark",
+        "year": "2009",
+        "journal-title": "Marine Ecology Progress Series"
+      },
+      {
+        "issue": "5195",
+        "key": "20180413131424_fn17",
+        "doi-asserted-by": "crossref",
+        "first-page": "778",
+        "DOI": "10.1038\/222778b0",
+        "article-title": "Song asynchrony in neighbouring bird species.",
+        "volume": "222",
+        "author": "Cody",
+        "year": "1969",
+        "journal-title": "Nature"
+      },
+      {
+        "key": "20180413131424_fn18",
+        "unstructured": "Deng Z., Wu W., and Shi D. (2009). Two case studies on the soundscape in historical area and its subjective assessment from the local people INTER-NOISE and NOISE-CON Congress and Conference Proceedings, Ottawa, Canada, 2009, Institute of Noise Control Engineering. 2672\u20132680. https:\/\/doi.org\/10.13140\/2.1.4326.4008."
+      },
+      {
+        "issue": "4",
+        "key": "20180413131424_fn19",
+        "doi-asserted-by": "crossref",
+        "first-page": "479",
+        "DOI": "10.1017\/S0266467407004208",
+        "article-title": "Vertical stratification in an acoustically communicating ensiferan assemblage of a tropical evergreen forest in southern India.",
+        "volume": "23",
+        "author": "Diwakar",
+        "year": "2007",
+        "journal-title": "Journal of Tropical Ecology"
+      },
+      {
+        "issue": "9",
+        "key": "20180413131424_fn20",
+        "doi-asserted-by": "crossref",
+        "first-page": "1327",
+        "DOI": "10.1007\/s10980-011-9635-x",
+        "article-title": "Soundscape conservation.",
+        "volume": "26",
+        "author": "Dumyahn",
+        "year": "2011",
+        "journal-title": "Landscape Ecology"
+      },
+      {
+        "issue": "4",
+        "key": "20180413131424_fn21",
+        "doi-asserted-by": "crossref",
+        "first-page": "434",
+        "DOI": "10.1578\/AM.41.4.2015.434",
+        "article-title": "The maskogram: A tool to illustrate zones of masking.",
+        "volume": "41",
+        "author": "Erbe",
+        "year": "2015",
+        "journal-title": "Aquatic Mammals"
+      },
+      {
+        "issue": "1",
+        "key": "20180413131424_fn22",
+        "doi-asserted-by": "crossref",
+        "first-page": "15",
+        "DOI": "10.1016\/j.marpolbul.2015.12.007",
+        "article-title": "Communication masking in marine mammals: A review and research strategy.",
+        "volume": "103",
+        "author": "Erbe",
+        "year": "2016",
+        "journal-title": "Marine Pollution Bulletin"
+      },
+      {
+        "key": "20180413131424_fn23",
+        "volume-title": "Soundscape Ecology",
+        "author": "Farina",
+        "year": "2016"
+      },
+      {
+        "issue": "3",
+        "key": "20180413131424_fn24",
+        "doi-asserted-by": "crossref",
+        "first-page": "175",
+        "DOI": "10.1080\/09524622.2012.761571",
+        "article-title": "Acoustic patterns of an invasive species: The Red-billed Leiothrix (Leiothrix lutea Scopoli 1786) in a Mediterranean shrubland.",
+        "volume": "22",
+        "author": "Farina",
+        "year": "2013",
+        "journal-title": "Bioacoustics"
+      },
+      {
+        "issue": "4126",
+        "key": "20180413131424_fn25",
+        "doi-asserted-by": "crossref",
+        "first-page": "762",
+        "DOI": "10.1126\/science.183.4126.762",
+        "article-title": "Temporal pattern shifts to avoid acoustic interference in singing birds.",
+        "volume": "183",
+        "author": "Ficken",
+        "year": "1974",
+        "journal-title": "Science"
+      },
+      {
+        "issue": "4",
+        "key": "20180413131424_fn26",
+        "doi-asserted-by": "crossref",
+        "first-page": "368",
+        "DOI": "10.1098\/rsbl.2007.0134",
+        "article-title": "Daytime noise predicts nocturnal singing in urban robins.",
+        "volume": "3",
+        "author": "Fuller",
+        "year": "2007",
+        "journal-title": "Biology Letters"
+      },
+      {
+        "issue": "6",
+        "key": "20180413131424_fn27",
+        "doi-asserted-by": "crossref",
+        "first-page": "767",
+        "DOI": "10.1007\/BF00213073",
+        "article-title": "Passive sound localization of prey by the pallid bat (Antrozous p. pallidus).",
+        "volume": "171",
+        "author": "Fuzessery",
+        "year": "1993",
+        "journal-title": "Journal of Comparative Physiology A: Neuroethology, Sensory, Neural, and Behavioral Physiology"
+      },
+      {
+        "key": "20180413131424_fn28",
+        "doi-asserted-by": "crossref",
+        "DOI": "10.5962\/bhl.title.4489",
+        "volume-title": "The Struggle for Existence (1st ed.)",
+        "author": "Gause",
+        "year": "1934"
+      },
+      {
+        "issue": "9",
+        "key": "20180413131424_fn29",
+        "doi-asserted-by": "crossref",
+        "first-page": "968",
+        "DOI": "10.1016\/j.dsr2.2008.10.042",
+        "article-title": "Acoustic survey for marine mammal occurrence and distribution off East Antarctica (30\u201380 E) in January\u2013February 2006.",
+        "volume": "57",
+        "author": "Gedamke",
+        "year": "2010",
+        "journal-title": "Deep Sea Research Part II: Topical Studies in Oceanography"
+      },
+      {
+        "issue": "4",
+        "key": "20180413131424_fn30",
+        "doi-asserted-by": "crossref",
+        "first-page": "16",
+        "DOI": "10.4031\/002533203787536998",
+        "article-title": "A review of the effects of seismic surveys on marine mammals.",
+        "volume": "37",
+        "author": "Gordon",
+        "year": "2003",
+        "journal-title": "Marine Technology Society Journal"
+      },
+      {
+        "issue": "3",
+        "key": "20180413131424_fn31",
+        "doi-asserted-by": "crossref",
+        "first-page": "684",
+        "DOI": "10.1016\/S0003-3472(88)80151-9",
+        "article-title": "Interspecific acoustic interactions among katydids Neoconocephalus: Inhibition-induced shifts in diel periodicity.",
+        "volume": "36",
+        "author": "Greenfield",
+        "year": "1988",
+        "journal-title": "Animal Behaviour"
+      },
+      {
+        "issue": "4",
+        "key": "20180413131424_fn32",
+        "doi-asserted-by": "crossref",
+        "first-page": "315",
+        "DOI": "10.1111\/eth.12356",
+        "article-title": "It takes all kinds in acoustic communication: A new perspective on the song overlapping phenomenon.",
+        "volume": "121",
+        "author": "Helfer",
+        "year": "2015",
+        "journal-title": "Ethology"
+      },
+      {
+        "key": "20180413131424_fn33",
+        "doi-asserted-by": "crossref",
+        "first-page": "5",
+        "DOI": "10.3354\/meps08353",
+        "article-title": "Anthropogenic and natural sources of ambient noise in the ocean.",
+        "volume": "395",
+        "author": "Hildebrand",
+        "year": "2009",
+        "journal-title": "Marine Ecology Progress Series"
+      },
+      {
+        "key": "20180413131424_fn34",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Howe B. M., Anderson S. G., Baggeroer A., Colosi J. A., Hardy K. R., (1995). Instrumentation for the acoustic thermometry of ocean climate (ATOC) prototype Pacific Ocean network. Challenges of Our Changing Global Environment Conference Proceedings Oceans \u201895 MTS\/IEEE, 1483\u20131500, San Diego, California, USA, 9\u201312 October 1995. https:\/\/doi.org\/10.1109\/OCEANS.1995.528710.",
+        "DOI": "10.1109\/OCEANS.1995.528710"
+      },
+      {
+        "issue": "2",
+        "key": "20180413131424_fn35",
+        "doi-asserted-by": "crossref",
+        "first-page": "415",
+        "DOI": "10.1101\/SQB.1957.022.01.039",
+        "article-title": "Concluding remarks.",
+        "volume": "22",
+        "author": "Hutchinson",
+        "year": "1957",
+        "journal-title": "Cold Spring Harbor Symposia on Quantitative Biology"
+      },
+      {
+        "issue": "1",
+        "key": "20180413131424_fn36",
+        "doi-asserted-by": "crossref",
+        "first-page": "1",
+        "DOI": "10.1007\/s10682-013-9658-7",
+        "article-title": "A rain forest dusk chorus: Cacophony or sounds of silence?",
+        "volume": "28",
+        "author": "Jain",
+        "year": "2014",
+        "journal-title": "Evolutionary Ecology"
+      },
+      {
+        "issue": "5",
+        "key": "20180413131424_fn37",
+        "doi-asserted-by": "crossref",
+        "first-page": "447",
+        "DOI": "10.1007\/s00359-010-0565-x",
+        "article-title": "The communicative potential of bat echolocation pulses.",
+        "volume": "197",
+        "author": "Jones",
+        "year": "2011",
+        "journal-title": "Journal of Comparative Physiology A"
+      },
+      {
+        "key": "20180413131424_fn38",
+        "doi-asserted-by": "crossref",
+        "first-page": "284",
+        "DOI": "10.1016\/j.buildenv.2016.08.011",
+        "article-title": "Ten questions on the soundscapes of the built environment.",
+        "volume": "108",
+        "author": "Kang",
+        "year": "2016",
+        "journal-title": "Building and Environment"
+      },
+      {
+        "issue": "2\/3",
+        "key": "20180413131424_fn39",
+        "first-page": "72 (79",
+        "article-title": "Marine mammal auditory systems: A summary of audiometric and anatomical data and implications for underwater acoustic impacts.",
+        "author": "Ketten",
+        "year": "2004",
+        "journal-title": "Polarforschung"
+      },
+      {
+        "key": "20180413131424_fn40",
+        "article-title": "Towards a hybrid Antarctic float observation system: HAFOS.",
+        "author": "Klatt",
+        "year": "2006",
+        "journal-title": "Dynamic Planet"
+      },
+      {
+        "key": "20180413131424_fn41",
+        "first-page": "154",
+        "article-title": "Automated passive acoustic detection, localization and identification of leopard seals: From hydro-acoustic technology to leopard seal ecology.",
+        "volume-title": "Berichte zur Polar- und Meeresforschung (Reports on Polar and Marine Research)",
+        "author": "Klinck",
+        "year": "2008"
+      },
+      {
+        "key": "20180413131424_fn42",
+        "first-page": "5714",
+        "article-title": "Bioacoustics: Habitat ambience and ecological balance.",
+        "author": "Krause",
+        "year": "1987",
+        "journal-title": "Whole Earth Review"
+      },
+      {
+        "key": "20180413131424_fn43",
+        "first-page": "156",
+        "article-title": "The Niche Hypothesis: A hidden symphony of animal sounds, the origins of musical expression and the health of habitats.",
+        "author": "Krause",
+        "year": "1993",
+        "journal-title": "The Explorers Journal, Winter"
+      },
+      {
+        "key": "20180413131424_fn44",
+        "doi-asserted-by": "crossref",
+        "first-page": "24",
+        "DOI": "10.1186\/s40317-015-0059-2",
+        "article-title": "Novel foraging strategies observed in a growing leopard seal (Hydrurga leptonyx) population at Livingston Island, Antarctic Peninsula.",
+        "volume": "3",
+        "author": "Krause",
+        "year": "2015",
+        "journal-title": "Animal Biotelemetry"
+      },
+      {
+        "issue": "1505",
+        "key": "20180413131424_fn45",
+        "doi-asserted-by": "crossref",
+        "first-page": "2121",
+        "DOI": "10.1098\/rspb.2002.2115",
+        "article-title": "The effects of rain on acoustic communication: Tawny owls have good reason for calling less in wet weather.",
+        "volume": "269",
+        "author": "Lengagne",
+        "year": "2002",
+        "journal-title": "Proceedings of the Royal Society of London B: Biological Sciences"
+      },
+      {
+        "key": "20180413131424_fn46",
+        "unstructured": "Li B. and Bayly M. (2017). Quantitative analysis on the environmental impact benefits from the bandwidth-controlled marine seismic source technology. Proceedings of ACOUSTICS, Perth, Australia, 19\u201322 November 2017."
+      },
+      {
+        "issue": "4",
+        "key": "20180413131424_fn47",
+        "doi-asserted-by": "crossref",
+        "first-page": "864",
+        "DOI": "10.1093\/beheco\/arp074",
+        "article-title": "The influence of the acoustic community on songs of birds in a neotropical rain forest.",
+        "volume": "20",
+        "author": "Luther",
+        "year": "2009",
+        "journal-title": "Behavioral Ecology"
+      },
+      {
+        "issue": "1",
+        "key": "20180413131424_fn48",
+        "doi-asserted-by": "crossref",
+        "first-page": "29",
+        "DOI": "10.1080\/09524622.2015.1079734",
+        "article-title": "The Song Overlap Null model Generator (SONG): A new tool for distinguishing between random and non-random song overlap.",
+        "volume": "25",
+        "author": "Masco",
+        "year": "2016",
+        "journal-title": "Bioacoustics"
+      },
+      {
+        "issue": "2",
+        "key": "20180413131424_fn49",
+        "doi-asserted-by": "crossref",
+        "first-page": "675",
+        "DOI": "10.1007\/s10530-016-1327-7",
+        "article-title": "Invasion of the acoustic niche: Variable responses by native species to invasive American bullfrog calls.",
+        "volume": "19",
+        "author": "Medeiros",
+        "year": "2017",
+        "journal-title": "Biological Invasions"
+      },
+      {
+        "key": "20180413131424_fn50",
+        "doi-asserted-by": "crossref",
+        "first-page": "160370",
+        "DOI": "10.1098\/rsos.160370",
+        "article-title": "The influence of sea ice, wind speed and marine mammals on Southern Ocean ambient sound.",
+        "volume": "4",
+        "author": "Menze",
+        "year": "2017",
+        "journal-title": "Royal Society Open Science"
+      },
+      {
+        "issue": "11",
+        "key": "20180413131424_fn51",
+        "doi-asserted-by": "crossref",
+        "first-page": "1087",
+        "DOI": "10.1016\/j.apacoust.2010.05.010",
+        "article-title": "Detecting marine mammals with an adaptive sub-sampling recorder in the Bering Sea.",
+        "volume": "71",
+        "author": "Miksis-Olds",
+        "year": "2010",
+        "journal-title": "Applied Acoustics"
+      },
+      {
+        "issue": "2",
+        "key": "20180413131424_fn52",
+        "doi-asserted-by": "crossref",
+        "first-page": "1143",
+        "DOI": "10.1121\/1.1586258",
+        "article-title": "The monopulsed nature of sperm whale clicks.",
+        "volume": "114",
+        "author": "M\u00f8hl",
+        "year": "2003",
+        "journal-title": "The Journal of the Acoustical Society of America"
+      },
+      {
+        "key": "20180413131424_fn53",
+        "doi-asserted-by": "crossref",
+        "unstructured": "Morozov A. K., Webb D. C., Chiu C. S., Worcester P. F., Dzieciuch M. A., (2016). High-efficient tunable sound sources for ocean and bottom tomography, 15 years of operating history. OCEANS 2016 MTS\/IEEE Monterey, pp 1\u201310. IEEE.",
+        "DOI": "10.1109\/OCEANS.2016.7761066"
+      },
+      {
+        "issue": "4",
+        "key": "20180413131424_fn54",
+        "doi-asserted-by": "crossref",
+        "first-page": "2330",
+        "DOI": "10.1121\/1.410105",
+        "article-title": "The heard island feasibility test.",
+        "volume": "96",
+        "author": "Munk",
+        "year": "1994",
+        "journal-title": "The Journal of the Acoustical Society of America"
+      },
+      {
+        "issue": "3",
+        "key": "20180413131424_fn55",
+        "doi-asserted-by": "crossref",
+        "first-page": "361",
+        "DOI": "10.1111\/j.1745-5871.2008.00529.x",
+        "article-title": "The sound of silence: Valuing acoustics in heritage conservation.",
+        "volume": "46",
+        "author": "O\u2019Connor",
+        "year": "2008",
+        "journal-title": "Geographical Research"
+      },
+      {
+        "key": "20180413131424_fn56",
+        "doi-asserted-by": "crossref",
+        "DOI": "10.1215\/9780822376262",
+        "volume-title": "Aurality: Listening & Knowledge in Nineteenth-Century Colombia",
+        "author": "Ochoa Guatier",
+        "year": "2014"
+      },
+      {
+        "issue": "2",
+        "key": "20180413131424_fn57",
+        "doi-asserted-by": "crossref",
+        "first-page": "242",
+        "DOI": "10.2307\/2389189",
+        "article-title": "Inhibition of evoked calling of Dendrobates pumilio due to acoustic interference from cicada calling.",
+        "volume": "25",
+        "author": "Paez",
+        "year": "1993",
+        "journal-title": "Biotropica"
+      },
+      {
+        "issue": "3",
+        "key": "20180413131424_fn58",
+        "doi-asserted-by": "crossref",
+        "first-page": "262",
+        "DOI": "10.1111\/j.1439-0310.2007.01461.x",
+        "article-title": "Spectral overlap in songs and temporal avoidance in a Peruvian bird assemblage.",
+        "volume": "114",
+        "author": "Planqu\u00e9",
+        "year": "2008",
+        "journal-title": "Ethology"
+      },
+      {
+        "key": "20180413131424_fn59",
+        "first-page": "744",
+        "article-title": "Short-term temporal avoidance of interspecific acoustic interference among forest birds.",
+        "volume": "102",
+        "author": "Popp",
+        "year": "1985",
+        "journal-title": "The Auk"
+      },
+      {
+        "key": "20180413131424_fn60",
+        "first-page": "7",
+        "article-title": "Exploring spatial and temporal trends in the soundscape of an ecologically significant embayment.",
+        "author": "Putland",
+        "year": "2017",
+        "journal-title": "Scientific Reports"
+      },
+      {
+        "issue": "1",
+        "key": "20180413131424_fn61",
+        "doi-asserted-by": "crossref",
+        "first-page": "15",
+        "DOI": "10.5194\/essd-8-15-2016",
+        "article-title": "A gridded data set of upper-ocean hydrographic properties in the Weddell Gyre obtained by objective mapping of Argo float measurements.",
+        "volume": "8",
+        "author": "Reeve",
+        "year": "2016",
+        "journal-title": "Earth System Science Data"
+      },
+      {
+        "issue": "4",
+        "key": "20180413131424_fn62",
+        "doi-asserted-by": "crossref",
+        "first-page": "201401",
+        "DOI": "10.1098\/rsbl.2014.0175",
+        "article-title": "Mysterious bio-duck sound attributed to the Antarctic minke whale (Balaenoptera bonaearensis).",
+        "volume": "10",
+        "author": "Risch",
+        "year": "2014",
+        "journal-title": "Biology Letters"
+      },
+      {
+        "issue": "2",
+        "key": "20180413131424_fn63",
+        "doi-asserted-by": "crossref",
+        "first-page": "34",
+        "DOI": "10.5670\/oceanog.2009.36",
+        "article-title": "The Argo Program: Observing the global ocean with profiling floats.",
+        "volume": "22",
+        "author": "Roemmich",
+        "year": "2009",
+        "journal-title": "Oceanography"
+      },
+      {
+        "issue": "4",
+        "key": "20180413131424_fn64",
+        "doi-asserted-by": "crossref",
+        "first-page": "672",
+        "DOI": "10.1175\/1520-0426(1986)003<0672:TRS>2.0.CO;2",
+        "article-title": "The RAFOS system.",
+        "volume": "3",
+        "author": "Rossby",
+        "year": "1986",
+        "journal-title": "Journal of Atmospheric and Oceanic Technology"
+      },
+      {
+        "issue": "19",
+        "key": "20180413131424_fn65",
+        "doi-asserted-by": "crossref",
+        "first-page": "6092",
+        "DOI": "10.1073\/pnas.1424667112",
+        "article-title": "Environmental constraints drive the partitioning of the soundscape in fishes.",
+        "volume": "112",
+        "author": "Rupp\u00e9",
+        "year": "2015",
+        "journal-title": "Proceedings of the National Academy of Sciences of the United States of America"
+      },
+      {
+        "key": "20180413131424_fn66",
+        "volume-title": "The Tuning of the World",
+        "author": "Schafer",
+        "year": "1977"
+      },
+      {
+        "issue": "19",
+        "key": "20180413131424_fn67",
+        "doi-asserted-by": "crossref",
+        "first-page": "3174",
+        "DOI": "10.1242\/jeb.022863",
+        "article-title": "Foraging bats avoid noise.",
+        "volume": "211",
+        "author": "Schaub",
+        "year": "2008",
+        "journal-title": "Journal of Experimental Biology"
+      },
+      {
+        "issue": "2",
+        "key": "20180413131424_fn68",
+        "doi-asserted-by": "crossref",
+        "first-page": "470",
+        "DOI": "10.1093\/beheco\/ars187",
+        "article-title": "Spectral niche segregation and community organization in a tropical cricket assemblage.",
+        "volume": "24",
+        "author": "Schmidt",
+        "year": "2013",
+        "journal-title": "Behavioral Ecology"
+      },
+      {
+        "issue": "1693",
+        "key": "20180413131424_fn69",
+        "doi-asserted-by": "crossref",
+        "first-page": "2475",
+        "DOI": "10.1098\/rspb.2010.0210",
+        "article-title": "Character displacement from the receiver\u2019s perspective: Species and mate recognition despite convergent signals in suboscine birds.",
+        "volume": "277",
+        "author": "Seddon",
+        "year": "2010",
+        "journal-title": "Proceedings of the Royal Society of London B: Biological Sciences"
+      },
+      {
+        "issue": "4",
+        "key": "20180413131424_fn70",
+        "doi-asserted-by": "crossref",
+        "first-page": "623",
+        "DOI": "10.1002\/j.1538-7305.1948.tb00917.x",
+        "article-title": "A mathematical theory of communication, Part I, Part II.",
+        "volume": "27",
+        "author": "Shannon",
+        "year": "1948",
+        "journal-title": "The Bell System Technical Journal"
+      },
+      {
+        "issue": "1",
+        "key": "20180413131424_fn71",
+        "doi-asserted-by": "crossref",
+        "first-page": "60",
+        "DOI": "10.1080\/15627020.2012.11407524",
+        "article-title": "Acoustic niche partitioning in an anuran community inhabiting an Afromontane wetland (Butare, Rwanda).",
+        "volume": "47",
+        "author": "Sinsch",
+        "year": "2012",
+        "journal-title": "African Zoology"
+      },
+      {
+        "issue": "4",
+        "key": "20180413131424_fn72",
+        "doi-asserted-by": "crossref",
+        "first-page": "e5",
+        "DOI": "10.1016\/j.anbehav.2008.06.010",
+        "article-title": "Soundscape orientation: A new field in need of sound investigation.",
+        "volume": "76",
+        "author": "Slabbekoorn",
+        "year": "2008",
+        "journal-title": "Animal Behaviour"
+      },
+      {
+        "issue": "4",
+        "key": "20180413131424_fn73",
+        "first-page": "1",
+        "article-title": "Marine mammal noise exposure criteria: Initial scientific recommendations.",
+        "volume": "33",
+        "author": "Southall",
+        "year": "2007",
+        "journal-title": "Aquatic Mammals"
+      },
+      {
+        "key": "20180413131424_fn74",
+        "first-page": "160",
+        "article-title": "Ocean Acoustics.",
+        "volume-title": "The Expedition PS103 of the Research Vessel POLARSTERN to the Weddell Sea in 2016\/2017, Berichte zur Polar- und Meeresforschung = Reports on polar and marine research",
+        "author": "Spiesecke",
+        "year": "2017"
+      },
+      {
+        "issue": "1",
+        "key": "20180413131424_fn75",
+        "doi-asserted-by": "crossref",
+        "first-page": "23",
+        "DOI": "10.1186\/s40317-015-0058-3",
+        "article-title": "Sound production and associated behavior of tagged fin whales (Balaenoptera physalus) in the Southern California Bight.",
+        "volume": "3",
+        "author": "Stimpert",
+        "year": "2015",
+        "journal-title": "Animal Biotelemetry"
+      },
+      {
+        "issue": "3",
+        "key": "20180413131424_fn76",
+        "doi-asserted-by": "crossref",
+        "first-page": "379",
+        "DOI": "10.1111\/j.1095-8312.2002.tb02079.x",
+        "article-title": "Cicada acoustic communication: Potential sound partitioning in a multispecies community from Mexico (Hemiptera: Cicadomorpha: Cicadidae).",
+        "volume": "75",
+        "author": "Sueur",
+        "year": "2002",
+        "journal-title": "Biological Journal of the Linnean Society"
+      },
+      {
+        "issue": "3",
+        "key": "20180413131424_fn77",
+        "doi-asserted-by": "crossref",
+        "first-page": "1020",
+        "DOI": "10.1073\/pnas.1314337111",
+        "article-title": "Species interactions and the structure of complex communication networks.",
+        "volume": "111",
+        "author": "Tobias",
+        "year": "2014",
+        "journal-title": "Proceedings of the National Academy of Sciences of the United States of America"
+      },
+      {
+        "key": "20180413131424_fn78",
+        "unstructured": "Torigoe K. (2003). Insights taken from three visited soundscapes in Japan. World Forum for Acoustic Ecology Symposium, Melbourne, Australia."
+      },
+      {
+        "key": "20180413131424_fn79",
+        "first-page": "332",
+        "article-title": "Acoustic ecology of marine mammals in polar oceans.",
+        "volume-title": "Berichte zur Polar- und Meeresforschung (Reports on Polar and Marine Research)",
+        "author": "Van Opzeeland",
+        "year": "2010"
+      },
+      {
+        "key": "20180413131424_fn80",
+        "volume-title": "Acoustic Ecology of Pinnipeds in Polar Habitats",
+        "author": "Van Opzeeland",
+        "year": "2012"
+      },
+      {
+        "key": "20180413131424_fn81",
+        "doi-asserted-by": "crossref",
+        "first-page": "267",
+        "DOI": "10.3354\/meps08683",
+        "article-title": "Acoustic ecology of Antarctic pinnipeds",
+        "volume": "414",
+        "author": "Van Opzeeland",
+        "year": "2010",
+        "journal-title": "Marine Ecology Progress Series"
+      },
+      {
+        "issue": "9",
+        "key": "20180413131424_fn82",
+        "doi-asserted-by": "crossref",
+        "first-page": "1",
+        "DOI": "10.1371\/journal.pone.0073007",
+        "article-title": "Calling in the cold: Pervasive acoustic presence of humpback whales (Megaptera novaeangliae) in Antarctic coastal waters.",
+        "volume": "8",
+        "author": "Van Opzeeland",
+        "year": "2013",
+        "journal-title": "PLoS ONE"
+      },
+      {
+        "issue": "1",
+        "key": "20180413131424_fn83",
+        "doi-asserted-by": "crossref",
+        "first-page": "73",
+        "DOI": "10.1007\/BF00310219",
+        "article-title": "Is there a \u201csound window\u201d for primate communication?",
+        "volume": "15",
+        "author": "Waser",
+        "year": "1984",
+        "journal-title": "Behavioral Ecology and Sociobiology"
+      },
+      {
+        "issue": "3",
+        "key": "20180413131424_fn84",
+        "doi-asserted-by": "crossref",
+        "first-page": "156",
+        "DOI": "10.1016\/j.tree.2012.10.002",
+        "article-title": "Evolutionary divergence in acoustic signals: Causes and consequences.",
+        "volume": "28",
+        "author": "Wilkins",
+        "year": "2013",
+        "journal-title": "Trends in Ecology & Evolution"
+      },
+      {
+        "key": "20180413131424_fn85",
+        "doi-asserted-by": "crossref",
+        "first-page": "17",
+        "DOI": "10.1016\/j.ocecoaman.2015.05.021",
+        "article-title": "Impacts of anthropogenic noise on marine life: Publication patterns, new discoveries, and future directions in research and management",
+        "volume": "115",
+        "author": "Williams",
+        "year": "2015",
+        "journal-title": "Ocean & Coastal Management"
+      },
+      {
+        "key": "20180413131424_fn86",
+        "doi-asserted-by": "crossref",
+        "first-page": "219",
+        "DOI": "10.1016\/j.anbehav.2016.02.002",
+        "article-title": "Black-capped chickadees, Poecile atricapillus, avoid song overlapping: Evidence for the acoustic interference hypothesis.",
+        "volume": "114",
+        "author": "Wilson",
+        "year": "2016",
+        "journal-title": "Animal Behaviour"
+      },
+      {
+        "issue": "3",
+        "key": "20180413131424_fn87",
+        "doi-asserted-by": "crossref",
+        "first-page": "46",
+        "DOI": "10.5670\/oceanog.2015.57",
+        "article-title": "A synthesis of year-round interdisciplinary mooring measurements in the Bering Strait (1990\u20132014) and the RUSALCA years (2004\u20132011).",
+        "volume": "28",
+        "author": "Woodgate",
+        "year": "2015",
+        "journal-title": "Oceanography"
+      },
+      {
+        "key": "20180413131424_fn88",
+        "doi-asserted-by": "crossref",
+        "first-page": "84",
+        "DOI": "10.1016\/j.beproc.2013.11.011",
+        "article-title": "Timing vocal behaviour: Experimental evidence for song overlap avoidance in Eurasian wrens.",
+        "volume": "103",
+        "author": "Yang",
+        "year": "2014",
+        "journal-title": "Behavioural Processes"
+      }
+    ],
+    "container-title": ["Journal of Ecoacoustics"],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "https:\/\/www.veruscript.com\/api\/files\/veruscript_5GSNT8.pdf",
+        "content-type": "application\/pdf",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "https:\/\/jea.jams.pub\/article\/2\/1\/45\/pdf",
+        "content-type": "unspecified",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2022, 8, 17]],
+      "date-time": "2022-08-17T06:48:43Z",
+      "timestamp": 1660718923000
+    },
+    "score": 1,
+    "resource": { "primary": { "URL": "https:\/\/jea.jams.pub\/article\/2\/1\/45" } },
+    "subtitle": [],
+    "short-title": [],
+    "issued": { "date-parts": [[2018, 3, 29]] },
+    "references-count": 88,
+    "journal-issue": { "issue": "1", "published-online": { "date-parts": [[2018, 1]] } },
+    "URL": "https:\/\/doi.org\/10.22261\/jea.5gsnt8",
+    "relation": {},
+    "ISSN": ["2516-1466"],
+    "issn-type": [{ "value": "2516-1466", "type": "electronic" }],
+    "subject": [],
+    "published": { "date-parts": [[2018, 3, 29]] },
+    "assertion": [
+      {
+        "value": "Original paper",
+        "name": "content_type",
+        "label": "Content type",
+        "group": { "name": "content_type" }
+      },
+      {
+        "value": "yes",
+        "name": "peer_reviewed",
+        "label": "Peer Reviewed",
+        "group": { "name": "peer_review", "label": "Peer review" }
+      },
+      {
+        "value": "Double blind",
+        "name": "review_process",
+        "label": "Review Process",
+        "group": { "name": "peer_review", "label": "Peer review" }
+      },
+      {
+        "value": "01 November 2017",
+        "name": "received",
+        "label": "Received",
+        "group": { "name": "publication_history", "label": "Publication history" }
+      },
+      {
+        "value": "09 February 2018",
+        "name": "accepted",
+        "label": "Accepted",
+        "group": { "name": "publication_history", "label": "Publication history" }
+      },
+      {
+        "value": "29 March 2018",
+        "name": "published",
+        "label": "Published",
+        "group": { "name": "publication_history", "label": "Publication history" }
+      },
+      {
+        "value": "\u00a9 2018 Van Opzeeland and Boebel",
+        "name": "copyright",
+        "label": "Copyright",
+        "group": { "name": "copyright_and_licensing", "label": "Copyright and licensing" }
+      },
+      {
+        "value": "This is an open access article distributed under the Creative Commons Attribution Non Commercial License (CC\u2011BY\u00a0NC 4.0), which permits unrestricted use, distribution, and reproduction in any medium for noncommercial purposes only, provided the original work is properly cited and its authors credited.",
+        "name": "license",
+        "label": "License",
+        "explanation": { "URL": "https:\/\/creativecommons.org\/licenses\/by-nc\/4.0\/" },
+        "group": { "name": "copyright_and_licensing", "label": "Copyright and licensing" }
+      }
+    ]
+  }
+}

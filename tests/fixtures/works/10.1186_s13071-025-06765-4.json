@@ -1,0 +1,646 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2026, 10, 30]],
+      "date-time": "2026-10-30T03:15:18Z",
+      "timestamp": 1793330118455,
+      "version": "4.5.0"
+    },
+    "reference-count": 43,
+    "publisher": "Springer Science and Business Media LLC",
+    "issue": "1",
+    "license": [
+      {
+        "start": {
+          "date-parts": [[2025, 6, 17]],
+          "date-time": "2025-06-17T00:00:00Z",
+          "timestamp": 1750118400000
+        },
+        "content-version": "tdm",
+        "delay-in-days": 0,
+        "URL": "https:\/\/creativecommons.org\/licenses\/by\/4.0"
+      },
+      {
+        "start": {
+          "date-parts": [[2025, 6, 17]],
+          "date-time": "2025-06-17T00:00:00Z",
+          "timestamp": 1750118400000
+        },
+        "content-version": "vor",
+        "delay-in-days": 0,
+        "URL": "https:\/\/creativecommons.org\/licenses\/by\/4.0"
+      }
+    ],
+    "content-domain": { "domain": ["link.springer.com"], "crossmark-restriction": false },
+    "short-container-title": ["Parasites Vectors"],
+    "abstract": "<jats:title>Abstract<\/jats:title>\n                  <jats:sec>\n                    <jats:title>Background<\/jats:title>\n                    <jats:p>\n                      The main tools to control malaria vectors in sub-Saharan Africa are long-lasting insecticidal nets and indoor residual spraying. However, their sustainability is threatened by the emergence of insecticide resistances, behavioral avoidance and presence of outdoor biting mosquito populations. Thus, complementary interventions such as larval source management, which includes larviciding, are required to achieve better results in malaria vector control. This study aimed to evaluate the effectiveness of three larvicides (Aquatain AMF\n                      <jats:sup>\u00ae<\/jats:sup>\n                      , Temephos and\n                      <jats:italic>Bacillus thuringiensis var. israelensis<\/jats:italic>\n                      ) against larvae of\n                      <jats:italic>Anopheles arabiensisi<\/jats:italic>\n                      and\n                      <jats:italic>Anopheles stephensi<\/jats:italic>\n                      .\n                    <\/jats:p>\n                  <\/jats:sec>\n                  <jats:sec>\n                    <jats:title>Methods<\/jats:title>\n                    <jats:p>\n                      The tests on insectary colony and field-collected immature stages of the mosquitoes were conducted in the laboratory. For this, the third and fourth larval instars of\n                      <jats:italic>An. arabiensis<\/jats:italic>\n                      and\n                      <jats:italic>An. stephensi<\/jats:italic>\n                      were placed in trays measuring 50\u00a0cm\u2009\u00d7\u200940\u00a0cm, and larvicides were applied to the treatments while the control trays were left untreated. In addition, the larvicides were applied to selected natural habitats, and their effects on the reduction of the immature stages\u2019 density were estimated.\n                    <\/jats:p>\n                  <\/jats:sec>\n                  <jats:sec>\n                    <jats:title>Results<\/jats:title>\n                    <jats:p>\n                      In the laboratory, susceptible\n                      <jats:italic>An. arabiensis<\/jats:italic>\n                      showed mortality rates of 95% with Aquatain, 100% with\n                      <jats:italic>Bti<\/jats:italic>\n                      and 100% with Temephos, while\n                      <jats:italic>An. stephensi<\/jats:italic>\n                      showed 60% with Aquatain, 84% with\n                      <jats:italic>Bti<\/jats:italic>\n                      and 100% with Temephos. The percentage of larval mortalities among wild\n                      <jats:italic>An. arabiensis<\/jats:italic>\n                      collected from the field and exposed to Aquatain,\n                      <jats:italic>Bti<\/jats:italic>\n                      and Temephos were 97%, 100% and 100%, respectively, whereas those of\n                      <jats:italic>An. stephensi<\/jats:italic>\n                      were 74%, 99% and 100%, respectively. During the natural field study, the reductions in immature stages were as follows: 77%, 96% and 95% in Adama; 89%, 95% and 94% in Metahara; and 92%, 84% and 96% in Awash for Aquatain,\n                      <jats:italic>Bti<\/jats:italic>\n                      and Temephos, respectively.\n                    <\/jats:p>\n                  <\/jats:sec>\n                  <jats:sec>\n                    <jats:title>Conclusions<\/jats:title>\n                    <jats:p>\n                      The three larvicides, Aquatain, Temephos and\n                      <jats:italic>Bti<\/jats:italic>\n                      , provided high levels of larviciding efficacies in both laboratory and field evaluations. Despite its effectiveness, Temephos caused the water to turn whitish and emitted a strong odor that made the community wary regarding the treated habitats. Therefore, we recommend using Aquatain in mosquito control programs as a complementary malaria vector control tool.\n                    <\/jats:p>\n                  <\/jats:sec>\n                  <jats:sec>\n                    <jats:title>Graphical Abstract<\/jats:title>\n                  <\/jats:sec>",
+    "DOI": "10.1186\/s13071-025-06765-4",
+    "type": "journal-article",
+    "created": {
+      "date-parts": [[2025, 6, 17]],
+      "date-time": "2025-06-17T05:43:50Z",
+      "timestamp": 1750139030000
+    },
+    "update-policy": "https:\/\/doi.org\/10.1007\/springer_crossmark_policy",
+    "source": "Crossref",
+    "is-referenced-by-count": 6,
+    "title": [
+      "Evaluation of the effectiveness of Aquatain, Bacillus thuringiensis var. israelensis, and Temephos on Anopheles arabiensis and Anopheles stephensi larvae in the laboratory and field settings"
+    ],
+    "prefix": "10.1186",
+    "volume": "18",
+    "author": [
+      {
+        "given": "Sisay",
+        "family": "Dugassa",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "given": "Tilahun",
+        "family": "Kebede",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "given": "Bedri",
+        "family": "Abdulatif",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "given": "Gudissa",
+        "family": "Assefa",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "given": "Hiwot",
+        "family": "Solomon",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "given": "Dejene",
+        "family": "Getachew",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "given": "Kidane",
+        "family": "Lelisa",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      },
+      {
+        "given": "Araya",
+        "family": "Gebresilassie",
+        "sequence": "additional",
+        "affiliation": [],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      }
+    ],
+    "member": "297",
+    "published-online": { "date-parts": [[2025, 6, 17]] },
+    "reference": [
+      {
+        "key": "6765_CR1",
+        "first-page": "31",
+        "volume-title": "WHO prequalification of vector control products. Overview of the WHO prequalification assessment of vector control products",
+        "author": "WHO",
+        "year": "2023",
+        "unstructured": "WHO. WHO prequalification of vector control products. Overview of the WHO prequalification assessment of vector control products. Geneva: WHO; 2023. p. 31."
+      },
+      {
+        "key": "6765_CR2",
+        "first-page": "2018",
+        "volume-title": "National malaria guidelines",
+        "author": "Ministry of Health",
+        "year": "2018",
+        "unstructured": "Ministry of Health. National malaria guidelines. Addis Ababa: Republic of Ethiopia Ministry of Health; 2018. p. 2018."
+      },
+      {
+        "key": "6765_CR3",
+        "doi-asserted-by": "publisher",
+        "first-page": "180",
+        "DOI": "10.1016\/j.actatropica.2018.09.001",
+        "volume": "188",
+        "author": "TE Carter",
+        "year": "2018",
+        "unstructured": "Carter TE, Yared S, Gebresilassie A, Bonnell V, Damodaran L, Lopez K, et al. First detection of Anopheles stephensi Liston, 1901 (Diptera: culicidae) in Ethiopia using molecular and morphological approaches. Acta Trop. 2018;188:180\u20136.",
+        "journal-title": "Acta Trop"
+      },
+      {
+        "key": "6765_CR4",
+        "doi-asserted-by": "publisher",
+        "first-page": "331",
+        "DOI": "10.1186\/s12936-021-03852-6",
+        "volume": "20",
+        "author": "M Balkew",
+        "year": "2021",
+        "unstructured": "Balkew M, Mumba P, Yohannes G, Abiy E, Getachew D, Yared S, et al. Correction to: An update on the distribution, bionomics, and insecticide susceptibility of Anopheles stephensi in Ethiopia, 2018\u20132020. Malar J. 2021;20:331.",
+        "journal-title": "Malar J"
+      },
+      {
+        "key": "6765_CR5",
+        "doi-asserted-by": "publisher",
+        "first-page": "373",
+        "DOI": "10.1186\/s12936-023-04813-x",
+        "volume": "22",
+        "author": "D Hawaria",
+        "year": "2023",
+        "unstructured": "Hawaria D, Kibret S, Zhong D, Lee MC, Lelisa K, Bekele B, et al. First report of Anopheles stephensi from southern Ethiopia. Malar J. 2023;22:373.",
+        "journal-title": "Malar J"
+      },
+      {
+        "key": "6765_CR6",
+        "doi-asserted-by": "publisher",
+        "first-page": "603",
+        "DOI": "10.3201\/eid2702.200019",
+        "volume": "27",
+        "author": "FG Tadesse",
+        "year": "2021",
+        "unstructured": "Tadesse FG, Ashine T, Teka H, Esayas E, Messenger LA, Chali W, et al. Anopheles stephensi mosquitoes as vectors of Plasmodium vivax and falciparum, Horn of Africa, 2019. Emerg Infect Dis. 2021;27:603\u20137.",
+        "journal-title": "Emerg Infect Dis"
+      },
+      {
+        "key": "6765_CR7",
+        "doi-asserted-by": "publisher",
+        "first-page": "300",
+        "DOI": "10.1186\/s12936-018-2458-3",
+        "volume": "17",
+        "author": "Z Desalegn",
+        "year": "2018",
+        "unstructured": "Desalegn Z, Wegayehu T, Massebo F. Wall-type and indoor residual spraying application quality affect the residual efficacy of indoor residual spray against wild malaria vector in southwest Ethiopia. Malar J. 2018;17:300.",
+        "journal-title": "Malar J"
+      },
+      {
+        "key": "6765_CR8",
+        "doi-asserted-by": "publisher",
+        "first-page": "301",
+        "DOI": "10.1186\/s12936-021-03833-9",
+        "volume": "20",
+        "author": "MK Wubishet",
+        "year": "2021",
+        "unstructured": "Wubishet MK, Berhe G, Adissu A, Tafa MS. Effectiveness of long-lasting insecticidal nets in prevention of malaria among individuals visiting health centres in Ziway\u2013Dugda district, Ethiopia: matched case-control study. Malar J. 2021;20:301.",
+        "journal-title": "Malar J"
+      },
+      {
+        "key": "6765_CR9",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.21203\/rs.3.rs-3882298\/v1",
+        "author": "K Mohammed",
+        "year": "2024",
+        "unstructured": "Mohammed K, Weldu A, Bekele BB. Willingness to accept indoor residual spraying (IRS) for malaria prevention and associated factors in Southwest Ethiopia. PAMJ One Health. 2024. https:\/\/doi.org\/10.21203\/rs.3.rs-3882298\/v1.",
+        "journal-title": "PAMJ One Health"
+      },
+      {
+        "key": "6765_CR10",
+        "doi-asserted-by": "publisher",
+        "first-page": "469",
+        "DOI": "10.1186\/s12936-017-2115-2",
+        "volume": "16",
+        "author": "LA Messenger",
+        "year": "2017",
+        "unstructured": "Messenger LA, Shililu J, Irish SR, Anshebo GY, Tesfaye AG, Ye-Ebiyo Y, et al. Insecticide resistance in Anopheles arabiensis from Ethiopia (2012\u20132016): a nationwide study for insecticide resistance monitoring. Malar J. 2017;16:469.",
+        "journal-title": "Malar J"
+      },
+      {
+        "key": "6765_CR11",
+        "doi-asserted-by": "publisher",
+        "first-page": "180",
+        "DOI": "10.1186\/s12936-020-03252-2",
+        "volume": "19",
+        "author": "S Yared",
+        "year": "2020",
+        "unstructured": "Yared S, Gebressielasie A, Damodaran L, Bonnell V, Lopez K, Janies D, et al. Insecticide resistance in Anopheles stephensi in Somali region, Eastern Ethiopia. Malar J. 2020;19:180.",
+        "journal-title": "Malar J"
+      },
+      {
+        "key": "6765_CR12",
+        "doi-asserted-by": "publisher",
+        "first-page": "218",
+        "DOI": "10.1186\/s12936-023-04649-5",
+        "volume": "22",
+        "author": "A Teshome",
+        "year": "2023",
+        "unstructured": "Teshome A, Erko B, Golassa L, Yohannes G, Irish SR, Zohdy S, et al. Resistance of Anopheles stephensi to selected insecticides used for indoor residual spraying and long-lasting insecticidal nets in Ethiopia. Malar J. 2023;22:218.",
+        "journal-title": "Malar J"
+      },
+      {
+        "key": "6765_CR13",
+        "doi-asserted-by": "publisher",
+        "first-page": "4",
+        "DOI": "10.4103\/0972-9062.203156",
+        "volume": "54",
+        "author": "S Sougoufara",
+        "year": "2017",
+        "unstructured": "Sougoufara S, Doucoure S, Backe Sembene PM, Harry M, Sokhna C. Challenges for malaria vector control in sub-Saharan Africa: resistance and behavioral adaptations in Anopheles populations. J Vector Borne Dis. 2017;54:4\u201315.",
+        "journal-title": "J Vector Borne Dis"
+      },
+      {
+        "key": "6765_CR14",
+        "doi-asserted-by": "publisher",
+        "first-page": "445",
+        "DOI": "10.1186\/s12936-019-3076-4",
+        "volume": "18",
+        "author": "AK Musiime",
+        "year": "2019",
+        "unstructured": "Musiime AK, Smith DL, Kilama M, Rek J, Arinaitwe E, Nankabirwa JI, et al. Impact of vector control interventions on malaria transmission intensity, outdoor vector biting rates and Anopheles mosquito species composition in Tororo, Uganda. Malar J. 2019;18:445.",
+        "journal-title": "Malar J"
+      },
+      {
+        "key": "6765_CR15",
+        "first-page": "128",
+        "volume-title": "Larval source management: a supplementary measure for malaria vector control. An operational manual",
+        "author": "WHO",
+        "year": "2013",
+        "unstructured": "WHO. Larval source management: a supplementary measure for malaria vector control. An operational manual. Geneva: WHO; 2013. p. 128."
+      },
+      {
+        "key": "6765_CR16",
+        "doi-asserted-by": "publisher",
+        "first-page": "618",
+        "DOI": "10.1016\/S1473-3099(02)00397-3",
+        "volume": "2",
+        "author": "GF Killeen",
+        "year": "2002",
+        "unstructured": "Killeen GF, Fillinger U, Kiche I, Gouagna LC, Knols BG. Eradication of Anopheles gambiae from Brazil: lessons for malaria control in Africa? Lancet Infect Dis. 2002;2:618\u201327.",
+        "journal-title": "Lancet Infect Dis"
+      },
+      {
+        "key": "6765_CR17",
+        "doi-asserted-by": "publisher",
+        "first-page": "8",
+        "DOI": "10.1186\/1475-2875-1-8",
+        "volume": "1",
+        "author": "GF Killeen",
+        "year": "2002",
+        "unstructured": "Killeen GF, Fillinger U, Knols BG. Advantages of larval control for African malaria vectors: low mobility and behavioural responsiveness of immature mosquito stages allow high effective coverage. Malar J. 2002;1:8.",
+        "journal-title": "Malar J"
+      },
+      {
+        "key": "6765_CR18",
+        "doi-asserted-by": "publisher",
+        "first-page": "695",
+        "DOI": "10.1016\/S1473-3099(05)70268-1",
+        "volume": "5",
+        "author": "J Keiser",
+        "year": "2005",
+        "unstructured": "Keiser J, Singer BH, Utzinger J. Reducing the burden of malaria in different eco-epidemiological settings with environmental management: a systematic review. Lancet Infect Dis. 2005;5:695\u2013708.",
+        "journal-title": "Lancet Infect Dis"
+      },
+      {
+        "key": "6765_CR19",
+        "doi-asserted-by": "publisher",
+        "first-page": "655",
+        "DOI": "10.2471\/BLT.08.055632",
+        "volume": "87",
+        "author": "U Fillinger",
+        "year": "2009",
+        "unstructured": "Fillinger U, Ndenga B, Githeko A, Lindsay SW. Integrated malaria vector control with microbial larvicides and insecticide-treated nets in western Kenya: a controlled trial. Bull World Health Organ. 2009;87:655\u201365.",
+        "journal-title": "Bull World Health Organ"
+      },
+      {
+        "key": "6765_CR20",
+        "first-page": "CD008923",
+        "volume": "2013",
+        "author": "LS Tusting",
+        "year": "2013",
+        "unstructured": "Tusting LS, Thwing J, Sinclair D, Fillinger U, Gimnig J, Bonner KE, et al. Mosquito larval source management for controlling malaria. Cochrane Database Syst Rev. 2013;2013:CD008923.",
+        "journal-title": "Cochrane Database Syst Rev."
+      },
+      {
+        "key": "6765_CR21",
+        "first-page": "12736",
+        "volume": "8",
+        "author": "L Choi",
+        "year": "2019",
+        "unstructured": "Choi L, Majambere S, Wilson AL. Larviciding to prevent malaria transmission. Cochrane Database Syst Rev. 2019;8:12736.",
+        "journal-title": "Cochrane Database Syst Rev."
+      },
+      {
+        "key": "6765_CR22",
+        "volume-title": "World malaria report 2023",
+        "author": "WHO",
+        "year": "2023",
+        "unstructured": "WHO. World malaria report 2023. Geneva: World Health Organization; 2023."
+      },
+      {
+        "key": "6765_CR23",
+        "first-page": "20",
+        "volume": "40",
+        "author": "PK Mittal",
+        "year": "2003",
+        "unstructured": "Mittal PK. Biolarvicides in vector control: challenges and prospects. J Vector Borne Dis. 2003;40:20\u201332.",
+        "journal-title": "J Vector Borne Dis"
+      },
+      {
+        "key": "6765_CR24",
+        "doi-asserted-by": "publisher",
+        "first-page": "426",
+        "DOI": "10.1186\/s13071-019-3683-5",
+        "volume": "12",
+        "author": "YA Derua",
+        "year": "2019",
+        "unstructured": "Derua YA, Kweka EJ, Kisinza WN, Githeko AK, Mosha FW. Bacterial larvicides used for malaria vector control in sub-Saharan Africa: review of their effectiveness and operational feasibility. Parasit Vectors. 2019;12:426.",
+        "journal-title": "Parasit Vectors"
+      },
+      {
+        "key": "6765_CR25",
+        "first-page": "15",
+        "volume-title": "Prequalification team vector control decision document Aquatain AMF",
+        "author": "WHO",
+        "year": "2018",
+        "unstructured": "WHO. Prequalification team vector control decision document Aquatain AMF. Geneva: WHO; 2018. p. 15."
+      },
+      {
+        "key": "6765_CR26",
+        "doi-asserted-by": "publisher",
+        "first-page": "106",
+        "DOI": "10.2987\/08-5750.1",
+        "volume": "25",
+        "author": "CE Webb",
+        "year": "2009",
+        "unstructured": "Webb CE, Russell RC. A laboratory investigation of the mosquito control potential of the monomolecular film Aquatain mosquito formula against immature stages of Aedes aegypti and Culex quinquefasciatus. J Am Mosq Control Assoc. 2009;25:106\u20139.",
+        "journal-title": "J Am Mosq Control Assoc"
+      },
+      {
+        "key": "6765_CR27",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1371\/journal.pone.0021713",
+        "volume": "6",
+        "author": "T Bukhari",
+        "year": "2011",
+        "unstructured": "Bukhari T, Takken W, Githeko AK, Koenraadt CJ. Efficacy of Aquatain, a monomolecular film, for the control of malaria vectors in rice paddies. PLoS ONE. 2011;6:e21713.",
+        "journal-title": "PLoS ONE"
+      },
+      {
+        "key": "6765_CR28",
+        "doi-asserted-by": "publisher",
+        "first-page": "9",
+        "DOI": "10.1186\/1756-3305-7-438",
+        "volume": "7",
+        "author": "O Mbare",
+        "year": "2014",
+        "unstructured": "Mbare O, Lindsay SW, Ulrike FU. Aquatain\u00ae Mosquito Formulation (AMF) for the control of immature Anopheles gambiae sensu stricto and Anopheles arabiensis: dose-responses, persistence and sub-lethal effects. Parasit Vectors. 2014;7:9.",
+        "journal-title": "Parasit Vectors"
+      },
+      {
+        "key": "6765_CR29",
+        "doi-asserted-by": "publisher",
+        "DOI": "10.1098\/rsos.200980",
+        "volume": "8",
+        "author": "AMA Almalik",
+        "year": "2021",
+        "unstructured": "Almalik AMA, Guy Reeves R, Azrag RS. Comparison of the temporal efficacy of Aquatain surface films for the control of Anopheles arabiensis and Ochlerotatus caspius larvae from Sudan. R Soc Open Sci. 2021;8:200980.",
+        "journal-title": "R Soc Open Sci"
+      },
+      {
+        "key": "6765_CR30",
+        "first-page": "41",
+        "volume-title": "Guidelines for laboratory and field testing of mosquito larvicides. World Health organization communicable disease control, prevention and eradication WHO pesticide evaluation scheme",
+        "author": "WHO",
+        "year": "2005",
+        "unstructured": "WHO. Guidelines for laboratory and field testing of mosquito larvicides. World Health organization communicable disease control, prevention and eradication WHO pesticide evaluation scheme. Geneva: WHO; 2005. p. 41."
+      },
+      {
+        "key": "6765_CR31",
+        "first-page": "35",
+        "volume-title": "Anopheles mosquito rearing and insectary handling guideline",
+        "author": "EPHI",
+        "year": "2017",
+        "unstructured": "EPHI. Anopheles mosquito rearing and insectary handling guideline. Addis Ababa: Ethiopian Public Health Institute; 2017. p. 35."
+      },
+      {
+        "key": "6765_CR32",
+        "volume-title": "Ethiopia malaria elimination strategic plan 2021\u20132025",
+        "author": "FMoH",
+        "year": "2020",
+        "unstructured": "FMoH. Ethiopia malaria elimination strategic plan 2021\u20132025. Addis Ababa: Ethiopian Ministry of Health; 2020."
+      },
+      {
+        "key": "6765_CR33",
+        "doi-asserted-by": "publisher",
+        "first-page": "35",
+        "DOI": "10.1186\/s13071-020-3904-y",
+        "volume": "13",
+        "author": "M Balkew",
+        "year": "2020",
+        "unstructured": "Balkew M, Mumba P, Dengela D, Yohannes G, Getachew D, Yared S, et al. Geographical distribution of Anopheles stephensi in Eastern Ethiopia. Parasit Vectors. 2020;13:35.",
+        "journal-title": "Parasit Vectors"
+      },
+      {
+        "key": "6765_CR34",
+        "doi-asserted-by": "publisher",
+        "first-page": "274",
+        "DOI": "10.1186\/s12936-016-1321-7",
+        "volume": "15",
+        "author": "S Thomas",
+        "year": "2016",
+        "unstructured": "Thomas S, Ravishankaran S, Justin JA, Asokan A, Mathai MT, Valecha N, et al. Overhead tank is the potential breeding habitat of Anopheles stephensi in an urban transmission setting of Chennai, India. Malar J. 2016;15:274.",
+        "journal-title": "Malar J"
+      },
+      {
+        "key": "6765_CR35",
+        "doi-asserted-by": "publisher",
+        "first-page": "229",
+        "DOI": "10.26719\/2014.20.4.229",
+        "volume": "20",
+        "author": "Z Gezelbash",
+        "year": "2014",
+        "unstructured": "Gezelbash Z, Vatandoost H, Abai MR, Raeisi A, Rassi Y, Hanafi-Bojd AA, et al. Laboratory and field evaluation of two formulations of Bacillus thuringiensis M-H-14 against mosquito larvae in the Islamic Republic of Iran, 2012. East Mediterr Health J. 2014;20:229\u201335.",
+        "journal-title": "East Mediterr Health J"
+      },
+      {
+        "key": "6765_CR36",
+        "first-page": "966",
+        "volume": "16",
+        "author": "S Naz",
+        "year": "2014",
+        "unstructured": "Naz S, Maqbool A, Ahmad MD, Anjum A. Toxins of Bacillus thuringiensis var. Israelensis for control of malaria vector Anopheles stephensi under laboratory and semi field conditions. Int J Agri Biol. 2014;16:966\u201370.",
+        "journal-title": "Int J Agri Biol."
+      },
+      {
+        "key": "6765_CR37",
+        "doi-asserted-by": "publisher",
+        "first-page": "69",
+        "DOI": "10.1089\/vbz.2009.0197",
+        "volume": "11",
+        "author": "S Tiwari",
+        "year": "2011",
+        "unstructured": "Tiwari S, Ghosh SK, Mittal PK, Dash AP. Effectiveness of a new granular formulation of biolarvicide Bacillus thuringiensis Var. israelensis against larvae of malaria vectors in India. Vector Borne Zoonotic Dis. 2011;11:69\u201375.",
+        "journal-title": "Vector Borne Zoonotic Dis."
+      },
+      {
+        "key": "6765_CR38",
+        "first-page": "510",
+        "volume": "10",
+        "author": "MR Abai",
+        "year": "2016",
+        "unstructured": "Abai MR, Hanafi-Bojd AA, Vatandoost H. Laboratory evaluation of Temephos against Anopheles stephensi and Culex pipiens Larvae in Iran. J Arthropod Borne Dis. 2016;10:510\u20138.",
+        "journal-title": "J Arthropod Borne Dis"
+      },
+      {
+        "key": "6765_CR39",
+        "doi-asserted-by": "publisher",
+        "first-page": "55",
+        "DOI": "10.1186\/1756-3305-7-55",
+        "volume": "7",
+        "author": "CF Marina",
+        "year": "2014",
+        "unstructured": "Marina CF, Bond JG, Munoz J, Valle J, Novelo-Gutierrez R, Williams T. Efficacy and non-target impact of spinosad, Bti and Temephos larvicides for control of Anopheles spp. in an endemic malaria region of Southern Mexico. Parasit Vectors. 2014;7:55.",
+        "journal-title": "Parasit Vectors."
+      },
+      {
+        "key": "6765_CR40",
+        "doi-asserted-by": "publisher",
+        "first-page": "426",
+        "DOI": "10.1186\/s12889-017-4297-5",
+        "volume": "17",
+        "author": "J Legorreta-Soberanis",
+        "year": "2017",
+        "unstructured": "Legorreta-Soberanis J, Paredes-Solis S, Morales-Perez A, Nava-Aguilera E, de Los Santos FRS, Sanchez-Gervacio BM, et al. Coverage and beliefs about Temephos application for control of dengue vectors and impact of a community-based prevention intervention: secondary analysis from the Camino Verde trial in Mexico. BMC Public Health. 2017;17:426.",
+        "journal-title": "BMC Public Health"
+      },
+      {
+        "key": "6765_CR41",
+        "doi-asserted-by": "publisher",
+        "first-page": "463",
+        "DOI": "10.1186\/s12879-024-09341-w",
+        "volume": "24",
+        "author": "VM Alvarado-Castro",
+        "year": "2024",
+        "unstructured": "Alvarado-Castro VM, Vargas-De-Leon C, Paredes-Solis S, Li-Martin A, Nava-Aguilera E, Morales-Perez A, et al. The influence of gender and Temephos exposure on community participation in dengue prevention: a compartmental mathematical model. BMC Infect Dis. 2024;24:463.",
+        "journal-title": "BMC Infect Dis"
+      },
+      {
+        "key": "6765_CR42",
+        "first-page": "10",
+        "volume": "11",
+        "author": "SN Tikara",
+        "year": "2011",
+        "unstructured": "Tikara SN, Mendkib MJ, Sharmac AK, Sukumarand D, Veere V, Prakashf S, et al. Resistance status of the malaria vector mosquitoes, Anopheles stephensi and Anopheles subpictus towards adulticides and larvicides in arid and semi-arid areas of India. J Insect Sci. 2011;11:10.",
+        "journal-title": "J Insect Sci"
+      },
+      {
+        "key": "6765_CR43",
+        "doi-asserted-by": "publisher",
+        "first-page": "423",
+        "DOI": "10.1007\/s00436-012-2857-2",
+        "volume": "111",
+        "author": "D Sanil",
+        "year": "2012",
+        "unstructured": "Sanil D, Shetty NJ. The effect of sublethal exposure to Temephos and propoxur on reproductive fitness and its influence on circadian rhythms of pupation and adult emergence in Anopheles stephensi Liston-a malaria vector. Parasitol Res. 2012;111:423\u201332.",
+        "journal-title": "Parasitol Res"
+      }
+    ],
+    "container-title": ["Parasites &amp; Vectors"],
+    "original-title": [],
+    "language": "en",
+    "link": [
+      {
+        "URL": "https:\/\/link.springer.com\/content\/pdf\/10.1186\/s13071-025-06765-4.pdf",
+        "content-type": "application\/pdf",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "https:\/\/link.springer.com\/article\/10.1186\/s13071-025-06765-4\/fulltext.html",
+        "content-type": "text\/html",
+        "content-version": "vor",
+        "intended-application": "text-mining"
+      },
+      {
+        "URL": "https:\/\/link.springer.com\/content\/pdf\/10.1186\/s13071-025-06765-4.pdf",
+        "content-type": "application\/pdf",
+        "content-version": "vor",
+        "intended-application": "similarity-checking"
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2025, 6, 17]],
+      "date-time": "2025-06-17T07:03:25Z",
+      "timestamp": 1750143805000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https:\/\/parasitesandvectors.biomedcentral.com\/articles\/10.1186\/s13071-025-06765-4"
+      }
+    },
+    "subtitle": [],
+    "short-title": [],
+    "issued": { "date-parts": [[2025, 6, 17]] },
+    "references-count": 43,
+    "journal-issue": { "issue": "1", "published-online": { "date-parts": [[2025, 12]] } },
+    "alternative-id": ["6765"],
+    "URL": "https:\/\/doi.org\/10.1186\/s13071-025-06765-4",
+    "relation": {
+      "has-preprint": [
+        { "id-type": "doi", "id": "10.21203\/rs.3.rs-5458660\/v1", "asserted-by": "object" }
+      ]
+    },
+    "ISSN": ["1756-3305"],
+    "issn-type": [{ "value": "1756-3305", "type": "electronic" }],
+    "subject": [],
+    "published": { "date-parts": [[2025, 6, 17]] },
+    "assertion": [
+      {
+        "value": "15 November 2024",
+        "order": 1,
+        "name": "received",
+        "label": "Received",
+        "group": { "name": "ArticleHistory", "label": "Article History" }
+      },
+      {
+        "value": "13 March 2025",
+        "order": 2,
+        "name": "accepted",
+        "label": "Accepted",
+        "group": { "name": "ArticleHistory", "label": "Article History" }
+      },
+      {
+        "value": "17 June 2025",
+        "order": 3,
+        "name": "first_online",
+        "label": "First Online",
+        "group": { "name": "ArticleHistory", "label": "Article History" }
+      },
+      {
+        "order": 1,
+        "name": "Ethics",
+        "group": { "name": "EthicsHeading", "label": "Declarations" }
+      },
+      {
+        "value": "Ethical clearance was obtained from Institutional Research and Ethics Review Committee of Aklilu Lemma Institute of Pathobiology (IRERC-ALIPB) (ref. no. ALIPB IRB\/72\/2014\/22). Consent was obtained from the head of the households where larval habitats were accessed.",
+        "order": 2,
+        "name": "Ethics",
+        "group": { "name": "EthicsHeading", "label": "Ethics approval and consent to participate" }
+      },
+      {
+        "value": "Not applicable.",
+        "order": 3,
+        "name": "Ethics",
+        "group": { "name": "EthicsHeading", "label": "Consent for publication" }
+      },
+      {
+        "value": "The authors declare no competing interests.",
+        "order": 4,
+        "name": "Ethics",
+        "group": { "name": "EthicsHeading", "label": "Competing interests" }
+      }
+    ],
+    "article-number": "223"
+  }
+}

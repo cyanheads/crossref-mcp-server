@@ -261,6 +261,24 @@ describe('mdTextAtLineStart', () => {
   });
 
   /**
+   * A bracketed label at column zero followed by `:` opens a link reference definition, which a
+   * renderer consumes whole — label, colon, and destination. The colon can be the value's own or
+   * the one `format()` writes after it (`- [unlisted]: 257`), so a label that ends the value is
+   * escaped too. A bracket no colon follows opens nothing and stays bare.
+   */
+  it('escapes a bracketed label that a colon can turn into a link reference definition', () => {
+    expect(mdTextAtLineStart('[unlisted]')).toBe('\\[unlisted]');
+    expect(mdTextAtLineStart('[1]: https://example.org/a')).toBe('\\[1]: https://example.org/a');
+    expect(mdTextAtLineStart('[18F]FDG uptake in tumours')).toBe('[18F]FDG uptake in tumours');
+    expect(mdTextAtLineStart('[Ca2+] rises after stimulation')).toBe(
+      '[Ca2+] rises after stimulation',
+    );
+    // CommonMark allows a label at most 999 characters, so a longer bracket opens nothing.
+    const overlong = `[${'a'.repeat(1000)}]: 3`;
+    expect(mdTextAtLineStart(overlong)).toBe(overlong);
+  });
+
+  /**
    * The digits are what the reader came for, so the escape lands on the delimiter. A backslash
    * in front of a digit is not an escape a renderer resolves — it would show as `\19.`.
    */
@@ -316,11 +334,16 @@ describe('mdTextAtLineStart', () => {
     }
   });
 
-  /** Anchored and bounded: the marker match costs the same whatever follows it. */
+  /**
+   * Anchored, so the opener is tried at one position: a marker costs the same whatever follows
+   * it, and a bracketed label is read at most once to its closing bracket.
+   */
   it.each([
     ['a run of digits', (size: number) => '9'.repeat(size)],
     ['a run of hyphens', (size: number) => '-'.repeat(size)],
     ['a heading marker before quote markers', (size: number) => `#${'>'.repeat(size - 1)}`],
+    ['an unclosed label', (size: number) => `[${'a'.repeat(size - 1)}`],
+    ['an unclosed label of backslashes', (size: number) => `[${'\\'.repeat(size - 1)}`],
   ])(
     'stays linear on %s',
     (_name, make) => {

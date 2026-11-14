@@ -4,13 +4,14 @@
  * has none. A cursor walk with a query term and no sort is sent as `sort=score`, since Crossref
  * otherwise walks in registration order. A cursor walk ends on the first empty page — any token that page carries is withheld
  * rather than relayed, and every empty page carries a notice naming which of its three causes
- * applies; `format()` renders nothing for such a page, so that notice leads `content[]`. Each
- * work's author list is capped per work by authorLimit, with authorCount carrying the full
- * deposited total and crossref_get_work as the route to the authors a cap left out. Update links
- * (`updatedBy`, `updateTo`) share their shape and line with crossref_get_work. `fields`
- * accepts only the select names the summary projects, and sets the `rows` cap: a selection naming
- * neither `abstract` nor `author` pages more works per call. A blank optional input is read as
- * omitted.
+ * applies; `format()` renders nothing for such a page unless it carries facets, so that notice
+ * leads `content[]`. Each work's author list is capped per work by authorLimit, with authorCount
+ * carrying the full deposited total and crossref_get_work as the route to the authors a cap left
+ * out. Update links (`updatedBy`, `updateTo`) share their shape and line with crossref_get_work.
+ * `fields` accepts only the select names the summary projects, and decides whether `rows` is
+ * capped: a selection naming neither `abstract` nor `author` takes Crossref's full page. `facets`
+ * returns value counts over the whole match set, and `rows: 0` returns those counts and the total
+ * alone, on a page that is empty by request. A blank optional input is read as omitted.
  * @module mcp-server/tools/definitions/search-works.tool
  */
 
@@ -18,14 +19,14 @@ import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { isBlank, nonBlank } from '@/mcp-server/tools/blank-input.js';
 import { cursorNotice } from '@/mcp-server/tools/cursor-notice.js';
-import { mdText, mdTextInHeading } from '@/mcp-server/tools/markdown-text.js';
+import { mdText, mdTextAtLineStart, mdTextInHeading } from '@/mcp-server/tools/markdown-text.js';
 import {
+  type ClampedPageSize,
   clampPageSize,
   ENTRY_LIMIT_CEILING,
   fitWindow,
   ROWS_CEILING,
   SEARCH_WORKS_AUTHOR_LIMIT_CAP,
-  SEARCH_WORKS_LIGHT_ROWS_CAP,
   SEARCH_WORKS_ROWS_CAP,
 } from '@/mcp-server/tools/page-size.js';
 import {
@@ -91,6 +92,43 @@ const SELECTABLE_FIELDS = [
   'update-to',
 ] as const;
 
+/** The facet names Crossref lists for `/works`, in its order; an unlisted name is a 400. */
+const FACET_NAMES = [
+  'affiliation',
+  'license',
+  'container-title',
+  'publisher-name',
+  'link-application',
+  'orcid',
+  'update-type',
+  'published',
+  'funder-name',
+  'archive',
+  'type-name',
+  'relation-type',
+  'ror-id',
+  'issn',
+  'source',
+  'journal-issue',
+  'category-name',
+  'assertion',
+  'assertion-group',
+  'journal-volume',
+  'funder-doi',
+] as const;
+
+/**
+ * The most values Crossref returns for one facet: `"*"` asks for this many, and a larger count is
+ * answered with this many as if it had been asked for.
+ */
+const FACET_VALUE_CEILING = 1000;
+
+/** `name`, `name and other`, `a, b, and c`. */
+function listOf(names: readonly string[]): string {
+  if (names.length < 3) return names.join(' and ');
+  return `${names.slice(0, -1).join(', ')}, and ${names.at(-1)}`;
+}
+
 const WorkSummarySchema = z
   .object({
     doi: z.string().describe('Canonical DOI'),
@@ -154,7 +192,7 @@ const WorkSummarySchema = z
       .string()
       .optional()
       .describe(
-        'Abstract when present in the indexed record — the text of the publisher’s JATS deposit, with markup removed and character references decoded; each section heading of a structured abstract is followed by a colon ("Objectives: …") unless it already ends in a period, colon, question mark, or exclamation mark, and the "Abstract" heading a deposit opens with is dropped; numeric JATS superscripts retain caret notation (10^{16}, GeV^2), a link keeps its tag only where its href holds an address the text it wraps does not already carry, and each formula appears once — MathML as the TeX annotation it carries, otherwise written out linearly (x_i, A^{−1}, √(m), (a+b)/c), and TeX deposited beside MathML in whichever notation comes first. Omitted when the deposit holds no text.',
+        'Abstract when present in the indexed record — the text of the publisher’s JATS deposit, with markup removed and character references decoded; each section heading of a structured abstract is followed by a colon ("Objectives: …") unless it already ends in a period, colon, question mark, or exclamation mark, a heading whose section holds no text (a figure-only "Graphical Abstract") is dropped, the "Abstract" heading a deposit opens with is dropped, and the items of one list are joined by "; " unless an item already ends in a period, comma, semicolon, colon, question mark, or exclamation mark; numeric JATS superscripts retain caret notation (10^{16}, GeV^2), a link keeps its tag only where its href holds an address the text it wraps does not already carry, and each formula appears once — MathML as the TeX annotation it carries, otherwise written out linearly (x_i, A^{−1}, √(m), (a+b)/c), and TeX deposited beside MathML in whichever notation comes first. Omitted when the deposit holds no text.',
       ),
   })
   .describe('Work summary');
@@ -162,7 +200,7 @@ const WorkSummarySchema = z
 export const searchWorksTool = tool('crossref_search_works', {
   title: 'Search Works',
   description:
-    'Searches the Crossref works index (~188M records) by free text and/or structured filters. The generic query matches loosely across all fields; scope precisely with the field-specific parameters queryTitle, queryAuthor, and queryContainerTitle, or resolve a known citation to its DOI with queryBibliographic — all combine with each other and with query. Use the filter parameter for structured filtering (object with hyphen-separated Crossref keys). Sort options: relevance, score, is-referenced-by-count, published, deposited, indexed, created. Each work returns at most authorLimit authors (25 by default) with authorCount reporting the full deposited total, since a single page of large-collaboration papers can carry tens of thousands of author entries; crossref_get_work pages the whole author list for any DOI whose list was cut. Post-publication updates ride each work as Crossref records them: updatedBy names each correction, retraction, expression of concern, or new version issued against it, and updateTo the works it is itself a notice for — an absent updatedBy does not mean the work was never updated. Offset-based paging is capped at ~10K results; use cursor="*" to start cursor-based deep paging, then pass the nextCursor value from each response to continue. A walk with a query term and no sort runs by relevance, one with filters only in Crossref registration order. The walk ends on the page where nextCursor is absent — that page also carries a notice saying the list is exhausted. Cursor and offset cannot be combined.',
+    'Searches the Crossref works index (~188M records) by free text and/or structured filters. The generic query matches loosely across all fields; scope precisely with the field-specific parameters queryTitle, queryAuthor, and queryContainerTitle, or resolve a known citation to its DOI with queryBibliographic — all combine with each other and with query. Use the filter parameter for structured filtering (object with hyphen-separated Crossref keys). Sort options: relevance, score, is-referenced-by-count, published, deposited, indexed, created. Each work returns at most authorLimit authors (25 by default) with authorCount reporting the full deposited total, since a single page of large-collaboration papers can carry tens of thousands of author entries; crossref_get_work pages the whole author list for any DOI whose list was cut. Post-publication updates ride each work as Crossref records them: updatedBy names each correction, retraction, expression of concern, or new version issued against it, and updateTo the works it is itself a notice for — an absent updatedBy does not mean the work was never updated. Set facets to count the matching works per value of a field — per publication year, publisher, type, funder, affiliation, ORCID, and more — over the whole match set in the same call; rows: 0 returns the counts alone. Offset-based paging is capped at ~10K results; use cursor="*" to start cursor-based deep paging, then pass the nextCursor value from each response to continue. A walk with a query term and no sort runs by relevance, one with filters only in Crossref registration order. The walk ends on the page where nextCursor is absent — that page also carries a notice saying the list is exhausted. Cursor and offset cannot be combined.',
   annotations: { readOnlyHint: true, openWorldHint: true },
 
   input: z.object({
@@ -205,11 +243,32 @@ export const searchWorksTool = tool('crossref_search_works', {
     rows: z
       .number()
       .int()
-      .min(1)
+      .min(0)
       .max(ROWS_CEILING)
       .default(20)
       .describe(
-        `Number of results to return per page (1–${SEARCH_WORKS_ROWS_CAP} per call, default 20; 1–${SEARCH_WORKS_LIGHT_ROWS_CAP} when fields names neither abstract nor author — an omitted or empty fields selects every field, both included). A larger value, up to ${ROWS_CEILING}, returns the cap that applies and says so in notice — on an offset page the notice also names the offset that continues after the records returned.`,
+        `Number of results to return per page (default 20): 0–${SEARCH_WORKS_ROWS_CAP} per call when fields names abstract or author, or is omitted or empty, which selects every field; 0–${ROWS_CEILING} when fields names neither. A value above ${SEARCH_WORKS_ROWS_CAP} under the first kind of selection returns ${SEARCH_WORKS_ROWS_CAP} and says so in notice — on an offset page the notice also names the offset that continues after the records returned. 0 returns no works, only totalResults and any facets, and does not advance a cursor walk.`,
+      ),
+    facets: z
+      .partialRecord(
+        z.enum(FACET_NAMES).describe('Crossref facet name'),
+        z
+          .union([
+            z.literal(''),
+            z.literal('*'),
+            z.number().int().min(1),
+            z
+              .string()
+              .regex(/^[1-9]\d*$/)
+              .describe('A number of values written as a decimal string, e.g. "10"'),
+          ])
+          .describe(
+            `"*" for up to ${FACET_VALUE_CEILING} values, or a number of values; a number above ${FACET_VALUE_CEILING} is applied as ${FACET_VALUE_CEILING}`,
+          ),
+      )
+      .optional()
+      .describe(
+        `Value counts over the whole match set — the records totalResults counts, not just this page — keyed by facet name, each set to "*" or a number of values. Crossref returns the values with the highest counts, at most ${FACET_VALUE_CEILING} per facet; a facet whose values reach its limit may have more, and notice names it. Example: {"published":"*","publisher-name":10} counts works per publication year and for the 10 publishers with the most. Pair with rows: 0 for the counts alone.`,
       ),
     authorLimit: z
       .number()
@@ -226,7 +285,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       .min(0)
       .optional()
       .describe(
-        'Zero-based result offset for offset-based paging. Cannot be used with cursor. Capped at ~10K: offset + rows cannot pass it, so a page that would returns the rows that fit and says so in notice, and an offset at or past it is refused. Use cursor for deeper paging.',
+        'Zero-based result offset for offset-based paging. Cannot be used with cursor. Capped at ~10K: offset + rows cannot pass it, so a page that would returns the rows that fit and says so in notice, and an offset at or past it is refused. Use cursor for deeper paging. A search with filters only and no sort has no fixed order: identical requests can order its records differently, so successive offsets can repeat or skip one — sort:"created" with order:"asc" holds the order.',
       ),
     cursor: z
       .string()
@@ -278,13 +337,41 @@ export const searchWorksTool = tool('crossref_search_works', {
     works: z
       .array(WorkSummarySchema)
       .describe(
-        'Matching works. Empty when nothing matched the query, when an offset runs past the end of the results, or on the page that ends a cursor walk — the notice enrichment says which.',
+        'Matching works. Empty when nothing matched the query, when an offset runs past the end of the results, or on the page that ends a cursor walk — the notice enrichment says which — and on every page requested with rows: 0.',
       ),
     nextCursor: z
       .string()
       .optional()
       .describe(
-        'Cursor token to pass as cursor on the next call to continue a cursor walk. Present only on a page requested with cursor, and absent once the walk reaches the end of the list.',
+        'Cursor token to pass as cursor on the next call to continue a cursor walk. Present only on a page requested with cursor that returned works: absent once the walk reaches the end of the list, and on a rows: 0 page, which does not advance it.',
+      ),
+    facets: z
+      .array(
+        z
+          .object({
+            name: z.enum(FACET_NAMES).describe('Facet name, as requested'),
+            values: z
+              .array(
+                z
+                  .object({
+                    value: z
+                      .string()
+                      .describe(
+                        'The value as Crossref indexes it — a year for published, a name for publisher-name or affiliation, an ORCID or ROR URL for orcid or ror-id',
+                      ),
+                    count: z.number().describe('Matching works that carry this value'),
+                  })
+                  .describe('One facet value'),
+              )
+              .describe(
+                'The values with the highest counts, highest first; a tie is ordered by value, descending, as Crossref sends it. Empty when no matching work carries the facet.',
+              ),
+          })
+          .describe('One facet'),
+      )
+      .optional()
+      .describe(
+        'One entry per facet requested, in the order requested. Counts cover every record totalResults counts, not just this page, so every page of a cursor walk carries the same ones. A work that deposits no value for the facet is in no count, and one that carries several (several affiliations, a retraction that is also an erratum) is in each. Absent when facets was not set or was empty.',
       ),
   }),
 
@@ -305,7 +392,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       .string()
       .optional()
       .describe(
-        `Guidance on an empty page, naming which of its three causes applies: a query nothing matched, an offset past the end of a list that did match, or a cursor walk that has reached the end of the list. On a page carrying records, present when authorLimit cut at least one work list, naming how many and the route to the rest, or when every query term and filter value was supplied blank, so the page lists the whole index unfiltered. On any page, present when rows or authorLimit was above its per-call cap, naming the value requested and the cap applied — for rows under a fields selection, also the other cap (${SEARCH_WORKS_ROWS_CAP} with abstract or author selected, ${SEARCH_WORKS_LIGHT_ROWS_CAP} with neither) and how it is reached; on an offset page with records remaining, also the offset that continues after the records returned. On an offset page where offset + rows would pass the ~10K offset ceiling, present naming the rows requested and the rows that fit and were applied, and, when records remain past the ceiling, cursor as the route to them. A page needing more than one caveat carries them all in this one string.`,
+        `Guidance on an empty page, naming which of its three causes applies: a query nothing matched, an offset past the end of a list that did match, or a cursor walk that has reached the end of the list. A rows: 0 page names only the first, and beside a cursor says that the page does not advance the walk. On a page carrying records, present when authorLimit cut at least one work list, naming how many and the route to the rest, or when every query term and filter value was supplied blank, so the page lists the whole index unfiltered. On any page, present when rows or authorLimit was above its per-call cap, naming the value requested and the cap applied — for rows under a fields selection naming abstract or author, also that one naming neither takes rows up to ${ROWS_CEILING}; on an offset page with records remaining, also the offset that continues after the records returned. On an offset page where offset + rows would pass the ~10K offset ceiling, present naming the rows requested and the rows that fit and were applied, and, when records remain past the ceiling, cursor as the route to them. Present when a facets count was above ${FACET_VALUE_CEILING}, naming the count requested and the ${FACET_VALUE_CEILING} applied, and when a facet returned as many values as its limit, naming the facet and the route to the values it may have left out. A page needing more than one caveat carries them all in this one string.`,
       ),
   },
 
@@ -398,22 +485,38 @@ export const searchWorksTool = tool('crossref_search_works', {
       : SELECTABLE_FIELDS;
     /**
      * Clamped once, here, so the offset window, the upstream request, the per-work author
-     * slice, and the `cap` enrichment all read the page size actually used. The `rows` cap
-     * follows what the selection carries: an abstract or an author list is what makes a work
-     * heavy, so a selection naming neither takes the higher cap, whatever else it names.
+     * slice, and the `cap` enrichment all read the page size actually used. Only a selection
+     * carrying an abstract or an author list — what makes a work heavy — is capped; one naming
+     * neither, whatever else it names, is bounded by the schema's own ceiling.
      */
     const heavy = fields.includes('abstract') || fields.includes('author');
-    const rowsClamp = clampPageSize(
-      'rows',
-      input.rows,
-      heavy ? SEARCH_WORKS_ROWS_CAP : SEARCH_WORKS_LIGHT_ROWS_CAP,
-    );
+    const rowsClamp: ClampedPageSize = heavy
+      ? clampPageSize('rows', input.rows, SEARCH_WORKS_ROWS_CAP)
+      : { value: input.rows };
     const authorLimitClamp = clampPageSize(
       'authorLimit',
       input.authorLimit,
       SEARCH_WORKS_AUTHOR_LIMIT_CAP,
     );
     const authorLimit = authorLimitClamp.value;
+    /**
+     * Facets in the order the caller listed them, each with the limit sent. A blank limit is a
+     * facet a form left unfilled, read as omitted like a blank filter value, and a count written
+     * as a decimal string ("10") is the number it spells. Crossref answers a count above its
+     * per-facet ceiling with the ceiling and says nothing, so the clamp is made here, where the
+     * page can name the count requested and the one applied.
+     */
+    type FacetEntry = [(typeof FACET_NAMES)[number], string | number];
+    const facetRequests = (Object.entries(input.facets ?? {}) as FacetEntry[])
+      .filter(([, value]) => value !== '')
+      .map(([name, value]) => {
+        const requested: '*' | number = value === '*' ? '*' : Number(value);
+        return {
+          name,
+          requested,
+          limit: requested === '*' ? requested : Math.min(requested, FACET_VALUE_CEILING),
+        };
+      });
 
     /**
      * Crossref's ceiling is on offset + rows, so an offset below it still reaches the records up
@@ -467,6 +570,9 @@ export const searchWorksTool = tool('crossref_search_works', {
       ...(cursor !== undefined && { cursor }),
       ...(sort !== undefined && { sort }),
       ...(order !== undefined && { order }),
+      ...(facetRequests.length > 0 && {
+        facets: facetRequests.map(({ name, limit }) => ({ name, limit })),
+      }),
     };
     const result = await svc.searchWorks(searchOpts, ctx);
 
@@ -527,6 +633,15 @@ export const searchWorksTool = tool('crossref_search_works', {
      * exhausted page.
      */
     const nextCursor = returned > 0 ? result.nextCursor : undefined;
+    /**
+     * Each requested facet as Crossref counted it, in the caller's order, beside the limit it was
+     * sent with. Crossref's own facet order is not the request's, and its `value-count` counts
+     * the values it returned rather than the distinct values that exist.
+     */
+    const facets = facetRequests.flatMap(({ name, limit }) => {
+      const counted = result.facets?.find((facet) => facet.name === name);
+      return counted ? [{ name, limit, values: counted.values }] : [];
+    });
 
     ctx.enrich({ totalResults: result.totalResults, returned });
     /**
@@ -535,7 +650,12 @@ export const searchWorksTool = tool('crossref_search_works', {
      * silently overwrites another.
      */
     const notices: string[] = [];
-    const restart = cursorNotice(cursor);
+    /**
+     * The restart advisory asks the caller to compare this page's records with the last and
+     * chain the token it returns; a rows: 0 page has neither, and the cursor it was given is
+     * still the one to send next, where the advisory then applies.
+     */
+    const restart = rows === 0 ? undefined : cursorNotice(cursor);
     if (restart) notices.push(restart);
     const next = (offset ?? 0) + returned;
     if (windowCut) {
@@ -560,17 +680,22 @@ export const searchWorksTool = tool('crossref_search_works', {
             ? ` Pass offset=${next} for the next page — the offset after the ${returned} records returned, not after the ${input.rows} requested.`
             : ` Records past offset ${next} are beyond the ~${OFFSET_CAP} offset limit. To read them, walk the list with cursor="*" and chain nextCursor; the walk starts at the first record, not at offset ${next}.`;
       /**
-       * A selection the caller wrote is told how the other cap is reached. An omitted or empty
+       * A selection the caller wrote is told how a larger page is reached. An omitted or empty
        * `fields` selects every field and keeps the notice such a page has always carried.
        */
-      const tier = !heavy
-        ? ` That cap holds for a fields selection naming neither abstract nor author; one including either is capped at ${SEARCH_WORKS_ROWS_CAP}.`
-        : input.fields?.length
-          ? ` That cap holds for a fields selection including abstract or author; one naming neither takes rows up to ${SEARCH_WORKS_LIGHT_ROWS_CAP}.`
-          : '';
+      const tier = input.fields?.length
+        ? ` That cap holds for a fields selection including abstract or author; one naming neither takes rows up to ${ROWS_CEILING}.`
+        : '';
       notices.push(`${rowsClamp.notice}${tier}${continuation}`);
     }
     if (authorLimitClamp.notice) notices.push(authorLimitClamp.notice);
+    for (const { name, requested, limit } of facetRequests) {
+      if (requested !== limit) {
+        notices.push(
+          `facets.${name} ${requested} is above the ${FACET_VALUE_CEILING} values Crossref returns per facet, so ${limit} was applied.`,
+        );
+      }
+    }
     if (onlyBlankTerms) {
       notices.push(
         `Every search term supplied was blank, so none was sent — this page is an unfiltered listing of the whole Crossref works index (${result.totalResults} records), not a match. Supply a non-blank query term or filter value to search.`,
@@ -580,9 +705,14 @@ export const searchWorksTool = tool('crossref_search_works', {
      * Every empty page says why. `returned === 0` is what makes a page empty; `totalResults`
      * only separates the causes, and keying the notice on it alone left the two commonest
      * empty pages — a walk past the end of a list, an offset past the end of one — carrying
-     * no explanation on either result surface. This tool's whole payload is `works`, so an
-     * unannotated empty page renders as nothing at all for a client reading content[], where
-     * the journal and funder works lists at least still render their own record.
+     * no explanation on either result surface. Without facets this tool's whole payload is
+     * `works`, so an unannotated empty page renders as nothing at all for a client reading
+     * content[], where the journal and funder works lists at least still render their own record.
+     *
+     * A rows: 0 page is empty by request, so neither past-the-end cause is true of it: its offset
+     * is past nothing, and a cursor page it ends is not the end of the walk. Only a match set
+     * with nothing in it is still worth naming; with records matched and a cursor, the notice
+     * says the walk has not moved.
      */
     if (returned === 0) {
       const total = result.totalResults;
@@ -590,6 +720,12 @@ export const searchWorksTool = tool('crossref_search_works', {
         notices.push(
           'No results matched the query. Try broadening the search terms or removing filters.',
         );
+      } else if (rows === 0) {
+        if (isCursorPage) {
+          notices.push(
+            'rows 0 returns no works, so this page does not advance the cursor walk: nextCursor is absent because no record was read, not because the walk is complete. Pass the same cursor with rows of 1 or more to continue it.',
+          );
+        }
       } else if (isCursorPage) {
         notices.push(
           `This cursor walk is complete — ${total === 1 ? 'the 1 matching record has' : `all ${total} matching records have`} been returned. nextCursor is withheld on this page; stop chaining it.`,
@@ -621,26 +757,61 @@ export const searchWorksTool = tool('crossref_search_works', {
         `Author lists were capped at ${authorLimit} per work — ${cutWorks} of the ${returned} ${returned === 1 ? 'work' : 'works'} on this page ${cutWorks === 1 ? 'carries' : 'carry'} more authors than are shown. Each work reports its full deposited total as authorCount; call crossref_get_work with that work doi to page its whole author list${widen}.`,
       );
     }
+    /**
+     * Crossref says how many values it returned, never how many exist, so a facet that returned
+     * as many as its limit may have stopped short — and one that returned fewer has none left.
+     * The route to the rest depends on the limit: below the ceiling a larger count reaches them,
+     * and at it only a narrower match set does.
+     */
+    const filled = facets
+      .map(({ name, limit, values }) => ({
+        name,
+        limit: limit === '*' ? FACET_VALUE_CEILING : limit,
+        returnedValues: values.length,
+      }))
+      .filter(({ limit, returnedValues }) => returnedValues >= limit);
+    const belowCeiling = filled.filter(({ limit }) => limit < FACET_VALUE_CEILING);
+    const atCeiling = filled.filter(({ limit }) => limit === FACET_VALUE_CEILING);
+    if (belowCeiling.length > 0) {
+      const one = belowCeiling.length === 1;
+      notices.push(
+        `${one ? 'Facet' : 'Facets'} ${listOf(belowCeiling.map(({ name, limit }) => `${name} (${limit})`))} returned as many values as ${one ? 'its limit' : 'their limits'} and may have more: a larger count, up to ${FACET_VALUE_CEILING}, or "*" returns more.`,
+      );
+    }
+    if (atCeiling.length > 0) {
+      const one = atCeiling.length === 1;
+      notices.push(
+        `${one ? 'Facet' : 'Facets'} ${listOf(atCeiling.map(({ name }) => name))} returned ${FACET_VALUE_CEILING} values, the most Crossref returns per facet, and may have more: only a narrower query or filter reaches the rest.`,
+      );
+    }
     if (notices.length > 0) ctx.enrich.notice(notices.join(' '));
 
     return {
       works,
       ...(nextCursor && { nextCursor }),
+      ...(facetRequests.length > 0 && {
+        facets: facets.map(({ name, values }) => ({ name, values })),
+      }),
     };
   },
 
   format: (result) => {
-    /**
-     * An empty page renders nothing of its own. Its counts and the notice naming its cause ride
-     * the enrichment trailer, which the framework appends after this — so emitting a block here
-     * would put an empty `content[0]` ahead of the only text the page has, and a client that
-     * shows the first block would show nothing. A no-results line here would state the notice
-     * twice. nextCursor is never set on an empty page, so nothing else is lost.
-     */
-    if (result.works.length === 0) return [];
-
     const lines: string[] = [];
     if (result.nextCursor) lines.push(`**Next cursor:** \`${result.nextCursor}\``, '');
+
+    /**
+     * Facets lead, since they describe the whole match set rather than this page. A value opens
+     * its list item's content, where a leading `#`, `-`, or `19.` would open a block inside the
+     * item and lose its marker, so it takes the line-start escape.
+     */
+    for (const facet of result.facets ?? []) {
+      const n = facet.values.length;
+      lines.push(
+        `**Facet:** ${facet.name} — ${n === 0 ? 'no values' : `${n} ${n === 1 ? 'value' : 'values'}`}`,
+        ...facet.values.map(({ value, count }) => `- ${mdTextAtLineStart(value)}: ${count}`),
+        '',
+      );
+    }
 
     for (const w of result.works) {
       lines.push(`### ${w.title ? mdTextInHeading(w.title) : w.doi}`);
@@ -686,6 +857,13 @@ export const searchWorksTool = tool('crossref_search_works', {
       lines.push('');
     }
 
-    return [{ type: 'text', text: lines.join('\n') }];
+    /**
+     * A page with neither a work nor a facet renders nothing of its own. Its counts and the
+     * notice naming its cause ride the enrichment trailer, which the framework appends after
+     * this — so emitting a block here would put an empty `content[0]` ahead of the only text the
+     * page has, and a client that shows the first block would show nothing. nextCursor is never
+     * set on an empty page, so nothing else is lost.
+     */
+    return lines.length === 0 ? [] : [{ type: 'text', text: lines.join('\n') }];
   },
 });

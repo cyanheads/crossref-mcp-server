@@ -1,6 +1,6 @@
 # crossref-mcp-server - Directory Structure
 
-Generated on: 2026-11-11 10:00:52
+Generated on: 2026-11-14 19:27:49
 
 ```text
 crossref-mcp-server/
@@ -168,6 +168,7 @@ crossref-mcp-server/
 │   │       ├── metadata-coverage.ts
 │   │       ├── page-size.ts
 │   │       ├── registration-agency.ts
+│   │       ├── work-assertions.ts
 │   │       ├── work-dates.ts
 │   │       ├── work-locators.ts
 │   │       └── work-updates.ts
@@ -206,23 +207,36 @@ crossref-mcp-server/
 │   │       ├── __snapshots__/
 │   │       │   ├── get-work-existing-fields.snap
 │   │       │   └── get-work-stripped-records.snap
+│   │       ├── facets/
+│   │       │   ├── retraction-journal-issue.json
+│   │       │   └── retraction-published-publisher-name.json
+│   │       ├── 10.1002_alz.70069.json
 │   │       ├── 10.1007_978-3-030-58452-8_1.json
 │   │       ├── 10.1016_j.apsusc.2007.01.131.json
 │   │       ├── 10.1016_j.chemosphere.2021.130212.json
 │   │       ├── 10.1016_s0140-6736_20_31180-6.json
 │   │       ├── 10.1016_s0140-6736_20_31324-6.json
 │   │       ├── 10.1038_s41586-020-2649-2.json
+│   │       ├── 10.1038_s41598-025-13404-6.json
+│   │       ├── 10.1039_c8tx00041g.json
+│   │       ├── 10.1093_esj_aakag023.1154.json
+│   │       ├── 10.1101_2025.10.16.25338155.json
 │   │       ├── 10.1101_2025.11.10.687519.json
 │   │       ├── 10.1103_physrevd.109.023023.json
 │   │       ├── 10.1109_icetce.2011.5774727.json
+│   │       ├── 10.1111_1460-6984.13007.json
+│   │       ├── 10.1136_gutjnl-2023-331742.json
 │   │       ├── 10.1155_2024_9760680.json
 │   │       ├── 10.11606_t.48.2015.tde-14122015-153241.json
+│   │       ├── 10.1186_s13071-025-06765-4.json
+│   │       ├── 10.1186_s40425-019-0765-z.json
 │   │       ├── 10.1364_oe.572415.json
 │   │       ├── 10.1364_opticaopen.29459153.v1.json
 │   │       ├── 10.14264_d171147.json
 │   │       ├── 10.20944_preprints202302.0051.v34.json
 │   │       ├── 10.2139_ssrn.4944457.json
 │   │       ├── 10.2172_207649.json
+│   │       ├── 10.22261_jea.5gsnt8.json
 │   │       ├── 10.47094_978-65-6036-545-2.json
 │   │       ├── 10.61147_oee-00043966.json
 │   │       └── 10.7554_elife.03714.json

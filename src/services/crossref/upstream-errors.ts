@@ -42,20 +42,21 @@ export const UPSTREAM_UNAVAILABLE = {
 } as const satisfies ErrorContract;
 
 /**
- * HTTP 200 whose body is non-empty and not JSON. `retryable: false` because the body
- * read completed and produced content — a stream that died mid-transfer rejects in
- * `Response.text()`, and an empty body is caught before the parser; both classify as
- * unavailable instead. So reaching the parser with bytes that will not parse means the
- * upstream serialized something broken and an identical GET will serialize it again.
+ * HTTP 200 whose body is non-empty and not JSON, or whose facet counts are not in the shape
+ * Crossref documents. `retryable: false` because the body read completed and produced
+ * content — a stream that died mid-transfer rejects in `Response.text()`, and an empty body
+ * is caught before the parser; both classify as unavailable instead. So reaching the parser
+ * with bytes that will not parse, or a facets block that will not read, means the upstream
+ * serialized something broken and an identical GET will serialize it again.
  */
 export const MALFORMED_RESPONSE = {
   reason: 'malformed_response',
   code: JsonRpcErrorCode.SerializationError,
   thrownBy: 'service',
   retryable: false,
-  when: 'Crossref returned HTTP 200 with a body that is not valid JSON.',
+  when: 'Crossref returned HTTP 200 with a body that is not valid JSON, or with facet counts in a shape this server does not read.',
   recovery:
-    'Do not repeat the call unchanged — the body is corrupt rather than transient. Request less of the record (fewer rows, a narrower select) so a smaller response is serialized, or report the query that reproduces it.',
+    'Do not repeat the call unchanged — the same request returns the same body. Request less (fewer rows, a narrower select, or no facets) so a different response is served, or report the query that reproduces it.',
 } as const satisfies ErrorContract;
 
 /**
