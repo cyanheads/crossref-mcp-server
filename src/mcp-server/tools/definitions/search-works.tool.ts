@@ -19,7 +19,7 @@ import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { isBlank, nonBlank } from '@/mcp-server/tools/blank-input.js';
 import { cursorNotice } from '@/mcp-server/tools/cursor-notice.js';
-import { mdText, mdTextAtLineStart, mdTextInHeading } from '@/mcp-server/tools/markdown-text.js';
+import { mdText, mdTextInHeading, mdTextInListItem } from '@/mcp-server/tools/markdown-text.js';
 import {
   type ClampedPageSize,
   clampPageSize,
@@ -802,13 +802,14 @@ export const searchWorksTool = tool('crossref_search_works', {
     /**
      * Facets lead, since they describe the whole match set rather than this page. A value opens
      * its list item's content, where a leading `#`, `-`, or `19.` would open a block inside the
-     * item and lose its marker, so it takes the line-start escape.
+     * item and lose its marker, and it is unnormalized, so it can carry line breaks that begin
+     * more lines: it takes the list-item escape.
      */
     for (const facet of result.facets ?? []) {
       const n = facet.values.length;
       lines.push(
         `**Facet:** ${facet.name} — ${n === 0 ? 'no values' : `${n} ${n === 1 ? 'value' : 'values'}`}`,
-        ...facet.values.map(({ value, count }) => `- ${mdTextAtLineStart(value)}: ${count}`),
+        ...facet.values.map(({ value, count }) => `- ${mdTextInListItem(value)}: ${count}`),
         '',
       );
     }

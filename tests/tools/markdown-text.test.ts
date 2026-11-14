@@ -6,7 +6,12 @@
 
 import { HtmlRenderer, Parser } from 'commonmark';
 import { describe, expect, it } from 'vitest';
-import { mdText, mdTextAtLineStart, mdTextInHeading } from '@/mcp-server/tools/markdown-text.js';
+import {
+  mdText,
+  mdTextAtLineStart,
+  mdTextInHeading,
+  mdTextInListItem,
+} from '@/mcp-server/tools/markdown-text.js';
 import { renderedText } from '../helpers/content.js';
 import { expectLinearScaling, repeatTo } from '../helpers/scaling.js';
 
@@ -348,6 +353,53 @@ describe('mdTextAtLineStart', () => {
     'stays linear on %s',
     (_name, make) => {
       expectLinearScaling(make, mdTextAtLineStart);
+    },
+    60_000,
+  );
+});
+
+/**
+ * The line-start escape for a value that opens a `- ` list item and can run over several lines,
+ * as an unnormalized facet value can. Every line begins a Markdown line, so every line is escaped
+ * as one, and each line after a break is indented under the item, where a blank line cannot end
+ * it.
+ */
+describe('mdTextInListItem', () => {
+  it('is the line-start escape on a value of one line', () => {
+    for (const value of ['[unlisted]', '- Abstract: x', '19. yüzyılın', '*x* and y', 'Plain']) {
+      expect(mdTextInListItem(value)).toBe(mdTextAtLineStart(value));
+    }
+  });
+
+  it.each([
+    ['College of Medicine,\nQU Health\nQatar', 'College of Medicine,\n  QU Health\n  Qatar'],
+    ['University of X\n- Department of Y', 'University of X\n  \\- Department of Y'],
+    ['Hospital A\r\n2. Clinic B', 'Hospital A\r\n  2\\. Clinic B'],
+    ['Institute\r# Lab', 'Institute\r  \\# Lab'],
+    ['Centre\n\n> Annex', 'Centre\n  \n  \\> Annex'],
+    ['Faculty\n  - Unit', 'Faculty\n    \\- Unit'],
+    ['Ends in a backslash\\\nNext', 'Ends in a backslash\\\\\n  Next'],
+  ])('escapes each line of %j as a line start, indented under the item', (value, escaped) => {
+    expect(mdTextInListItem(value)).toBe(escaped);
+  });
+
+  /** It inserts backslashes and the indent after each line ending, and removes nothing. */
+  it('never costs the deposit a character', () => {
+    for (const value of ['A\n- B', 'A\r\n\r\n# B', 'A\r  > B', '[x]\n[y]:']) {
+      const inserted = mdTextInListItem(value).replace(/(\r\n?|\n) {2}/g, '$1');
+      expect(inserted.replaceAll('\\', '')).toBe(value.replaceAll('\\', ''));
+    }
+  });
+
+  it.each([
+    ['line breaks before list markers', (size: number) => repeatTo('\n- ', size)],
+    ['line breaks before indentation', (size: number) => repeatTo('\n \t', size)],
+    ['lines opening unclosed labels', (size: number) => repeatTo('\n[aaaaaaaa', size)],
+    ...LINE_BREAK_SHAPES,
+  ])(
+    'stays linear on %s',
+    (_name, make) => {
+      expectLinearScaling(make, mdTextInListItem);
     },
     60_000,
   );

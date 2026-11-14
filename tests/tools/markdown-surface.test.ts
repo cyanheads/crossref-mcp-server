@@ -338,6 +338,54 @@ describe('the Markdown surface of every tool', () => {
   });
 
   /**
+   * Normalization never touches a facet value, so an affiliation indexed over several lines keeps
+   * its line breaks, and each line after one begins a Markdown line of its own: a `- ` or `2. `
+   * there opens a new item, a `# ` a heading, and a blank line ends the item. Each value has to
+   * read back as one item, its lines intact, inside one list.
+   */
+  it('keeps a facet value that runs over several lines inside its one list item', async () => {
+    const cases: Array<[value: string, read: string]> = [
+      [
+        'Department of Basic Medical Sciences, College of Medicine,\nQU Health, Qatar University, Doha\nQatar',
+        'Department of Basic Medical Sciences, College of Medicine,\nQU Health, Qatar University, Doha\nQatar: 6',
+      ],
+      ['University of X\n- Department of Y', 'University of X\n- Department of Y: 5'],
+      ['Hospital A\r\n2. Clinic B', 'Hospital A\n2. Clinic B: 4'],
+      ['Institute\r# Lab', 'Institute\n# Lab: 3'],
+      ['Centre\n\n> Annex', 'Centre\n> Annex: 2'],
+      ['Faculty\n  - Unit', 'Faculty\n- Unit: 1'],
+    ];
+    const values = cases.map(([value], i) => ({ value, count: cases.length - i }));
+    service.searchWorks.mockResolvedValue({
+      totalResults: 9,
+      itemsPerPage: 0,
+      items: [],
+      facets: [{ name: 'affiliation', values }],
+    });
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'probe',
+      rows: 0,
+      facets: { affiliation: '*' },
+    });
+
+    expect(result.structuredContent).toMatchObject({ facets: [{ name: 'affiliation', values }] });
+    const markdown = blockText(result.content[0]);
+    expect(markdown).toContain('- University of X\n  \\- Department of Y: 5');
+    const read = renderedText(markdown);
+    for (const [, expected] of cases) expect(read).toContain(`\n${expected}\n`);
+    const kinds: string[] = [];
+    const walker = new Parser().parse(markdown).walker();
+    for (let step = walker.next(); step; step = walker.next()) {
+      if (step.entering) kinds.push(step.node.type);
+    }
+    expect(kinds.filter((kind) => kind === 'item')).toHaveLength(cases.length);
+    expect(kinds.filter((kind) => kind === 'list')).toHaveLength(1);
+    expect(kinds).not.toContain('heading');
+    expect(kinds).not.toContain('block_quote');
+  });
+
+  /**
    * A value ending in a backslash, on a label line another line follows: CommonMark reads the
    * backslash before the line break as a hard break and drops it.
    */

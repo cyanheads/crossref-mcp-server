@@ -17,11 +17,13 @@
  * itself would reach `structuredContent`, whose contract is the deposited text; written here it
  * reaches only the surface that needs it, and the two surfaces then agree on every character.
  *
- * Three entry points, because two classes of construct depend on where the value is placed
+ * Four entry points, because two classes of construct depend on where the value is placed
  * rather than on what it contains: `mdText` for a value rendered inside a line,
  * `mdTextAtLineStart` for one rendered at column zero, where a leading `#`, `>`, `-`, or `19.`
- * opens a block and the renderer eats the marker, and `mdTextInHeading` for one that ends a
- * heading line, where a trailing `#` run closes the heading and the renderer eats the run.
+ * opens a block and the renderer eats the marker, `mdTextInListItem` for one that opens a list
+ * item and may run to more than one line, each of which begins a line, and `mdTextInHeading` for
+ * one that ends a heading line, where a trailing `#` run closes the heading and the renderer eats
+ * the run.
  * @module mcp-server/tools/markdown-text
  */
 
@@ -173,6 +175,32 @@ export function mdTextAtLineStart(value: string): string {
     BLOCK_OPENER,
     (opener) => `${opener.slice(0, -1)}\\${opener.slice(-1)}`,
   );
+}
+
+/** A line ending as CommonMark reads one — `\n`, `\r\n`, or `\r` alone — captured by a split. */
+const LINE_ENDING = /(\r\n?|\n)/;
+
+/**
+ * Escape a deposited string for the content of the `- ` list item it opens, where it may run to
+ * more than one line.
+ *
+ * Every other value a tool renders has been through normalization, which collapses whitespace
+ * into one line. A facet value is relayed as Crossref indexes it, and an affiliation deposited
+ * over three lines is indexed over three. Each line after a break begins a Markdown line, where a
+ * `- ` or `2. ` opens a new item and a `# ` a heading — behind leading spaces too, which the
+ * renderer reads past — and a blank line ends the item. So each line takes the line-start escape
+ * after its own leading spaces and tabs, and each line ending is followed by the two columns that
+ * indent the next line under the item's content. Line endings are kept as deposited.
+ */
+export function mdTextInListItem(value: string): string {
+  return value
+    .split(LINE_ENDING)
+    .map((piece, i) => {
+      if (i % 2 === 1) return `${piece}  `;
+      const text = piece.replace(/^[ \t]+/, '');
+      return `${piece.slice(0, piece.length - text.length)}${mdTextAtLineStart(text)}`;
+    })
+    .join('');
 }
 
 /**
