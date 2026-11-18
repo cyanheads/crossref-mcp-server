@@ -1,6 +1,6 @@
 # crossref-mcp-server - Directory Structure
 
-Generated on: 2026-11-14 19:27:49
+Generated on: 2026-11-18 05:26:59
 
 ```text
 crossref-mcp-server/
@@ -164,12 +164,15 @@ crossref-mcp-server/
 │   │       │   └── search-works.tool.ts
 │   │       ├── blank-input.ts
 │   │       ├── cursor-notice.ts
+│   │       ├── grant-rows.ts
 │   │       ├── markdown-text.ts
 │   │       ├── metadata-coverage.ts
 │   │       ├── page-size.ts
 │   │       ├── registration-agency.ts
 │   │       ├── work-assertions.ts
 │   │       ├── work-dates.ts
+│   │       ├── work-funders-licenses-links.ts
+│   │       ├── work-grants-reviews.ts
 │   │       ├── work-locators.ts
 │   │       └── work-updates.ts
 │   ├── services/
@@ -210,6 +213,12 @@ crossref-mcp-server/
 │   │       ├── facets/
 │   │       │   ├── retraction-journal-issue.json
 │   │       │   └── retraction-published-publisher-name.json
+│   │       ├── has-preprint/
+│   │       │   ├── 10.1101_2020.03.22.002386.json
+│   │       │   ├── 10.1101_2025.11.10.687519.json
+│   │       │   ├── 10.1364_opticaopen.29459153.v1.json
+│   │       │   ├── 10.20944_preprints202302.0051.v34.json
+│   │       │   └── 10.2139_ssrn.4944457.json
 │   │       ├── 10.1002_alz.70069.json
 │   │       ├── 10.1007_978-3-030-58452-8_1.json
 │   │       ├── 10.1016_j.apsusc.2007.01.131.json
@@ -219,7 +228,9 @@ crossref-mcp-server/
 │   │       ├── 10.1038_s41586-020-2649-2.json
 │   │       ├── 10.1038_s41598-025-13404-6.json
 │   │       ├── 10.1039_c8tx00041g.json
+│   │       ├── 10.1039_d4ra08825e_v2_review1.json
 │   │       ├── 10.1093_esj_aakag023.1154.json
+│   │       ├── 10.1101_2020.03.22.002386.json
 │   │       ├── 10.1101_2025.10.16.25338155.json
 │   │       ├── 10.1101_2025.11.10.687519.json
 │   │       ├── 10.1103_physrevd.109.023023.json
@@ -237,8 +248,18 @@ crossref-mcp-server/
 │   │       ├── 10.2139_ssrn.4944457.json
 │   │       ├── 10.2172_207649.json
 │   │       ├── 10.22261_jea.5gsnt8.json
+│   │       ├── 10.32388_kkcnxz.json
+│   │       ├── 10.35802_220488.json
+│   │       ├── 10.46936_incite_60012472.json
 │   │       ├── 10.47094_978-65-6036-545-2.json
+│   │       ├── 10.47379_ls21017.json
+│   │       ├── 10.5194_amt-2017-159-rc2.json
+│   │       ├── 10.52044_hfsp.lt0002402017-l.pc.gr.163608.json
+│   │       ├── 10.5256_f1000research.147174.r355552.json
+│   │       ├── 10.54499_la_p_0104_2020.json
 │   │       ├── 10.61147_oee-00043966.json
+│   │       ├── 10.61686_aialz48365.json
+│   │       ├── 10.69777_334076.json
 │   │       └── 10.7554_elife.03714.json
 │   ├── helpers/
 │   │   ├── content.ts
@@ -280,6 +301,7 @@ crossref-mcp-server/
 │       ├── search-works-fields.test.ts
 │       ├── search-works.tool.test.ts
 │       ├── work-dates.test.ts
+│       ├── work-funders-licenses-links.test.ts
 │       └── works-cursor-walk.test.ts
 ├── .dockerignore
 ├── .env.example

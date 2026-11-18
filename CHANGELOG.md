@@ -2,6 +2,10 @@
 
 All notable changes to this project. Each entry links to its full per-version file in [changelog/](changelog/).
 
+## [0.5.4](changelog/0.5.x/0.5.4.md) — 2026-11-17
+
+crossref_get_work returns a grant's award, projects, and investigators, a peer review's details, and a preprint's published versions; crossref_search_works fields admit funder, license, and link; funder counts and escaped HTML in abstracts read correctly; a request's retries share one 25 s deadline.
+
 ## [0.5.3](changelog/0.5.x/0.5.3.md) — 2026-11-14
 
 crossref_search_works returns per-value counts through facets and accepts rows: 0, crossref_get_work returns clinical trial numbers and Crossmark assertions, per-call page caps rise, and funder worksCount and abstract list items read correctly.
