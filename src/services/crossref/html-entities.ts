@@ -52,11 +52,14 @@ function scalarValue(codePoint: number): string | undefined {
  * One pass over the input, which is what keeps a reference from being resolved twice:
  * `&amp;lt;` is the escaped text `&lt;` and decodes to exactly that, never to `<`. A chain
  * of per-entity replaces decodes it twice and manufactures markup out of text a publisher
- * escaped precisely so it would not be markup.
+ * escaped precisely so it would not be markup. The one place a second level is read is a
+ * JATS field holding escaped HTML: there the markup pass lowers each reference escaped with
+ * that HTML (`&amp;nbsp;`) by one level before this decode runs, once and on purpose.
  *
  * Callers strip markup before decoding, never after — see the normalization passes in
- * `markup-text`. A deposited `&lt;i&gt;` has to reach the strip still escaped, or it
- * decodes into a tag the strip then eats and the reader loses the text.
+ * `markup-text`. An escaped tag has to reach the strip still escaped, where it is decided:
+ * decoded first, the `&lt;i&gt;` in `Use of &lt;i&gt;` becomes a tag the strip then eats,
+ * and the reader loses text the publisher meant to show.
  */
 export function decodeHtmlEntities(raw: string): string {
   if (!raw.includes('&')) return raw;

@@ -6,7 +6,8 @@
  * and `normalizeReferenceText` for the deposited citation strings. The two markup passes are
  * one rule over one implementation (`stripMarkup`): a bracket is removed only when it is
  * recognizable as markup, by its shape, by sitting inside a markup region, or by its element
- * name — and they differ in exactly one thing, what an unrecognized element name means. A link
+ * name — and they differ in two things: what an unrecognized element name means, and whether a
+ * tag escaped into the text (`&lt;p&gt;`) can be markup, which only the JATS pass allows. A link
  * element is the one class settled per occurrence instead of per name, since its tags may come
  * out only where its own text already carries the address its `href` holds; an `<alternatives>`
  * wrapper is the one region that selects rather than strips, keeping the first of the encodings
@@ -14,9 +15,10 @@
  * formula leaves, whichever encoding it kept; a MathML formula is the one region that is read
  * rather than emptied — see `mathml` — so the operators its tree encodes as structure survive
  * the loss of its tags. Every region is found by a scan linear in the field, however many of
- * its openers the deposit leaves unclosed. All three passes end in the same
- * baseline: character references decoded against the HTML5 named set in `html-entities`, then
- * whitespace collapsed.
+ * its openers the deposit leaves unclosed, and every escaped tag is decided in one linear scan.
+ * All three passes end in the same baseline: character references decoded against the HTML5
+ * named set in `html-entities`, then whitespace collapsed — in a JATS field holding escaped
+ * markup, after every reference escaped with it is lowered one level.
  *
  * What these passes produce is what `structuredContent` carries. The same values are escaped
  * again on their way into the Markdown of `content[]` — see `mdText` in `mcp-server/tools` —
@@ -95,10 +97,66 @@ const TAG_ATTRIBUTES = String.raw`(?:\s+[A-Za-z_:][\w.:-]*\s*=\s*(?:"[^"]*"|'[^'
  * and is followed by an attribute tail and nothing else. Captures the closing slash, the
  * local name, and the self-closing slash, which is everything the classifier needs.
  */
-const TAG = new RegExp(
-  String.raw`<(\/?)(?:[A-Za-z][\w.-]*:)?([A-Za-z][\w.-]*)${TAG_ATTRIBUTES}(\/?)>`,
-  'g',
-);
+const TAG_SOURCE = String.raw`<(\/?)(?:[A-Za-z][\w.-]*:)?([A-Za-z][\w.-]*)${TAG_ATTRIBUTES}(\/?)>`;
+
+const TAG = new RegExp(TAG_SOURCE, 'g');
+
+/**
+ * `TAG_ATTRIBUTES` as it reads with its brackets escaped. A quoted value holds no `<`, so an
+ * escaped tag never reaches across a deposited one, and a bare value ends at the `&lt;` or
+ * `&gt;` that would open or close another tag, for the reason the deposited tail excludes `<`.
+ */
+const ESCAPED_TAG_ATTRIBUTES = String.raw`(?:\s+[A-Za-z_:][\w.:-]*\s*=\s*(?:"[^"<]*"|'[^'<]*'|(?:[^\s<>"'&]|&(?!lt;|gt;))+))*\s*`;
+
+/**
+ * A tag a deposit escaped into its text — `&lt;p class="x"&gt;` — in the shape of `TAG` with its
+ * brackets written as references, and the same three captures. Deposits that escape HTML into
+ * JATS write the brackets `&lt;` and `&gt;` and leave the quotes bare.
+ */
+const ESCAPED_TAG_SOURCE = String.raw`&lt;(\/?)(?:[A-Za-z][\w.-]*:)?([A-Za-z][\w.-]*)${ESCAPED_TAG_ATTRIBUTES}(\/?)&gt;`;
+
+/**
+ * A deposited tag (captures 1–3) or an escaped one (captures 4–6), in document order. The two
+ * alternatives begin with different characters and an escaped tag holds no `<`, so every
+ * deposited tag is matched exactly where `TAG` alone would match it.
+ */
+const ANY_TAG = new RegExp(`${TAG_SOURCE}|${ESCAPED_TAG_SOURCE}`, 'g');
+
+/** `ANY_TAG`, or the `&amp;` of a reference escaped one level past the text around it. */
+const ANY_TAG_OR_AMPERSAND = new RegExp(`${TAG_SOURCE}|${ESCAPED_TAG_SOURCE}|&amp;`, 'g');
+
+/** One tag as the classifier reads it, however the deposit wrote it. */
+interface Tag {
+  readonly close: boolean;
+  /** Whether the deposit escaped it into its text. */
+  readonly escaped: boolean;
+  /** The local name, in lower case. */
+  readonly name: string;
+  readonly selfClose: boolean;
+}
+
+/**
+ * The tag a match holds, from its capture groups — the three of `TAG`, or the six of `ANY_TAG` —
+ * or undefined for the `&amp;` of `ANY_TAG_OR_AMPERSAND`, which captures nothing.
+ */
+function tagOf(groups: ReadonlyArray<string | undefined>): Tag | undefined {
+  const [close, name, selfClose, escapedClose, escapedName, escapedSelfClose] = groups;
+  if (name !== undefined) {
+    return {
+      close: Boolean(close),
+      escaped: false,
+      name: name.toLowerCase(),
+      selfClose: Boolean(selfClose),
+    };
+  }
+  if (escapedName === undefined) return;
+  return {
+    close: Boolean(escapedClose),
+    escaped: true,
+    name: escapedName.toLowerCase(),
+    selfClose: Boolean(escapedSelfClose),
+  };
+}
 
 /**
  * What removing an element does to the text around it — or, for `keep`, that the bracket does
@@ -107,6 +165,30 @@ const TAG = new RegExp(
  * checked for the address its `href` carries.
  */
 type Verdict = 'tight' | 'inline' | 'block' | 'keep';
+
+/**
+ * What a surface decides that no shared rule does: the verdict for an element name on none of
+ * the class lists, and whether a tag escaped into the text can be markup at all.
+ */
+interface Surface {
+  readonly escapedMarkup: boolean;
+  readonly unlisted: Verdict;
+}
+
+/**
+ * A title or abstract is deposited as JATS, an XML document: an unlisted name is structure, and
+ * HTML escaped into its text is markup the publisher meant as markup — see `settleEscapedTags`.
+ */
+const JATS_SURFACE: Surface = { escapedMarkup: true, unlisted: 'block' };
+
+/**
+ * A reference entry is a citation string a publisher typed: an unlisted name is content, and so
+ * is an escaped tag, whatever pairs with it.
+ */
+const REFERENCE_SURFACE: Surface = { escapedMarkup: false, unlisted: 'keep' };
+
+/** A structured citation's content, where every tag is markup by construction — see `CITATION`. */
+const CITATION_CONTENT: Surface = { escapedMarkup: false, unlisted: 'inline' };
 
 /**
  * Elements that can carry an address in an attribute. Their tags come out only when the
@@ -313,6 +395,21 @@ const LINK_CLOSERS: ReadonlyMap<string, RegExp> = new Map(
 );
 
 /**
+ * `LINK_CLOSERS` escaped, for the text of an escaped link. The name is matched in any letter
+ * case by class rather than by the `i` flag, which would also admit `&LT;`, a spelling
+ * `ESCAPED_TAG_SOURCE` does not read as a tag.
+ */
+const ESCAPED_LINK_CLOSERS: ReadonlyMap<string, RegExp> = new Map(
+  LINK_ELEMENTS.map((name) => {
+    const anyCase = name.replace(/[a-z]/g, (letter) => `[${letter}${letter.toUpperCase()}]`);
+    return [
+      name,
+      new RegExp(String.raw`&lt;/(?:[A-Za-z][\w.-]*:)?${anyCase}\s*&gt;`, 'g'),
+    ] as const;
+  }),
+);
+
+/**
  * Whether a link element's tags can come out without costing the reader its address.
  *
  * A link is kept because its address lives in an attribute, where removing the tag deletes it.
@@ -424,27 +521,29 @@ function readMathml(inner: string): string {
 /**
  * Read closed numeric superscripts before stripping tags. A single token scan counts text
  * incompatible with a numeric script; nested scripts invalidate their parent, so accepted
- * spans never overlap and no nested body is rescanned or recursively rendered.
+ * spans never overlap and no nested body is rescanned or recursively rendered. With `escaped`,
+ * an escaped script is read the same way, and closes only an escaped opener: the `&` that keys
+ * its stack is in no element name, so the two kinds never share one.
  */
-function readNumericSuperscripts(text: string): string {
-  if (!text.includes('<')) return text;
+function readNumericSuperscripts(text: string, escaped: boolean): string {
+  if (!text.includes('<') && !(escaped && text.includes('&lt;'))) return text;
   const openers = new Map<string, Array<{ start: number; content: number; invalid: number }>>();
   const edits: Array<{ start: number; end: number; from: number; to: number }> = [];
   const parts: string[] = [];
   let length = 0;
   let invalid = 0;
   let previous = 0;
-  for (const match of text.matchAll(TAG)) {
-    const [tag, close, rawName, selfClose] = match as RegExpExecArray &
-      [string, string, string, string];
+  for (const match of text.matchAll(escaped ? ANY_TAG : TAG)) {
+    const [tag] = match;
+    const { close, escaped: isEscaped, name, selfClose } = tagOf(match.slice(1)) as Tag;
     const offset = match.index;
     const plain = decodeHtmlEntities(text.slice(previous, offset));
     parts.push(plain);
     length += plain.length;
     if (/[^0-9+.−-]/.test(plain)) invalid++;
-    const name = rawName.toLowerCase();
     if (name === 'sup' || name === 'superscript') {
-      const stack = openers.get(name) ?? [];
+      const key = isEscaped ? `&${name}` : name;
+      const stack = openers.get(key) ?? [];
       if (close) {
         const opener = stack.pop();
         if (opener && opener.invalid === invalid && length > opener.content) {
@@ -454,7 +553,7 @@ function readNumericSuperscripts(text: string): string {
         }
       } else if (!selfClose) {
         stack.push({ start: offset, content: length, invalid: invalid + 1 });
-        openers.set(name, stack);
+        openers.set(key, stack);
       }
       invalid++;
     } else if (!INLINE_ELEMENTS.includes(name)) {
@@ -488,9 +587,85 @@ type OutlineMark =
   | { kind: 'item-start' | 'item-end'; at: number; item: number; list: number };
 
 /**
+ * Decide which of a field's escaped tags are markup, and respell every other `&lt;` in the field
+ * as `&#60;` — which decodes to the same `<` but opens no escaped tag — so the decision travels in
+ * the text through the passes after it, and nothing they do can make an escaped tag of text that
+ * was not one. Undefined when no escaped tag is markup, and the field then reads exactly as it
+ * would with no escaped tag in it.
+ *
+ * An escaped tag is markup unless it is an opener other than `br` that no later escaped closer of
+ * its name closes and that does not directly follow, whitespace aside, an escaped closer of its
+ * name. That opener is prose naming an element — `the TEI &lt;gap&gt; element`, `Use of
+ * &lt;i&gt;` — and stays as written. Every other one is HTML the deposit escaped into its JATS: a
+ * closer comes out whether or not an opener precedes it, since prose about an element does not
+ * write its end tag, and an opener right after its own closer (`&lt;/P&gt;&lt;P&gt;`) begins the
+ * next of a run of elements the deposit never closed.
+ *
+ * One scan decides every tag. Deposited tags are tokens in it too, so an escaped tag never reaches
+ * across one, and one with a deposited tag between it and a closer does not directly follow that
+ * closer. Each name keeps its own stack of escaped openers and a closer closes the last one open
+ * of its name, so whatever is left on a stack when the scan ends is an opener nothing closes.
+ */
+function settleEscapedTags(text: string): string | undefined {
+  if (!text.includes('&lt;')) return;
+  const runs: Array<{ start: number; end: number; markup: boolean }> = [];
+  const open = new Map<string, Array<{ markup: boolean }>>();
+  let previousEnd = 0;
+  /** The name of the escaped closer the last token was, when it was one. */
+  let previousCloser: string | undefined;
+  for (const match of text.matchAll(ANY_TAG)) {
+    const { close, escaped, name, selfClose } = tagOf(match.slice(1)) as Tag;
+    const end = match.index + match[0].length;
+    if (escaped) {
+      const run = { start: match.index, end, markup: true };
+      runs.push(run);
+      if (close) {
+        const opener = open.get(name)?.pop();
+        if (opener) opener.markup = true;
+      } else if (!selfClose) {
+        run.markup =
+          name === 'br' ||
+          (previousCloser === name && !/\S/.test(text.slice(previousEnd, match.index)));
+        const stack = open.get(name);
+        if (stack) stack.push(run);
+        else open.set(name, [run]);
+      }
+    }
+    previousCloser = escaped && close ? name : undefined;
+    previousEnd = end;
+  }
+  const parts: string[] = [];
+  let resume = 0;
+  for (const run of runs) {
+    if (!run.markup) continue;
+    parts.push(
+      text.slice(resume, run.start).replaceAll('&lt;', '&#60;'),
+      text.slice(run.start, run.end),
+    );
+    resume = run.end;
+  }
+  if (parts.length === 0) return;
+  parts.push(text.slice(resume).replaceAll('&lt;', '&#60;'));
+  return parts.join('');
+}
+
+/** The separator removing an element of a class leaves — see `stripMarkup`. */
+function separatorFor(
+  verdict: Exclude<Verdict, 'keep'>,
+  tag: string,
+  offset: number,
+  whole: string,
+): string {
+  if (verdict === 'tight') return '';
+  if (verdict === 'block') return ' ';
+  return separateWords(tag, offset, whole);
+}
+
+/**
  * Classify every well-formed tag in a string and remove the ones this surface recognizes as
- * markup, leaving the separator its class calls for. `unlisted` is the verdict for a name on
- * none of the class lists, and it is the only thing that varies between surfaces.
+ * markup, leaving the separator its class calls for. `surface` says what a name on none of the
+ * class lists means, and whether an escaped tag can be markup; nothing else varies between
+ * surfaces.
  *
  * An opening tag is removed on its own evidence; a closing tag is removed only if the matching
  * opener was itself removed. That asymmetry is what keeps an element from coming apart: a
@@ -510,28 +685,67 @@ type OutlineMark =
  * the opener the strip itself paired it with, the last unclosed one of its name, so the outline
  * never disagrees with which tags came out. The offsets are counted as the tags are replaced, so
  * finding them costs nothing beyond the pass.
+ *
+ * Where the surface reads escaped markup and the field holds some, every escaped tag left after
+ * `settleEscapedTags` is markup and comes out with its class's separator, closed or not, pairing
+ * only with escaped tags: the deposited bookkeeping — which openers came out, which links have no
+ * closer, the outline — never sees one, so neither kind of tag can close the other. Each `&amp;`
+ * in the text becomes `&`: the HTML the deposit escaped wrote `&nbsp;`, and the decode that
+ * follows the strip resolves it.
  */
-function stripTags(text: string, unlisted: Verdict, outline?: OutlineMark[]): string {
-  text = readNumericSuperscripts(text);
+function stripTags(text: string, surface: Surface, outline?: OutlineMark[]): string {
+  const settled = surface.escapedMarkup ? settleEscapedTags(text) : undefined;
+  const escaped = settled !== undefined;
+  text = readNumericSuperscripts(settled ?? text, escaped);
   const removed: string[] = [];
   /**
    * Link names whose closing tag is already known to be absent from the rest of the string.
    * The scan for one runs to the end when there is none, and tags are visited left to right,
    * so a name that failed once cannot succeed later — recording it is what keeps a field
-   * packed with unterminated openers from costing a full scan apiece.
+   * packed with unterminated openers from costing a full scan apiece. The escaped set is the
+   * same record for escaped links.
    */
   const unclosed = new Set<string>();
+  const escapedUnclosed = new Set<string>();
   const linkText = linkTextReader(text, LINK_CLOSERS);
-  const strip = (
+  const escapedLinkText = linkTextReader(text, ESCAPED_LINK_CLOSERS);
+  /** Per escaped link name, whether each escaped opener still open kept its tags. */
+  const escapedLinks = new Map<string, boolean[]>();
+  const stripEscaped = (
     tag: string,
-    close: string,
-    rawName: string,
-    selfClose: string,
+    { close, name, selfClose }: Tag,
     offset: number,
     whole: string,
   ): string => {
-    const name = rawName.toLowerCase();
-    let verdict = ELEMENT_VERDICTS.get(name) ?? unlisted;
+    let verdict = ELEMENT_VERDICTS.get(name) ?? surface.unlisted;
+    if (verdict === 'keep') {
+      const open = escapedLinks.get(name) ?? [];
+      escapedLinks.set(name, open);
+      if (close) {
+        if (open.pop()) return tag;
+      } else if (selfClose || escapedUnclosed.has(name)) {
+        return tag;
+      } else {
+        const inner = escapedLinkText(offset + tag.length, name);
+        if (inner === undefined) {
+          escapedUnclosed.add(name);
+          return tag;
+        }
+        const kept = !linkAddressSurvives(`<${tag.slice(4, -4)}>`, inner);
+        open.push(kept);
+        if (kept) return tag;
+      }
+      verdict = 'inline';
+    }
+    return separatorFor(verdict, tag, offset, whole);
+  };
+  const strip = (
+    tag: string,
+    { close, name, selfClose }: Tag,
+    offset: number,
+    whole: string,
+  ): string => {
+    let verdict = ELEMENT_VERDICTS.get(name) ?? surface.unlisted;
     if (verdict === 'keep') {
       if (close) {
         if (!removed.includes(name)) return tag;
@@ -554,11 +768,22 @@ function stripTags(text: string, unlisted: Verdict, outline?: OutlineMark[]): st
     } else if (!selfClose) {
       removed.push(name);
     }
-    if (verdict === 'tight') return '';
-    if (verdict === 'block') return ' ';
-    return separateWords(tag, offset, whole);
+    return separatorFor(verdict, tag, offset, whole);
   };
-  if (!outline) return text.replace(TAG, strip);
+  const pattern = escaped ? ANY_TAG_OR_AMPERSAND : TAG;
+  /** A match's replacement, and the tag it was, if it was one rather than an `&amp;`. */
+  const replace = (
+    match: string,
+    rest: Array<string | number | undefined>,
+  ): { out: string; tag: Tag | undefined; offset: number } => {
+    const whole = rest.at(-1) as string;
+    const offset = rest.at(-2) as number;
+    const tag = tagOf(rest.slice(0, -2) as Array<string | undefined>);
+    if (!tag) return { out: '&', tag, offset };
+    const out = (tag.escaped ? stripEscaped : strip)(match, tag, offset, whole);
+    return { out, tag, offset };
+  };
+  if (!outline) return text.replace(pattern, (match: string, ...rest) => replace(match, rest).out);
   // How much longer the output is than the input, up to the tag being replaced.
   let shift = 0;
   let ids = 0;
@@ -574,7 +799,7 @@ function stripTags(text: string, unlisted: Verdict, outline?: OutlineMark[]): st
   const lists: number[] = [];
   const items: Array<{ item: number; list: number }> = [];
   /** Record a removed opener or closer of one of the outlined elements, `at` its offset. */
-  const record = (close: string, name: string, at: number, replaced: number): void => {
+  const record = (close: boolean, name: string, at: number, replaced: number): void => {
     switch (name) {
       case 'title':
         if (!close && titleDepth++ === 0) {
@@ -608,12 +833,13 @@ function stripTags(text: string, unlisted: Verdict, outline?: OutlineMark[]): st
         break;
     }
   };
-  return text.replace(TAG, (...args: Parameters<typeof strip>) => {
-    const [tag, close, rawName, selfClose, offset] = args;
-    const out = strip(...args);
+  return text.replace(pattern, (match: string, ...rest) => {
+    const { out, tag, offset } = replace(match, rest);
     // A tag returned whole was not removed; a closer is removed only beside its opener.
-    if (out !== tag && !selfClose) record(close, rawName.toLowerCase(), offset + shift, out.length);
-    shift += out.length - tag.length;
+    if (tag && !tag.escaped && out !== match && !tag.selfClose) {
+      record(tag.close, tag.name, offset + shift, out.length);
+    }
+    shift += out.length - match.length;
     return out;
   });
 }
@@ -649,22 +875,28 @@ function stripTags(text: string, unlisted: Verdict, outline?: OutlineMark[]): st
  *    occurrence rather than per name, because what a removed `<a href>` costs depends on where
  *    its address is: see `linkAddressSurvives`.
  *
- * The surfaces differ in exactly one thing — what an unrecognized element name means — and they
- * differ there because the two fields are not the same kind of string. A title or abstract is
- * deposited as JATS, so a raw `<` in it came out of an XML document and is a tag by
- * construction: an unrecognized name is structure (`<sec>`, `<list-item>`, `<title>`) and is
- * removed as a block boundary. A reference entry is a citation string a publisher typed, where
- * the same syntax carries a cited URL (`<http://faostat.fao.org/…>`), a Miller index
- * (`Silicon <100> nanowires`), a DOI fragment (`<131::AID-QUA4>`), an acronym (`<IR>`), or a
- * guillemet quotation (`<<ruptures>>`) — so an unrecognized name is presumed content and stays.
+ * The surfaces differ in two things — what an unrecognized element name means, and whether a tag
+ * escaped into the text can be markup — and they differ there because the two fields are not the
+ * same kind of string. A title or abstract is deposited as JATS, so a raw `<` in it came out of
+ * an XML document and is a tag by construction: an unrecognized name is structure (`<sec>`,
+ * `<list-item>`, `<title>`) and is removed as a block boundary. HTML a publisher escaped into that
+ * XML (`<jats:p>&lt;p&gt;…`) is markup too, read by the same three tests and removed the way the
+ * same tags would be deposited unescaped, except that the regions and a structured abstract's
+ * headings and items are read from deposited tags alone; an escaped tag that names an element
+ * instead (`Use of &lt;i&gt;`) stays — see `settleEscapedTags`. A reference entry is a citation
+ * string a publisher typed, where the same syntax carries a cited URL
+ * (`<http://faostat.fao.org/…>`), a Miller index (`Silicon <100> nanowires`), a DOI fragment
+ * (`<131::AID-QUA4>`), an acronym (`<IR>`), or a guillemet quotation (`<<ruptures>>`) — so an
+ * unrecognized name is presumed content and stays, and an escaped tag is the publisher's text.
  * Everything else the two surfaces do is the same rule, so they cannot drift apart again.
  *
- * Every separator is decided against the string the tags sit in: a tag never counts as a word
- * character, so removing one class can never create an adjacency another class then misreads.
- * `<span class="smallcaps">xvii</span><sup>e</sup>` is `xviie`, not `xvii e`.
+ * Every separator is decided against the string the tags sit in, escaped tags included: a tag
+ * never counts as a word character, so removing one class can never create an adjacency another
+ * class then misreads. `<span class="smallcaps">xvii</span><sup>e</sup>` is `xviie`, not
+ * `xvii e`.
  */
-function stripMarkup(raw: string, unlisted: Verdict): string {
-  return collapseWhitespace(stripTags(readRegions(raw), unlisted));
+function stripMarkup(raw: string, surface: Surface): string {
+  return collapseWhitespace(stripTags(readRegions(raw), surface));
 }
 
 /**
@@ -684,32 +916,35 @@ function stripMarkup(raw: string, unlisted: Verdict): string {
 function readRegions(raw: string): string {
   const selected = replaceRegions(raw, ALTERNATIVES, (inner) => ` ${firstAlternative(inner)} `);
   const read = replaceRegions(selected, MATHML, readMathml);
-  return replaceRegions(read, CITATION, (inner) => stripTags(inner, 'inline'));
+  return replaceRegions(read, CITATION, (inner) => stripTags(inner, CITATION_CONTENT));
 }
 
 /**
  * Strip the markup a JATS-deposited field carries — work titles, subtitles, container titles,
  * and abstracts. An element name on none of the shared classes is structure, and comes out as a
- * block boundary.
+ * block boundary; escaped markup comes out too, with every reference escaped beside it one level
+ * lower.
  */
 export function stripJats(raw: string): string {
-  return stripMarkup(raw, 'block');
+  return stripMarkup(raw, JATS_SURFACE);
 }
 
 /**
  * Strip the markup a reference free-text field carries. An element name on none of the shared
- * classes is presumed to be content a publisher typed, and stays.
+ * classes is presumed to be content a publisher typed, and stays, as does every escaped tag.
  */
 export function stripReferenceMarkup(raw: string): string {
-  return stripMarkup(raw, 'keep');
+  return stripMarkup(raw, REFERENCE_SURFACE);
 }
 
 /**
  * Normalize a field publishers deposit as JATS/XML markup — work titles, subtitles, container
  * titles, and abstracts — by stripping markup before the baseline pass.
  *
- * Order matters: tags come out before entities are decoded, so a deposited `&lt;i&gt;` stays
- * literal text instead of decoding into a tag the strip pass would then eat.
+ * Order matters: tags come out before entities are decoded, so an escaped tag reaches the strip
+ * still escaped and is decided there — removed where it is markup the deposit escaped
+ * (`&lt;p&gt;…&lt;/p&gt;`), kept as literal text where it names an element (`Use of &lt;i&gt;`).
+ * Decoding first would turn both into tags.
  */
 export function normalizeMarkupText(raw: string): string {
   return normalizeText(stripJats(raw));
@@ -748,7 +983,7 @@ const ITEM_END = /[.,;:?!]/;
  */
 export function normalizeAbstract(raw: string): string | undefined {
   const outline: OutlineMark[] = [];
-  const stripped = stripTags(readRegions(raw), 'block', outline);
+  const stripped = stripTags(readRegions(raw), JATS_SURFACE, outline);
   const parts: string[] = [];
   /** Headings still waiting for text in their section, the innermost section's last. */
   const pending: Array<{ heading: string; section: number }> = [];
@@ -820,8 +1055,8 @@ export function normalizeAbstract(raw: string): string | undefined {
 }
 
 /**
- * Normalize a reference entry's free text: strip markup, then the baseline pass. Same order,
- * same reason — a deposited `&lt;i&gt;` stays literal.
+ * Normalize a reference entry's free text: strip markup, then the baseline pass. Same order;
+ * an escaped tag here is the publisher's text however it pairs, so `&lt;i&gt;` stays literal.
  */
 export function normalizeReferenceText(raw: string): string {
   return normalizeText(stripReferenceMarkup(raw));
