@@ -230,7 +230,7 @@ describe('mdText', () => {
     (_name, make) => {
       expectLinearScaling(make, mdText);
     },
-    60_000,
+    0,
   );
 });
 
@@ -354,7 +354,7 @@ describe('mdTextAtLineStart', () => {
     (_name, make) => {
       expectLinearScaling(make, mdTextAtLineStart);
     },
-    60_000,
+    0,
   );
 });
 
@@ -401,7 +401,7 @@ describe('mdTextInListItem', () => {
     (_name, make) => {
       expectLinearScaling(make, mdTextInListItem);
     },
-    60_000,
+    0,
   );
 });
 
@@ -472,6 +472,6 @@ describe('mdTextInHeading', () => {
     (_name, make) => {
       expectLinearScaling(make, mdTextInHeading);
     },
-    60_000,
+    0,
   );
 });

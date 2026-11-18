@@ -376,7 +376,7 @@ describe('MathML conversion on large regions', () => {
         normalizeReferenceText(raw);
       });
     },
-    60_000,
+    0,
   );
 
   it('returns a deeply nested region whole', () => {

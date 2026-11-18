@@ -30,7 +30,11 @@ describe('cursor advisory', () => {
     ['malformed escapes', (size: number) => btoa(`1,${repeatTo('%', Math.floor(size * 0.7))}`)],
     ['line breaks', (size: number) => repeatTo('YWJj\n', size)],
     ['unclosed prefix', (size: number) => repeatTo('a', size)],
-  ])('stays linear on %s', (_name, make) => {
-    expectLinearScaling(make, cursorNotice);
-  });
+  ])(
+    'stays linear on %s',
+    (_name, make) => {
+      expectLinearScaling(make, cursorNotice);
+    },
+    0,
+  );
 });

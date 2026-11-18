@@ -144,7 +144,7 @@ describe('decodeHtmlEntities', () => {
       (_name, make) => {
         expectLinearScaling(make, decodeHtmlEntities);
       },
-      60_000,
+      0,
     );
   });
 });

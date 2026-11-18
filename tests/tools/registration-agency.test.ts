@@ -225,6 +225,6 @@ describe('notFoundDetail with a citation', () => {
         }),
       );
     },
-    60_000,
+    0,
   );
 });

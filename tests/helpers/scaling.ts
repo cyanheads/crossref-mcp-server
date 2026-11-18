@@ -3,7 +3,10 @@
  * cannot tell linear from quadratic — the defect only shows as growth — so a case is measured at
  * every doubling from 5k to 320k characters and judged on the full-span ratio t(320k)/t(5k): 64
  * when the work is linear, 4096 when it is quadratic. Time is the calling thread's CPU time,
- * never wall clock, so other work on the machine does not move the ratio.
+ * never wall clock, so other work on the machine does not move the ratio. A test calling it sets
+ * vitest's per-test timeout to 0: the body is synchronous, so vitest cannot interrupt it and only
+ * compares wall time after it returns, which fails linear work on a loaded machine and stops no
+ * hang; the per-size CPU cap is what stops a super-linear case.
  * @module tests/helpers/scaling
  */
 
@@ -52,29 +55,41 @@ function perCallMs(run: (input: string) => unknown, input: string): number {
   return best;
 }
 
+/** `make(size)`, refused when it misses the size by more than a tenth. */
+function build(make: (size: number) => string, size: number): string {
+  const input = make(size);
+  if (input.length > size || input.length < size * 0.9) {
+    throw new Error(`input built for ${size} characters has ${input.length}`);
+  }
+  return input;
+}
+
 /**
  * Assert that `run` costs time linear in the size of the inputs `make` builds: every size under
  * `CAP_MS` of CPU per call, checked as each size finishes, and t(320k)/t(5k) under `RATIO_LIMIT`.
+ * The 5k baseline is timed again beside every larger size and the ratio takes the slowest of
+ * those timings: a baseline timed once can run on a performance core while 320k runs on an
+ * efficiency core several times slower, which reads as super-linear growth on linear code.
  * Throws through `expect` at the first bound broken.
  */
 export function expectLinearScaling(
   make: (size: number) => string,
   run: (input: string) => unknown,
 ): void {
+  const [baseSize, ...larger] = SIZES;
+  const baseInput = build(make, baseSize);
+  const baselines = [perCallMs(run, baseInput)];
   const ms: number[] = [];
-  const ladder = () => `CPU ms per call = ${ms.map((t) => t.toFixed(3)).join(' / ')}`;
-  for (const size of SIZES) {
-    const input = make(size);
-    if (input.length > size || input.length < size * 0.9) {
-      throw new Error(`input built for ${size} characters has ${input.length}`);
-    }
-    const t = perCallMs(run, input);
+  const ladder = () =>
+    `CPU ms per call = ${ms.map((t) => t.toFixed(3)).join(' / ')}; ${baseSize} characters = ${baselines.map((t) => t.toFixed(3)).join(' / ')}`;
+  for (const size of larger) {
+    const t = perCallMs(run, build(make, size));
     ms.push(t);
+    baselines.push(perCallMs(run, baseInput));
     expect(t, `${size} characters, ${ladder()}`).toBeLessThan(CAP_MS);
   }
-  const [first = 0] = ms;
   const last = ms.at(-1) ?? 0;
-  expect(last / first, ladder()).toBeLessThan(RATIO_LIMIT);
+  expect(last / Math.max(...baselines), ladder()).toBeLessThan(RATIO_LIMIT);
 }
 
 /** `unit` repeated and cut to exactly `size` characters. */

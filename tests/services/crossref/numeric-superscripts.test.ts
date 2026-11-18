@@ -44,7 +44,11 @@ describe('numeric superscripts', () => {
     ['line ending', (size: number) => `${'2'.repeat(size - 13)}<sup>2</sup>\n`],
     ['line breaks throughout', (size: number) => repeatTo('x\n<sup>2</sup>\n', size)],
     ['plain text', (size: number) => 'x'.repeat(size)],
-  ])('stays linear on %s', (_name, make) => {
-    expectLinearScaling(make, normalizeMarkupText);
-  });
+  ])(
+    'stays linear on %s',
+    (_name, make) => {
+      expectLinearScaling(make, normalizeMarkupText);
+    },
+    0,
+  );
 });

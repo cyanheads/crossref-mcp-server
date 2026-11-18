@@ -117,7 +117,7 @@ describe('markup region matching on openers that never close', () => {
         },
       );
     },
-    60_000,
+    0,
   );
 });
 
@@ -229,6 +229,6 @@ describe('the text a link element is checked against, at scale', () => {
         normalizeReferenceText(raw);
       });
     },
-    120_000,
+    0,
   );
 });
