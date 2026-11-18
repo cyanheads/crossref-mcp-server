@@ -36,7 +36,7 @@
         },
         {
           "name": "CROSSREF_TIMEOUT_MS",
-          "description": "Per-request timeout in milliseconds.",
+          "description": "Per-attempt timeout in milliseconds.",
           "format": "string",
           "isRequired": false,
           "default": "10000"
@@ -81,7 +81,7 @@
         },
         {
           "name": "CROSSREF_TIMEOUT_MS",
-          "description": "Per-request timeout in milliseconds.",
+          "description": "Per-attempt timeout in milliseconds.",
           "format": "string",
           "isRequired": false,
           "default": "10000"

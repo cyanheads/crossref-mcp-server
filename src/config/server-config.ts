@@ -19,7 +19,7 @@ const ServerConfigSchema = z.object({
     .min(1000)
     .max(60_000)
     .default(10_000)
-    .describe('Per-request timeout in milliseconds'),
+    .describe('Per-attempt timeout in milliseconds'),
 });
 
 export type ServerConfig = z.infer<typeof ServerConfigSchema>;

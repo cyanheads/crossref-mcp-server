@@ -1,6 +1,7 @@
 /**
  * @fileoverview CrossrefService wraps the Crossref REST API with polite-pool User-Agent injection,
- * per-request timeout, retry with exponential backoff, and pagination helpers. Offset paging is
+ * a per-attempt timeout inside one deadline per request, retry with exponential backoff, and
+ * pagination helpers. Offset paging is
  * honored on the name-search routes and on the journal and funder works lists, whose ceilings
  * differ by an order of magnitude — see NAME_SEARCH_OFFSET_CAP and WORKS_OFFSET_CAP. Cursor
  * paging has no ceiling and is available on `/works` and `/funders/{id}/works`, the two routes
@@ -11,7 +12,9 @@
  * `CROSSREF_BASE_URL` says, and neither carrying the polite-pool `mailto`: the DOI registry's
  * agency lookup (`getRegistrationAgency`, `getDoiRegistration`), and — for a DOI one of the
  * agencies in `CSL_AGENCIES` registered — the work's CSL-JSON citation, read inside the
- * lookup's own timeout window (`getDoiRegistration`).
+ * lookup's own timeout window (`getDoiRegistration`). One more Crossref request follows a
+ * preprint's record: the works naming it in `has-preprint` (`getPublishedVersions`), one attempt
+ * in a timeout window of its own.
  * @module services/crossref/crossref-service
  */
 
@@ -271,21 +274,77 @@ export type RegistrationLookup =
   | { kind: 'unknown' };
 
 /**
+ * How many works the published-version lookup reads. A preprint is named by one article in
+ * nearly every case and by two in the rest (1,839 and 65 of 1,904 preprints sampled), so ten
+ * covers what Crossref holds; the lookup's total says when it does not.
+ */
+export const PUBLISHED_VERSION_ROWS = 10;
+
+/**
+ * The fields the published-version lookup reads from its works list. The total and each work's
+ * `DOI` are what the answer is made of, so a body lacking either is no answer; a `type` or
+ * `title` in another shape reads as absent rather than costing the work its place in the list.
+ * Unread fields are stripped.
+ */
+const PublishedVersionsSchema = z.object({
+  message: z.object({
+    'total-results': z.number().int().nonnegative(),
+    items: z.array(
+      z.object({
+        DOI: z.string(),
+        type: z.string().optional().catch(undefined),
+        title: z.array(z.string()).optional().catch(undefined),
+      }),
+    ),
+  }),
+});
+
+/** One work naming a preprint in `has-preprint`, as the published-version lookup reads it. */
+export type PublishedVersion = z.infer<typeof PublishedVersionsSchema>['message']['items'][number];
+
+/**
+ * What the published-version lookup found: the works Crossref holds that name the preprint, at
+ * most `PUBLISHED_VERSION_ROWS` of them beside the full total — none at all is an answer too —
+ * or no readable answer.
+ */
+export type PublishedVersionsLookup =
+  | { kind: 'found'; total: number; works: PublishedVersion[] }
+  | { kind: 'failed' };
+
+/**
+ * The most one Crossref request may take — every attempt, every backoff, every honored
+ * `Retry-After` — raised to `CROSSREF_TIMEOUT_MS` when that is longer, so a raised timeout still
+ * buys one full attempt. Sized against the 60 s request timeout MCP SDK clients default to and
+ * the longest chain one tool call makes: a journal or funder record followed by its works list
+ * is two requests, 50 s at most; a record read followed by one more `CROSSREF_TIMEOUT_MS` window
+ * (the not-found registry lookup and citation share one; a preprint's published-version lookup
+ * opens its own) is 35 s at the 10 s default. The
+ * longer chain leaves 10 s for the transport and the handler. `REQUEST_TIMEOUT.when` states
+ * the value to callers.
+ */
+const REQUEST_DEADLINE_MS = 25_000;
+
+/**
  * One `CROSSREF_TIMEOUT_MS` window, combined with the caller's signal, shared by every request
- * made under it. Each Crossref attempt opens its own; a DOI's not-found lookup opens one for both
- * of its doi.org requests, so the citation request runs on what the registry request left.
- * Disposing it clears the timer.
+ * made under it. Each Crossref attempt opens its own, inside the request deadline `request()`
+ * holds across its retries; a DOI's not-found lookup opens one for both of its doi.org
+ * requests, so the citation request runs on what the registry request left. Disposing it
+ * clears the timer.
  */
 type Deadline = Disposable & {
-  /** Aborts when the window closes or the caller cancels — the signal each request carries. */
+  /** Aborts when the window closes, the request deadline runs out, or the caller cancels. */
   readonly signal: AbortSignal;
   /** Whether the window itself closed, as opposed to the caller cancelling. */
   expired(): boolean;
+  /** Whether the request deadline ran out under the window — only ever true for an attempt. */
+  cut(): boolean;
 };
 
 export class CrossrefService {
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
+  /** One request's whole retry ladder — see `REQUEST_DEADLINE_MS`. */
+  private readonly requestDeadlineMs: number;
   private readonly userAgent: string;
   /**
    * What the DOI registry is told. The `mailto` is the operator's contact, given for Crossref's
@@ -298,6 +357,7 @@ export class CrossrefService {
     const cfg = getServerConfig();
     this.baseUrl = cfg.baseUrl;
     this.timeoutMs = cfg.timeoutMs;
+    this.requestDeadlineMs = Math.max(REQUEST_DEADLINE_MS, cfg.timeoutMs);
     this.userAgent = cfg.mailto
       ? `${this.registryUserAgent} (mailto:${cfg.mailto})`
       : this.registryUserAgent;
@@ -308,9 +368,18 @@ export class CrossrefService {
    * place deliberately — the fix for "retries burned on a failure that can never
    * succeed" belongs one layer down, in `attempt()`, which returns every failure as an
    * `McpError` so the predicate classifies by error code. A custom predicate would only
-   * re-sort the same unclassified exceptions by shape at the wrong layer. The same holds
-   * for retry *cost*: the deadline-expiry opt-out sets `retryable: false` at its throw
-   * site, which the stock predicate honors, so no budget arithmetic lives here.
+   * re-sort the same unclassified exceptions by shape at the wrong layer.
+   *
+   * Retry *cost* is bounded here, by one deadline across every attempt, backoff, and honored
+   * `Retry-After` (`requestDeadlineMs`). The retry count and the per-attempt window alone let
+   * one call outlast the 60 s an MCP client waits — three honored 30 s waits, or slow 5xx
+   * answers each landing near the window — so the client gave up before any answer or error
+   * arrived. Each attempt carries the deadline's signal, so none outlives what is left, and an
+   * attempt that would start with 1 ms or less left sends nothing. When the deadline runs out,
+   * the caller hears the 429 the last completed attempt returned, if it was one — the wait it
+   * names is still the caller's next move — and otherwise the failure the deadline left no
+   * room to retry, or `request_timeout` naming the deadline when it cut an attempt short.
+   * `withRetry`'s own `retry_deadline_exceeded` stops here, so no tool declares it.
    *
    * It is also where the request URL is recorded, which is why the whole retried call is
    * wrapped rather than returned straight through. The URL is both the field a Crossref
@@ -323,23 +392,64 @@ export class CrossrefService {
    * an operator can read it and a caller cannot.
    *
    * One line per failed call, after the retries rather than inside them, and none at all
-   * for a caller cancellation — the caller hung up, which is nobody's upstream fault.
+   * for a caller cancellation — the caller hung up, which is nobody's upstream fault. A
+   * cancellation during a backoff arrives as the caller's raw abort reason, so it is turned
+   * into the same `RequestCancelled` one during an attempt raises.
    */
   private async request<T>(path: string, ctx: Context): Promise<T> {
     const url = `${this.baseUrl}${path}`;
+    /**
+     * The 429 the last completed attempt answered with. An attempt the deadline cut tells
+     * nothing new about the upstream and leaves it as it was; any other outcome replaces it.
+     */
+    let rateLimit: McpError | undefined;
     try {
       return await withRetry(
-        async () => {
-          using deadline = this.openDeadline(ctx);
-          return await this.attempt<T>(url, this.userAgent, deadline, ctx);
+        async ({ signal, remainingMs }) => {
+          if (remainingMs <= 1) {
+            // No request can be sent and answered in what is left — let the deadline close.
+            if (!signal.aborted) {
+              await new Promise<void>((resolve) =>
+                signal.addEventListener('abort', () => resolve(), { once: true }),
+              );
+            }
+            throw this.deadlineTimeout();
+          }
+          using deadline = this.openDeadline(ctx, signal);
+          try {
+            return await this.attempt<T>(url, this.userAgent, deadline, ctx);
+          } catch (err) {
+            if (!deadline.cut()) {
+              rateLimit =
+                err instanceof McpError && err.code === JsonRpcErrorCode.RateLimited
+                  ? err
+                  : undefined;
+            }
+            throw err;
+          }
         },
-        { operation: 'CrossrefService.request', baseDelayMs: 1_000, signal: ctx.signal },
+        {
+          // Caller-visible: an exhausted error carries it as `data.operation`.
+          operation: 'Crossref request',
+          baseDelayMs: 1_000,
+          signal: ctx.signal,
+          deadlineMs: this.requestDeadlineMs,
+        },
       );
     } catch (err) {
-      if (!(err instanceof McpError && err.code === JsonRpcErrorCode.RequestCancelled)) {
-        logger.warning('Crossref request failed', withExtra(ctx, { url, cause: causeOf(err) }));
+      if (ctx.signal.aborted) {
+        throw err instanceof McpError && err.code === JsonRpcErrorCode.RequestCancelled
+          ? err
+          : requestCancelled('Crossref request cancelled by caller.', undefined, { cause: err });
       }
-      throw err;
+      let failure = err;
+      if (err instanceof McpError && err.data?.reason === 'retry_deadline_exceeded') {
+        failure =
+          rateLimit ??
+          (err.cause instanceof McpError ? err.cause : this.deadlineTimeout(err.cause));
+      }
+      logger.warning('Crossref request failed', withExtra(ctx, { url, cause: causeOf(failure) }));
+      throw failure;
     }
   }
 
@@ -370,7 +480,7 @@ export class CrossrefService {
         headers: { 'User-Agent': userAgent },
       });
     } catch (err) {
-      throw this.transportError(err, deadline.expired(), ctx);
+      throw this.transportError(err, deadline, ctx);
     }
 
     if (!response.ok) throw await this.responseError(response);
@@ -380,7 +490,7 @@ export class CrossrefService {
       // The window still covers the body read — a stalled stream is a timeout too.
       text = await response.text();
     } catch (err) {
-      throw this.transportError(err, deadline.expired(), ctx);
+      throw this.transportError(err, deadline, ctx);
     }
 
     if (/^\s*<(!DOCTYPE\s+html|html[\s>])/i.test(text)) {
@@ -409,8 +519,12 @@ export class CrossrefService {
     }
   }
 
-  /** Open one timeout window, for the requests that are to share it — see `Deadline`. */
-  private openDeadline(ctx: Context): Deadline {
+  /**
+   * Open one timeout window, for the requests that are to share it — see `Deadline`. A Crossref
+   * attempt passes the request deadline's signal, which already carries the caller's; every
+   * other request runs under the caller's signal alone.
+   */
+  private openDeadline(ctx: Context, requestSignal: AbortSignal = ctx.signal): Deadline {
     /**
      * An `AbortController` aborted with a `TimeoutError` DOMException rather than
      * `AbortSignal.timeout()`: the reason is then recognizable by identity in `expired`,
@@ -423,30 +537,42 @@ export class CrossrefService {
     );
     const timer = setTimeout(() => timeout.abort(timeoutReason), this.timeoutMs);
     return {
-      signal: AbortSignal.any([ctx.signal, timeout.signal]),
+      signal: AbortSignal.any([requestSignal, timeout.signal]),
       expired: () => timeout.signal.reason === timeoutReason,
+      cut: () => requestSignal.aborted && !ctx.signal.aborted,
       [Symbol.dispose]: () => clearTimeout(timer),
     };
   }
 
+  /** The request deadline ran out before Crossref answered: an attempt cut short, or none sent. */
+  private deadlineTimeout(cause?: unknown): McpError {
+    return upstreamError(
+      REQUEST_TIMEOUT,
+      `Crossref did not answer within the ${this.requestDeadlineMs}ms request deadline.`,
+      { data: { deadlineMs: this.requestDeadlineMs }, cause },
+    );
+  }
+
   /**
-   * Classify a raw transport rejection. `timedOut` is decided by which signal fired, not
-   * by the rejection value: `fetch` rejects with the abort *reason*, which may be any
-   * value. The network path rejects with a `TypeError` whose message ("fetch failed")
-   * says nothing — the real reason sits on `.cause`, which the framework's classifier
-   * never reads.
+   * Classify a raw transport rejection. Which clock ended the request is decided by which
+   * signal fired, not by the rejection value: `fetch` rejects with the abort *reason*, which
+   * may be any value. The network path rejects with a `TypeError` whose message ("fetch
+   * failed") says nothing — the real reason sits on `.cause`, which the framework's
+   * classifier never reads.
    */
-  private transportError(err: unknown, timedOut: boolean, ctx: Context): unknown {
-    if (timedOut) {
+  private transportError(err: unknown, deadline: Deadline, ctx: Context): unknown {
+    // Checked before the window: the request deadline, not this attempt, ran out of time.
+    if (deadline.cut()) return this.deadlineTimeout(err);
+    if (deadline.expired()) {
       /**
-       * Opted out of retry at the throw site rather than on the contract entry. A deadline
+       * Opted out of retry at the throw site rather than on the contract entry. A window
        * expiry is the one transient failure whose cost is set by this server's own clock
-       * instead of by how fast the upstream answers, so each retry spends the full
-       * `CROSSREF_TIMEOUT_MS` — four attempts plus backoff is ~47s of silence at the
-       * default, past what an MCP client's own request budget usually allows, and the
-       * recovery hint is then never read. 408 and 504 keep the full budget: they carry the
-       * same reason but arrive at upstream speed, so retrying one costs nothing near the
-       * deadline. The quantity that decides is which clock bounded the failure, not the code.
+       * instead of by how fast the upstream answers: each retry spends another full
+       * `CROSSREF_TIMEOUT_MS`, so at the default the ladder would run on to the request
+       * deadline before the caller read the recovery hint, against an upstream that has just
+       * failed to answer in that time. 408 and 504 keep the full budget: they carry the same
+       * reason but arrive at upstream speed, so retrying one costs nothing near the window.
+       * The quantity that decides is which clock bounded the failure, not the code.
        */
       return upstreamError(
         REQUEST_TIMEOUT,
@@ -531,6 +657,63 @@ export class CrossrefService {
   }
 
   /**
+   * The works whose own records name `doi` as their preprint (`has-preprint`) — the published
+   * version a preprint's record can leave out while the article's record still names the
+   * preprint. Read after a preprint's record, with `doi` spelled as that record spells it:
+   * `relation.object` matches case-sensitively, and Crossref returns DOIs lowercased.
+   *
+   * Best effort, as the registry lookup is: one attempt with no retry, inside one
+   * `CROSSREF_TIMEOUT_MS` window of its own composed with the caller's signal, so the call ends
+   * within its record read plus one window. Any failure to get a readable answer — a timeout, a
+   * network error, any 4xx or 5xx, a body that is HTML, empty, not JSON, or not a works list — is
+   * `failed`, which is not an empty answer. Two failures are not absorbed: a 429, whose wait is
+   * the caller's next move, and the caller's cancellation, which a caller already gone hears
+   * without a request being sent. A failure is logged with its URL through the Pino-only
+   * `logger`, as `request()` logs one.
+   */
+  async getPublishedVersions(doi: string, ctx: Context): Promise<PublishedVersionsLookup> {
+    const params = new URLSearchParams({
+      filter: `relation.type:has-preprint,relation.object:${doi}`,
+      rows: String(PUBLISHED_VERSION_ROWS),
+      select: 'DOI,type,title',
+    });
+    const url = `${this.baseUrl}/works?${params}`;
+    const cancelled = (cause: unknown) =>
+      requestCancelled('Crossref published-version lookup cancelled by caller.', undefined, {
+        cause,
+      });
+    if (ctx.signal.aborted) throw cancelled(ctx.signal.reason);
+
+    using deadline = this.openDeadline(ctx);
+    let body: unknown;
+    try {
+      body = await this.attempt<unknown>(url, this.userAgent, deadline, ctx);
+    } catch (err) {
+      if (ctx.signal.aborted) throw cancelled(err);
+      logger.warning(
+        'Crossref published-version lookup failed',
+        withExtra(ctx, { url, cause: causeOf(err) }),
+      );
+      if (err instanceof McpError && err.code === JsonRpcErrorCode.RateLimited) throw err;
+      return { kind: 'failed' };
+    }
+
+    const parsed = PublishedVersionsSchema.safeParse(body);
+    if (!parsed.success) {
+      logger.warning(
+        'Crossref published-version lookup failed',
+        withExtra(ctx, { url, cause: 'The body is not a works list.' }),
+      );
+      return { kind: 'failed' };
+    }
+    return {
+      kind: 'found',
+      total: parsed.data.message['total-results'],
+      works: parsed.data.message.items,
+    };
+  }
+
+  /**
    * Fetch a Crossref member (publisher/organization) by numeric ID. Returns null on 404,
    * letting the caller throw the appropriate typed error. Mirrors getWork()'s 404→null pattern.
    */
@@ -568,7 +751,7 @@ export class CrossrefService {
   /**
    * Ask the DOI registry which registration agency holds a bare prefix (or a DOI) — read only
    * after Crossref has answered 404, to tell an identifier another agency registered from one
-   * nobody did. One window of its own, the same per-request timeout every Crossref attempt
+   * nobody did. One window of its own, the same per-attempt timeout every Crossref attempt
    * gets; see `readRegistry` for what it answers. A DOI's not-found lookup goes through
    * `getDoiRegistration` instead, which can also read the work's citation.
    */
@@ -696,8 +879,9 @@ export class CrossrefService {
 
     /**
      * select= on /works (search), never on /works/{doi}, which refuses the parameter.
-     * crossref_search_works always names its fields — the caller's selection, or every name
-     * its summary projects when there is none — so a page never carries whole records.
+     * crossref_search_works always names its fields — the caller's selection, or when there is
+     * none its default one, every name its summary projects but the opt-in funder, license, and
+     * link — so a page never carries whole records.
      *
      * DOI is force-included in every projection: it is the work summary's only
      * identifier and the sole key that chains into /works/{doi}, so a projection

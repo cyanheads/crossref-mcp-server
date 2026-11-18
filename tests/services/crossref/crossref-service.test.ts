@@ -17,6 +17,7 @@
 import { readFileSync } from 'node:fs';
 import { createFetchMock, createMockContext } from '@cyanheads/mcp-ts-core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { hang } from '../../helpers/crossref-responses.js';
 
 vi.mock('@/config/server-config.js', () => ({
   getServerConfig: vi.fn().mockReturnValue({
@@ -27,6 +28,7 @@ vi.mock('@/config/server-config.js', () => ({
 }));
 
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
+import { logger } from '@cyanheads/mcp-ts-core/utils';
 import {
   CrossrefService,
   getCrossrefService,
@@ -148,7 +150,7 @@ describe('CrossrefService', () => {
     expect(http.calls).toHaveLength(1);
   });
 
-  it('clears the per-request timeout timer once the call succeeds', async () => {
+  it('clears the per-attempt timeout timer once the call succeeds', async () => {
     serve(makeSingleEnvelope({ DOI: '10.1038/nature12373', type: 'journal-article' }));
 
     // Awaited directly: advancing timers would fire the abort timer and make an uncleared
@@ -1186,14 +1188,6 @@ describe('CrossrefService', () => {
         headers: { 'content-type': `${CSL}; charset=utf-8` },
         ...init,
       });
-    /** A response that rejects with its request's abort reason once that signal fires, and never answers before. */
-    const hang = (request: Request) =>
-      new Promise<Response>((_, reject) => {
-        request.signal.addEventListener('abort', () => reject(request.signal.reason), {
-          once: true,
-        });
-      });
-
     it('reads the citation from doi.org itself, after the registry names an agency that serves one', async () => {
       registeredWith('DataCite');
       citation(() => csl(JSON.stringify(RECORD)));
@@ -1597,5 +1591,286 @@ describe('nextPageOffset', () => {
         cap: WORKS_OFFSET_CAP,
       }),
     ).toEqual({ kind: 'end' });
+  });
+});
+
+/**
+ * The published-version lookup: one request to `/works` for the works naming a preprint in
+ * `has-preprint`, made once, in a timeout window of its own (5000 ms under this file's config).
+ * Every failure but a 429 and the caller's cancellation reads as `failed`, never as an empty
+ * answer, and none is retried.
+ */
+describe('CrossrefService.getPublishedVersions', () => {
+  const PREPRINT = '10.1101/2020.03.22.002386';
+  const ARTICLE = {
+    DOI: '10.1038/s41586-020-2286-9',
+    type: 'journal-article',
+    title: ['A SARS-CoV-2 protein interaction map reveals targets for drug repurposing'],
+  };
+  let service: CrossrefService;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    http.reset();
+    http.install();
+    service = new CrossrefService();
+  });
+
+  afterEach(() => {
+    http.restore();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('asks /works once for the works naming the DOI in has-preprint, from the polite pool', async () => {
+    serve(makeListEnvelope([ARTICLE], 1));
+
+    const lookup = await service.getPublishedVersions(PREPRINT, createMockContext());
+
+    expect(lookup).toEqual({ kind: 'found', total: 1, works: [ARTICLE] });
+    expect(http.calls).toHaveLength(1);
+    const url = new URL(requestedUrl());
+    expect(`${url.origin}${url.pathname}`).toBe('https://api.crossref.test/works');
+    expect([...url.searchParams]).toEqual([
+      ['filter', `relation.type:has-preprint,relation.object:${PREPRINT}`],
+      ['rows', '10'],
+      ['select', 'DOI,type,title'],
+    ]);
+    expect(http.calls[0]?.request.headers.get('User-Agent')).toContain('mailto:test@example.com');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('sends the DOI spelled exactly as given, since Crossref matches relation.object by case', async () => {
+    serve(makeListEnvelope([], 0));
+
+    await service.getPublishedVersions('10.2196/PREPRINTS.17294', createMockContext());
+
+    expect(requestedParams().get('filter')).toBe(
+      'relation.type:has-preprint,relation.object:10.2196/PREPRINTS.17294',
+    );
+  });
+
+  it('reads an empty list as an answer with no works, apart from a failure', async () => {
+    serve(makeListEnvelope([], 0));
+
+    expect(await service.getPublishedVersions(PREPRINT, createMockContext())).toEqual({
+      kind: 'found',
+      total: 0,
+      works: [],
+    });
+  });
+
+  it('returns the full total beside the ten works it reads', async () => {
+    const works = Array.from({ length: 10 }, (_, i) => ({
+      DOI: `10.1000/article.${i}`,
+      type: 'journal-article',
+      title: [`Article ${i}`],
+    }));
+    serve(makeListEnvelope(works, 14));
+
+    expect(await service.getPublishedVersions(PREPRINT, createMockContext())).toEqual({
+      kind: 'found',
+      total: 14,
+      works,
+    });
+  });
+
+  it('keeps a work whose type or title arrives in another shape, without that field', async () => {
+    serve(
+      makeListEnvelope(
+        [
+          { DOI: '10.1000/a', type: null, title: 'not a list', score: 1 },
+          { DOI: '10.1000/b', title: [7] },
+          { DOI: '10.1000/c' },
+        ],
+        3,
+      ),
+    );
+
+    expect(await service.getPublishedVersions(PREPRINT, createMockContext())).toEqual({
+      kind: 'found',
+      total: 3,
+      works: [{ DOI: '10.1000/a' }, { DOI: '10.1000/b' }, { DOI: '10.1000/c' }],
+    });
+  });
+
+  /** Every failure class the lookup absorbs. Each is one request, never retried. */
+  it.each<[string, () => void]>([
+    ['a 408', () => serveRaw('timeout', { status: 408 })],
+    ['a 504', () => serveRaw('gateway timeout', { status: 504 })],
+    ['a 500', () => serveRaw('java.lang.NullPointerException', { status: 500 })],
+    ['a 503', () => serveRaw('down', { status: 503 })],
+    ['a 404', () => serveRaw('Resource not found.', { status: 404 })],
+    [
+      'a 400 rejection',
+      () =>
+        serve(
+          {
+            status: 'failed',
+            'message-type': 'validation-failure',
+            message: [{ type: 'filter-not-available', value: 'relation.object', message: 'x' }],
+          },
+          { status: 400 },
+        ),
+    ],
+    ['a 403', () => serveRaw('forbidden', { status: 403 })],
+    ['a 409', () => serveRaw('conflict', { status: 409 })],
+    ['an HTML page', () => serveRaw('<!DOCTYPE html><html><body>busy</body></html>')],
+    ['an empty body', () => serveRaw('')],
+    ['a body that is not JSON', () => serveRaw('{"message": {"total-results": 1, ')],
+    [
+      'a network failure',
+      () =>
+        http.route({
+          match: CROSSREF,
+          respond: () => Promise.reject(new TypeError('fetch failed')),
+        }),
+    ],
+    ['a list without a total', () => serve({ message: { items: [ARTICLE] } })],
+    ['a negative total', () => serve(makeListEnvelope([], -1))],
+    ['items that are not a list', () => serve({ message: { 'total-results': 1, items: ARTICLE } })],
+    ['a work without a DOI', () => serve(makeListEnvelope([{ type: 'journal-article' }], 1))],
+    ['a work whose DOI is not a string', () => serve(makeListEnvelope([{ DOI: 42 }], 1))],
+    ['a body with no message', () => serve({ status: 'ok' })],
+    ['a single-record body', () => serve(makeSingleEnvelope(ARTICLE))],
+  ])('reads %s as a failed lookup after one request', async (_label, arrange) => {
+    arrange();
+
+    const lookup = await settle(service.getPublishedVersions(PREPRINT, createMockContext()));
+
+    expect(lookup).toEqual({ kind: 'failed' });
+    expect(http.calls).toHaveLength(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('gives up on a stalled lookup when its window closes, and not before', async () => {
+    http.route({ match: CROSSREF, respond: hang });
+
+    let settled = false;
+    const pending = service.getPublishedVersions(PREPRINT, createMockContext()).finally(() => {
+      settled = true;
+    });
+
+    await vi.advanceTimersByTimeAsync(4999);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(settled).toBe(true);
+    expect(await pending).toEqual({ kind: 'failed' });
+    expect(http.calls).toHaveLength(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('gives up on a body that stops arriving when the window closes', async () => {
+    http.route({
+      match: CROSSREF,
+      respond: (request) =>
+        new Response(
+          new ReadableStream({
+            start(stream) {
+              stream.enqueue(new TextEncoder().encode('{"message":{"total-results":1,'));
+              request.signal.addEventListener('abort', () => stream.error(request.signal.reason), {
+                once: true,
+              });
+            },
+          }),
+        ),
+    });
+
+    const pending = service.getPublishedVersions(PREPRINT, createMockContext());
+    await vi.advanceTimersByTimeAsync(5000);
+
+    expect(await pending).toEqual({ kind: 'failed' });
+  });
+
+  it('fails the call on a 429, carrying its Retry-After, without a second request', async () => {
+    serveRaw('slow down', { status: 429, headers: { 'retry-after': '7' } });
+
+    const error = await settle(
+      service.getPublishedVersions(PREPRINT, createMockContext()).then(
+        () => undefined,
+        (err: unknown) => err,
+      ),
+    );
+
+    expect(error).toMatchObject({
+      code: JsonRpcErrorCode.RateLimited,
+      data: {
+        reason: 'rate_limited',
+        retryAfter: '7',
+        recovery: { hint: expect.stringContaining('Retry-After: 7') },
+      },
+    });
+    expect(http.calls).toHaveLength(1);
+  });
+
+  it('fails the call on a 429 naming no wait, with the contract hint', async () => {
+    serveRaw('slow down', { status: 429 });
+
+    await expect(
+      settle(service.getPublishedVersions(PREPRINT, createMockContext())),
+    ).rejects.toMatchObject({
+      code: JsonRpcErrorCode.RateLimited,
+      data: { reason: 'rate_limited' },
+    });
+    expect(http.calls).toHaveLength(1);
+  });
+
+  it('composes the caller signal, so a cancellation in flight fails the call as cancelled', async () => {
+    const controller = new AbortController();
+    http.route({ match: CROSSREF, respond: hang });
+
+    const pending = service.getPublishedVersions(
+      PREPRINT,
+      createMockContext({ signal: controller.signal }),
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    controller.abort(new Error('caller cancelled'));
+
+    await expect(pending).rejects.toMatchObject({
+      code: JsonRpcErrorCode.RequestCancelled,
+      message: 'Crossref published-version lookup cancelled by caller.',
+    });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('sends nothing for a caller already gone', async () => {
+    const controller = new AbortController();
+    controller.abort(new Error('caller cancelled'));
+    serve(makeListEnvelope([ARTICLE], 1));
+
+    await expect(
+      service.getPublishedVersions(PREPRINT, createMockContext({ signal: controller.signal })),
+    ).rejects.toMatchObject({ code: JsonRpcErrorCode.RequestCancelled });
+    expect(http.calls).toHaveLength(0);
+  });
+
+  it('logs a failure with its URL on the operator sink alone, and a cancellation not at all', async () => {
+    const warning = vi.spyOn(logger, 'warning').mockImplementation(() => {});
+    serveRaw('down', { status: 503 });
+
+    await service.getPublishedVersions(PREPRINT, createMockContext());
+
+    expect(warning).toHaveBeenCalledTimes(1);
+    expect(warning).toHaveBeenCalledWith(
+      'Crossref published-version lookup failed',
+      expect.objectContaining({
+        extra: expect.objectContaining({ url: requestedUrl() }),
+      }),
+    );
+
+    warning.mockClear();
+    http.reset();
+    const controller = new AbortController();
+    http.route({
+      match: CROSSREF,
+      respond: (request) => {
+        controller.abort(new Error('caller cancelled'));
+        return Promise.reject(request.signal.reason);
+      },
+    });
+    await expect(
+      service.getPublishedVersions(PREPRINT, createMockContext({ signal: controller.signal })),
+    ).rejects.toMatchObject({ code: JsonRpcErrorCode.RequestCancelled });
+    expect(warning).not.toHaveBeenCalled();
   });
 });

@@ -40,6 +40,13 @@ export function singleRecord(message: unknown): Response {
   return Response.json({ status: 'ok', 'message-type': 'record', message });
 }
 
+/** Never answer: reject with the request's abort reason once its signal fires. */
+export function hang(request: Request): Promise<Response> {
+  return new Promise<Response>((_, reject) => {
+    request.signal.addEventListener('abort', () => reject(request.signal.reason), { once: true });
+  });
+}
+
 /** Every text block of a result, joined by newline. */
 export function textOf(result: ToolResult): string {
   return result.content.map(blockText).join('\n');

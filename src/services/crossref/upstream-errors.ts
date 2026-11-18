@@ -11,8 +11,9 @@ import type { ErrorContract } from '@cyanheads/mcp-ts-core/errors';
 import { JsonRpcErrorCode, McpError } from '@cyanheads/mcp-ts-core/errors';
 
 /**
- * HTTP 429 that the retry budget could not clear — either the retries were spent, or
- * the upstream asked for a wait longer than the budget and `withRetry` failed fast.
+ * HTTP 429 that the retry budget could not clear — the retries were spent; the upstream asked
+ * for a wait longer than the budget, or than what was left of the request deadline, and
+ * `withRetry` failed fast; or the deadline ran out on the attempt after it.
  *
  * This `recovery` reaches the wire only when the 429 carried no `Retry-After` header:
  * when one is present, {@link rateLimitHint} overrides it with the concrete value. So
@@ -22,7 +23,7 @@ export const RATE_LIMITED = {
   reason: 'rate_limited',
   code: JsonRpcErrorCode.RateLimited,
   thrownBy: 'service',
-  when: 'Crossref answered HTTP 429 and the limit did not clear inside the retry budget.',
+  when: 'Crossref answered HTTP 429 and the limit did not clear inside the retry budget, or answered it to the single-attempt published-version lookup on a preprint.',
   recovery:
     'Crossref named no wait interval, so back off at least a minute before reissuing the same call, and lower the request rate. Setting CROSSREF_MAILTO on the server moves requests into the polite pool, which has higher limits.',
 } as const satisfies ErrorContract;
@@ -60,17 +61,20 @@ export const MALFORMED_RESPONSE = {
 } as const satisfies ErrorContract;
 
 /**
- * The request exceeded `CROSSREF_TIMEOUT_MS`, or Crossref answered 408/504.
+ * An attempt exceeded `CROSSREF_TIMEOUT_MS`, the request ran out of the deadline that bounds
+ * all its retries (25 s, or `CROSSREF_TIMEOUT_MS` when that is longer), or Crossref answered
+ * 408/504.
  *
  * The entry stays retryable because 408 and 504 arrive at whatever speed the upstream answers,
- * so retrying one costs about what any other transient status costs. The deadline-expiry throw
+ * so retrying one costs about what any other transient status costs. The window-expiry throw
  * site is the exception and opts itself out — see `transportError` in `crossref-service.ts`.
+ * The request deadline is final by construction: nothing retries past it.
  */
 export const REQUEST_TIMEOUT = {
   reason: 'request_timeout',
   code: JsonRpcErrorCode.Timeout,
   thrownBy: 'service',
-  when: 'Crossref did not respond within CROSSREF_TIMEOUT_MS, or answered HTTP 408/504.',
+  when: 'Crossref did not respond within CROSSREF_TIMEOUT_MS, did not answer before the 25 s request deadline (CROSSREF_TIMEOUT_MS when longer) that bounds every retry, or answered HTTP 408/504.',
   recovery:
     'Ask for less work per call — lower rows, drop select fields, or split a broad query — or raise CROSSREF_TIMEOUT_MS on the server, then retry.',
 } as const satisfies ErrorContract;

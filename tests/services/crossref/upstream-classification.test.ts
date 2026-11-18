@@ -22,6 +22,7 @@ import {
 import { logger } from '@cyanheads/mcp-ts-core/utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { blockText, renderedText } from '../../helpers/content.js';
+import { hang } from '../../helpers/crossref-responses.js';
 
 /** The SDK's `CallToolResult`, reached through the runner so the SDK stays a transitive dep. */
 type ToolResult = Awaited<ReturnType<typeof runToolContract>>;
@@ -34,6 +35,7 @@ vi.mock('@/config/server-config.js', () => ({
   }),
 }));
 
+import { getServerConfig } from '@/config/server-config.js';
 import {
   allToolDefinitions,
   getReferencesTool,
@@ -206,8 +208,8 @@ describe('upstream failure classification', () => {
     expect(error.code).toBe(JsonRpcErrorCode.Timeout);
     expect(error.data).toMatchObject({ reason: 'request_timeout', timeoutMs: 10_000 });
     expect(textOf(result)).toContain(REQUEST_TIMEOUT.recovery);
-    // A deadline expiry costs the full CROSSREF_TIMEOUT_MS per attempt, so four of them is
-    // ~47s of silence before the caller hears anything and can act on the hint above.
+    // A window expiry costs the full CROSSREF_TIMEOUT_MS per attempt, so retrying it would run
+    // the call on to the request deadline before the caller could act on the hint above.
     expect(error.data).toMatchObject({ retryable: false });
     expect(http.calls).toHaveLength(1);
   });
@@ -963,6 +965,334 @@ describe('timeout timer lifecycle', () => {
     // A `setTimeout` left armed after a successful call holds the event loop open for
     // the remainder of CROSSREF_TIMEOUT_MS on every request.
     expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+type Responder = (request: Request) => Response | Promise<Response>;
+
+/** Answer the nth request with the nth responder, the last one answering every request after. */
+function inTurn(...responders: Responder[]): Responder {
+  let served = 0;
+  return (request) => {
+    const respond = responders[Math.min(served, responders.length - 1)];
+    served += 1;
+    if (!respond) throw new Error('inTurn needs at least one responder');
+    return respond(request);
+  };
+}
+
+/** A 429 naming `retryAfter` as its wait. */
+const rateLimitedFor =
+  (retryAfter: string): Responder =>
+  () =>
+    new Response('slow down', { status: 429, headers: { 'retry-after': retryAfter } });
+
+/** Answer `status` after `ms` of fake time, unless the request is aborted first. */
+const answerAfter =
+  (ms: number, status: number): Responder =>
+  (request) =>
+    new Promise<Response>((resolve, reject) => {
+      const timer = setTimeout(() => resolve(new Response('', { status })), ms);
+      request.signal.addEventListener(
+        'abort',
+        () => {
+          clearTimeout(timer);
+          reject(request.signal.reason);
+        },
+        { once: true },
+      );
+    });
+
+/** A pending call whose settlement can be read while fake time advances. */
+function track<T>(promise: Promise<T>) {
+  const state = { settled: false };
+  const outcome = promise.then(
+    (value) => {
+      state.settled = true;
+      return { ok: true as const, value };
+    },
+    (error: unknown) => {
+      state.settled = true;
+      return { ok: false as const, error };
+    },
+  );
+  return {
+    get settled() {
+      return state.settled;
+    },
+    /** The tool result, once settled — `runToolContract` turns every failure into one. */
+    async result(): Promise<ToolResult> {
+      const settled = await outcome;
+      if (!settled.ok) throw settled.error;
+      return settled.value as ToolResult;
+    },
+    /** The rejection, once settled — for a service call that is expected to fail. */
+    async error(): Promise<unknown> {
+      const settled = await outcome;
+      if (settled.ok) throw new Error('expected the call to fail');
+      return settled.error;
+    },
+  };
+}
+
+/**
+ * One deadline bounds a Crossref request — every attempt, every backoff, every honored
+ * `Retry-After` — at 25 s, CROSSREF_TIMEOUT_MS being the 10 s this file configures. A tool call
+ * chains at most two such requests (a journal or funder record, then its works list), so it
+ * answers inside the 60 s request timeout MCP SDK clients default to. Backoff jitter is pinned
+ * to its midpoint, so each exponential wait is exactly 1 s, 2 s, 4 s and every instant a call
+ * settles at below is exact.
+ */
+describe('the request deadline', () => {
+  let random: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    random = vi.spyOn(Math, 'random').mockReturnValue(0.5);
+  });
+
+  afterEach(() => {
+    random.mockRestore();
+  });
+
+  it('keeps every attempt while the Retry-After waits fit inside it', async () => {
+    http.route({ match: WORKS_ROUTE, respond: rateLimitedFor('5') });
+
+    const call = track(runToolContract(getWorkTool, { doi: DOI }));
+    await vi.advanceTimersByTimeAsync(15_000);
+
+    expect(call.settled).toBe(true);
+    const error = errorOf(await call.result());
+    expect(error).toMatchObject({
+      code: JsonRpcErrorCode.RateLimited,
+      data: { reason: 'rate_limited', retryAfter: '5' },
+    });
+    expect(http.calls).toHaveLength(TOTAL_ATTEMPTS);
+  });
+
+  it('surfaces the 429 at once when the next Retry-After wait would outlast it', async () => {
+    http.route({ match: WORKS_ROUTE, respond: rateLimitedFor('10') });
+
+    const call = track(runToolContract(getWorkTool, { doi: DOI }));
+    // Attempts at 0 s, 10 s, and 20 s; a third 10 s wait would end at 30 s, past the deadline.
+    await vi.advanceTimersByTimeAsync(19_999);
+    expect(call.settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(call.settled).toBe(true);
+    const result = await call.result();
+    expect(errorOf(result)).toMatchObject({
+      code: JsonRpcErrorCode.RateLimited,
+      data: { reason: 'rate_limited', retryAfter: '10' },
+    });
+    expect(textOf(result)).toContain('Retry-After: 10');
+    expect(http.calls).toHaveLength(3);
+  });
+
+  it('cuts a slow attempt at the deadline and reports it as request_timeout', async () => {
+    // Each 504 takes 9 s: attempts start at 0 s, 10 s, and 21 s, and the third is cut at 25 s.
+    http.route({ match: WORKS_ROUTE, respond: answerAfter(9_000, 504) });
+
+    const call = track(runToolContract(getWorkTool, { doi: DOI }));
+    await vi.advanceTimersByTimeAsync(24_999);
+    expect(call.settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(call.settled).toBe(true);
+    const result = await call.result();
+    const error = errorOf(result);
+    expect(error.code).toBe(JsonRpcErrorCode.Timeout);
+    expect(error.data).toMatchObject({ reason: 'request_timeout', deadlineMs: 25_000 });
+    expect(error.data).not.toHaveProperty('retryable');
+    expect(error.message).toBe('Crossref did not answer within the 25000ms request deadline.');
+    expect(textOf(result)).toContain(REQUEST_TIMEOUT.recovery);
+    expect(http.calls).toHaveLength(3);
+    // The cut attempt's window, the deadline clock, and the stalled answer are all cleared.
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('still reports a 429 when the deadline cuts the attempt after it', async () => {
+    http.route({
+      match: WORKS_ROUTE,
+      respond: inTurn(rateLimitedFor('10'), rateLimitedFor('10'), hang),
+    });
+
+    const call = track(runToolContract(getWorkTool, { doi: DOI }));
+    await vi.advanceTimersByTimeAsync(24_999);
+    expect(call.settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(call.settled).toBe(true);
+    const result = await call.result();
+    // The wait the upstream named is still the caller's next move, so the rate limit — not
+    // the cut attempt — is what the caller hears, with its Retry-After on both surfaces.
+    expect(errorOf(result)).toMatchObject({
+      code: JsonRpcErrorCode.RateLimited,
+      data: { reason: 'rate_limited', retryAfter: '10' },
+    });
+    expect(textOf(result)).toContain('Retry-After: 10');
+    expect(http.calls).toHaveLength(3);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('forgets the 429 once a later attempt completes with another failure', async () => {
+    // 429 at 0 s; a 503 answered at 19 s; after its 2 s backoff the third attempt is cut at 25 s.
+    http.route({
+      match: WORKS_ROUTE,
+      respond: inTurn(rateLimitedFor('10'), answerAfter(9_000, 503), hang),
+    });
+
+    const call = track(runToolContract(getWorkTool, { doi: DOI }));
+    await vi.advanceTimersByTimeAsync(25_000);
+
+    expect(call.settled).toBe(true);
+    const error = errorOf(await call.result());
+    expect(error).toMatchObject({
+      code: JsonRpcErrorCode.Timeout,
+      data: { reason: 'request_timeout', deadlineMs: 25_000 },
+    });
+    expect(http.calls).toHaveLength(3);
+  });
+
+  it('reports the failure whose backoff the deadline left no room for', async () => {
+    // 503s answered at 9 s, 19 s, and 21.5 s; the 4 s backoff after the third would end past 25 s.
+    http.route({
+      match: WORKS_ROUTE,
+      respond: inTurn(answerAfter(9_000, 503), answerAfter(9_000, 503), answerAfter(500, 503)),
+    });
+
+    const call = track(runToolContract(getWorkTool, { doi: DOI }));
+    await vi.advanceTimersByTimeAsync(21_500);
+
+    expect(call.settled).toBe(true);
+    const result = await call.result();
+    expect(errorOf(result)).toMatchObject({
+      code: JsonRpcErrorCode.ServiceUnavailable,
+      data: { reason: 'upstream_unavailable' },
+    });
+    expect(textOf(result)).toContain(UPSTREAM_UNAVAILABLE.recovery);
+    expect(http.calls).toHaveLength(3);
+  });
+
+  it('sends nothing when a backoff leaves no time to send in', async () => {
+    // The clock starts 1 ms past a whole second, so an HTTP-date Retry-After 25 s on asks for
+    // a 24 999 ms wait: it fits, and the attempt after it would start with 1 ms left.
+    vi.setSystemTime(Date.UTC(2026, 0, 1, 0, 0, 0, 1));
+    const retryAt = new Date(Date.UTC(2026, 0, 1, 0, 0, 25)).toUTCString();
+    http.route({ match: WORKS_ROUTE, respond: rateLimitedFor(retryAt) });
+
+    const call = track(runToolContract(getWorkTool, { doi: DOI }));
+    await vi.advanceTimersByTimeAsync(25_000);
+
+    expect(call.settled).toBe(true);
+    expect(errorOf(await call.result())).toMatchObject({
+      code: JsonRpcErrorCode.RateLimited,
+      data: { reason: 'rate_limited', retryAfter: retryAt },
+    });
+    expect(http.calls).toHaveLength(1);
+  });
+
+  it('settles a tool call that chains two requests inside two deadlines', async () => {
+    // The journal record answers on its second attempt at 24 s; the works list then hears two
+    // 429s, at 24 s and 48 s, and the second's 24 s wait no longer fits its own deadline.
+    http.route({
+      match: /\/journals\/0028-0836(?:\?|$)/,
+      respond: inTurn(rateLimitedFor('24'), () =>
+        Response.json({
+          status: 'ok',
+          'message-type': 'journal',
+          message: { title: 'Nature', 'ISSN-L': '0028-0836', ISSN: ['0028-0836'] },
+        }),
+      ),
+    });
+    http.route({
+      match: (request) => new URL(request.url).pathname === '/works',
+      respond: rateLimitedFor('24'),
+    });
+
+    const call = track(
+      runToolContract(searchJournalsTool, { issn: '0028-0836', include_works: true, rows: 2 }),
+    );
+    await vi.advanceTimersByTimeAsync(50_000);
+
+    expect(call.settled).toBe(true);
+    expect(errorOf(await call.result())).toMatchObject({
+      code: JsonRpcErrorCode.RateLimited,
+      data: { reason: 'rate_limited', retryAfter: '24' },
+    });
+    expect(http.calls).toHaveLength(4);
+  });
+
+  it('gives a CROSSREF_TIMEOUT_MS longer than the deadline its full first attempt', async () => {
+    // The service reads its config once, in the constructor `initCrossrefService` runs.
+    vi.mocked(getServerConfig).mockReturnValueOnce({
+      mailto: 'test@example.com',
+      baseUrl: BASE_URL,
+      timeoutMs: 40_000,
+    });
+    initCrossrefService();
+    http.route({ match: WORKS_ROUTE, respond: hang });
+
+    const call = track(runToolContract(getWorkTool, { doi: DOI }));
+    await vi.advanceTimersByTimeAsync(39_999);
+    expect(call.settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(call.settled).toBe(true);
+    expect(errorOf(await call.result())).toMatchObject({
+      code: JsonRpcErrorCode.Timeout,
+      data: { reason: 'request_timeout' },
+    });
+    expect(http.calls).toHaveLength(1);
+  });
+
+  it('names the request, not the class, in the label an exhausted error carries', async () => {
+    http.route({ match: WORKS_ROUTE, respond: () => new Response('down', { status: 503 }) });
+
+    const error = errorOf(await getWork());
+
+    expect(error.data).toMatchObject({
+      reason: 'upstream_unavailable',
+      retryAttempts: TOTAL_ATTEMPTS,
+      operation: 'Crossref request',
+    });
+  });
+
+  it('keeps the upstream URL and body off an error the deadline ended', async () => {
+    http.route({
+      match: WORKS_ROUTE,
+      respond: inTurn(rateLimitedFor('10'), rateLimitedFor('10'), hang),
+    });
+
+    const call = track(runToolContract(getWorkTool, { doi: DOI }));
+    await vi.advanceTimersByTimeAsync(25_000);
+
+    expect(call.settled).toBe(true);
+    const result = await call.result();
+    expect(errorOf(result).data).toMatchObject({ reason: 'rate_limited' });
+    expect(errorOf(result).data ?? {}).not.toHaveProperty('url');
+    expect(errorOf(result).data ?? {}).not.toHaveProperty('body');
+    expect(errorOf(result).data ?? {}).not.toHaveProperty('responseBody');
+    expect(JSON.stringify(result)).not.toContain(BASE_URL);
+  });
+
+  it('reports a cancellation during a backoff as RequestCancelled, unlogged and unretried', async () => {
+    const warning = vi.spyOn(logger, 'warning').mockImplementation(() => {});
+    const controller = new AbortController();
+    http.route({ match: WORKS_ROUTE, respond: () => new Response('down', { status: 503 }) });
+
+    const call = track(
+      getCrossrefService().getWork(DOI, createMockContext({ signal: controller.signal })),
+    );
+    // Inside the 1 s backoff after the first 503.
+    await vi.advanceTimersByTimeAsync(500);
+    controller.abort(new Error('caller cancelled'));
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(call.settled).toBe(true);
+    expect(await call.error()).toMatchObject({ code: JsonRpcErrorCode.RequestCancelled });
+    expect(http.calls).toHaveLength(1);
+    expect(warning).not.toHaveBeenCalled();
+    warning.mockRestore();
   });
 });
 
