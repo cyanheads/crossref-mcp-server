@@ -7,9 +7,12 @@
  * applies; `format()` renders nothing for such a page unless it carries facets, so that notice
  * leads `content[]`. Each work's author list is capped per work by authorLimit, with authorCount
  * carrying the full deposited total and crossref_get_work as the route to the authors a cap left
- * out. Update links (`updatedBy`, `updateTo`) share their shape and line with crossref_get_work.
- * `fields` accepts only the select names the summary projects, and decides whether `rows` is
- * capped: a selection naming neither `abstract` nor `author` takes Crossref's full page. `facets`
+ * out. Update links (`updatedBy`, `updateTo`) share their shape and line with crossref_get_work,
+ * and so do funders, licenses, and full-text links, which a page carries only when `fields` names
+ * them; each work's funders are cut at 25 the way its authors are cut at authorLimit, with
+ * funderCount the deposited total. `fields` accepts only the select names the summary projects,
+ * and decides how far `rows` is capped: 200 under a selection naming funder, license, or link;
+ * otherwise 500 under one naming abstract or author; otherwise Crossref's full page. `facets`
  * returns value counts over the whole match set, and `rows: 0` returns those counts and the total
  * alone, on a page that is empty by request. A blank optional input is read as omitted.
  * @module mcp-server/tools/definitions/search-works.tool
@@ -19,6 +22,7 @@ import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { isBlank, nonBlank } from '@/mcp-server/tools/blank-input.js';
 import { cursorNotice } from '@/mcp-server/tools/cursor-notice.js';
+import { GRANT_TITLE_NOTICE, hasUntitledGrant } from '@/mcp-server/tools/grant-rows.js';
 import { mdText, mdTextInHeading, mdTextInListItem } from '@/mcp-server/tools/markdown-text.js';
 import {
   type ClampedPageSize,
@@ -27,6 +31,7 @@ import {
   fitWindow,
   ROWS_CEILING,
   SEARCH_WORKS_AUTHOR_LIMIT_CAP,
+  SEARCH_WORKS_OPT_IN_ROWS_CAP,
   SEARCH_WORKS_ROWS_CAP,
 } from '@/mcp-server/tools/page-size.js';
 import {
@@ -37,6 +42,17 @@ import {
   projectApproved,
   projectEvent,
 } from '@/mcp-server/tools/work-dates.js';
+import {
+  FunderSchema,
+  funderSection,
+  LicenseSchema,
+  LinkSchema,
+  licenseSection,
+  linkSection,
+  normalizeFunder,
+  projectLicenses,
+  projectLinks,
+} from '@/mcp-server/tools/work-funders-licenses-links.js';
 import { locatorFields, locatorLine, projectLocators } from '@/mcp-server/tools/work-locators.js';
 import { projectUpdates, updateFields, updateSections } from '@/mcp-server/tools/work-updates.js';
 import {
@@ -61,13 +77,11 @@ import {
 const OFFSET_CAP = 10_000;
 
 /**
- * The `select=` names the work summary projects, and so the only names `fields` accepts. Crossref
- * lists 59 select names on `/works`; a name outside this set would be fetched and then dropped by
- * the projection, which no response surface could report. It is also the selection a page
- * carries when `fields` names none, so a raw key the projection below starts reading joins this
- * list in the same change — absent from it, the key reads as absent on every record.
+ * The selection a page carries when `fields` names none: every name the summary projects but the
+ * opt-in ones below. A raw key the projection starts reading joins this list or that one in the
+ * same change — absent from both, the key reads as absent on every record.
  */
-const SELECTABLE_FIELDS = [
+const DEFAULT_FIELDS = [
   'DOI',
   'title',
   'type',
@@ -91,6 +105,29 @@ const SELECTABLE_FIELDS = [
   'updated-by',
   'update-to',
 ] as const;
+
+/**
+ * Names a page carries only when `fields` names them. Each is a list a record can deposit by the
+ * hundred — a collaboration paper's funders, a publisher's license and link entries — so a page
+ * that never asked for them keeps the size and the `rows` cap it has always had.
+ */
+const OPT_IN_FIELDS = ['funder', 'license', 'link'] as const;
+
+/**
+ * The `select=` names the work summary projects, and so the only names `fields` accepts. Crossref
+ * lists 59 select names on `/works`; a name outside this set would be fetched and then dropped by
+ * the projection, which no response surface could report.
+ */
+const SELECTABLE_FIELDS = [...DEFAULT_FIELDS, ...OPT_IN_FIELDS] as const;
+
+type SelectName = (typeof SELECTABLE_FIELDS)[number];
+
+/**
+ * The most funders a work summary carries. A collaboration paper deposits hundreds
+ * (`10.1103/physrevd.107.l091102`: 381, 34 KB of `structuredContent` on their own), so the summary
+ * carries the first 25 and funderCount the deposited total, as it carries authors and authorCount.
+ */
+const FUNDER_LIMIT = 25;
 
 /** The facet names Crossref lists for `/works`, in its order; an unlisted name is a 400. */
 const FACET_NAMES = [
@@ -132,7 +169,12 @@ function listOf(names: readonly string[]): string {
 const WorkSummarySchema = z
   .object({
     doi: z.string().describe('Canonical DOI'),
-    title: z.string().optional().describe('Work title'),
+    title: z
+      .string()
+      .optional()
+      .describe(
+        'Work title. A grant deposits none: its project titles sit in a field a works list cannot select, and crossref_get_work returns them.',
+      ),
     type: z.string().optional().describe('Work type'),
     authors: z
       .array(
@@ -194,13 +236,37 @@ const WorkSummarySchema = z
       .describe(
         'Abstract when present in the indexed record — the text of the publisher’s JATS deposit, with markup removed and character references decoded; each section heading of a structured abstract is followed by a colon ("Objectives: …") unless it already ends in a period, colon, question mark, or exclamation mark, a heading whose section holds no text (a figure-only "Graphical Abstract") is dropped, the "Abstract" heading a deposit opens with is dropped, and the items of one list are joined by "; " unless an item already ends in a period, comma, semicolon, colon, question mark, or exclamation mark; numeric JATS superscripts retain caret notation (10^{16}, GeV^2), a link keeps its tag only where its href holds an address the text it wraps does not already carry, and each formula appears once — MathML as the TeX annotation it carries, otherwise written out linearly (x_i, A^{−1}, √(m), (a+b)/c), and TeX deposited beside MathML in whichever notation comes first. Omitted when the deposit holds no text.',
       ),
+    funders: z
+      .array(FunderSchema)
+      .optional()
+      .describe(
+        `Funding acknowledgements, in deposited order, capped at the first ${FUNDER_LIMIT}. Present only when fields names funder, and omitted when the record deposits none.`,
+      ),
+    funderCount: z
+      .number()
+      .optional()
+      .describe(
+        `Total number of funding acknowledgements deposited for this work, before the ${FUNDER_LIMIT}-funder cap. Greater than the length of funders when the cap cut the list; pass the doi of this work to crossref_get_work for the whole list.`,
+      ),
+    licenses: z
+      .array(LicenseSchema)
+      .optional()
+      .describe(
+        'License terms, in deposited order. Present only when fields names license, and omitted when the record deposits none.',
+      ),
+    links: z
+      .array(LinkSchema)
+      .optional()
+      .describe(
+        'Registered full-text links, in deposited order. Present only when fields names link, and omitted when the record deposits none.',
+      ),
   })
   .describe('Work summary');
 
 export const searchWorksTool = tool('crossref_search_works', {
   title: 'Search Works',
   description:
-    'Searches the Crossref works index (~188M records) by free text and/or structured filters. The generic query matches loosely across all fields; scope precisely with the field-specific parameters queryTitle, queryAuthor, and queryContainerTitle, or resolve a known citation to its DOI with queryBibliographic — all combine with each other and with query. Use the filter parameter for structured filtering (object with hyphen-separated Crossref keys). Sort options: relevance, score, is-referenced-by-count, published, deposited, indexed, created. Each work returns at most authorLimit authors (25 by default) with authorCount reporting the full deposited total, since a single page of large-collaboration papers can carry tens of thousands of author entries; crossref_get_work pages the whole author list for any DOI whose list was cut. Post-publication updates ride each work as Crossref records them: updatedBy names each correction, retraction, expression of concern, or new version issued against it, and updateTo the works it is itself a notice for — an absent updatedBy does not mean the work was never updated. Set facets to count the matching works per value of a field — per publication year, publisher, type, funder, affiliation, ORCID, and more — over the whole match set in the same call; rows: 0 returns the counts alone. Offset-based paging is capped at ~10K results; use cursor="*" to start cursor-based deep paging, then pass the nextCursor value from each response to continue. A walk with a query term and no sort runs by relevance, one with filters only in Crossref registration order. The walk ends on the page where nextCursor is absent — that page also carries a notice saying the list is exhausted. Cursor and offset cannot be combined.',
+    'Searches the Crossref works index (~188M records) by free text and/or structured filters. The generic query matches loosely across all fields; scope precisely with the field-specific parameters queryTitle, queryAuthor, and queryContainerTitle, or resolve a known citation to its DOI with queryBibliographic — all combine with each other and with query. Use the filter parameter for structured filtering (object with hyphen-separated Crossref keys). Sort options: relevance, score, is-referenced-by-count, published, deposited, indexed, created. Each work returns at most authorLimit authors (25 by default) with authorCount reporting the full deposited total, since a single page of large-collaboration papers can carry tens of thousands of author entries; crossref_get_work pages the whole author list for any DOI whose list was cut. Funding acknowledgements with their award numbers, license terms, and registered full-text links come back only when fields names funder, license, or link, in the entry shapes crossref_get_work uses; each work then carries at most 25 funders, with funderCount the full deposited total. Post-publication updates ride each work as Crossref records them: updatedBy names each correction, retraction, expression of concern, or new version issued against it, and updateTo the works it is itself a notice for — an absent updatedBy does not mean the work was never updated. Set facets to count the matching works per value of a field — per publication year, publisher, type, funder, affiliation, ORCID, and more — over the whole match set in the same call; rows: 0 returns the counts alone. Offset-based paging is capped at ~10K results; use cursor="*" to start cursor-based deep paging, then pass the nextCursor value from each response to continue. A walk with a query term and no sort runs by relevance, one with filters only in Crossref registration order. The walk ends on the page where nextCursor is absent — that page also carries a notice saying the list is exhausted. Cursor and offset cannot be combined.',
   annotations: { readOnlyHint: true, openWorldHint: true },
 
   input: z.object({
@@ -238,7 +304,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       .array(z.enum(SELECTABLE_FIELDS).describe('Crossref select name'))
       .optional()
       .describe(
-        'Fields to return (reduces payload). Names are case-sensitive, and each fills one output field: DOI → doi, title → title, type → type, author → authors and authorCount, published / published-print / published-online → published, approved → approved, container-title → containerTitle and containerTitles, event → event, publisher → publisher, member → memberId, is-referenced-by-count → isReferencedByCount, score → score, abstract → abstract, volume → volume, issue → issue, page → page, article-number → articleNumber, ISSN → issn, updated-by → updatedBy, update-to → updateTo. A selected field absent from a work means the record does not deposit it. DOI is always returned whether or not it is listed here, so every result stays resolvable by crossref_get_work, which also returns the fields this list does not cover (license, funder, references, and the rest of the record).',
+        `Fields to return (reduces payload). Names are case-sensitive, and each fills one output field: DOI → doi, title → title, type → type, author → authors and authorCount, published / published-print / published-online → published, approved → approved, container-title → containerTitle and containerTitles, event → event, publisher → publisher, member → memberId, is-referenced-by-count → isReferencedByCount, score → score, abstract → abstract, volume → volume, issue → issue, page → page, article-number → articleNumber, ISSN → issn, updated-by → updatedBy, update-to → updateTo, funder → funders and funderCount, license → licenses, link → links. Omitted or empty, every name but funder, license, and link is selected; those three are returned only when named here. A work's funders are capped at the first ${FUNDER_LIMIT}, with funderCount the deposited total. A grant record carries no funders: its funder sits under its project, a field a works list cannot select. A selected field absent from a work means the record does not deposit it. DOI is always returned whether or not it is listed here, so every result stays resolvable by crossref_get_work, which also returns a work's whole funder list and the fields this list does not cover (references, relations, and the rest of the record).`,
       ),
     rows: z
       .number()
@@ -247,7 +313,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       .max(ROWS_CEILING)
       .default(20)
       .describe(
-        `Number of results to return per page (default 20): 0–${SEARCH_WORKS_ROWS_CAP} per call when fields names abstract or author, or is omitted or empty, which selects every field; 0–${ROWS_CEILING} when fields names neither. A value above ${SEARCH_WORKS_ROWS_CAP} under the first kind of selection returns ${SEARCH_WORKS_ROWS_CAP} and says so in notice — on an offset page the notice also names the offset that continues after the records returned. 0 returns no works, only totalResults and any facets, and does not advance a cursor walk.`,
+        `Number of results to return per page (default 20): 0–${SEARCH_WORKS_ROWS_CAP} per call when fields names abstract or author, or is omitted or empty, which selects every field but funder, license, and link; 0–${SEARCH_WORKS_OPT_IN_ROWS_CAP} when fields names funder, license, or link, whatever else it names; 0–${ROWS_CEILING} when fields names none of those five. A value above ${SEARCH_WORKS_ROWS_CAP} under the first kind of selection returns ${SEARCH_WORKS_ROWS_CAP} and says so in notice, and one above ${SEARCH_WORKS_OPT_IN_ROWS_CAP} under the second returns ${SEARCH_WORKS_OPT_IN_ROWS_CAP} the same way — on an offset page the notice also names the offset that continues after the records returned. 0 returns no works, only totalResults and any facets, and does not advance a cursor walk.`,
       ),
     facets: z
       .partialRecord(
@@ -392,7 +458,7 @@ export const searchWorksTool = tool('crossref_search_works', {
       .string()
       .optional()
       .describe(
-        `Guidance on an empty page, naming which of its three causes applies: a query nothing matched, an offset past the end of a list that did match, or a cursor walk that has reached the end of the list. A rows: 0 page names only the first, and beside a cursor says that the page does not advance the walk. On a page carrying records, present when authorLimit cut at least one work list, naming how many and the route to the rest, or when every query term and filter value was supplied blank, so the page lists the whole index unfiltered. On any page, present when rows or authorLimit was above its per-call cap, naming the value requested and the cap applied — for rows under a fields selection naming abstract or author, also that one naming neither takes rows up to ${ROWS_CEILING}; on an offset page with records remaining, also the offset that continues after the records returned. On an offset page where offset + rows would pass the ~10K offset ceiling, present naming the rows requested and the rows that fit and were applied, and, when records remain past the ceiling, cursor as the route to them. Present when a facets count was above ${FACET_VALUE_CEILING}, naming the count requested and the ${FACET_VALUE_CEILING} applied, and when a facet returned as many values as its limit, naming the facet and the route to the values it may have left out. A page needing more than one caveat carries them all in this one string.`,
+        `Guidance on an empty page, naming which of its three causes applies: a query nothing matched, an offset past the end of a list that did match, or a cursor walk that has reached the end of the list. A rows: 0 page names only the first, and beside a cursor says that the page does not advance the walk. On a page carrying records, present when authorLimit cut at least one work's author list or the ${FUNDER_LIMIT}-funder cap one work's funder list, naming how many and the route to the rest; when a grant row lacks the title a selection of both type and title asked for, naming crossref_get_work as the route to it; or when every query term and filter value was supplied blank, so the page lists the whole index unfiltered. On any page, present when rows or authorLimit was above its per-call cap, naming the value requested and the cap applied — for rows under a fields selection naming funder, license, or link, also the caps a selection without them takes; under one naming abstract or author, also that one naming neither takes rows up to ${ROWS_CEILING}; on an offset page with records remaining, also the offset that continues after the records returned. On an offset page where offset + rows would pass the ~10K offset ceiling, present naming the rows requested and the rows that fit and were applied, and, when records remain past the ceiling, cursor as the route to them. Present when a facets count was above ${FACET_VALUE_CEILING}, naming the count requested and the ${FACET_VALUE_CEILING} applied, and when a facet returned as many values as its limit, naming the facet and the route to the values it may have left out. A page needing more than one caveat carries them all in this one string.`,
       ),
   },
 
@@ -479,20 +545,25 @@ export const searchWorksTool = tool('crossref_search_works', {
       throw ctx.fail('cursor_offset_conflict', 'Provide cursor or offset, not both.');
     }
 
-    // No selection is every name the summary projects, never Crossref's whole record.
-    const fields: readonly (typeof SELECTABLE_FIELDS)[number][] = input.fields?.length
-      ? input.fields
-      : SELECTABLE_FIELDS;
+    // No selection is the default one, never Crossref's whole record.
+    const fields: readonly SelectName[] = input.fields?.length ? input.fields : DEFAULT_FIELDS;
+    const selects = (name: SelectName) => fields.includes(name);
     /**
      * Clamped once, here, so the offset window, the upstream request, the per-work author
      * slice, and the `cap` enrichment all read the page size actually used. Only a selection
-     * carrying an abstract or an author list — what makes a work heavy — is capped; one naming
-     * neither, whatever else it names, is bounded by the schema's own ceiling.
+     * carrying what makes a work heavy is capped: a funder, license, or link list the lowest,
+     * whatever else it names, then an abstract or an author list. One naming none of the five
+     * is bounded by the schema's own ceiling.
      */
-    const heavy = fields.includes('abstract') || fields.includes('author');
-    const rowsClamp: ClampedPageSize = heavy
-      ? clampPageSize('rows', input.rows, SEARCH_WORKS_ROWS_CAP)
-      : { value: input.rows };
+    const optIn = OPT_IN_FIELDS.some(selects);
+    const heavy = selects('abstract') || selects('author');
+    const rowsCap = optIn
+      ? SEARCH_WORKS_OPT_IN_ROWS_CAP
+      : heavy
+        ? SEARCH_WORKS_ROWS_CAP
+        : undefined;
+    const rowsClamp: ClampedPageSize =
+      rowsCap === undefined ? { value: input.rows } : clampPageSize('rows', input.rows, rowsCap);
     const authorLimitClamp = clampPageSize(
       'authorLimit',
       input.authorLimit,
@@ -614,6 +685,18 @@ export const searchWorksTool = tool('crossref_search_works', {
         }),
         ...(raw.score !== undefined && { score: raw.score }),
         ...(abstract !== undefined && { abstract }),
+        /**
+         * The opt-in lists are read only where named, so a page that never asked for them carries
+         * none whatever a record holds. Funders are cut here, once, as authors are, so both
+         * surfaces are handed the same list and funderCount keeps a cut one visibly cut.
+         */
+        ...(selects('funder') &&
+          raw.funder && {
+            funderCount: raw.funder.length,
+            funders: raw.funder.slice(0, FUNDER_LIMIT).map(normalizeFunder),
+          }),
+        ...(selects('license') && projectLicenses(raw)),
+        ...(selects('link') && projectLinks(raw)),
       };
     });
 
@@ -681,11 +764,13 @@ export const searchWorksTool = tool('crossref_search_works', {
             : ` Records past offset ${next} are beyond the ~${OFFSET_CAP} offset limit. To read them, walk the list with cursor="*" and chain nextCursor; the walk starts at the first record, not at offset ${next}.`;
       /**
        * A selection the caller wrote is told how a larger page is reached. An omitted or empty
-       * `fields` selects every field and keeps the notice such a page has always carried.
+       * `fields` selects every default field and keeps the notice such a page has always carried.
        */
-      const tier = input.fields?.length
-        ? ` That cap holds for a fields selection including abstract or author; one naming neither takes rows up to ${ROWS_CEILING}.`
-        : '';
+      const tier = !input.fields?.length
+        ? ''
+        : optIn
+          ? ` That cap holds for a fields selection including funder, license, or link; without them, one including abstract or author takes rows up to ${SEARCH_WORKS_ROWS_CAP}, and one naming neither up to ${ROWS_CEILING}.`
+          : ` That cap holds for a fields selection including abstract or author; one naming neither takes rows up to ${ROWS_CEILING}.`;
       notices.push(`${rowsClamp.notice}${tier}${continuation}`);
     }
     if (authorLimitClamp.notice) notices.push(authorLimitClamp.notice);
@@ -756,6 +841,19 @@ export const searchWorksTool = tool('crossref_search_works', {
       notices.push(
         `Author lists were capped at ${authorLimit} per work — ${cutWorks} of the ${returned} ${returned === 1 ? 'work' : 'works'} on this page ${cutWorks === 1 ? 'carries' : 'carry'} more authors than are shown. Each work reports its full deposited total as authorCount; call crossref_get_work with that work doi to page its whole author list${widen}.`,
       );
+    }
+    // The funder cut is disclosed the same way; its cap is fixed, so the one route is get_work.
+    const cutFunders = works.filter(
+      (w) => w.funderCount !== undefined && w.funderCount > (w.funders?.length ?? 0),
+    ).length;
+    if (cutFunders > 0) {
+      notices.push(
+        `Funder lists were capped at ${FUNDER_LIMIT} per work — ${cutFunders} of the ${returned} ${returned === 1 ? 'work' : 'works'} on this page ${cutFunders === 1 ? 'carries' : 'carry'} more funders than are shown. Each work reports its full deposited total as funderCount; call crossref_get_work with that work doi for its whole funder list.`,
+      );
+    }
+    // Only a page that asked for both can tell an untitled grant from a row whose title was not selected.
+    if (selects('type') && selects('title') && hasUntitledGrant(works)) {
+      notices.push(GRANT_TITLE_NOTICE);
     }
     /**
      * Crossref says how many values it returned, never how many exist, so a facet that returned
@@ -855,6 +953,14 @@ export const searchWorksTool = tool('crossref_search_works', {
       if (w.isReferencedByCount !== undefined) lines.push(`**Cited by:** ${w.isReferencedByCount}`);
       if (w.score !== undefined) lines.push(`**Score:** ${w.score}`);
       if (w.abstract) lines.push(`**Abstract:** ${mdText(w.abstract)}`);
+      /**
+       * Funders, licenses, and links close the block in the order crossref_get_work renders
+       * them, each list opened by a blank line; the blank line that ends the block closes the
+       * last, so the next work's heading is never read into its final bullet.
+       */
+      for (const section of [funderSection(w), licenseSection(w), linkSection(w)]) {
+        if (section) lines.push('', ...section);
+      }
       lines.push('');
     }
 

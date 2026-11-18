@@ -1,0 +1,55 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2026, 5, 21]],
+      "date-time": "2026-05-21T18:36:15Z",
+      "timestamp": 1779388575822,
+      "version": "3.53.1"
+    },
+    "reference-count": 0,
+    "publisher": "Royal Society of Chemistry (RSC)",
+    "content-domain": { "domain": [] },
+    "published-print": { "date-parts": [[2025, 3, 14]] },
+    "DOI": "10.1039/d4ra08825e/v2/review1",
+    "type": "peer-review",
+    "created": {
+      "date-parts": [[2025, 4, 8]],
+      "date-time": "2025-04-08T22:14:01Z",
+      "timestamp": 1744150441000
+    },
+    "source": "Crossref",
+    "is-referenced-by-count": 0,
+    "title": [
+      "Review for \"A new method for the rapid determination of sodium percarbonate in aqueous samples using a modified HPLC setup\""
+    ],
+    "prefix": "10.1039",
+    "member": "292",
+    "review": {
+      "type": "referee-report",
+      "running-number": "PR4V2",
+      "revision-round": "2",
+      "stage": "pre-publication"
+    },
+    "deposited": {
+      "date-parts": [[2025, 4, 8]],
+      "date-time": "2025-04-08T22:14:01Z",
+      "timestamp": 1744150441000
+    },
+    "score": 0.9999576,
+    "resource": {
+      "primary": {
+        "URL": "https://www.webofscience.com/api/gateway/wos/peer-review/10.1039/D4RA08825E"
+      }
+    },
+    "issued": { "date-parts": [[2025, 3, 14]] },
+    "references-count": 0,
+    "URL": "https://doi.org/10.1039/d4ra08825e/v2/review1",
+    "relation": {
+      "is-review-of": [{ "id-type": "doi", "id": "10.1039/D4RA08825E", "asserted-by": "subject" }]
+    },
+    "published": { "date-parts": [[2025, 3, 14]] }
+  }
+}

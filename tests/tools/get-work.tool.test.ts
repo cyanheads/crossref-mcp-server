@@ -24,15 +24,19 @@ import { getCrossrefService } from '@/services/crossref/crossref-service.js';
 
 const mockGetWork = vi.fn();
 const mockLookup = vi.fn();
+const mockPublishedVersions = vi.fn();
 
 beforeEach(() => {
   vi.mocked(getCrossrefService).mockReturnValue({
     getWork: mockGetWork,
     getDoiRegistration: mockLookup,
+    getPublishedVersions: mockPublishedVersions,
   } as unknown as ReturnType<typeof getCrossrefService>);
   mockGetWork.mockReset();
   mockLookup.mockReset();
   mockLookup.mockResolvedValue({ kind: 'unknown' });
+  mockPublishedVersions.mockReset();
+  mockPublishedVersions.mockResolvedValue({ kind: 'found', total: 0, works: [] });
 });
 
 /** What a CommonMark reader shows for a Markdown document, as HTML. */
@@ -872,23 +876,52 @@ describe('getWorkTool', () => {
   });
 
   /**
-   * A publisher who deposits an escaped tag wants the reader to see the tag. The strip-before-
-   * decode order keeps it as literal text on the structured surface, and the escape is what
-   * stops a renderer taking it back on the Markdown one — along with the doubly-escaped
-   * reference beside it, which has to stay spelled as a reference.
+   * An escaped tag inside a JATS field is markup the deposit escaped when a later escaped closer
+   * of its name closes it (or it is a `br`): it comes out as the same tag deposited unescaped
+   * would, and every reference escaped with it in that field loses one level before the decode.
+   * A lone escaped opener is prose naming an element, so it stays literal text on the structured
+   * surface, and with no escaped markup in the field the doubly-escaped reference beside it stays
+   * spelled as a reference. The Markdown escape is what stops a renderer taking either back.
    */
-  it('keeps an escaped tag and a doubly-escaped reference visible on both surfaces', async () => {
+  it('keeps a lone escaped opener and a doubly-escaped reference visible on both surfaces', async () => {
     mockGetWork.mockResolvedValue(
       makeRawWork({ abstract: '<jats:p>&lt;p&gt;wafers of 1μs &amp;lt;τ&amp;lt;1.2μs</jats:p>' }),
     );
 
-    const result = await runToolContract(getWorkTool, { doi: '10.18686/esta.v7i4.163' });
+    const result = await runToolContract(getWorkTool, { doi: '10.1038/nature12373' });
     const text = result.content.map(blockText).join('\n');
 
     expect(result.structuredContent).toMatchObject({
       abstract: '<p>wafers of 1μs &lt;τ&lt;1.2μs',
     });
     expect(text).toContain('\\<p>wafers of 1μs \\&lt;τ\\&lt;1.2μs');
+  });
+
+  /**
+   * The deposit that lone opener was cut from closes its `&lt;p&gt;`, so the pair is markup: the
+   * paragraph tags come out, and each `&amp;lt;` escaped with them reads as the `<` it encodes.
+   * A `<` before a non-ASCII letter opens no tag, so `content[]` carries it unescaped and a
+   * CommonMark reader reads it back as written.
+   */
+  it('reads the escaped paragraph of 10.18686/esta.v7i4.163 as markup, on both surfaces', async () => {
+    mockGetWork.mockResolvedValue(
+      makeRawWork({
+        DOI: '10.18686/esta.v7i4.163',
+        abstract:
+          '<jats:p>&lt;p&gt;In thisarticle, a study of the effect of different minority carrier lifetime (τ) of wafers on solar cell performance in a conventional industrial production line has been carried out. The results clearly showed that the ultimate efficiency of the solar cells made by wafers of 1μs &amp;lt;τ&amp;lt;1.2μs and 1.2μs &amp;lt;τ&amp;lt;1.5μs is much higher than that of solar cells made by wafers of τ&amp;lt;1μs.&lt;/p&gt;</jats:p>',
+      }),
+    );
+    const abstract =
+      'In thisarticle, a study of the effect of different minority carrier lifetime (τ) of wafers on solar cell performance in a conventional industrial production line has been carried out. The results clearly showed that the ultimate efficiency of the solar cells made by wafers of 1μs <τ<1.2μs and 1.2μs <τ<1.5μs is much higher than that of solar cells made by wafers of τ<1μs.';
+
+    const result = await runToolContract(getWorkTool, { doi: '10.18686/esta.v7i4.163' });
+    const text = result.content.map(blockText).join('\n');
+
+    expect(result.structuredContent).toMatchObject({ abstract });
+    expect(text.split('\n')).toContain(abstract);
+    expect(text).not.toContain('<p>');
+    expect(text).not.toContain('&lt;');
+    expect(renderedText(text).split('\n')).toContain(abstract);
   });
 
   /**
@@ -1848,5 +1881,685 @@ describe('getWorkTool clinical trial numbers and assertions', () => {
     expect(html).not.toContain('<em>');
     expect(html).not.toContain('<a ');
     expect(renderedText(line)).toBe('*Note* (note): *not* emphasis, _nor_ this, [a](b)\n');
+  });
+});
+
+/** A grant record holding `projects` as its deposited `project` elements. */
+function makeGrant(
+  projects: Array<Record<string, unknown>>,
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    DOI: '10.99999/grant-1',
+    type: 'grant',
+    award: 'G-1',
+    publisher: 'A Funder',
+    issued: { 'date-parts': [[2020, 1, 1]] },
+    project: projects,
+    ...overrides,
+  };
+}
+
+/** Distinct, order-checkable investigators — `A0 F0`, `A1 F1`, … for tag `A`. */
+function makeInvestigators(count: number, tag: string) {
+  return Array.from({ length: count }, (_, i) => ({
+    given: `${tag}${i}`,
+    family: `F${i}`,
+    affiliation: [],
+  }));
+}
+
+type GrantResult = {
+  projects?: Array<{
+    titles?: Array<{ title: string; language?: string }>;
+    descriptions?: Array<{ description: string; language?: string }>;
+    leadInvestigators?: Array<{ given?: string }>;
+    coLeadInvestigators?: Array<{ given?: string }>;
+    investigators?: Array<{ given?: string }>;
+    amount?: unknown;
+    funding?: Array<{ amount?: unknown; funder: unknown }>;
+  }>;
+  investigatorCount?: number;
+  offset?: number;
+  nextOffset?: number;
+  notice?: string;
+  review?: unknown;
+};
+
+async function runGrant(
+  raw: Record<string, unknown> & { DOI: string },
+  args: Record<string, unknown> = {},
+) {
+  mockGetWork.mockResolvedValue(raw);
+  const result = await runToolContract(getWorkTool, { doi: raw.DOI, ...args });
+  expect(result.isError).toBeFalsy();
+  return {
+    structured: result.structuredContent as GrantResult,
+    text: result.content.map(blockText).join('\n'),
+  };
+}
+
+/** The bullets under `label` in a Markdown document, up to the blank line closing them. */
+function bulletsUnder(text: string, label: string): string[] {
+  const lines = text.split('\n');
+  const start = lines.indexOf(label);
+  if (start < 0) return [];
+  const end = lines.indexOf('', start);
+  return lines.slice(start + 1, end < 0 ? undefined : end);
+}
+
+describe('getWorkTool grants', () => {
+  /**
+   * Crossref's schema lets a grant deposit several projects, though every sampled grant deposits
+   * one. The investigators of all of them form one list in deposited order, which offset and limit
+   * page as one; a project with no investigator list sits between the others untouched.
+   */
+  const threeProjects = () =>
+    makeGrant([
+      { 'project-title': [{ title: 'First' }], investigator: makeInvestigators(3, 'A') },
+      { 'project-title': [{ title: 'Middle' }], 'lead-investigator': makeInvestigators(1, 'L') },
+      { 'project-title': [{ title: 'Last' }], investigator: makeInvestigators(4, 'B') },
+    ]);
+
+  it('pages the investigators of several projects as one list in deposited order', async () => {
+    const pages: Array<{ parts: Array<string[] | undefined>; nextOffset?: number }> = [];
+    for (const offset of [0, 2, 4, 6]) {
+      const { structured } = await runGrant(threeProjects(), { offset, limit: 2 });
+      expect(structured.investigatorCount).toBe(7);
+      expect(structured.offset).toBe(offset);
+      // The project depositing a lead and no investigator list keeps its lead on every page.
+      expect(structured.projects?.[1]?.leadInvestigators?.map((i) => i.given)).toEqual(['L0']);
+      pages.push({
+        parts: (structured.projects ?? []).map((p) => p.investigators?.map((i) => i.given ?? '')),
+        ...(structured.nextOffset !== undefined && { nextOffset: structured.nextOffset }),
+      });
+    }
+
+    expect(pages).toEqual([
+      { parts: [['A0', 'A1'], undefined, []], nextOffset: 2 },
+      { parts: [['A2'], undefined, ['B0']], nextOffset: 4 },
+      { parts: [[], undefined, ['B1', 'B2']], nextOffset: 6 },
+      { parts: [[], undefined, ['B3']] },
+    ]);
+  });
+
+  it('labels each project and the index its part of the page starts at, on content[]', async () => {
+    const { structured, text } = await runGrant(threeProjects(), { offset: 2, limit: 2 });
+
+    expect(structured.notice).toBe(
+      'Showing investigators 3–4 of 7. Call again with offset=4 for the next page.',
+    );
+    expect(bulletsUnder(text, '**Project 1 of 3:**')).toEqual(['- Title: First']);
+    expect(bulletsUnder(text, '**Project 3 of 3:**')).toEqual(['- Title: Last']);
+    expect(bulletsUnder(text, '**Investigators:** showing 1 of 7, starting at index 2')).toEqual([
+      '- A2 F2',
+    ]);
+    expect(bulletsUnder(text, '**Investigators:** showing 1 of 7, starting at index 3')).toEqual([
+      '- B0 F0',
+    ]);
+    expect(bulletsUnder(text, '**Lead investigators:**')).toEqual(['- L0 F0']);
+    // Each project's sections follow its own label, in deposited order.
+    const order = [
+      '**Project 1 of 3:**',
+      '**Investigators:** showing 1 of 7, starting at index 2',
+      '**Project 2 of 3:**',
+      '**Lead investigators:**',
+      '**Project 3 of 3:**',
+      '**Investigators:** showing 1 of 7, starting at index 3',
+    ].map((label) => text.split('\n').indexOf(label));
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect(order[0]).toBeGreaterThan(-1);
+  });
+
+  it('explains an offset past the end of every project, keeping each project', async () => {
+    const { structured, text } = await runGrant(threeProjects(), { offset: 7, limit: 2 });
+
+    expect(structured.projects?.map((p) => p.investigators?.length)).toEqual([0, undefined, 0]);
+    expect(structured.notice).toBe(
+      'Offset 7 is past the end of this investigator list (7 investigators). Request an offset below 7.',
+    );
+    expect(structured.nextOffset).toBeUndefined();
+    expect(text).toContain('**Investigators:** showing 0 of 7, starting at index 7');
+  });
+
+  it('returns lead and co-lead investigators whole, whatever the page', async () => {
+    const { structured } = await runGrant(
+      makeGrant([
+        {
+          'project-title': [{ title: 'T' }],
+          'lead-investigator': makeInvestigators(6, 'L'),
+          'co-lead-investigator': makeInvestigators(4, 'C'),
+          investigator: makeInvestigators(5, 'I'),
+        },
+      ]),
+      { offset: 4, limit: 2 },
+    );
+    const [project] = structured.projects ?? [];
+
+    expect(project?.leadInvestigators).toHaveLength(6);
+    expect(project?.coLeadInvestigators).toHaveLength(4);
+    expect(project?.investigators?.map((i) => i.given)).toEqual(['I4']);
+    // Only the plain investigator list is counted and paged.
+    expect(structured.investigatorCount).toBe(5);
+    expect(structured.nextOffset).toBeUndefined();
+  });
+
+  it('shares one notice between the limit clamp and the investigator page', async () => {
+    const { structured } = await runGrant(
+      makeGrant([
+        { 'project-title': [{ title: 'T' }], investigator: makeInvestigators(10_005, 'I') },
+      ]),
+      { limit: 10_001 },
+    );
+
+    expect(structured.projects?.[0]?.investigators).toHaveLength(10_000);
+    expect(structured).toMatchObject({ nextOffset: 10_000, investigatorCount: 10_005 });
+    expect(structured.notice).toBe(
+      'limit 10001 is above the per-call cap of 10000, so 10000 was applied. Showing investigators 1–10000 of 10005. Call again with offset=10000 for the next page.',
+    );
+  });
+
+  it('keeps the author paging notices exactly as they were', async () => {
+    const pastEnd = createMockContext({ errors: getWorkTool.errors });
+    mockGetWork.mockResolvedValue(makeRawWork({ author: makeAuthors(11) }));
+    await getWorkTool.handler(getWorkTool.input.parse({ doi: '10.1038/x', offset: 500 }), pastEnd);
+    expect(getEnrichment(pastEnd).notice).toBe(
+      'Offset 500 is past the end of this author list (11 authors). Request an offset below 11.',
+    );
+
+    const cut = createMockContext({ errors: getWorkTool.errors });
+    mockGetWork.mockResolvedValue(makeRawWork({ author: makeAuthors(30) }));
+    await getWorkTool.handler(getWorkTool.input.parse({ doi: '10.1038/x', limit: 5 }), cut);
+    expect(getEnrichment(cut)).toMatchObject({
+      nextOffset: 5,
+      truncated: true,
+      shown: 5,
+      cap: 5,
+      notice: 'Showing authors 1–5 of 30. Call again with offset=5 for the next page.',
+    });
+  });
+
+  it('pages an author list and an investigator list with the one window, should a record carry both', async () => {
+    const { structured } = await runGrant(
+      makeGrant([{ 'project-title': [{ title: 'T' }], investigator: makeInvestigators(3, 'I') }], {
+        author: makeAuthors(3),
+      }),
+      { limit: 2 },
+    );
+
+    expect(structured).toMatchObject({ authorCount: 3, investigatorCount: 3, nextOffset: 2 });
+    expect(structured.projects?.[0]?.investigators?.map((i) => i.given)).toEqual(['I0', 'I1']);
+    expect(structured.notice).toBe(
+      'Showing authors 1–2 of 3. Showing investigators 1–2 of 3. Call again with offset=2 for the next page.',
+    );
+  });
+
+  it('returns a project depositing only a title, with no investigator count or page', async () => {
+    const { structured, text } = await runGrant(makeGrant([{ 'project-title': [{ title: 'T' }] }]));
+
+    expect(structured.projects).toEqual([{ titles: [{ title: 'T' }] }]);
+    for (const key of ['investigatorCount', 'offset', 'notice', 'awardStart'])
+      expect(structured).not.toHaveProperty(key);
+    expect(bulletsUnder(text, '**Project:**')).toEqual(['- Title: T']);
+    expect(text).not.toContain('**Investigators:**');
+  });
+
+  it('omits an empty investigator list like one never deposited', async () => {
+    const { structured } = await runGrant(
+      makeGrant([{ 'project-title': [{ title: 'T' }], investigator: [], 'lead-investigator': [] }]),
+    );
+
+    expect(structured.projects).toEqual([{ titles: [{ title: 'T' }] }]);
+    expect(structured).not.toHaveProperty('investigatorCount');
+  });
+
+  it('keeps an investigator deposited with no name in its place, on both surfaces', async () => {
+    const { structured, text } = await runGrant(
+      makeGrant([
+        {
+          'project-title': [{ title: 'T' }],
+          investigator: [
+            { affiliation: [] },
+            { given: 'Named', family: 'Person', affiliation: [{}] },
+            { affiliation: [{ country: 'PT' }], 'alternate-name': ['  ', 'Alias &amp; Co'] },
+          ],
+        },
+      ]),
+    );
+
+    expect(structured.projects?.[0]?.investigators).toEqual([
+      {},
+      { given: 'Named', family: 'Person', affiliation: [{}] },
+      { affiliation: [{ country: 'PT' }], alternateNames: ['Alias & Co'] },
+    ]);
+    expect(structured.investigatorCount).toBe(3);
+    expect(bulletsUnder(text, '**Investigators:** showing 3 of 3, starting at index 0')).toEqual([
+      '- (unknown)',
+      '- Named Person — (no name deposited)',
+      '- (unknown) (also Alias & Co) — (no name deposited) (PT)',
+    ]);
+  });
+
+  it('keeps an amount of 0 and a percentage of 0, and omits a null currency or percentage', async () => {
+    const funder = { id: [{ id: '10.13039/1', 'id-type': 'DOI' }], name: 'F' };
+    const { structured, text } = await runGrant(
+      makeGrant([
+        {
+          'project-title': [{ title: 'T' }],
+          'award-amount': { amount: 0, currency: null },
+          funding: [
+            {
+              type: 'grant',
+              'award-amount': { amount: 12.5, currency: 'EUR', percentage: null },
+              funder,
+            },
+            { type: 'award', 'award-amount': { amount: 5, currency: null, percentage: 0 }, funder },
+          ],
+        },
+      ]),
+    );
+    const [project] = structured.projects ?? [];
+
+    expect(project?.amount).toEqual({ amount: 0 });
+    expect(project?.funding?.map((f) => f.amount)).toEqual([
+      { amount: 12.5, currency: 'EUR' },
+      { amount: 5, percentage: 0 },
+    ]);
+    expect(bulletsUnder(text, '**Project:**')).toEqual([
+      '- Title: T',
+      '- Amount: 0',
+      '- Funding: grant — F — 10.13039/1 — amount 12.5 EUR',
+      '- Funding: award — F — 10.13039/1 — amount 5 (0%)',
+    ]);
+  });
+
+  it("reads a funder's DOI and ROR from its identifiers by type, named or not", async () => {
+    const { structured, text } = await runGrant(
+      makeGrant([
+        {
+          'project-title': [{ title: 'T' }],
+          funding: [
+            { type: 'a', funder: { id: [{ id: 'https://ror.org/0abc', 'id-type': 'ror' }] } },
+            {
+              type: 'b',
+              funder: {
+                id: [
+                  { id: '10.13039/2', 'id-type': 'doi' },
+                  { id: 'https://ror.org/0def', 'id-type': 'ROR' },
+                ],
+              },
+            },
+            {
+              type: 'c',
+              funder: { id: [{ id: '0000 0001', 'id-type': 'ISNI' }], name: 'Named &amp; Co' },
+            },
+            { type: 'd', funder: { id: [{ id: '0000 0002', 'id-type': 'ISNI' }] } },
+          ],
+        },
+      ]),
+    );
+
+    expect(structured.projects?.[0]?.funding?.map((f) => f.funder)).toEqual([
+      { ror: 'https://ror.org/0abc' },
+      { doi: '10.13039/2', ror: 'https://ror.org/0def' },
+      { name: 'Named & Co' },
+      {},
+    ]);
+    expect(bulletsUnder(text, '**Project:**').slice(1)).toEqual([
+      '- Funding: a — https://ror.org/0abc',
+      '- Funding: b — 10.13039/2 — https://ror.org/0def',
+      '- Funding: c — Named & Co',
+      '- Funding: d — (no name deposited)',
+    ]);
+  });
+
+  it('removes markup from titles and descriptions as from work titles, and escapes them on content[]', async () => {
+    const { structured, text } = await runGrant(
+      makeGrant([
+        {
+          'project-title': [
+            { title: 'Roots of <i>Arabidopsis</i> *in situ*', language: 'en' },
+            { title: '  ', language: 'pt' },
+          ],
+          'project-description': [
+            { description: '<p>Para one.</p><p>Para _two_.</p>' },
+            { description: '&#x0D;' },
+          ],
+        },
+      ]),
+    );
+
+    expect(structured.projects?.[0]).toEqual({
+      titles: [{ title: 'Roots of Arabidopsis *in situ*', language: 'en' }],
+      descriptions: [{ description: 'Para one. Para _two_.' }],
+    });
+    const bullets = bulletsUnder(text, '**Project:**');
+    expect(bullets).toEqual([
+      '- Title (en): Roots of Arabidopsis \\*in situ\\*',
+      '- Description: Para one. Para \\_two\\_.',
+    ]);
+    expect(commonmark(bullets.join('\n'))).not.toContain('<em>');
+  });
+
+  it('reads the award start at the record level and each project date where deposited', async () => {
+    const { structured, text } = await runGrant(
+      makeGrant(
+        [
+          {
+            'project-title': [{ title: 'T' }],
+            'award-start': { 'date-parts': [[2021, 3]] },
+            'award-planned-start': { 'date-parts': [[2021, 1, 1]] },
+            'award-planned-end': { 'date-parts': [[2024, null]] },
+          },
+        ],
+        { 'award-start': { 'date-parts': [[2021, 3, 2]] } },
+      ),
+    );
+
+    expect(structured).toMatchObject({
+      awardStart: { year: 2021, month: 3, day: 2 },
+      projects: [
+        {
+          start: { year: 2021, month: 3 },
+          plannedStart: { year: 2021, month: 1, day: 1 },
+          plannedEnd: { year: 2024 },
+        },
+      ],
+    });
+    expect(text.split('\n')).toContain('**Award start:** 2021-03-02');
+    expect(bulletsUnder(text, '**Project:**')).toContain(
+      '- Dates: start 2021-03, planned start 2021-01-01, planned end 2024',
+    );
+  });
+
+  it('escapes the award number and the codes it renders', async () => {
+    const { text } = await runGrant(
+      makeGrant(
+        [
+          {
+            'project-title': [{ title: 'T', language: '*en*' }],
+            funding: [{ type: '*grant*', scheme: '_S_', funder: { name: 'F', id: [] } }],
+          },
+        ],
+        { award: '*A-1*' },
+      ),
+    );
+
+    expect(text.split('\n')).toContain('**Award:** \\*A-1\\*');
+    expect(bulletsUnder(text, '**Project:**')).toEqual([
+      '- Title (\\*en\\*): T',
+      '- Funding: \\*grant\\*, scheme \\_S\\_ — F',
+    ]);
+  });
+
+  it('describes the investigator page on offset, limit, and published', () => {
+    const shape = getWorkTool.input.shape;
+    expect(shape.offset.description).toMatch(/investigator/);
+    expect(shape.limit.description).toMatch(/investigator/);
+    expect(getWorkTool.output.shape.published.description).toMatch(/award start/);
+  });
+});
+
+describe('getWorkTool peer reviews', () => {
+  it('relays every review field on both surfaces, the statement through the markup pass', async () => {
+    const { structured, text } = await runGrant({
+      DOI: '10.99999/review-1',
+      type: 'peer-review',
+      title: ['Referee report'],
+      review: {
+        stage: 'pre-publication',
+        type: 'referee-report',
+        'running-number': 'R*1',
+        'revision-round': '0',
+        recommendation: 'major-revision',
+        'competing-interest-statement': 'None <i>declared</i>,\n  at all.',
+        language: 'en',
+      },
+    });
+
+    expect(structured.review).toEqual({
+      stage: 'pre-publication',
+      type: 'referee-report',
+      runningNumber: 'R*1',
+      revisionRound: '0',
+      recommendation: 'major-revision',
+      competingInterestStatement: 'None declared, at all.',
+      language: 'en',
+    });
+    const lines = text.split('\n');
+    expect(lines).toContain(
+      '**Review:** type: referee-report; stage: pre-publication; running number: R\\*1; revision round: 0; recommendation: major-revision; language: en',
+    );
+    expect(lines).toContain('**Review competing interests:** None declared, at all.');
+  });
+
+  it('omits a review holding nothing it projects, and a statement that normalizes to nothing', async () => {
+    const empty = await runGrant({ DOI: '10.99999/review-2', type: 'peer-review', review: {} });
+    expect(empty.structured).not.toHaveProperty('review');
+    expect(empty.text).not.toContain('**Review');
+
+    const blank = await runGrant({
+      DOI: '10.99999/review-3',
+      type: 'peer-review',
+      review: { stage: 'post-publication', 'competing-interest-statement': ' &#x0D; ' },
+    });
+    expect(blank.structured.review).toEqual({ stage: 'post-publication' });
+    expect(blank.text).not.toContain('**Review competing interests:**');
+  });
+});
+
+/**
+ * The handler's side of the published-version lookup: which records ask, what they send, and how
+ * each answer the service hands back reaches both surfaces. The failure classes themselves are
+ * tabled at the service seam (`crossref-service.test.ts`) and driven end to end through the real
+ * service in `get-work-records.test.ts`.
+ */
+describe('getWorkTool published versions', () => {
+  const PREPRINT = '10.1101/2020.03.22.002386';
+  const FILTER = `{"relation.type":"has-preprint","relation.object":"${PREPRINT}"}`;
+  const FAILED = `The lookup for this preprint's published versions failed, so publishedVersions is omitted — which does not mean it has none. crossref_search_works with filter ${FILTER} runs the same lookup.`;
+  const ARTICLE = {
+    DOI: '10.1038/s41586-020-2286-9',
+    type: 'journal-article',
+    title: ['A SARS-CoV-2 protein interaction map reveals targets for drug repurposing'],
+  };
+
+  function makePreprint(overrides: Record<string, unknown> = {}) {
+    return makeRawWork({
+      DOI: PREPRINT,
+      type: 'posted-content',
+      subtype: 'preprint',
+      'container-title': undefined,
+      ...overrides,
+    });
+  }
+
+  async function run(args: Record<string, unknown> = {}) {
+    const result = await runToolContract(getWorkTool, { doi: PREPRINT, ...args });
+    expect(result.isError).toBeFalsy();
+    return {
+      result,
+      structured: result.structuredContent as Record<string, unknown>,
+      lines: result.content.map(blockText).join('\n').split('\n'),
+    };
+  }
+
+  it('asks once, with the DOI as the record spells it, and returns the works on both surfaces', async () => {
+    mockGetWork.mockResolvedValue(makePreprint({ DOI: '10.2196/preprints.17294' }));
+    mockPublishedVersions.mockResolvedValue({ kind: 'found', total: 1, works: [ARTICLE] });
+
+    const { structured, lines } = await run({ doi: 'https://doi.org/10.2196/PREPRINTS.17294' });
+
+    expect(mockPublishedVersions).toHaveBeenCalledTimes(1);
+    expect(mockPublishedVersions.mock.calls[0]?.[0]).toBe('10.2196/preprints.17294');
+    expect(structured.publishedVersions).toEqual([
+      {
+        doi: '10.1038/s41586-020-2286-9',
+        type: 'journal-article',
+        title: 'A SARS-CoV-2 protein interaction map reveals targets for drug repurposing',
+      },
+    ]);
+    expect(structured).not.toHaveProperty('notice');
+    const label = lines.indexOf('**Published versions:**');
+    expect(label).toBeGreaterThan(-1);
+    expect(lines[label + 1]).toBe(
+      '- 10.1038/s41586-020-2286-9 (journal-article) — A SARS-CoV-2 protein interaction map reveals targets for drug repurposing',
+    );
+    // Ahead of the author page, which can run to thousands of lines.
+    expect(label).toBeLessThan(lines.findIndex((line) => line.startsWith('**Authors:**')));
+  });
+
+  it('returns an empty list when no work names the preprint, and says so in content[]', async () => {
+    mockGetWork.mockResolvedValue(makePreprint());
+
+    const { structured, lines } = await run();
+
+    expect(structured.publishedVersions).toEqual([]);
+    expect(structured).not.toHaveProperty('notice');
+    expect(lines).toContain(
+      '**Published versions:** none found — no Crossref record names this work in has-preprint',
+    );
+  });
+
+  it('returns the first ten above ten, naming the total and the filter that lists them all', async () => {
+    const works = Array.from({ length: 10 }, (_, i) => ({ DOI: `10.1000/a.${i}` }));
+    mockGetWork.mockResolvedValue(makePreprint());
+    mockPublishedVersions.mockResolvedValue({ kind: 'found', total: 14, works });
+
+    const { result, structured, lines } = await run();
+    const notice = `14 works name this preprint in has-preprint; publishedVersions holds the first 10. crossref_search_works with filter ${FILTER} lists every one.`;
+
+    expect(structured.publishedVersions).toEqual(works.map((w) => ({ doi: w.DOI })));
+    expect(structured.notice).toBe(notice);
+    expect(lines).toContain('- 10.1000/a.9');
+    expect(renderedText(result.content.map(blockText).join('\n'))).toContain(notice);
+  });
+
+  it('omits the field and says the lookup failed, on both surfaces, when it failed', async () => {
+    mockGetWork.mockResolvedValue(makePreprint());
+    mockPublishedVersions.mockResolvedValue({ kind: 'failed' });
+
+    const { result, structured, lines } = await run();
+
+    expect(structured).not.toHaveProperty('publishedVersions');
+    expect(structured.notice).toBe(FAILED);
+    expect(structured).toMatchObject({ doi: PREPRINT, title: 'Cas9 in mammals' });
+    expect(lines.some((line) => line.startsWith('**Published versions:**'))).toBe(false);
+    expect(renderedText(result.content.map(blockText).join('\n'))).toContain(FAILED);
+  });
+
+  it.each([
+    ['a journal article', { type: 'journal-article' }],
+    ['posted content of subtype other', { type: 'posted-content', subtype: 'other' }],
+    ['posted content of subtype blog', { type: 'posted-content', subtype: 'blog' }],
+    ['posted content depositing no subtype', { type: 'posted-content' }],
+    ['a record of another type carrying subtype preprint', { type: 'report', subtype: 'preprint' }],
+  ])('never asks for %s, and returns no publishedVersions', async (_label, fields) => {
+    mockGetWork.mockResolvedValue(makeRawWork(fields));
+
+    const { structured, lines } = await run({ doi: '10.1038/nature12373' });
+
+    expect(mockPublishedVersions).not.toHaveBeenCalled();
+    expect(structured).not.toHaveProperty('publishedVersions');
+    expect(lines.some((line) => line.includes('Published versions'))).toBe(false);
+  });
+
+  it('keeps one notice — update text, lookup text, limit clamp, paging — in that order', async () => {
+    mockGetWork.mockResolvedValue(
+      makePreprint({
+        author: makeAuthors(12_000),
+        'updated-by': [{ DOI: '10.1101/withdrawn', type: 'withdrawal', source: 'publisher' }],
+      }),
+    );
+    mockPublishedVersions.mockResolvedValue({ kind: 'failed' });
+
+    const { structured } = await run({ limit: 10_001 });
+
+    expect(structured.notice).toBe(
+      [
+        'Crossref records updates to this work: withdrawal (publisher). updatedBy names each notice DOI; call crossref_get_work with one to read it.',
+        FAILED,
+        'limit 10001 is above the per-call cap of 10000, so 10000 was applied.',
+        'Showing authors 1–10000 of 12000.',
+        'Call again with offset=10000 for the next page.',
+      ].join(' '),
+    );
+    expect(structured).toMatchObject({ truncated: true, nextOffset: 10_000 });
+  });
+
+  it('puts the over-cap lookup text after the update text and before the clamp', async () => {
+    mockGetWork.mockResolvedValue(
+      makePreprint({
+        'updated-by': [{ DOI: '10.1101/v2', type: 'new_version', source: 'publisher' }],
+      }),
+    );
+    mockPublishedVersions.mockResolvedValue({
+      kind: 'found',
+      total: 11,
+      works: Array.from({ length: 10 }, (_, i) => ({ DOI: `10.1000/a.${i}` })),
+    });
+
+    const { structured } = await run({ limit: 10_001 });
+
+    expect(structured.notice).toBe(
+      `Crossref records updates to this work: new_version (publisher). updatedBy names each notice DOI; call crossref_get_work with one to read it. 11 works name this preprint in has-preprint; publishedVersions holds the first 10. crossref_search_works with filter ${FILTER} lists every one. limit 10001 is above the per-call cap of 10000, so 10000 was applied.`,
+    );
+  });
+
+  it('lists a work relations also names, deduplicating neither list', async () => {
+    mockGetWork.mockResolvedValue(
+      makePreprint({
+        relation: {
+          'is-preprint-of': [{ id: ARTICLE.DOI, 'id-type': 'doi', 'asserted-by': 'subject' }],
+        },
+      }),
+    );
+    mockPublishedVersions.mockResolvedValue({ kind: 'found', total: 1, works: [ARTICLE] });
+
+    const { structured } = await run();
+
+    expect(structured.relations).toEqual([
+      { type: 'is-preprint-of', idType: 'doi', assertedBy: 'subject', ids: [ARTICLE.DOI] },
+    ]);
+    expect(structured.publishedVersions).toEqual([expect.objectContaining({ doi: ARTICLE.DOI })]);
+  });
+
+  it('removes markup from a title as work titles are, and escapes what is left on content[]', async () => {
+    mockGetWork.mockResolvedValue(makePreprint());
+    mockPublishedVersions.mockResolvedValue({
+      kind: 'found',
+      total: 1,
+      works: [
+        {
+          DOI: '10.1000/b',
+          type: 'journal-article',
+          title: ['<i>In vivo</i> mapping of *starred* &amp; [bracketed] sites'],
+        },
+      ],
+    });
+
+    const { result, structured } = await run();
+    const title = 'In vivo mapping of *starred* & [bracketed] sites';
+
+    expect(structured.publishedVersions).toEqual([
+      { doi: '10.1000/b', type: 'journal-article', title },
+    ]);
+    expect(renderedText(result.content.map(blockText).join('\n')).split('\n')).toContain(
+      `10.1000/b (journal-article) — ${title}`,
+    );
+  });
+
+  it('fails the call when the service fails it, and returns no record', async () => {
+    mockGetWork.mockResolvedValue(makePreprint());
+    mockPublishedVersions.mockRejectedValue(
+      requestCancelled('Crossref published-version lookup cancelled by caller.'),
+    );
+
+    const result = await runToolContract(getWorkTool, { doi: PREPRINT });
+
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent).toMatchObject({
+      error: { code: JsonRpcErrorCode.RequestCancelled },
+    });
   });
 });

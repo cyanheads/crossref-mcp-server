@@ -1,0 +1,130 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2026, 7, 30]],
+      "date-time": "2026-07-30T10:48:08Z",
+      "timestamp": 1785408488049,
+      "version": "3.56.0"
+    },
+    "publisher": "Fonds de recherche du Québec",
+    "award-start": { "date-parts": [[2022, 1, 15]] },
+    "award": "334076",
+    "DOI": "10.69777/334076",
+    "type": "grant",
+    "created": {
+      "date-parts": [[2025, 3, 31]],
+      "date-time": "2025-03-31T16:04:08Z",
+      "timestamp": 1743437048000
+    },
+    "source": "Crossref",
+    "prefix": "10.69777",
+    "member": "50067",
+    "project": [
+      {
+        "project-title": [
+          {
+            "title": "Mise en dialogue interdisciplinaire d’innovations psycho-sociales et techno-artistiques pour des patients devant subir une chirurgie délabrante du visage pour un cancer.",
+            "language": "fr"
+          }
+        ],
+        "project-description": [
+          {
+            "description": "Même si la prise en charge des cancers de la tête et du cou a énormément progressé, certaines chirurgies oncologiques restent encore très délabrantes et nécessitent des reconstructions associant souvent chirurgie plastique et épithèses (prothèses de comblement ou de remplacement d’une partie du visage). Les patients qui subissent ce type de chirurgies délabrantes du visage font face à une grande détresse reliée entre autres à l’impact sur leur intégrité physique et sur leur identité. La conception de ces épithèses et leur acceptation par le patient et ses proches sont autant d’enjeux en vue d’une restitution du visage et pour un retour à la vie normale. Les épithèses ne profitent qu’à la marge des progrès considérables du design numérique, de l’ingénierie de modélisation, de la réalité virtuelle, des arts numériques et des sciences des matériaux. De plus, le soutien émotif, éducatif et identitaire ne sont pas intégrés de manière systématique tout au long du parcours de soins. Dans ce contexte, un premier projet a été financé dans le cadre des appels à projet AUDACE du FRQ (concours 2018) pour développer des innovations techno-artistiques et psychosociales. Le CHUM est à présent disposé à développer une nouvelle trajectoire de soins intégrant à la fois les innovations psycho-sociales et les innovations techno-artistiques. Ce nouveau projet, présenté dans le cadre de l’appel INNO, cherche à mettre en dialogue les innovations psycho-sociales et les innovations techno-artistiques afin de concevoir et mettre en œuvre de façon synergique et complémentaire des dispositifs interdisciplinaires innovants de soutien et d’accompagnement. En d’autres mots, les avancées techno-artistiques et psycho-sociales seront combinées afin de créer une synergie favorable à la bonne utilisation des technologies et des avancées sociales tout au long de la trajectoire de soin des patients. De plus, nous souhaitons poursuivre le développement et l’intégration d’innovations socio-artistiques et techno-artistiques complémentaires. Pour le volet socio-artistique : Intégrer le rôle bénéfique de l’art et de l’art-thérapie sur les plans identitaires, psychologique et social dans la trajectoire expérientielle des patients. Pour le volet clinique : élaborer deux boîtes à outils . 1) La première est destinée aux patients, en pré-chirurgie, afin de les aider dans la prise de décision d’avoir recours à une épithèse. 2) La deuxième s’adresse aux patients et proches ainsi qu’aux professionnels de la santé pour les soutenir dans la réalisation des soins de plaies. Pour le volet technologique : 1) La génération automatique d’une maquette 3D d’une épithèse basée sur des photos du visage du patient antérieures à son diagnostic.  2) Automatiser et généraliser le processus de conception numérique de moules pour la fabrication d’épithèses faciales. 3) le développement d’un outil numérique de représentation virtuelle de la nouvelle apparence physique du patient permettra au patient, avant et après sa chirurgie, d’apprivoiser sa nouvelle identité, voire d’en explorer de nouvelles, tout en créant une expérience interactive de co-construction de son épithèse, ou toute autre option (pansement, cache-oeil, bandeau, etc.), en collaboration avec l’équipe clinique.",
+            "language": "fr"
+          }
+        ],
+        "investigator": [
+          {
+            "ORCID": "https://orcid.org/0000-0002-1057-9883",
+            "authenticated-orcid": false,
+            "given": "Stéphane",
+            "family": "Bedwani",
+            "affiliation": [
+              {
+                "id": [
+                  {
+                    "id": "https://ror.org/0410a8y51",
+                    "id-type": "ROR",
+                    "asserted-by": "publisher"
+                  }
+                ],
+                "name": "Centre hospitalier de l'Université de Montréal [CHUM]"
+              }
+            ],
+            "role-start": { "date-parts": [[2022, 1, 15]] }
+          }
+        ],
+        "lead-investigator": [
+          {
+            "given": "Djahanchah",
+            "family": "Ghadiri",
+            "affiliation": [
+              {
+                "id": [
+                  {
+                    "id": "https://ror.org/05ww3wq27",
+                    "id-type": "ROR",
+                    "asserted-by": "publisher"
+                  }
+                ],
+                "name": "HEC Montréal"
+              }
+            ],
+            "role-start": { "date-parts": [[2022, 1, 15]] }
+          }
+        ],
+        "co-lead-investigator": [
+          {
+            "ORCID": "https://orcid.org/0000-0003-2161-8507",
+            "authenticated-orcid": false,
+            "given": "Carlos",
+            "family": "Vazquez",
+            "affiliation": [
+              {
+                "id": [
+                  {
+                    "id": "https://ror.org/0020snb74",
+                    "id-type": "ROR",
+                    "asserted-by": "publisher"
+                  }
+                ],
+                "name": "École de technologie supérieure [ÉTS]"
+              }
+            ],
+            "role-start": { "date-parts": [[2022, 1, 15]] }
+          }
+        ],
+        "award-start": { "date-parts": [[2022, 1, 15]] },
+        "award-end": { "date-parts": [[2028, 6, 9]] },
+        "funding": [
+          {
+            "type": "grant",
+            "scheme": "INNO (INO) - Programme pilote",
+            "award-amount": { "amount": 177078400, "currency": "CAD", "percentage": 100 },
+            "funder": {
+              "id": [
+                { "id": "https://ror.org/00w3qhf76", "id-type": "ROR", "asserted-by": "publisher" }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2026, 6, 5]],
+      "date-time": "2026-06-05T11:37:52Z",
+      "timestamp": 1780659472000
+    },
+    "score": 0.99892354,
+    "resource": {
+      "primary": {
+        "URL": "https://repertoire.frq.gouv.qc.ca/offres/detailOffres.do?methode=consulter&demId=334076"
+      }
+    },
+    "issued": { "date-parts": [[2022, 1, 15]] },
+    "URL": "https://doi.org/10.69777/334076"
+  }
+}

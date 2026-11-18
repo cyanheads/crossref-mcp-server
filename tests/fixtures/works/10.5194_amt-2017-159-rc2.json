@@ -1,0 +1,56 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2026, 5, 21]],
+      "date-time": "2026-05-21T19:39:25Z",
+      "timestamp": 1779392365602,
+      "version": "3.53.1"
+    },
+    "reference-count": 0,
+    "publisher": "Copernicus GmbH",
+    "content-domain": { "domain": [] },
+    "published-print": { "date-parts": [[2017, 8, 23]] },
+    "DOI": "10.5194/amt-2017-159-rc2",
+    "type": "peer-review",
+    "created": {
+      "date-parts": [[2017, 8, 23]],
+      "date-time": "2017-08-23T04:21:07Z",
+      "timestamp": 1503462067000
+    },
+    "source": "Crossref",
+    "is-referenced-by-count": 0,
+    "title": ["Referee comment"],
+    "prefix": "10.5194",
+    "member": "3145",
+    "review": {
+      "type": "referee-report",
+      "running-number": "RC2",
+      "stage": "pre-publication",
+      "recommendation": "minor-revision",
+      "language": "en"
+    },
+    "deposited": {
+      "date-parts": [[2025, 2, 7]],
+      "date-time": "2025-02-07T16:19:56Z",
+      "timestamp": 1738945196000
+    },
+    "score": 0.9999926,
+    "resource": {
+      "primary": { "URL": "https://amt.copernicus.org/preprints/amt-2017-159/amt-2017-159-RC2.pdf" }
+    },
+    "issued": { "date-parts": [[2017, 8, 23]] },
+    "references-count": 0,
+    "URL": "https://doi.org/10.5194/amt-2017-159-rc2",
+    "relation": {
+      "is-review-of": [
+        { "id-type": "doi", "id": "10.5194/amt-11-2601-2018", "asserted-by": "subject" },
+        { "id-type": "doi", "id": "10.5194/amt-2017-159", "asserted-by": "object" },
+        { "id-type": "doi", "id": "10.5194/amt-11-2601-2018", "asserted-by": "object" }
+      ]
+    },
+    "published": { "date-parts": [[2017, 8, 23]] }
+  }
+}

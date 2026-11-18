@@ -1,0 +1,77 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2024, 1, 21]],
+      "date-time": "2024-01-21T11:00:33Z",
+      "timestamp": 1705834833768
+    },
+    "publisher": "Office of Scientific and Technical Information (OSTI)",
+    "award-start": { "date-parts": [[2024, 1, 1]] },
+    "award": "ENG112.OLCF",
+    "DOI": "10.46936/incite/60012472",
+    "type": "grant",
+    "created": {
+      "date-parts": [[2024, 1, 19]],
+      "date-time": "2024-01-19T19:55:40Z",
+      "timestamp": 1705694140000
+    },
+    "source": "Crossref",
+    "prefix": "10.46936",
+    "member": "960",
+    "project": [
+      {
+        "project-title": [
+          {
+            "title": "Toward In-Service Realism: DNS of Roughness Effects on Vital Turbine Film-Cooling"
+          }
+        ],
+        "project-description": [
+          {
+            "description": "This project will improve our understanding of how in-service roughness on turbine blades affects the vital gas turbine cooling flows by leveraging recent advances in first-principle based turbulence simulation capability. The new knowledge will help improve low fidelity industrial design tools and aid global efforts to reduce fuel use and emissions."
+          }
+        ],
+        "investigator": [
+          {
+            "given": "Richard",
+            "family": "Sandberg",
+            "affiliation": [{ "name": "University of Melbourne", "country": "US" }],
+            "role-start": { "date-parts": [[2024, 1, 1]] },
+            "role-end": { "date-parts": [[2027, 1, 1]] }
+          }
+        ],
+        "award-start": { "date-parts": [[2024, 1, 1]] },
+        "award-end": { "date-parts": [[2027, 1, 1]] },
+        "funding": [
+          {
+            "type": "facilities",
+            "funder": {
+              "id": [{ "id": "10.13039/100000015", "id-type": "DOI", "asserted-by": "publisher" }],
+              "name": "US Department of Energy"
+            }
+          },
+          {
+            "type": "facilities",
+            "funder": {
+              "id": [{ "id": "10.13039/100000015", "id-type": "DOI", "asserted-by": "publisher" }],
+              "name": "ORNL-OLCF"
+            }
+          }
+        ]
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2024, 1, 19]],
+      "date-time": "2024-01-19T19:55:40Z",
+      "timestamp": 1705694140000
+    },
+    "score": 0.9983015,
+    "resource": {
+      "primary": { "URL": "https://www.osti.gov/award-doi-service/biblio/10.46936/INCITE/60012472" }
+    },
+    "issued": { "date-parts": [[2024, 1, 1]] },
+    "URL": "https://doi.org/10.46936/incite/60012472"
+  }
+}

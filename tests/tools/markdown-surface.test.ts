@@ -27,7 +27,7 @@ import { getCrossrefService } from '@/services/crossref/crossref-service.js';
 
 /**
  * One probe, deposited the way a publisher deposits each of its parts, chosen so that both
- * normalization passes hand back the identical string: an escaped tag survives as literal text,
+ * normalization passes hand back the identical string: a lone escaped opener survives as literal text on both,
  * a doubly-escaped reference survives spelled as a reference, and an asterisk is prose. It leads
  * with an ordered-list marker, which is inert everywhere but column zero — the one placement
  * where a renderer consumes it rather than showing it.
@@ -64,7 +64,9 @@ beforeEach(() => {
 
 /**
  * A work record with the probe in every free-text field a tool projects out of one — twice in a
- * list a tool renders past its first entry.
+ * list a tool renders past its first entry. A field relayed as deposited — an award number, a
+ * license's or a link's content version — carries the normalized form instead, since no pass
+ * runs on it to produce one.
  */
 function probeWork() {
   return {
@@ -87,7 +89,15 @@ function probeWork() {
     degree: [DEPOSITED, DEPOSITED],
     author: [{ given: DEPOSITED, family: DEPOSITED, affiliation: [{ name: DEPOSITED }] }],
     editor: [{ given: DEPOSITED, family: DEPOSITED, affiliation: [{ name: DEPOSITED }] }],
-    funder: [{ name: DEPOSITED }],
+    funder: [{ name: DEPOSITED, award: [NORMALIZED] }],
+    license: [{ URL: 'https://example.com/license', 'content-version': NORMALIZED }],
+    link: [
+      {
+        URL: 'https://example.com/full.pdf',
+        'content-type': 'application/pdf',
+        'content-version': NORMALIZED,
+      },
+    ],
     reference: [
       {
         key: 'ref1',
@@ -127,6 +137,15 @@ const SURFACES: Array<{ name: string; arrange: () => void; run: () => Promise<To
     name: 'crossref_search_works',
     arrange: () => service.searchWorks.mockResolvedValue(worksPage),
     run: () => runToolContract(searchWorksTool, { query: 'probe' }),
+  },
+  {
+    name: 'crossref_search_works selecting funder, license, and link',
+    arrange: () => service.searchWorks.mockResolvedValue(worksPage),
+    run: () =>
+      runToolContract(searchWorksTool, {
+        query: 'probe',
+        fields: ['title', 'funder', 'license', 'link'],
+      }),
   },
   {
     name: 'crossref_search_journals',
@@ -281,6 +300,54 @@ describe('the Markdown surface of every tool', () => {
       expect(result.content.map(blockText).join('\n'), name).toContain(
         '**Volume:** 12 | **Issue:** 3 \\*Suppl\\* | **Pages:** \\<i>e1\\</i>',
       );
+    }
+  });
+
+  /**
+   * An award number and a license content version are relayed as deposited, unnormalized, and
+   * both are strings a publisher typed: `10.1103/physrevlett.128.081804` deposits the award
+   * `2016R1\-D1A1B\-01010135`, which a CommonMark reader shows without its backslashes unless they
+   * are escaped. Whatever `structuredContent` carries, a reader of `content[]` reads back — on
+   * both work tools, which render funders and licenses through the same lines.
+   */
+  it('reads back every award number and license content version as deposited', async () => {
+    const record = {
+      DOI: '10.1103/physrevlett.128.081804',
+      funder: [
+        {
+          name: 'National Research Foundation of Korea',
+          DOI: '10.13039/501100003725',
+          award: ['2016R1\\-D1A1B\\-01010135', 'H2020 *MSCA* [ERC]', 'GA\\', '<b>R01</b>'],
+        },
+      ],
+      license: [{ URL: 'https://example.com/license', 'content-version': '*accepted*' }],
+    };
+    // Literals, not the deposited array: an expectation sharing it moves with it.
+    const expected = {
+      funders: [
+        { award: ['2016R1\\-D1A1B\\-01010135', 'H2020 *MSCA* [ERC]', 'GA\\', '<b>R01</b>'] },
+      ],
+      licenses: [{ url: 'https://example.com/license', contentVersion: '*accepted*' }],
+    };
+    service.searchWorks.mockResolvedValue({ ...worksPage, items: [record] });
+    service.getWork.mockResolvedValue(record);
+
+    const results = {
+      crossref_search_works: await runToolContract(searchWorksTool, {
+        query: 'probe',
+        fields: ['funder', 'license'],
+      }),
+      crossref_get_work: await runToolContract(getWorkTool, { doi: record.DOI }),
+    };
+
+    expect(results.crossref_search_works.structuredContent).toMatchObject({ works: [expected] });
+    expect(results.crossref_get_work.structuredContent).toMatchObject(expected);
+    for (const [name, result] of Object.entries(results)) {
+      const read = renderedText(result.content.map(blockText).join('\n')).split('\n');
+      expect(read, name).toContain(
+        'National Research Foundation of Korea — 10.13039/501100003725 (2016R1\\-D1A1B\\-01010135, H2020 *MSCA* [ERC], GA\\, <b>R01</b>)',
+      );
+      expect(read, name).toContain('https://example.com/license [*accepted*]');
     }
   });
 

@@ -1,0 +1,64 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2026, 5, 21]],
+      "date-time": "2026-05-21T21:13:29Z",
+      "timestamp": 1779398009495,
+      "version": "3.53.1"
+    },
+    "reference-count": 0,
+    "publisher": "Qeios Ltd",
+    "content-domain": { "domain": [] },
+    "published-print": { "date-parts": [[2023, 7, 9]] },
+    "DOI": "10.32388/kkcnxz",
+    "type": "peer-review",
+    "created": {
+      "date-parts": [[2023, 7, 9]],
+      "date-time": "2023-07-09T00:52:30Z",
+      "timestamp": 1688863950000
+    },
+    "source": "Crossref",
+    "is-referenced-by-count": 0,
+    "title": [
+      "Review of: \"Development of Traditional Packaging Design Innovations in the Present Context Using Technology for Packaging (Case Study: CV. XYZ)\""
+    ],
+    "prefix": "10.32388",
+    "author": [
+      {
+        "ORCID": "https://orcid.org/0000-0003-4296-1312",
+        "authenticated-orcid": true,
+        "given": "Giacomo",
+        "family": "Di Foggia",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [{ "vocabulary": "crossref", "role": "author" }]
+      }
+    ],
+    "member": "17262",
+    "link": [
+      {
+        "URL": "https://www.qeios.com/read/KKCNXZ/pdf",
+        "content-type": "application/pdf",
+        "content-version": "vor",
+        "intended-application": "unspecified"
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2023, 7, 9]],
+      "date-time": "2023-07-09T00:52:30Z",
+      "timestamp": 1688863950000
+    },
+    "score": 0.9999953,
+    "resource": { "primary": { "URL": "https://www.qeios.com/read/KKCNXZ" } },
+    "issued": { "date-parts": [[2023, 7, 9]] },
+    "references-count": 0,
+    "URL": "https://doi.org/10.32388/kkcnxz",
+    "relation": {
+      "is-review-of": [{ "id-type": "doi", "id": "10.32388/DMUSDP", "asserted-by": "subject" }]
+    },
+    "published": { "date-parts": [[2023, 7, 9]] }
+  }
+}

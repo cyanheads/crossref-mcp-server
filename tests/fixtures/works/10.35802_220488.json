@@ -1,0 +1,172 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2026, 10, 29]],
+      "date-time": "2026-10-29T13:42:13Z",
+      "timestamp": 1793281333087,
+      "version": "4.5.0"
+    },
+    "publisher": "Wellcome",
+    "award": "220488",
+    "DOI": "10.35802/220488",
+    "type": "grant",
+    "created": {
+      "date-parts": [[2021, 3, 12]],
+      "date-time": "2021-03-12T09:27:57Z",
+      "timestamp": 1615541277000
+    },
+    "source": "Crossref",
+    "prefix": "10.35802",
+    "member": "13928",
+    "project": [
+      {
+        "project-title": [
+          {
+            "title": "Using genetics, neurophysiology and longitudinal data to disentangle the complex relationship between sleep and mood disorders."
+          }
+        ],
+        "project-description": [
+          {
+            "description": "Emerging evidence suggests that sleep traits could be useful indicators of risk, relapse and potential treatment targets for mood disorders. However, the longitudinal and genetic relationships between sleep and mood disorders are complex and remain poorly understood. In this fellowship, I will address these gaps and build on my previous work by using cutting edge methods in genetic epidemiology, sleep neurophysiology and longitudinal data analysis. Key goals: (1) Determine the neurophysiological correlates of genetic liability to sleep traits and mood disorders using polysomnography – the gold-standard objective measure of sleep. Examining this in healthy populations will circumvent medication effects and bidirectionality, major confounds in existing polysomnography research. (2) Examine genetic and longitudinal relationships between adolescent sleep and depression to determine whether genetic variants for sleep traits in adult populations also influence sleep in younger populations, and delineate prospective associations between sleep and depression onset. (3) Investigate whether sleep disturbances can be used as an indicator of liability to relapse in bipolar disorder. Using in-depth longitudinal data from digital technologies will elucidate the role of sleep in predicting mood episodes in bipolar disorder. This work will inform sleep interventions and further knowledge on the role of sleep in mood disorders.",
+            "language": "en"
+          },
+          {
+            "description": "Sleep could be a cause or precursor of mood disorders such as depression and bipolar disorder (a mood disorder with periods of high and low mood). However, there is still much we do not understand about the complex relationship between sleep and mood. For example, are sleep problems a cause or effect of mood disorders? Why do sleep problems affect mood in some people more than others? Can we use information on sleep to predict if or when someone will become unwell? To investigate these questions, I will analyse genetic, sleep and mood data from large populations of people with and without mood disorders. This will involve cutting-edge methods for measuring sleep (polysomnography) and mood (digital technology). Results from this work will impact our current understanding of the role sleep disturbance plays in the onset and recurrence of mood disorders, in addition to informing mental health interventions and treatments.",
+            "language": "en"
+          }
+        ],
+        "investigator": [
+          {
+            "ORCID": "https://orcid.org/0000-0001-7073-2379",
+            "authenticated-orcid": false,
+            "given": "Michael",
+            "family": "O'Donovan",
+            "affiliation": [
+              {
+                "id": [
+                  {
+                    "id": "https://ror.org/03kk7td41",
+                    "id-type": "ROR",
+                    "asserted-by": "publisher"
+                  }
+                ],
+                "name": "Cardiff University",
+                "country": "GB"
+              }
+            ]
+          },
+          {
+            "ORCID": "https://orcid.org/0000-0003-3448-9927",
+            "authenticated-orcid": false,
+            "given": "Katharine",
+            "family": "Saunders",
+            "affiliation": [
+              {
+                "id": [
+                  {
+                    "id": "https://ror.org/052gg0110",
+                    "id-type": "ROR",
+                    "asserted-by": "publisher"
+                  }
+                ],
+                "name": "University of Oxford",
+                "country": "GB"
+              }
+            ]
+          },
+          {
+            "ORCID": "https://orcid.org/0000-0001-6199-5644",
+            "authenticated-orcid": false,
+            "given": "Jonathan",
+            "family": "Heron",
+            "affiliation": [
+              {
+                "id": [
+                  {
+                    "id": "https://ror.org/0524sp257",
+                    "id-type": "ROR",
+                    "asserted-by": "publisher"
+                  }
+                ],
+                "name": "University of Bristol",
+                "country": "GB"
+              }
+            ]
+          },
+          {
+            "ORCID": "https://orcid.org/0000-0002-7402-5812",
+            "authenticated-orcid": false,
+            "given": "Shaun",
+            "family": "Purcell",
+            "affiliation": [
+              {
+                "id": [
+                  {
+                    "id": "https://ror.org/04b6nzv94",
+                    "id-type": "ROR",
+                    "asserted-by": "publisher"
+                  }
+                ],
+                "name": "Brigham & Women's Hospital",
+                "country": "US"
+              }
+            ]
+          }
+        ],
+        "lead-investigator": [
+          {
+            "ORCID": "https://orcid.org/0000-0002-2220-6873",
+            "authenticated-orcid": false,
+            "given": "Katie",
+            "family": "Swaden Lewis",
+            "affiliation": [
+              {
+                "id": [
+                  {
+                    "id": "https://ror.org/03kk7td41",
+                    "id-type": "ROR",
+                    "asserted-by": "publisher"
+                  }
+                ],
+                "name": "Cardiff University",
+                "country": "GB"
+              }
+            ]
+          }
+        ],
+        "award-amount": { "amount": 300000, "currency": "GBP" },
+        "award-start": { "date-parts": [[2020, 10, 1]] },
+        "award-end": { "date-parts": [[2024, 9, 30]] },
+        "funding": [
+          {
+            "type": "fellowship",
+            "scheme": "Population and Public Health",
+            "award-amount": { "amount": 300000, "currency": "GBP", "percentage": 100 },
+            "funder": {
+              "id": [{ "id": "10.13039/100010269", "id-type": "DOI", "asserted-by": "publisher" }],
+              "name": "Wellcome Trust"
+            }
+          }
+        ]
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2026, 10, 29]],
+      "date-time": "2026-10-29T13:12:02Z",
+      "timestamp": 1793279522000
+    },
+    "score": 1,
+    "resource": {
+      "primary": {
+        "URL": "https://europepmc.org/grantfinder/grantdetails?query=pi:\"O'Donovan+M\"+gid:\"220488\"+ga:\"Wellcome Trust\""
+      }
+    },
+    "issued": { "date-parts": [[2020, 10, 1]] },
+    "URL": "https://doi.org/10.35802/220488",
+    "relation": {},
+    "subject": []
+  }
+}

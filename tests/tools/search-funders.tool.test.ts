@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { searchFundersTool } from '@/mcp-server/tools/definitions/search-funders.tool.js';
+import { GRANT_TITLE_NOTICE } from '@/mcp-server/tools/grant-rows.js';
 import { blockText, contentText, renderedText } from '../helpers/content.js';
 
 vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
@@ -1660,11 +1661,12 @@ describe('searchFundersTool registry descendants', () => {
 });
 
 /**
- * `worksCount` relays the registry record's own `work-count`, which is not the funder filter's
- * total: on Wellcome Trust (as of 2026-11-14) the record says 40,946 while the filter on its ID and
- * the funded-works list both total 61,914. Its superseded ID, 100004440, is asserted by 23,787
- * works, and neither count includes those asserting only that one; the OR of the two IDs in the
- * filter totals 84,996.
+ * `worksCount` relays the registry record's own `work-count`, which is the funder filter's total
+ * less the grant records that filter matches: on Wellcome Trust (as of 2026-11-18) the record says
+ * 40,982 while the filter on its ID and the funded-works list both total 61,950, 20,968 of them
+ * `grant` records. Wellcome has no registry descendants, so its `descendant-work-count` is 40,982
+ * too. Its superseded ID, 100004440, is asserted by 23,787 works (as of 2026-11-14), and neither
+ * count includes those asserting only that one; the OR of the two IDs in the filter totaled 84,996.
  */
 describe('searchFundersTool registry work count and replaced IDs', () => {
   const WELLCOME = {
@@ -1673,7 +1675,8 @@ describe('searchFundersTool registry work count and replaced IDs', () => {
     'alt-names': ['Wellcome'],
     location: 'United Kingdom',
     uri: 'http://dx.doi.org/10.13039/100010269',
-    'work-count': 40946,
+    'work-count': 40982,
+    'descendant-work-count': 40982,
     'replaced-by': [],
     replaces: ['100004440'],
     descendants: [],
@@ -1688,23 +1691,48 @@ describe('searchFundersTool registry work count and replaced IDs', () => {
     expect(result.isError).toBeFalsy();
     const funder = (result.structuredContent as { funders: Array<Record<string, unknown>> })
       .funders[0];
-    expect(funder).toMatchObject({ worksCount: 40946, replaces: ['100004440'] });
+    expect(funder).toMatchObject({ worksCount: 40982, replaces: ['100004440'] });
     const lines = renderedText(contentText(result.content)).split('\n');
-    expect(lines).toContain('Registry work count: 40946');
+    expect(lines).toContain('Registry work count: 40982');
     expect(lines).toContain('Replaces: 100004440');
     expect(contentText(result.content)).not.toContain('Works in Crossref');
   });
 
-  it("describes worksCount as the Funder Registry record's own count, naming the exact-figure call", () => {
+  it('describes worksCount as the funder filter total less the grant records it matches', () => {
     const description = funderShape.worksCount.description ?? '';
     expect(description).toContain("The Funder Registry record's own work count for this ID");
     expect(description).toContain(
-      'can differ from the total a crossref_search_works funder filter',
+      'the works a crossref_search_works funder filter on the ID matches, less the grant records among them',
     );
-    expect(description).toContain(
-      'call crossref_search_works with filter {"funder": "<id>"} and rows: 0, and read totalResults',
-    );
+    expect(description).toContain('That filter counts every grant DOI the funder registers');
+    // The route to a count without grants under other filters: either subtraction.
+    expect(description).toContain('facets {"type-name": "*"}');
+    expect(description).toContain('"type": "grant"');
+    // The filter total is not the figure worksCount stands in for.
+    expect(description).not.toContain('exact figure');
+    expect(description).not.toContain('and rows: 0, and read totalResults');
     expect(description).not.toContain('Works asserting this registry ID alone');
+  });
+
+  it('describes fundedWorksTotal as counting grant records, its descendants’ included', () => {
+    const description = searchFundersTool.enrichment?.fundedWorksTotal?.description ?? '';
+    expect(description).toContain('works funded by it or its registry descendants');
+    expect(description).toContain('grant records included');
+    expect(description).toContain('descendantWorksCount is this total less those grant records');
+    expect(description).toContain('facets {"type-name": "*"}');
+  });
+
+  it('calls no count a publication count or the exact figure', () => {
+    const descriptions = [
+      searchFundersTool.description,
+      funderShape.worksCount.description,
+      funderShape.descendantWorksCount.description,
+      searchFundersTool.enrichment?.fundedWorksTotal?.description,
+    ];
+    for (const description of descriptions) {
+      expect(description).toBeDefined();
+      expect(description).not.toMatch(/publication count|exact figure/i);
+    }
   });
 
   it("says no count includes a replaced ID's works and names the OR that adds them", () => {
@@ -1719,5 +1747,260 @@ describe('searchFundersTool registry work count and replaced IDs', () => {
   it('never calls the lookup count the ID-alone total in the tool description', () => {
     expect(searchFundersTool.description).not.toContain('work count of the ID alone');
     expect(searchFundersTool.description).toContain("the Funder Registry's own work count");
+  });
+
+  it('says in the tool description that the list and the funder filter count grant records', () => {
+    expect(searchFundersTool.description).toContain(
+      'Both it and that filter count the grant DOIs a funder registers',
+    );
+    expect(searchFundersTool.description).toContain('descendantWorksCount');
+  });
+});
+
+/**
+ * `descendantWorksCount` relays the lookup record's `descendant-work-count`: the funded-works list's
+ * total less its grant records (European Commission, 2026-11-18: 646,966 − 60,017 = 586,949). The
+ * captured fixtures carry it beside `work-count`; Crossref's name search returns neither (probed
+ * 2026-11-18 on `/funders?query=european+commission`), and a record without it gets no field.
+ */
+describe('searchFundersTool descendantWorksCount', () => {
+  type RawFunder = Record<string, unknown> & { id: string; 'descendant-work-count'?: number };
+  const captured = (id: string): RawFunder =>
+    (
+      JSON.parse(
+        readFileSync(new URL(`../fixtures/funders/${id}.json`, import.meta.url), 'utf8'),
+      ) as { message: RawFunder }
+    ).message;
+  const EC = captured('501100000780');
+  const funderOf = (result: { structuredContent?: unknown }) =>
+    (result.structuredContent as { funders: Array<Record<string, unknown>> }).funders[0];
+  const readLines = (result: { content: Parameters<typeof contentText>[0] }) =>
+    renderedText(contentText(result.content)).split('\n');
+
+  it('relays the record’s descendant-work-count on both surfaces of a funder_doi lookup', async () => {
+    mockSearchFunders.mockResolvedValue(funderList([EC]));
+
+    const result = await runToolContract(searchFundersTool, { funder_doi: '501100000780' });
+
+    expect(result.isError).toBeFalsy();
+    expect(EC['descendant-work-count']).toBe(585109);
+    expect(funderOf(result)).toMatchObject({ worksCount: 142140, descendantWorksCount: 585109 });
+    expect(readLines(result)).toContain('Registry work count with descendants: 585109');
+    expect(mockSearchFunders).toHaveBeenCalledTimes(1);
+    expect(mockGetFunderWorks).not.toHaveBeenCalled();
+  });
+
+  it('carries no field and no line for a record that omits it, never a default', async () => {
+    // Live name-search row shape: neither count is on it.
+    mockSearchFunders.mockResolvedValue(
+      funderList([
+        {
+          id: '501100000780',
+          name: 'European Commission',
+          'alt-names': ['EC'],
+          location: 'Belgium',
+          uri: 'http://dx.doi.org/10.13039/501100000780',
+          'replaced-by': [],
+          replaces: [],
+        },
+      ]),
+    );
+
+    const result = await runToolContract(searchFundersTool, { query: 'european commission' });
+
+    expect(result.isError).toBeFalsy();
+    expect(funderOf(result)).not.toHaveProperty('descendantWorksCount');
+    expect(funderOf(result)).not.toHaveProperty('worksCount');
+    expect(contentText(result.content)).not.toContain('Registry work count');
+  });
+
+  it('keeps a zero count rather than dropping it', async () => {
+    mockSearchFunders.mockResolvedValue(
+      funderList([
+        { id: '100000001', name: 'New Funder', 'work-count': 0, 'descendant-work-count': 0 },
+      ]),
+    );
+
+    const result = await runToolContract(searchFundersTool, { funder_doi: '100000001' });
+
+    expect(funderOf(result)).toMatchObject({ worksCount: 0, descendantWorksCount: 0 });
+    expect(readLines(result)).toContain('Registry work count with descendants: 0');
+  });
+
+  it('renders the line directly after the registry work count', () => {
+    const text = blockText(
+      searchFundersTool.format!({
+        funders: [
+          {
+            id: '501100000780',
+            name: 'European Commission',
+            worksCount: 142528,
+            descendantWorksCount: 586949,
+            descendants: ['100013268'],
+          },
+        ],
+      })[0],
+    );
+    expect(text.split('\n')).toEqual([
+      '## European Commission',
+      '**ID:** 501100000780',
+      '**Registry work count:** 142528',
+      '**Registry work count with descendants:** 586949',
+      '**Descendants (1):** 100013268',
+      '',
+    ]);
+  });
+
+  it('describes the count as the funded-works list total less its grant records', () => {
+    const description =
+      searchFundersTool.output.shape.funders.element.shape.descendantWorksCount.description ?? '';
+    expect(description).toContain('this funder and its registry descendants, less grant records');
+    expect(description).toContain('fundedWorksTotal');
+    expect(description).toContain('name-query rows omit it');
+  });
+});
+
+/**
+ * A grant deposits no `title`, and Crossref's `select` cannot reach the fields that carry its
+ * project titles, so a grant row on the funded-works list is untitled. Rows here are shaped after
+ * the live tail of the offset list of HORIZON EUROPE Marie Sklodowska-Curie Actions (`100018694`)
+ * as of 2026-11-18 — `works_offset` 9990, `rows` 10, 17,721 works — where every row is a grant
+ * with `title: null` and `published: null`.
+ */
+describe('searchFundersTool grant rows on the funded-works list', () => {
+  const grantRow = (doi: string) => ({ DOI: doi, type: 'grant', title: null, published: null });
+  const GRANT_ROWS = [
+    '10.3030/101284098',
+    '10.3030/101312406',
+    '10.3030/101227338',
+    '10.3030/101280023',
+    '10.3030/101283080',
+    '10.3030/101274575',
+    '10.3030/101299508',
+    '10.3030/101312053',
+    '10.3030/101206145',
+    '10.3030/101081457',
+  ].map(grantRow);
+  const HORIZON_EUROPE = {
+    id: '100018694',
+    name: 'HORIZON EUROPE Marie Sklodowska-Curie Actions',
+    'work-count': 9085,
+    'replaced-by': [],
+    replaces: [],
+  };
+  const noticeOf = (result: { structuredContent?: unknown }) =>
+    (result.structuredContent as { notice?: string }).notice;
+  const rendered = (result: { content: Parameters<typeof contentText>[0] }) =>
+    renderedText(contentText(result.content));
+
+  it('projects a live-shaped grant row with no title and no date, its DOI standing in', async () => {
+    mockSearchFunders.mockResolvedValue(funderList([HORIZON_EUROPE]));
+    mockGetFunderWorks.mockResolvedValue({ totalResults: 17721, items: GRANT_ROWS.slice(0, 1) });
+
+    const result = await runToolContract(searchFundersTool, {
+      funder_doi: '100018694',
+      include_works: true,
+      rows: 1,
+    });
+
+    const works = (result.structuredContent as { fundedWorks: unknown[] }).fundedWorks;
+    expect(works).toEqual([{ doi: '10.3030/101284098', type: 'grant' }]);
+    const lines = contentText(result.content).split('\n');
+    expect(lines).toContain('- **10.3030/101284098**');
+    expect(lines).toContain('  DOI: 10.3030/101284098 | Type: grant');
+  });
+
+  it('names crossref_get_work on both surfaces when a page carries an untitled grant', async () => {
+    mockSearchFunders.mockResolvedValue(funderList([HORIZON_EUROPE]));
+    mockGetFunderWorks.mockResolvedValue({
+      totalResults: 17721,
+      items: [
+        { DOI: '10.1016/j.synbio.2026.10.004', type: 'journal-article', title: ['A title'] },
+        GRANT_ROWS[0],
+      ],
+    });
+
+    const result = await runToolContract(searchFundersTool, {
+      funder_doi: '100018694',
+      include_works: true,
+      rows: 2,
+    });
+
+    expect(result.isError).toBeFalsy();
+    expect(noticeOf(result)).toBe(GRANT_TITLE_NOTICE);
+    expect(rendered(result)).toContain(GRANT_TITLE_NOTICE);
+    expect(noticeOf(result)).toContain('crossref_get_work with the grant’s DOI returns them.');
+    expect(rendered(result)).toContain('crossref_get_work with the grant’s DOI returns them.');
+    const works = (result.structuredContent as { fundedWorks: Array<{ title?: string }> })
+      .fundedWorks;
+    expect(works[1]).not.toHaveProperty('title');
+  });
+
+  it('carries the grant caveat beside the works ceiling caveat in one notice', async () => {
+    mockSearchFunders.mockResolvedValue(funderList([HORIZON_EUROPE]));
+    mockGetFunderWorks.mockResolvedValue({ totalResults: 17721, items: GRANT_ROWS });
+
+    const result = await runToolContract(searchFundersTool, {
+      funder_doi: '100018694',
+      include_works: true,
+      rows: 10,
+      works_offset: 9990,
+    });
+
+    const notice = noticeOf(result) ?? '';
+    expect(notice).toContain(
+      'This is the last works page reachable by works_offset — Crossref caps works_offset + rows at 10000 on a funded-works list and 17721 works exist.',
+    );
+    expect(notice).toContain(GRANT_TITLE_NOTICE);
+    const text = rendered(result);
+    expect(text).toContain('17721 works exist');
+    expect(text).toContain(GRANT_TITLE_NOTICE);
+  });
+
+  it('carries the grant caveat on a works_cursor page too', async () => {
+    mockSearchFunders.mockResolvedValue(funderList([HORIZON_EUROPE]));
+    mockGetFunderWorks.mockResolvedValue({
+      totalResults: 17721,
+      items: GRANT_ROWS.slice(0, 3),
+      nextCursor: 'MTcxMzk4NTM0ODAwMCwxMC4zMDMwJTJGMTAxMjA2MTQ1',
+    });
+
+    const result = await runToolContract(searchFundersTool, {
+      funder_doi: '100018694',
+      include_works: true,
+      rows: 3,
+      works_cursor: '*',
+    });
+
+    expect(noticeOf(result)).toBe(GRANT_TITLE_NOTICE);
+    expect((result.structuredContent as { nextWorksCursor?: string }).nextWorksCursor).toBe(
+      'MTcxMzk4NTM0ODAwMCwxMC4zMDMwJTJGMTAxMjA2MTQ1',
+    );
+  });
+
+  it('adds no grant caveat for an untitled row of another type', async () => {
+    mockSearchFunders.mockResolvedValue(funderList([HORIZON_EUROPE]));
+    mockGetFunderWorks.mockResolvedValue({
+      totalResults: 2,
+      items: [{ DOI: '10.5281/zenodo.1', type: 'dataset', title: null }],
+    });
+
+    const result = await runToolContract(searchFundersTool, {
+      funder_doi: '100018694',
+      include_works: true,
+      rows: 1,
+    });
+
+    expect(noticeOf(result)).toBeUndefined();
+    expect(contentText(result.content)).not.toContain('crossref_get_work');
+  });
+
+  it('names the grant caveat in the notice and title descriptions', () => {
+    expect(searchFundersTool.enrichment?.notice?.description).toContain(
+      'a funded-works row of type grant, which carries no title',
+    );
+    const title = searchFundersTool.output.shape.fundedWorks.unwrap().element.shape.title;
+    expect(title.description).toContain('Absent on a grant record');
+    expect(title.description).toContain('crossref_get_work');
   });
 });

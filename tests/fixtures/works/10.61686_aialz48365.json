@@ -1,0 +1,55 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2026, 9, 7]],
+      "date-time": "2026-09-07T13:17:46Z",
+      "timestamp": 1788787066988,
+      "version": "build-2803163510"
+    },
+    "publisher": "Dutch Research Council (NWO)",
+    "award-start": { "date-parts": [[2022, 4, 20]] },
+    "award": "203.001.153",
+    "DOI": "10.61686/aialz48365",
+    "type": "grant",
+    "created": {
+      "date-parts": [[2026, 9, 7]],
+      "date-time": "2026-09-07T12:58:46Z",
+      "timestamp": 1788785926000
+    },
+    "source": "Crossref",
+    "prefix": "10.61686",
+    "member": "47652",
+    "project": [
+      {
+        "project-title": [
+          { "title": "Case-study Research &amp; Data Reuse (CaRe &amp; DaRe)", "language": "en" }
+        ],
+        "award-start": { "date-parts": [[2022, 4, 20]] },
+        "award-end": { "date-parts": [[2023, 4, 19]] },
+        "funding": [
+          {
+            "type": "grant",
+            "funder": {
+              "id": [
+                { "id": "10.13039/501100003246", "id-type": "DOI", "asserted-by": "publisher" }
+              ],
+              "name": "Dutch Research Council"
+            }
+          }
+        ]
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2026, 9, 7]],
+      "date-time": "2026-09-07T13:03:53Z",
+      "timestamp": 1788786233000
+    },
+    "score": 0.99791133,
+    "resource": { "primary": { "URL": "https://www.nwo.nl/projecten/AIALZ48365" } },
+    "issued": { "date-parts": [[2022, 4, 20]] },
+    "URL": "https://doi.org/10.61686/aialz48365"
+  }
+}

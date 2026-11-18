@@ -45,10 +45,11 @@ crossref-mcp-server wraps the [Crossref REST API](https://api.crossref.org/) to 
 - **Offset paging is capped at ~10K** on `/works` and `/funders/{id}/works`, the two routes the works lists read (100K on the `/journals` and `/funders` name searches). Deep paging requires `cursor=*` on the first request, then chaining `next-cursor` tokens; the name-search routes do not accept a cursor. Cursor and offset cannot be combined.
 - **A cursor walk is ended by an empty page, never by upstream.** Crossref's `next-cursor` is a search-after key (it decodes to `<sort-value>,<DOI>` and changes on every page), and the last partial page of a list still carries one, so a token's presence never means more records remain. Every cursor surface withholds its continuation token once a page comes back empty — Crossref currently sends none on that page, but has handed back the token that produced it before.
 - **A cursor cannot carry a publication-date sort.** Crossref refuses `published`, `published-print`, `published-online`, and `issued` beside `cursor` (`sort-criteria-incompatible-with-cursor`), and a walk with no sort runs oldest-registered first. The journal and funder works lists therefore walk a `works_cursor` by `sort=created&order=desc` (newest registered first) and keep `sort=published&order=desc` on offset pages; `crossref_search_works` passes the caller's `sort` and `order` through — a refusal comes back as `sort_cursor_conflict` — except on a cursor walk with a query term and no `sort`, which it sends as `sort=score` without `order` (a no-sort walk carries no ranking, Crossref ignores `order` without `sort`, and `score&order=asc` inverts the ranking). A filter-only walk and offset pages get no default sort.
-- **`select=` works on `/works` and `/funders/{id}/works`, never on `/works/{doi}`** (400 `parameter-not-allowed`), so `crossref_get_references` fetches the full record and extracts `reference[]` client-side. Every works-list request names the fields its summary reads — `crossref_search_works` the caller's `fields`, or every name its summary projects (`SELECTABLE_FIELDS`) when there are none; the journal and funder works lists `WORKS_LIST_SELECT` — since without one Crossref returns whole records, reference lists included.
+- **`select=` works on `/works` and `/funders/{id}/works`, never on `/works/{doi}`** (400 `parameter-not-allowed`), so `crossref_get_references` fetches the full record and extracts `reference[]` client-side. Every works-list request names the fields its summary reads — `crossref_search_works` the caller's `fields`, or its default selection (`DEFAULT_FIELDS`: every name but the opt-in `funder`, `license`, `link`) when there are none; the journal and funder works lists `WORKS_LIST_SELECT`, and the published-version lookup `DOI,type,title` — since without one Crossref returns whole records, reference lists included.
 - **Filter keys use hyphens.** e.g. `has-abstract`, `has-references`, `has-full-text`, `from-pub-date`. No `is_open_access` filter exists — use `license.url` with a Creative Commons license URL for open-access content. `directory:DOAJ` passes Crossref's validator but every request carrying it is answered with HTTP 500, so no surface recommends it.
 - **A DOI is accepted wrapped in its resolver.** `https://doi.org/…`, `https://dx.doi.org/…`, and `doi:…` each name exactly one DOI, so `normalizeDoi` in the service unwraps them and every DOI-bearing input admits them. Crossref's own paths take the bare DOI, so the unwrap happens at the head of the handler and everything below it — request path, logs, `doi_not_found` message and `data.doi` — reads the bare form.
 - **A not-found DOI costs up to two more requests, both to `https://doi.org`.** The registry lookup (`https://doi.org/doiRA/{doi}`) names the agency; when it names DataCite, JaLC, mEDRA, KISTI, or OP, one more request to `https://doi.org/{doi}` asks for CSL-JSON, inside the same one-timeout window as the registry lookup, and the citation reaches `data.citation` and the message. Every other outcome leaves the error as it was without one.
+- **Every Crossref request settles within one 25 s deadline** (`CROSSREF_TIMEOUT_MS` when longer) across its attempts, backoffs, and honored `Retry-After` waits, so with `CROSSREF_TIMEOUT_MS` at 25 s or under (the default is 10 s) the longest chain (a journal or funder record, then its works list) answers inside the 60 s MCP client default. A spent deadline reports the last completed attempt's 429, else the failure it left no room to retry, else `request_timeout`; `retry_deadline_exceeded` never leaves the service. An attempt that hits `CROSSREF_TIMEOUT_MS` is still not retried.
 
 ---
 
@@ -128,7 +129,7 @@ import { parseEnvConfig } from '@cyanheads/mcp-ts-core/config';
 const ServerConfigSchema = z.object({
   mailto: z.string().email().optional().describe('Contact email embedded in the polite-pool User-Agent header'),
   baseUrl: z.string().url().default('https://api.crossref.org').describe('Crossref API base URL'),
-  timeoutMs: z.coerce.number().min(1000).max(60000).default(10000).describe('Per-request timeout in ms'),
+  timeoutMs: z.coerce.number().min(1000).max(60000).default(10000).describe('Per-attempt timeout in ms'),
 });
 
 let _config: z.infer<typeof ServerConfigSchema> | undefined;
@@ -154,7 +155,7 @@ For env booleans use `z.stringbool()`, never `z.coerce.boolean()` — `Boolean("
 
 `createApp({ sessionMode })` declares the HTTP session posture in `src/` instead of leaving it to a deployment's `MCP_SESSION_MODE`, which still wins whenever it carries a meaningful value (an empty string and an unsubstituted `${…}` placeholder read as unset and fall through to the option). This server declares `'stateless'`: no tool asks the caller for input mid-handler, so no handler needs a session to come back to. A server that does call `ctx.requestInput` adds `require: 'stateful'`, which fails startup with a `ConfigurationError` rather than serving a mode in which a 2025-era HTTP client can never answer. Stdio is never refused.
 
-`createApp({ teardown })` is the `setup()` counterpart — release a watcher, socket, or non-`unref()`'d timer there. It runs after the transport stops and before the logger closes, on every shutdown path, and a signal-triggered shutdown then exits the process explicitly (0, or 1 if a step never settles within the framework's 10 s ceiling). Not declared here: `CrossrefService` holds nothing past a request, and its per-request timeout timer is cleared in a `finally`.
+`createApp({ teardown })` is the `setup()` counterpart — release a watcher, socket, or non-`unref()`'d timer there. It runs after the transport stops and before the logger closes, on every shutdown path, and a signal-triggered shutdown then exits the process explicitly (0, or 1 if a step never settles within the framework's 10 s ceiling). Not declared here: `CrossrefService` holds nothing past a request, and each attempt's timeout timer is cleared in a `finally`.
 
 ---
 
@@ -227,7 +228,7 @@ src/
     server-config.ts                    # CROSSREF_MAILTO, CROSSREF_BASE_URL, CROSSREF_TIMEOUT_MS
   services/
     crossref/
-      crossref-service.ts               # HTTP client, polite-pool User-Agent, retry, pagination, registry/citation lookup, rejection mapping
+      crossref-service.ts               # HTTP client, polite-pool User-Agent, retry, pagination, registry/citation lookup, published-version lookup, rejection mapping
       date-parts.ts                     # parseDateParts / formatDateParts / resolveWorkDate / resolveWorkSummaryDate
       html-entities.ts                  # HTML5 named character reference table + single-pass decode
       link-text.ts                      # A link element's text, read once per closer, for the href check
@@ -239,12 +240,15 @@ src/
     tools/
       blank-input.ts                    # nonBlank / isBlank — a blank optional string reads as omitted
       cursor-notice.ts                  # cursorNotice — advisory notice for a cursor that does not decode as a Crossref continuation token
+      grant-rows.ts                     # GRANT_TITLE_NOTICE / hasUntitledGrant — the notice for a works-list grant row with no title
       markdown-text.ts                  # mdText / mdTextAtLineStart / mdTextInHeading — the content[] escape
       metadata-coverage.ts              # Coverage schema, projection, and renderer — member and journal tools
       page-size.ts                      # Per-input page-size caps + clampPageSize — a value above its cap is clamped with a notice
       registration-agency.ts            # notFoundDetail — not-found text branched on the DOI registry's answer, plus the citation of a DOI another agency registered (citationOf, citationSentence)
       work-assertions.ts                # clinicalTrialNumbers / assertions — fields, projection, lines
       work-dates.ts                     # event / approved — fields, projection, line
+      work-funders-licenses-links.ts    # funders / licenses / links — schemas, projections, sections; rorId, UNNAMED
+      work-grants-reviews.ts            # award / awardStart / projects / investigatorCount / review — fields, projections, lines
       work-locators.ts                  # volume / issue / page / articleNumber — fields, projection, line
       work-updates.ts                   # updatedBy / updateTo — fields, projection, line
     tools/definitions/
@@ -416,7 +420,7 @@ import { getCrossrefService } from '@/services/crossref/crossref-service.js';
 - [ ] A Crossref rejection (400, or 404 `cursor-invalid`) maps onto a declared reason in `upstream-errors.ts` by Crossref's `type`, and every tool that can reach one spreads that entry into its `errors[]`
 - [ ] The journal and funder works lists send `sort=created&order=desc` beside a cursor and `sort=published&order=desc` on an offset page — never a publication-date sort beside a cursor
 - [ ] Filter keys in `crossref_search_works` use hyphens (e.g. `has-abstract`), not underscores
-- [ ] Every works-list request carries `select=` naming the fields its summary reads — a raw key a projection starts reading joins `SELECTABLE_FIELDS` (`crossref_search_works`) or `WORKS_LIST_SELECT` (the journal and funder works lists) in the same change — and `/works/{doi}` (single-fetch) never gets one
+- [ ] Every works-list request carries `select=` naming the fields its summary reads — a raw key a projection starts reading joins `DEFAULT_FIELDS` or `OPT_IN_FIELDS` (`crossref_search_works`) or `WORKS_LIST_SELECT` (the journal and funder works lists) in the same change — and `/works/{doi}` (single-fetch) never gets one
 - [ ] `crossref_get_references` extracts `reference[]` from the full `/works/{doi}` response body, not via a `select` shortcut
 - [ ] Cursor and offset cannot be combined — throw `cursor_offset_conflict` (`crossref_search_works`) or `works_cursor_offset_conflict` (the journal/funder works lists) if both are supplied
 - [ ] Cursor continuation tokens (`nextCursor`, `nextWorksCursor`) are withheld on an empty page — the guard keys on the page's item count, never on `totalResults`

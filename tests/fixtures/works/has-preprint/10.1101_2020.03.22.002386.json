@@ -1,0 +1,21 @@
+{
+  "status": "ok",
+  "message-type": "work-list",
+  "message-version": "1.0.0",
+  "message": {
+    "facets": {},
+    "total-results": 1,
+    "items": [
+      {
+        "DOI": "10.1038/s41586-020-2286-9",
+        "type": "journal-article",
+        "title": ["A SARS-CoV-2 protein interaction map reveals targets for drug repurposing"]
+      }
+    ],
+    "items-per-page": 10,
+    "query": {
+      "start-index": 0,
+      "search-terms": null
+    }
+  }
+}

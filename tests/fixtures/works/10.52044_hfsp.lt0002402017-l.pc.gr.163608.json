@@ -1,0 +1,83 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2026, 9, 22]],
+      "date-time": "2026-09-22T14:00:53Z",
+      "timestamp": 1790085653062,
+      "version": "4.0.1"
+    },
+    "publisher": "Human Frontier Science Program",
+    "award": "LT000240/2017-L",
+    "DOI": "10.52044/hfsp.lt0002402017-l.pc.gr.163608",
+    "type": "grant",
+    "created": {
+      "date-parts": [[2026, 2, 19]],
+      "date-time": "2026-02-19T09:21:53Z",
+      "timestamp": 1771492913000
+    },
+    "source": "Crossref",
+    "prefix": "10.52044",
+    "member": "14406",
+    "project": [
+      {
+        "project-title": [
+          {
+            "title": "Investigating microenvironmental heterogeneity of genetically diverse glioblastomas",
+            "language": "en"
+          }
+        ],
+        "project-description": [
+          {
+            "description": "Cancer is not a single disease and individual tumors have different molecular profiles. Glioblastoma multiforme (GBM), the most aggressive form of glioma, can be grouped into four different molecular subtypes including proneural, neural, mesenchymal and classical, based on distinct gene expression signatures. GBM has an invariably terminal prognosis. Most patients die within 14 months following diagnosis, even with surgery, radiation and chemotherapy, stressing the urgency for new therapies. Non-cancerous cells in the tumor microenvironment (TME), including different populations of immune cells, fibroblasts and endothelial cells, represent genetically stable therapeutic targets since they are less likely to develop acquired resistance as a result of genetic changes, in contrast to tumor cells. One immune cell type that has been successfully targeted in preclinical trials of proneural GBM are tumor-associated recruited macrophages and resident microglia (TAMs). However, it remains to be determined whether targeting TAMs also results in clinical responses in other GBM subtypes with different genetic alterations. As a consequence of a distinct molecular profile it may be expected that different populations and/or amounts of stromal cells are recruited and differentially educated in the TME. Therefore, I will determine how specific genetic alterations in different GBM subtypes sculpt the TME. I also aim to assess the effect of targeting TAMs in these GBM subtypes and to gain insights into potential resistance mechanisms. To achieve this, I will employ the latest genetic mouse models for GBM, extensive flow cytometry analyses, RNA sequencing and intravital microscopy.",
+            "language": "en"
+          }
+        ],
+        "lead-investigator": [
+          {
+            "given": "Anoek",
+            "family": "ZOMER",
+            "affiliation": [
+              {
+                "id": [
+                  {
+                    "id": "https://ror.org/019whta54",
+                    "id-type": "ROR",
+                    "asserted-by": "publisher"
+                  }
+                ],
+                "name": "University of Lausanne"
+              }
+            ]
+          }
+        ],
+        "award-amount": { "amount": 0, "currency": null },
+        "award-start": { "date-parts": [[2018, 1, 1]] },
+        "funding": [
+          {
+            "type": "award",
+            "funder": {
+              "id": [{ "id": "10.13039/100004412", "id-type": "DOI", "asserted-by": "publisher" }],
+              "name": "Human Frontier Science Program"
+            }
+          }
+        ]
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2026, 9, 22]],
+      "date-time": "2026-09-22T13:11:05Z",
+      "timestamp": 1790082665000
+    },
+    "score": 0.99968463,
+    "resource": {
+      "primary": {
+        "URL": "https://proposalcentral.com/Insights/Crossref/PublicAwardRedirect/HFSP.LT0002402017-L.pc.gr.163608"
+      }
+    },
+    "issued": { "date-parts": [[2018, 1, 1]] },
+    "URL": "https://doi.org/10.52044/hfsp.lt0002402017-l.pc.gr.163608"
+  }
+}

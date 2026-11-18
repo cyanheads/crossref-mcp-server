@@ -1,0 +1,76 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "institution": [{ "name": "Medical University of Plovdiv", "place": ["Plovdiv"] }],
+    "indexed": {
+      "date-parts": [[2026, 5, 21]],
+      "date-time": "2026-05-21T19:25:47Z",
+      "timestamp": 1779391547893,
+      "version": "3.53.1"
+    },
+    "reference-count": 0,
+    "publisher": "F1000 Research Ltd",
+    "license": [
+      {
+        "start": {
+          "date-parts": [[2025, 1, 20]],
+          "date-time": "2025-01-20T00:00:00Z",
+          "timestamp": 1737331200000
+        },
+        "content-version": "tdm",
+        "delay-in-days": 0,
+        "URL": "https://creativecommons.org/licenses/by/4.0/"
+      }
+    ],
+    "content-domain": { "domain": [] },
+    "published-print": { "date-parts": [[2025, 1, 20]] },
+    "DOI": "10.5256/f1000research.147174.r355552",
+    "type": "peer-review",
+    "created": {
+      "date-parts": [[2025, 11, 25]],
+      "date-time": "2025-11-25T22:27:05Z",
+      "timestamp": 1764109625000
+    },
+    "source": "Crossref",
+    "is-referenced-by-count": 0,
+    "title": [
+      "Peer Review Report For: Case Report: 3 Tesla magnetic resonance imaging of Rapidly Progressive Osteoarthritis of the Hip [version 1; peer review: 1 approved with reservations, 1 not approved]"
+    ],
+    "prefix": "10.5256",
+    "member": "2560",
+    "review": {
+      "type": "referee-report",
+      "stage": "post-publication",
+      "competing-interest-statement": "No competing interests were declared"
+    },
+    "contributor": [
+      {
+        "given": "Tanya",
+        "family": "Sapundzhieva",
+        "sequence": "first",
+        "affiliation": [],
+        "role": [{ "vocabulary": "crossref", "role": "reviewer" }]
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2025, 11, 25]],
+      "date-time": "2025-11-25T22:27:15Z",
+      "timestamp": 1764109635000
+    },
+    "score": 0.99998325,
+    "resource": {
+      "primary": { "URL": "https://f1000research.com/articles/12-853/v1#referee-response-355552" }
+    },
+    "issued": { "date-parts": [[2025, 1, 20]] },
+    "references-count": 0,
+    "URL": "https://doi.org/10.5256/f1000research.147174.r355552",
+    "relation": {
+      "is-review-of": [
+        { "id-type": "doi", "id": "10.12688/f1000research.134145.1", "asserted-by": "subject" }
+      ]
+    },
+    "published": { "date-parts": [[2025, 1, 20]] }
+  }
+}

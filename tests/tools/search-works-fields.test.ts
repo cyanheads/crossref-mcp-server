@@ -15,6 +15,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { createFetchMock, runToolContract } from '@cyanheads/mcp-ts-core/testing';
+import { Parser } from 'commonmark';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { singleRecord, type ToolResult, textOf, workList } from '../helpers/crossref-responses.js';
 
@@ -35,8 +36,8 @@ import { initCrossrefService } from '@/services/crossref/crossref-service.js';
 
 const WORKS = /^https:\/\/api\.crossref\.test\/works\?/;
 
-/** The select names the projection covers, in the order the input advertises them. */
-const ACCEPTED = [
+/** The selection a page carries when `fields` names none, in the order the input advertises it. */
+const DEFAULT_SELECT = [
   'DOI',
   'title',
   'type',
@@ -60,6 +61,12 @@ const ACCEPTED = [
   'updated-by',
   'update-to',
 ];
+
+/** The names a page carries only when `fields` names them. */
+const OPT_IN = ['funder', 'license', 'link'];
+
+/** Every select name the projection covers, in the order the input advertises them. */
+const ACCEPTED = [...DEFAULT_SELECT, ...OPT_IN];
 
 /** The live record for 10.1038/s41586-020-2649-2 under `select=DOI,ISSN,volume,issue,page`. */
 const NUMPY = {
@@ -346,7 +353,7 @@ describe('crossref_search_works fields', () => {
   /** facet= counts the match set; it rides beside the selection and never changes it. */
   it.each([
     ['a written selection', { fields: ['DOI', 'update-to'] }, ['DOI', 'update-to']],
-    ['no selection', {}, ACCEPTED],
+    ['no selection', {}, DEFAULT_SELECT],
   ])('sends facet= beside the select= of %s, unchanged', async (_label, extra, select) => {
     http.route({ match: WORKS, respond: () => workList([{ DOI: '10.5555/t' }]) });
 
@@ -443,7 +450,7 @@ describe('crossref_search_works fields', () => {
     expect(textOf(result)).not.toMatch(/Updated by|Update notice for/);
   });
 
-  it.each([[['license']], [['doi']], [['title', 'ISBN']]])(
+  it.each([[['reference']], [['doi']], [['title', 'ISBN']], [['funder', 'Funder']]])(
     'refuses %j before any request, naming the accepted values',
     async (fields) => {
       const result = await runToolContract(searchWorksTool, { query: 'q', fields } as never);
@@ -464,20 +471,294 @@ describe('crossref_search_works fields', () => {
   /**
    * Without a selection Crossref returns whole records — reference lists included — for a
    * projection that reads twenty-two fields of them: a heavy 1000-row page is 13.0 MB upstream
-   * against 3.2 MB under the select, with identical output.
+   * against 3.2 MB under the select, with identical output. The three opt-in names stay out of
+   * it, so a page that names no fields is the page it has always been.
    */
   it.each([
     ['fields omitted', {}],
     ['fields empty', { fields: [] }],
     ['an offset page', { offset: 40 }],
     ['a cursor walk', { cursor: '*' }],
-  ])('names every field the summary projects in select= with %s', async (_, input) => {
-    http.route({ match: WORKS, respond: () => workList([]) });
+  ])(
+    'names every default field, and none of funder, license, or link, in select= with %s',
+    async (_, input) => {
+      http.route({ match: WORKS, respond: () => workList([]) });
 
-    const result = await runToolContract(searchWorksTool, { query: 'q', rows: 1, ...input });
+      const result = await runToolContract(searchWorksTool, { query: 'q', rows: 1, ...input });
 
-    expect(result.isError).toBeFalsy();
-    expect(selected()).toEqual(ACCEPTED);
+      expect(result.isError).toBeFalsy();
+      expect(selected()).toEqual(DEFAULT_SELECT);
+    },
+  );
+});
+
+/** A funder list of `count` distinct named entries, each with its own award. */
+function makeFunders(count: number) {
+  return Array.from({ length: count }, (_, i) => ({
+    name: `Funder ${i}`,
+    DOI: `10.13039/50110000${i}`,
+    award: [`AWARD-${i}`],
+  }));
+}
+
+/**
+ * The three opt-in names. Each fills its output field with crossref_get_work's entry shape and
+ * renders get_work's labelled list inside the work's block — the shapes and lines are tabled in
+ * `work-funders-licenses-links.test.ts`; this proves the wiring on both surfaces.
+ */
+describe('crossref_search_works funder, license, and link', () => {
+  const RECORD = {
+    DOI: '10.1038/s41586-020-2649-2',
+    funder: [
+      {
+        name: 'National Natural Science Foundation of China',
+        DOI: '10.13039/501100001809',
+        award: ['41801279'],
+      },
+      { award: ['EP/S020527/1'], id: [{ id: 'https://ror.org/0439y7842', 'id-type': 'ROR' }] },
+    ],
+    license: [
+      {
+        URL: 'https://creativecommons.org/licenses/by/4.0',
+        'content-version': 'vor',
+        'delay-in-days': 0,
+        start: { 'date-time': '2020-09-16T00:00:00Z' },
+      },
+    ],
+    link: [
+      {
+        URL: 'https://www.nature.com/articles/s41586-020-2649-2.pdf',
+        'content-type': 'application/pdf',
+        'content-version': 'vor',
+        'intended-application': 'text-mining',
+      },
+    ],
+  };
+
+  /** Answer with RECORD cut to the `select=` names, as Crossref does. */
+  function selectFromRecord(request: Request): Response {
+    const names = new URL(request.url).searchParams.get('select')?.split(',') ?? [];
+    return workList([
+      Object.fromEntries(Object.entries(RECORD).filter(([k]) => names.includes(k))),
+    ]);
+  }
+
+  it('returns doi, funders, and funderCount alone under fields ["funder"]', async () => {
+    http.route({ match: WORKS, respond: selectFromRecord });
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'q',
+      fields: ['funder'],
+      rows: 1,
+    });
+
+    expect(selected()).toEqual(['DOI', 'funder']);
+    expect(firstWork(result)).toEqual({
+      doi: '10.1038/s41586-020-2649-2',
+      funderCount: 2,
+      funders: [
+        {
+          name: 'National Natural Science Foundation of China',
+          doi: '10.13039/501100001809',
+          award: ['41801279'],
+        },
+        { ror: 'https://ror.org/0439y7842', award: ['EP/S020527/1'] },
+      ],
+    });
+    expect(textOf(result)).toContain(
+      '\n\n**Funders:**\n- National Natural Science Foundation of China — 10.13039/501100001809 (41801279)\n- https://ror.org/0439y7842 (EP/S020527/1)\n',
+    );
+    expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
+  });
+
+  it('returns doi and licenses alone under fields ["license"]', async () => {
+    http.route({ match: WORKS, respond: selectFromRecord });
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'q',
+      fields: ['license'],
+      rows: 1,
+    });
+
+    expect(selected()).toEqual(['DOI', 'license']);
+    expect(firstWork(result)).toEqual({
+      doi: '10.1038/s41586-020-2649-2',
+      licenses: [
+        {
+          url: 'https://creativecommons.org/licenses/by/4.0',
+          contentVersion: 'vor',
+          delayInDays: 0,
+          start: '2020-09-16T00:00:00Z',
+        },
+      ],
+    });
+    expect(textOf(result)).toContain(
+      '\n\n**Licenses:**\n- https://creativecommons.org/licenses/by/4.0 [vor] (0d embargo) — starts 2020-09-16T00:00:00Z\n',
+    );
+  });
+
+  it('returns doi and links alone under fields ["link"]', async () => {
+    http.route({ match: WORKS, respond: selectFromRecord });
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'q',
+      fields: ['link'],
+      rows: 1,
+    });
+
+    expect(selected()).toEqual(['DOI', 'link']);
+    expect(firstWork(result)).toEqual({
+      doi: '10.1038/s41586-020-2649-2',
+      links: [
+        {
+          url: 'https://www.nature.com/articles/s41586-020-2649-2.pdf',
+          contentType: 'application/pdf',
+          contentVersion: 'vor',
+          intendedApplication: 'text-mining',
+        },
+      ],
+    });
+    expect(textOf(result)).toContain(
+      '\n\n**Full-text links:**\n- https://www.nature.com/articles/s41586-020-2649-2.pdf (application/pdf) [text-mining] [vor]\n',
+    );
+  });
+
+  it('omits all three, field and line, from a work that deposits none of them', async () => {
+    http.route({ match: WORKS, respond: () => workList([{ DOI: '10.5555/sparse' }]) });
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'q',
+      fields: ['funder', 'license', 'link'],
+      rows: 1,
+    });
+
+    expect(selected()).toEqual(['DOI', 'funder', 'license', 'link']);
+    expect(firstWork(result)).toEqual({ doi: '10.5555/sparse' });
+    expect(textOf(result)).not.toMatch(/Funders|Licenses|Full-text links/);
+  });
+
+  /**
+   * The three are opt-in: a page that names no fields asks Crossref for none of them, and reads
+   * none of them off a record that carries them anyway.
+   */
+  it.each([
+    ['fields omitted', {}],
+    ['fields empty', { fields: [] }],
+    ['a selection naming none of the three', { fields: ['DOI', 'title'] }],
+  ])(
+    'returns no funders, licenses, or links with %s, whatever the record carries',
+    async (_, extra) => {
+      http.route({ match: WORKS, respond: () => workList([{ ...RECORD, title: ['T'] }]) });
+
+      const result = await runToolContract(searchWorksTool, {
+        query: 'q',
+        rows: 1,
+        ...extra,
+      } as never);
+
+      const work = firstWork(result);
+      for (const key of ['funders', 'funderCount', 'licenses', 'links']) {
+        expect(work).not.toHaveProperty(key);
+      }
+      expect(textOf(result)).not.toMatch(/Funders|Licenses|Full-text links/);
+    },
+  );
+
+  /** `10.1103/physrevd.107.l091102` deposits 381 funders; the summary carries the first 25. */
+  it('cuts a funder list at 25, reporting the deposited total and the route to the rest on both surfaces', async () => {
+    const doi = '10.1103/physrevd.107.l091102';
+    http.route({ match: WORKS, respond: () => workList([{ DOI: doi, funder: makeFunders(381) }]) });
+
+    const result = await runToolContract(searchWorksTool, {
+      filter: { doi },
+      fields: ['DOI', 'funder'],
+      rows: 1,
+    });
+
+    const work = firstWork(result) as { funders: { name: string }[]; funderCount: number };
+    expect(work.funderCount).toBe(381);
+    expect(work.funders).toHaveLength(25);
+    expect(work.funders.map((f) => f.name)).toEqual(
+      Array.from({ length: 25 }, (_, i) => `Funder ${i}`),
+    );
+    const notice =
+      'Funder lists were capped at 25 per work — 1 of the 1 work on this page carries more funders than are shown. Each work reports its full deposited total as funderCount; call crossref_get_work with that work doi for its whole funder list.';
+    expect((result.structuredContent as { notice?: string }).notice).toBe(notice);
+    const text = textOf(result);
+    expect(text).toContain(notice);
+    expect(text).toContain(
+      `**Funders:** showing 25 of 381; call crossref_get_work with doi ${doi} for the whole list\n- Funder 0 — 10.13039/501100000 (AWARD-0)`,
+    );
+    expect(text).toContain('- Funder 24 — 10.13039/5011000024 (AWARD-24)');
+    expect(text).not.toContain('Funder 25');
+  });
+
+  it('renders no block on an empty page, leaving the empty-page notice to lead content[]', async () => {
+    http.route({ match: WORKS, respond: () => workList([], 0) });
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'q',
+      fields: ['funder', 'license', 'link'],
+      rows: 1,
+    });
+
+    expect((result.structuredContent as { works: unknown[] }).works).toEqual([]);
+    expect((result.structuredContent as { notice?: string }).notice).toBe(
+      'No results matched the query. Try broadening the search terms or removing filters.',
+    );
+    expect(textOf(result)).not.toMatch(/Funders|Licenses|Full-text links|capped/);
+  });
+
+  it('keeps a list of exactly 25 whole, with no cut claimed', async () => {
+    http.route({
+      match: WORKS,
+      respond: () => workList([{ DOI: '10.5555/w25', funder: makeFunders(25) }]),
+    });
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'q',
+      fields: ['funder'],
+      rows: 1,
+    });
+
+    const work = firstWork(result) as { funders: unknown[]; funderCount: number };
+    expect(work.funders).toHaveLength(25);
+    expect(work.funderCount).toBe(25);
+    expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
+    expect(textOf(result)).toContain('**Funders:**\n- Funder 0');
+    expect(textOf(result)).not.toContain('showing');
+  });
+
+  /**
+   * Each list is a section of its own at the end of its work's block, opened by a blank line, and
+   * the block's closing blank line ends it — so the next work's heading is never read into the
+   * last bullet, and every bullet stays an item of its own list.
+   */
+  it('renders each list as its own section, closed before the next work', async () => {
+    http.route({
+      match: WORKS,
+      respond: () =>
+        workList([
+          { ...RECORD, title: ['First'], abstract: '<jats:p>Text.</jats:p>' },
+          { ...RECORD, DOI: '10.5555/second', title: ['Second'] },
+        ]),
+    });
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'q',
+      fields: ['title', 'abstract', 'funder', 'license', 'link'],
+      rows: 2,
+    });
+
+    const kinds: string[] = [];
+    const walker = new Parser().parse(textOf(result)).walker();
+    for (let step = walker.next(); step; step = walker.next()) {
+      if (step.entering) kinds.push(step.node.type);
+    }
+    expect(kinds.filter((kind) => kind === 'heading')).toHaveLength(2);
+    expect(kinds.filter((kind) => kind === 'list')).toHaveLength(6);
+    expect(kinds.filter((kind) => kind === 'item')).toHaveLength(8);
+    expect(textOf(result)).toContain('**Abstract:** Text.\n\n**Funders:**');
   });
 });
 
@@ -552,10 +833,21 @@ type WorksListCase = {
 
 const LISTS: Record<string, WorksListCase> = {
   crossref_search_works: {
-    select: ACCEPTED,
+    select: DEFAULT_SELECT,
     worksPath: '/works',
     setup: () => {},
     run: () => runToolContract(searchWorksTool, { query: 'q', rows: RECORDS.length }),
+  },
+  'crossref_search_works naming every field': {
+    select: ACCEPTED,
+    worksPath: '/works',
+    setup: () => {},
+    run: () =>
+      runToolContract(searchWorksTool, {
+        query: 'q',
+        fields: ACCEPTED,
+        rows: RECORDS.length,
+      } as never),
   },
   'crossref_search_journals works list': {
     select: WORKS_LIST_SELECT,

@@ -1,0 +1,4199 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2024, 2, 9]],
+      "date-time": "2024-02-09T00:26:10Z",
+      "timestamp": 1707438370903
+    },
+    "publisher": "Fundacao para a Ciencia e a Tecnologia (unidadeFCCN)",
+    "award-start": { "date-parts": [[2021, 1, 1]] },
+    "award": "LA/P/0104/2020",
+    "DOI": "10.54499/la/p/0104/2020",
+    "type": "grant",
+    "created": {
+      "date-parts": [[2023, 11, 15]],
+      "date-time": "2023-11-15T11:45:15Z",
+      "timestamp": 1700048715000
+    },
+    "source": "Crossref",
+    "prefix": "10.54499",
+    "member": "31773",
+    "project": [
+      {
+        "project-title": [
+          { "title": "Intelligent Systems Associate Laboratory", "language": "en" },
+          { "title": "Laboratório Associado de Sistemas Inteligentes", "language": "pt" }
+        ],
+        "project-description": [
+          {
+            "description": "Since the dawn of times, the human being has always endeavoured to improve his quality of life. We, at the forefront of this technological revolution, must be ready to push the boundaries of knowledge. No monolithic solution will settle out all issues. Instead, the expectation is that multiple small contributions may help answer important challenges. Ergo, the creation of the Intelligent Systems Associate Laboratory (LASI) here depicted, coordinated by the ALGORITMI Centre, and composed by 13 R",
+            "language": "en"
+          },
+          {
+            "description": "Desde o início dos tempos, o ser humano tudo tem feito para melhorar a sua qualidade de vida. Nós, na vanguarda desta revolução tecnológica, devemos estar prontos para continuar esta melhoria e, com isso, fazer evoluir o conhecimento. Nenhuma solução monolítica resolverá todos os problemas. Ao invés, a expectativa é que será a soma de pequenas contribuições a dar resposta a importantes desafios. Daí a criação do Laboratório Associado em Sistemas Inteligentes (LASI), coordenado pelo Centro ALGORITMI, e composto por 13 unidades de I",
+            "language": "pt"
+          }
+        ],
+        "investigator": [
+          { "affiliation": [] },
+          {
+            "ORCID": "http://orcid.org/0000-0002-8967-118X",
+            "authenticated-orcid": false,
+            "given": "Adriano",
+            "family": "Jorge Cardoso Moreira",
+            "alternate-name": ["Adriano Jorge Cardoso Moreira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-8316-6927",
+            "authenticated-orcid": false,
+            "given": "Adriano",
+            "family": "Jose Tavares",
+            "alternate-name": ["Adriano Jose Tavares"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1824-1075",
+            "authenticated-orcid": false,
+            "given": "Alberto",
+            "family": "Jorge Lebre Cardoso",
+            "alternate-name": ["Alberto Jorge Lebre Cardoso"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6018-7346",
+            "authenticated-orcid": false,
+            "given": "Alberto",
+            "family": "José Gonçalves de Carvalho Proença",
+            "alternate-name": ["Alberto José Gonçalves de Carvalho Proença"],
+            "affiliation": []
+          },
+          {
+            "given": "Alberto",
+            "family": "Simões",
+            "alternate-name": ["Alberto Simões"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9938-0351",
+            "authenticated-orcid": false,
+            "given": "Alessandro",
+            "family": "Fantoni",
+            "alternate-name": ["Alessandro Fantoni"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-5818-1607",
+            "authenticated-orcid": false,
+            "given": "Alexandra",
+            "family": "Maria Baptista Ramos Tenera",
+            "alternate-name": ["Alexandra Maria Baptista Ramos Tenera"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-8453-1719",
+            "authenticated-orcid": false,
+            "given": "Alexandra",
+            "family": "Maria da Silva Oliveira",
+            "alternate-name": ["Alexandra Maria da Silva Oliveira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-5440-9715",
+            "authenticated-orcid": false,
+            "given": "Alexandra",
+            "family": "Patrícia Horta Ramos",
+            "alternate-name": ["Alexandra Patrícia Horta Ramos"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1501-2752",
+            "authenticated-orcid": false,
+            "given": "Alexandre",
+            "family": "Julio Teixeira Santos",
+            "alternate-name": ["Alexandre Julio Teixeira Santos"],
+            "affiliation": []
+          },
+          {
+            "given": "Alexandre",
+            "family": "Rodrigues",
+            "alternate-name": ["Alexandre Rodrigues"],
+            "affiliation": []
+          },
+          {
+            "given": "ALIAKSANDR",
+            "family": "SHAULA",
+            "alternate-name": ["ALIAKSANDR SHAULA"],
+            "affiliation": []
+          },
+          {
+            "given": "ALINA-LILIANA",
+            "family": "TRIFAN",
+            "alternate-name": ["ALINA-LILIANA TRIFAN"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9019-4333",
+            "authenticated-orcid": false,
+            "given": "Altino",
+            "family": "Manuel Silva Sampaio",
+            "alternate-name": ["Altino Manuel Silva Sampaio"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3854-6549",
+            "authenticated-orcid": false,
+            "given": "Amílcar",
+            "family": "Celta Falcão Ramos Ferreira",
+            "alternate-name": ["Amílcar Celta Falcão Ramos Ferreira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3525-0619",
+            "authenticated-orcid": false,
+            "given": "Ana",
+            "family": "Alice Rodrigues Pereira Baptista",
+            "alternate-name": ["Ana Alice Rodrigues Pereira Baptista"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3692-338X",
+            "authenticated-orcid": false,
+            "given": "Ana",
+            "family": "Cristina da Costa Oliveira Alves",
+            "alternate-name": ["Ana Cristina da Costa Oliveira Alves"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1991-9418",
+            "authenticated-orcid": false,
+            "given": "Ana",
+            "family": "Cristina da Silva Braga",
+            "alternate-name": ["Ana Cristina da Silva Braga"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7307-3441",
+            "authenticated-orcid": false,
+            "given": "Ana",
+            "family": "Cristina Moreira Freitas",
+            "alternate-name": ["Ana Cristina Moreira Freitas"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6981-6639",
+            "authenticated-orcid": false,
+            "given": "Ana",
+            "family": "Fortuna",
+            "alternate-name": ["Ana Fortuna"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3292-0624",
+            "authenticated-orcid": false,
+            "given": "Ana",
+            "family": "Isabel Pereira de Moura",
+            "alternate-name": ["Ana Isabel Pereira de Moura"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1967-2221",
+            "authenticated-orcid": false,
+            "given": "ANA",
+            "family": "MADALENA DE SOUSA E VASCONCELOS MATOS BOAVIDA",
+            "alternate-name": ["ANA MADALENA DE SOUSA E VASCONCELOS MATOS BOAVIDA"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-8679-2886",
+            "authenticated-orcid": false,
+            "given": "Ana",
+            "family": "Maria Alves Coutinho da Rocha",
+            "alternate-name": ["Ana Maria Alves Coutinho da Rocha"],
+            "affiliation": []
+          },
+          {
+            "given": "Ana",
+            "family": "Maria Carvalho de Almeida",
+            "alternate-name": ["Ana Maria Carvalho de Almeida"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0158-6280",
+            "authenticated-orcid": false,
+            "given": "Ana",
+            "family": "Maria Neves de Almeida Baptista Figueiredo",
+            "alternate-name": ["Ana Maria Neves de Almeida Baptista Figueiredo"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1210-0266",
+            "authenticated-orcid": false,
+            "given": "Ana",
+            "family": "Maria Perfeito Tome",
+            "alternate-name": ["Ana Maria Perfeito Tome"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6483-6294",
+            "authenticated-orcid": false,
+            "given": "Ana",
+            "family": "Paula Barroso",
+            "alternate-name": ["Ana Paula Barroso"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-8129-9758",
+            "authenticated-orcid": false,
+            "given": "Ana",
+            "family": "Paula Cunha da Rocha",
+            "alternate-name": ["Ana Paula Cunha da Rocha"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-8852-6175",
+            "authenticated-orcid": false,
+            "given": "Ana",
+            "family": "Paula da Silva Dias",
+            "alternate-name": ["Ana Paula da Silva Dias"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3218-7001",
+            "authenticated-orcid": false,
+            "given": "Ana",
+            "family": "Paula de Frias Viegas Proença Rocha",
+            "alternate-name": ["Ana Paula de Frias Viegas Proença Rocha"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1776-4897",
+            "authenticated-orcid": false,
+            "given": "Ana",
+            "family": "Paula Nunes Gomes Tomás",
+            "alternate-name": ["Ana Paula Nunes Gomes Tomás"],
+            "affiliation": []
+          },
+          {
+            "given": "Ana",
+            "family": "Pina Rodrigues",
+            "alternate-name": ["Ana Pina Rodrigues"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-5717-1415",
+            "authenticated-orcid": false,
+            "given": "Ana",
+            "family": "Raquel Ferreira de Almeida Sebastião",
+            "alternate-name": ["Ana Raquel Ferreira de Almeida Sebastião"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6003-7460",
+            "authenticated-orcid": false,
+            "given": "Ana",
+            "family": "Rita Matos de Almeida",
+            "alternate-name": ["Ana Rita Matos de Almeida"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3906-0775",
+            "authenticated-orcid": false,
+            "given": "Ana",
+            "family": "Rita Pires Gaio",
+            "alternate-name": ["Ana Rita Pires Gaio"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-4659-0275",
+            "authenticated-orcid": false,
+            "given": "Ana",
+            "family": "Sofia Leonardo Vilela de Matos",
+            "alternate-name": ["Ana Sofia Leonardo Vilela de Matos"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9980-441X",
+            "authenticated-orcid": false,
+            "given": "Ana",
+            "family": "Telma Pereira",
+            "alternate-name": ["Ana Telma Pereira"],
+            "affiliation": []
+          },
+          {
+            "given": "Ana",
+            "family": "Teresa Martins Videira Gabriel",
+            "alternate-name": ["Ana Teresa Martins Videira Gabriel"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1947-8605",
+            "authenticated-orcid": false,
+            "given": "Ana",
+            "family": "Vera Alves Machado Nobrega",
+            "alternate-name": ["Ana Vera Alves Machado Nobrega"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-2926-4187",
+            "authenticated-orcid": false,
+            "given": "Anabela",
+            "family": "Carvalho Alves",
+            "alternate-name": ["Anabela Carvalho Alves"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-8418-8095",
+            "authenticated-orcid": false,
+            "given": "Anabela",
+            "family": "Gomes",
+            "alternate-name": ["Anabela Gomes"],
+            "affiliation": []
+          },
+          {
+            "given": "Anabela",
+            "family": "Pereira Tereso",
+            "alternate-name": ["Anabela Pereira Tereso"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4850-6222",
+            "authenticated-orcid": false,
+            "given": "André",
+            "family": "Gama Oliveira",
+            "alternate-name": ["André Gama Oliveira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1328-3391",
+            "authenticated-orcid": false,
+            "given": "André",
+            "family": "Restivo",
+            "alternate-name": ["André Restivo"],
+            "affiliation": []
+          },
+          {
+            "given": "ANDRÉ",
+            "family": "VENTURA DA CRUZ MARNÔTO ZÚQUETE",
+            "alternate-name": ["ANDRÉ VENTURA DA CRUZ MARNÔTO ZÚQUETE"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6608-3353",
+            "authenticated-orcid": false,
+            "given": "ANDREIA",
+            "family": "DE FARIA MARTINS ROSA",
+            "alternate-name": ["ANDREIA DE FARIA MARTINS ROSA"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-2211-2957",
+            "authenticated-orcid": false,
+            "given": "Aneesh",
+            "family": "Zutshi",
+            "alternate-name": ["Aneesh Zutshi"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6170-4912",
+            "authenticated-orcid": false,
+            "given": "Ângelo",
+            "family": "Gonçalo Araújo da Silva Costa",
+            "alternate-name": ["Ângelo Gonçalo Araújo da Silva Costa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-8147-028X",
+            "authenticated-orcid": false,
+            "given": "Anikó",
+            "family": "Katalin Horváth da Costa",
+            "alternate-name": ["Anikó Katalin Horváth da Costa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3787-7423",
+            "authenticated-orcid": false,
+            "given": "Anis",
+            "family": "Koubaa",
+            "alternate-name": ["Anis Koubaa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-4145-854X",
+            "authenticated-orcid": false,
+            "given": "Antero",
+            "family": "José Pena Afonso de Abrunhosa",
+            "alternate-name": ["Antero José Pena Afonso de Abrunhosa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4121-6169",
+            "authenticated-orcid": false,
+            "given": "Antonio",
+            "family": "Abelha",
+            "alternate-name": ["Antonio Abelha"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5747-5512",
+            "authenticated-orcid": false,
+            "given": "ANTÓNIO",
+            "family": "BEÇA GONÇALVES PORTO",
+            "alternate-name": ["ANTÓNIO BEÇA GONÇALVES PORTO"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6045-9994",
+            "authenticated-orcid": false,
+            "given": "Antonio",
+            "family": "Carlos Bárbara Grilo",
+            "alternate-name": ["Antonio Carlos Bárbara Grilo"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3614-5573",
+            "authenticated-orcid": false,
+            "given": "António",
+            "family": "Carlos Henriques Guedes de Oliveira",
+            "alternate-name": ["António Carlos Henriques Guedes de Oliveira"],
+            "affiliation": []
+          },
+          {
+            "given": "António",
+            "family": "Completo",
+            "alternate-name": ["António Completo"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9344-9832",
+            "authenticated-orcid": false,
+            "given": "António",
+            "family": "Constantino Lopes Martins",
+            "alternate-name": ["António Constantino Lopes Martins"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9128-0989",
+            "authenticated-orcid": false,
+            "given": "ANTÓNIO",
+            "family": "COSTA DIAS DE FIGUEIREDO",
+            "alternate-name": ["ANTÓNIO COSTA DIAS DE FIGUEIREDO"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5445-6893",
+            "authenticated-orcid": false,
+            "given": "António",
+            "family": "Dourado Pereira Correia",
+            "alternate-name": ["António Dourado Pereira Correia"],
+            "affiliation": []
+          },
+          {
+            "given": "António",
+            "family": "Ferreira de Macedo",
+            "alternate-name": ["António Ferreira de Macedo"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4995-6655",
+            "authenticated-orcid": false,
+            "given": "Antonio",
+            "family": "Freire Goncalves",
+            "alternate-name": ["Antonio Freire Goncalves"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1797-2020",
+            "authenticated-orcid": false,
+            "given": "António",
+            "family": "Gabriel Marques Duarte dos Santos",
+            "alternate-name": ["António Gabriel Marques Duarte dos Santos"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-7777-7625",
+            "authenticated-orcid": false,
+            "given": "António",
+            "family": "Gaspar Lopes da Cunha",
+            "alternate-name": ["António Gaspar Lopes da Cunha"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3988-5606",
+            "authenticated-orcid": false,
+            "given": "António",
+            "family": "Gil Andrade-Campos",
+            "alternate-name": ["António Gil Andrade-Campos"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9972-7474",
+            "authenticated-orcid": false,
+            "given": "António",
+            "family": "Ismael de Freitas Vaz",
+            "alternate-name": ["António Ismael de Freitas Vaz"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-8839-5606",
+            "authenticated-orcid": false,
+            "given": "António",
+            "family": "João Pina da Costa Feliciano ABREU",
+            "alternate-name": ["António João Pina da Costa Feliciano ABREU"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7675-1236",
+            "authenticated-orcid": false,
+            "given": "Antonio",
+            "family": "Joaquim Silva Teixeira",
+            "alternate-name": ["Antonio Joaquim Silva Teixeira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6714-1164",
+            "authenticated-orcid": false,
+            "given": "António",
+            "family": "Jorge da Costa Granjal",
+            "alternate-name": ["António Jorge da Costa Granjal"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9470-8477",
+            "authenticated-orcid": false,
+            "given": "António",
+            "family": "José Freire Mourão",
+            "alternate-name": ["António José Freire Mourão"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6659-660X",
+            "authenticated-orcid": false,
+            "given": "António",
+            "family": "José Nunes Mendes",
+            "alternate-name": ["António José Nunes Mendes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-5433-6667",
+            "authenticated-orcid": false,
+            "given": "ANTÓNIO",
+            "family": "JOSÉ RIBEIRO NEVES",
+            "alternate-name": ["ANTÓNIO JOSÉ RIBEIRO NEVES"],
+            "affiliation": []
+          },
+          {
+            "given": "António",
+            "family": "José Vilela Pontes",
+            "alternate-name": ["António José Vilela Pontes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-4844-1169",
+            "authenticated-orcid": false,
+            "given": "António",
+            "family": "Leitão",
+            "alternate-name": ["António Leitão"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-0691-1377",
+            "authenticated-orcid": false,
+            "given": "António",
+            "family": "Luis Duarte Costa",
+            "alternate-name": ["António Luis Duarte Costa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7595-7275",
+            "authenticated-orcid": false,
+            "given": "António",
+            "family": "Machiavelo",
+            "alternate-name": ["António Machiavelo"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6174-8878",
+            "authenticated-orcid": false,
+            "given": "António",
+            "family": "Manuel Amaral Monteiro Ramos",
+            "alternate-name": ["António Manuel Amaral Monteiro Ramos"],
+            "affiliation": []
+          },
+          {
+            "given": "Antonio",
+            "family": "Manuel de Bastos Pereira",
+            "alternate-name": ["Antonio Manuel de Bastos Pereira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9428-0936",
+            "authenticated-orcid": false,
+            "given": "ANTÓNIO",
+            "family": "MANUEL FLORES ROMÃO DE AZEVEDO GONÇALVES COELHO",
+            "alternate-name": ["ANTÓNIO MANUEL FLORES ROMÃO DE AZEVEDO GONÇALVES COELHO"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-2254-7202",
+            "authenticated-orcid": false,
+            "given": "António",
+            "family": "Manuel Ramos Pires",
+            "alternate-name": ["António Manuel Ramos Pires"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9455-1206",
+            "authenticated-orcid": false,
+            "given": "Antonio",
+            "family": "Miguel Lino Santos Morgado",
+            "alternate-name": ["Antonio Miguel Lino Santos Morgado"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-2148-9146",
+            "authenticated-orcid": false,
+            "given": "António",
+            "family": "Moreira",
+            "alternate-name": ["António Moreira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-4381-144X",
+            "authenticated-orcid": false,
+            "given": "António",
+            "family": "Paulo Vale Urgueira",
+            "alternate-name": ["António Paulo Vale Urgueira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6046-1368",
+            "authenticated-orcid": false,
+            "given": "Antonio",
+            "family": "Sousa",
+            "alternate-name": ["Antonio Sousa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9164-0016",
+            "authenticated-orcid": false,
+            "given": "Armando",
+            "family": "J Pinho",
+            "alternate-name": ["Armando J Pinho"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-0061-9455",
+            "authenticated-orcid": false,
+            "given": "Armando",
+            "family": "José Pinheiro Marques Pires",
+            "alternate-name": ["Armando José Pinheiro Marques Pires"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7099-1247",
+            "authenticated-orcid": false,
+            "given": "Artur",
+            "family": "José Carneiro Pereira",
+            "alternate-name": ["Artur José Carneiro Pereira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-8741-078X",
+            "authenticated-orcid": false,
+            "given": "Artur",
+            "family": "Rebelo",
+            "alternate-name": ["Artur Rebelo"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3786-2889",
+            "authenticated-orcid": false,
+            "given": "AUGUSTO",
+            "family": "MARQUES FERREIRA DA SILVA",
+            "alternate-name": ["AUGUSTO MARQUES FERREIRA DA SILVA"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1519-7008",
+            "authenticated-orcid": false,
+            "given": "Bárbara",
+            "family": "Filipa Casqueira Coelho Gabriel",
+            "alternate-name": ["Bárbara Filipa Casqueira Coelho Gabriel"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9770-7672",
+            "authenticated-orcid": false,
+            "given": "Bernardete",
+            "family": "Ribeiro",
+            "alternate-name": ["Bernardete Ribeiro"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-2102-3407",
+            "authenticated-orcid": false,
+            "given": "Brígida",
+            "family": "Mónica Teixeira de Faria",
+            "alternate-name": ["Brígida Mónica Teixeira de Faria"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9135-6245",
+            "authenticated-orcid": false,
+            "given": "BRUNO",
+            "family": "ALEXANDRE FERNANDES DIAS",
+            "alternate-name": ["BRUNO ALEXANDRE FERNANDES DIAS"],
+            "affiliation": []
+          },
+          {
+            "given": "Bruno",
+            "family": "Alexandre Rodrigues Simões Soares",
+            "alternate-name": ["Bruno Alexandre Rodrigues Simões Soares"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3022-8116",
+            "authenticated-orcid": false,
+            "given": "Bruno",
+            "family": "Graça",
+            "alternate-name": ["Bruno Graça"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9699-1133",
+            "authenticated-orcid": false,
+            "given": "Bruno",
+            "family": "Miguel Brás Cabral",
+            "alternate-name": ["Bruno Miguel Brás Cabral"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9808-5537",
+            "authenticated-orcid": false,
+            "given": "Bruno",
+            "family": "Miguel da Rocha Canizes",
+            "alternate-name": ["Bruno Miguel da Rocha Canizes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3259-8815",
+            "authenticated-orcid": false,
+            "given": "Bruno",
+            "family": "Miguel Direito Pereira Leitão",
+            "alternate-name": ["Bruno Miguel Direito Pereira Leitão"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3137-5329",
+            "authenticated-orcid": false,
+            "given": "Bruno",
+            "family": "Miguel Ferreira Gonçalves",
+            "alternate-name": ["Bruno Miguel Ferreira Gonçalves"],
+            "affiliation": []
+          },
+          {
+            "given": "Bruno",
+            "family": "Sousa",
+            "alternate-name": ["Bruno Sousa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-2907-7672",
+            "authenticated-orcid": false,
+            "given": "Carla",
+            "family": "Isabel Domingues Correia Martins",
+            "alternate-name": ["Carla Isabel Domingues Correia Martins"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0729-1133",
+            "authenticated-orcid": false,
+            "given": "Carla",
+            "family": "Pinto",
+            "alternate-name": ["Carla Pinto"],
+            "affiliation": []
+          },
+          {
+            "given": "Carlos",
+            "family": "Alberto Calaza Cabanas",
+            "alternate-name": ["Carlos Alberto Calaza Cabanas"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3856-3653",
+            "authenticated-orcid": false,
+            "given": "Carlos",
+            "family": "Alberto Moura Relvas",
+            "alternate-name": ["Carlos Alberto Moura Relvas"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5143-1711",
+            "authenticated-orcid": false,
+            "given": "Carlos",
+            "family": "Fernando da Silva Ramos",
+            "alternate-name": ["Carlos Fernando da Silva Ramos"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-5162-2457",
+            "authenticated-orcid": false,
+            "given": "Carlos",
+            "family": "M Fonseca",
+            "alternate-name": ["Carlos M Fonseca"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-2707-5331",
+            "authenticated-orcid": false,
+            "given": "CARLOS",
+            "family": "MANUEL AZEVEDO COSTA",
+            "alternate-name": ["CARLOS MANUEL AZEVEDO COSTA"],
+            "affiliation": []
+          },
+          {
+            "given": "Carlos",
+            "family": "Manuel dos Santos Gonçalves Rito",
+            "alternate-name": ["Carlos Manuel dos Santos Gonçalves Rito"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-2393-0628",
+            "authenticated-orcid": false,
+            "given": "Carlos",
+            "family": "Manuel Jorge da Silva Pereira",
+            "alternate-name": ["Carlos Manuel Jorge da Silva Pereira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-2884-776X",
+            "authenticated-orcid": false,
+            "given": "Carlos",
+            "family": "Manuel Melo Agostinho",
+            "alternate-name": ["Carlos Manuel Melo Agostinho"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4549-8917",
+            "authenticated-orcid": false,
+            "given": "Carlos",
+            "family": "Manuel Milheiro de Oliveira Pinto Soares",
+            "alternate-name": ["Carlos Manuel Milheiro de Oliveira Pinto Soares"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3285-6500",
+            "authenticated-orcid": false,
+            "given": "Carlos",
+            "family": "Manuel Robalo Lisboa Bento",
+            "alternate-name": ["Carlos Manuel Robalo Lisboa Bento"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-2799-643X",
+            "authenticated-orcid": false,
+            "given": "Carlos",
+            "family": "Manuel Santos Ferreira",
+            "alternate-name": ["Carlos Manuel Santos Ferreira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5656-0061",
+            "authenticated-orcid": false,
+            "given": "Catarina",
+            "family": "Helena Branco Simões da Silva",
+            "alternate-name": ["Catarina Helena Branco Simões da Silva"],
+            "affiliation": []
+          },
+          {
+            "given": "CATARINA",
+            "family": "ISABEL SILVA VIDAL",
+            "alternate-name": ["CATARINA ISABEL SILVA VIDAL"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1292-0782",
+            "authenticated-orcid": false,
+            "given": "CELESTE",
+            "family": "JACINTO",
+            "alternate-name": ["CELESTE JACINTO"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-5602-7171",
+            "authenticated-orcid": false,
+            "given": "Célia",
+            "family": "Sofia Moreira",
+            "alternate-name": ["Célia Sofia Moreira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3725-5771",
+            "authenticated-orcid": false,
+            "given": "Celina",
+            "family": "Pinto Leão",
+            "alternate-name": ["Celina Pinto Leão"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0340-3556",
+            "authenticated-orcid": false,
+            "given": "Célio",
+            "family": "Bruno Pinto Fernandes",
+            "alternate-name": ["Célio Bruno Pinto Fernandes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9396-1211",
+            "authenticated-orcid": false,
+            "given": "CÉSAR",
+            "family": "ALEXANDRE DOMINGUES TEIXEIRA",
+            "alternate-name": ["CÉSAR ALEXANDRE DOMINGUES TEIXEIRA"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7796-644X",
+            "authenticated-orcid": false,
+            "given": "Cesar",
+            "family": "Analide Rodrigues",
+            "alternate-name": ["Cesar Analide Rodrigues"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-2475-3448",
+            "authenticated-orcid": false,
+            "given": "Christian",
+            "family": "Edgar Lomp",
+            "alternate-name": ["Christian Edgar Lomp"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-4017-1184",
+            "authenticated-orcid": false,
+            "given": "Cláudio",
+            "family": "Alves",
+            "alternate-name": ["Cláudio Alves"],
+            "affiliation": []
+          },
+          {
+            "given": "Cláudio",
+            "family": "Roberto Ribeiro Maia",
+            "alternate-name": ["Cláudio Roberto Ribeiro Maia"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-5402-3978",
+            "authenticated-orcid": false,
+            "given": "Cristina",
+            "family": "Januário",
+            "alternate-name": ["Cristina Januário"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-8313-7023",
+            "authenticated-orcid": false,
+            "given": "Dalila",
+            "family": "Alves Durães",
+            "alternate-name": ["Dalila Alves Durães"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1007-1756",
+            "authenticated-orcid": false,
+            "given": "Daniel",
+            "family": "Aelenei",
+            "alternate-name": ["Daniel Aelenei"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-8466-2607",
+            "authenticated-orcid": false,
+            "given": "DANIEL",
+            "family": "ANTÓNIO DA SILVA MIRANDA",
+            "alternate-name": ["DANIEL ANTÓNIO DA SILVA MIRANDA"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9293-0341",
+            "authenticated-orcid": false,
+            "given": "Daniel",
+            "family": "Augusto Gama de Castro Silva",
+            "alternate-name": ["Daniel Augusto Gama de Castro Silva"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0027-5421",
+            "authenticated-orcid": false,
+            "given": "Daniel",
+            "family": "Cardoso Vaz",
+            "alternate-name": ["Daniel Cardoso Vaz"],
+            "affiliation": []
+          },
+          {
+            "given": "Daniel",
+            "family": "José Medronho Foito",
+            "alternate-name": ["Daniel José Medronho Foito"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7561-6649",
+            "authenticated-orcid": false,
+            "given": "DAVID",
+            "family": "MIGUEL RAMALHO PEREIRA",
+            "alternate-name": ["DAVID MIGUEL RAMALHO PEREIRA"],
+            "affiliation": []
+          },
+          {
+            "given": "Débora",
+            "family": "Regina de São José",
+            "alternate-name": ["Débora Regina de São José"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-2835-4789",
+            "authenticated-orcid": false,
+            "given": "Delfina",
+            "family": "Fernanda Moreira Garcez de Sá Soares",
+            "alternate-name": ["Delfina Fernanda Moreira Garcez de Sá Soares"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9057-9380",
+            "authenticated-orcid": false,
+            "given": "Denchev",
+            "family": "Zlatan Zlatev",
+            "alternate-name": ["Denchev Zlatan Zlatev"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6318-9021",
+            "authenticated-orcid": false,
+            "given": "DIOGO",
+            "family": "ELÓI TRINDADE DE AGUIAM",
+            "alternate-name": ["DIOGO ELÓI TRINDADE DE AGUIAM"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1176-552X",
+            "authenticated-orcid": false,
+            "given": "Diogo",
+            "family": "Pratas",
+            "alternate-name": ["Diogo Pratas"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-5508-043X",
+            "authenticated-orcid": false,
+            "given": "Duarte",
+            "family": "Filipe Oliveira Duque",
+            "alternate-name": ["Duarte Filipe Oliveira Duque"],
+            "affiliation": []
+          },
+          {
+            "given": "Duncan",
+            "family": "Paul Fagg",
+            "alternate-name": ["Duncan Paul Fagg"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1615-2925",
+            "authenticated-orcid": false,
+            "given": "Edmundo",
+            "family": "Heitor da Silva Monteiro",
+            "alternate-name": ["Edmundo Heitor da Silva Monteiro"],
+            "affiliation": []
+          },
+          {
+            "given": "Eduardo",
+            "family": "Manuel de Médicis Tovar",
+            "alternate-name": ["Eduardo Manuel de Médicis Tovar"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-2003-0488",
+            "authenticated-orcid": false,
+            "given": "Eliana",
+            "family": "Silva",
+            "alternate-name": ["Eliana Silva"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-8460-4033",
+            "authenticated-orcid": false,
+            "given": "ERNESTO",
+            "family": "JORGE FERNANDES COSTA",
+            "alternate-name": ["ERNESTO JORGE FERNANDES COSTA"],
+            "affiliation": []
+          },
+          {
+            "given": "Ernesto",
+            "family": "Saias Soares",
+            "alternate-name": ["Ernesto Saias Soares"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-2715-4037",
+            "authenticated-orcid": false,
+            "given": "ESTELA",
+            "family": "GUERREIRO SILVA BICHO ERLHAGEN",
+            "alternate-name": ["ESTELA GUERREIRO SILVA BICHO ERLHAGEN"],
+            "affiliation": []
+          },
+          {
+            "given": "Estela",
+            "family": "Vilhena",
+            "alternate-name": ["Estela Vilhena"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9271-610X",
+            "authenticated-orcid": false,
+            "given": "Eugénio",
+            "family": "da Costa Oliveira",
+            "alternate-name": ["Eugénio da Costa Oliveira"],
+            "affiliation": []
+          },
+          {
+            "given": "EURICO",
+            "family": "FARINHA PEDROSA",
+            "alternate-name": ["EURICO FARINHA PEDROSA"],
+            "affiliation": []
+          },
+          { "given": "Eva", "family": "Maia", "alternate-name": ["Eva Maia"], "affiliation": [] },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9751-8807",
+            "authenticated-orcid": false,
+            "given": "Fábio",
+            "family": "Fernandes",
+            "alternate-name": ["Fábio Fernandes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6916-8811",
+            "authenticated-orcid": false,
+            "given": "Fernando",
+            "family": "Amílcar Bandeira Cardoso",
+            "alternate-name": ["Fernando Amílcar Bandeira Cardoso"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3792-2354",
+            "authenticated-orcid": false,
+            "given": "Fernando",
+            "family": "Barros",
+            "alternate-name": ["Fernando Barros"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6308-6484",
+            "authenticated-orcid": false,
+            "given": "Fernando",
+            "family": "Jorge Penousal Martins Machado",
+            "alternate-name": ["Fernando Jorge Penousal Martins Machado"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-2128-3180",
+            "authenticated-orcid": false,
+            "given": "Fernando",
+            "family": "Jose Almeida Vieira do Coito",
+            "alternate-name": ["Fernando Jose Almeida Vieira do Coito"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6002-0199",
+            "authenticated-orcid": false,
+            "given": "Fernando",
+            "family": "José Neto da Silva",
+            "alternate-name": ["Fernando José Neto da Silva"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-8638-8373",
+            "authenticated-orcid": false,
+            "given": "Fernando",
+            "family": "Lezama Cruzvillasante",
+            "alternate-name": ["Fernando Lezama Cruzvillasante"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4542-5646",
+            "authenticated-orcid": false,
+            "given": "Fernando",
+            "family": "Moura Duarte",
+            "alternate-name": ["Fernando Moura Duarte"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1347-0242",
+            "authenticated-orcid": false,
+            "given": "Fernando",
+            "family": "Pedro Lopes Boavida Fernandes",
+            "alternate-name": ["Fernando Pedro Lopes Boavida Fernandes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9328-852X",
+            "authenticated-orcid": false,
+            "given": "FILIPA",
+            "family": "ALEXANDRA MOREIRA FERRADA",
+            "alternate-name": ["FILIPA ALEXANDRA MOREIRA FERRADA"],
+            "affiliation": []
+          },
+          {
+            "given": "Filipe",
+            "family": "Alvelos",
+            "alternate-name": ["Filipe Alvelos"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9397-6149",
+            "authenticated-orcid": false,
+            "given": "Filipe",
+            "family": "Caseiro Alves",
+            "alternate-name": ["Filipe Caseiro Alves"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0930-7418",
+            "authenticated-orcid": false,
+            "given": "FILIPE",
+            "family": "DE CARVALHO MOUTINHO",
+            "alternate-name": ["FILIPE DE CARVALHO MOUTINHO"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-2312-5995",
+            "authenticated-orcid": false,
+            "given": "FILIPE",
+            "family": "DE FARIA PACHECO PAULO",
+            "alternate-name": ["FILIPE DE FARIA PACHECO PAULO"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1663-1937",
+            "authenticated-orcid": false,
+            "given": "FILIPE",
+            "family": "JOÃO BOAVIDA DE MENDONÇA MACHADO DE ARAÚJO",
+            "alternate-name": ["FILIPE JOÃO BOAVIDA DE MENDONÇA MACHADO DE ARAÚJO"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-0575-981X",
+            "authenticated-orcid": false,
+            "given": "Filipe",
+            "family": "Miguel Lopes Meneses",
+            "alternate-name": ["Filipe Miguel Lopes Meneses"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-2181-6837",
+            "authenticated-orcid": false,
+            "given": "Filipe",
+            "family": "Portela",
+            "alternate-name": ["Filipe Portela"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-7006-3515",
+            "authenticated-orcid": false,
+            "given": "Filomena",
+            "family": "Dias d Almeida",
+            "alternate-name": ["Filomena Dias d Almeida"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-4438-6713",
+            "authenticated-orcid": false,
+            "given": "FILOMENA",
+            "family": "MARIA DA ROCHA MENEZES DE OLIVEIRA SOARES",
+            "alternate-name": ["FILOMENA MARIA DA ROCHA MENEZES DE OLIVEIRA SOARES"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1937-6548",
+            "authenticated-orcid": false,
+            "given": "Francisco",
+            "family": "Baptista Pereira",
+            "alternate-name": ["Francisco Baptista Pereira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-8054-4267",
+            "authenticated-orcid": false,
+            "given": "Francisco",
+            "family": "José Cerqueira Alves",
+            "alternate-name": ["Francisco José Cerqueira Alves"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9630-1155",
+            "authenticated-orcid": false,
+            "given": "Gabriel",
+            "family": "Nascimento Ferreira da Costa",
+            "alternate-name": ["Gabriel Nascimento Ferreira da Costa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0338-3911",
+            "authenticated-orcid": false,
+            "given": "Gabriela",
+            "family": "Tamara Vincze",
+            "alternate-name": ["Gabriela Tamara Vincze"],
+            "affiliation": []
+          },
+          {
+            "given": "Gil",
+            "family": "Alberto Batista Gonçalves",
+            "alternate-name": ["Gil Alberto Batista Gonçalves"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3214-8002",
+            "authenticated-orcid": false,
+            "given": "Gonzalo",
+            "family": "Otero Irurueta",
+            "alternate-name": ["Gonzalo Otero Irurueta"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3378-6866",
+            "authenticated-orcid": false,
+            "given": "Goran",
+            "family": "Putnik",
+            "alternate-name": ["Goran Putnik"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-0885-4054",
+            "authenticated-orcid": false,
+            "given": "Guilherme",
+            "family": "Augusto Borges Pereira",
+            "alternate-name": ["Guilherme Augusto Borges Pereira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7049-1277",
+            "authenticated-orcid": false,
+            "given": "Guiomar",
+            "family": "Gonçalves de Oliveira",
+            "alternate-name": ["Guiomar Gonçalves de Oliveira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1423-3038",
+            "authenticated-orcid": false,
+            "given": "Helena",
+            "family": "Catarina Pereira",
+            "alternate-name": ["Helena Catarina Pereira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-8978-8804",
+            "authenticated-orcid": false,
+            "given": "Helena",
+            "family": "Cristina Coutinho Duarte Rodrigues",
+            "alternate-name": ["Helena Cristina Coutinho Duarte Rodrigues"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1588-0579",
+            "authenticated-orcid": false,
+            "given": "Helena",
+            "family": "Maria Lourenco Carvalho Remigio",
+            "alternate-name": ["Helena Maria Lourenco Carvalho Remigio"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-8057-2014",
+            "authenticated-orcid": false,
+            "given": "Helena",
+            "family": "Maria Monteiro Moreira Oliveira dos Reis",
+            "alternate-name": ["Helena Maria Monteiro Moreira Oliveira dos Reis"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4637-0755",
+            "authenticated-orcid": false,
+            "given": "Helena",
+            "family": "Victorovna Guitiss Navas",
+            "alternate-name": ["Helena Victorovna Guitiss Navas"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-4130-417X",
+            "authenticated-orcid": false,
+            "given": "Hélia",
+            "family": "Marília Goulart Ferreira de Oliveira Guerra",
+            "alternate-name": ["Hélia Marília Goulart Ferreira de Oliveira Guerra"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1252-7515",
+            "authenticated-orcid": false,
+            "given": "Henrique",
+            "family": "Lopes Cardoso",
+            "alternate-name": ["Henrique Lopes Cardoso"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-5389-3285",
+            "authenticated-orcid": false,
+            "given": "Henrique",
+            "family": "Manuel DInis dos Santos",
+            "alternate-name": ["Henrique Manuel DInis dos Santos"],
+            "affiliation": []
+          },
+          {
+            "given": "Henrique",
+            "family": "Santos do Carmo Madeira",
+            "alternate-name": ["Henrique Santos do Carmo Madeira"],
+            "affiliation": []
+          },
+          {
+            "given": "Hugo",
+            "family": "Biscaia",
+            "alternate-name": ["Hugo Biscaia"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5779-8645",
+            "authenticated-orcid": false,
+            "given": "Hugo",
+            "family": "Gonçalo Oliveira",
+            "alternate-name": ["Hugo Gonçalo Oliveira"],
+            "affiliation": []
+          },
+          {
+            "given": "Igor",
+            "family": "Bdikin",
+            "alternate-name": ["Igor Bdikin"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6743-4530",
+            "authenticated-orcid": false,
+            "given": "ILÍDIO",
+            "family": "FERNANDO CASTRO OLIVEIRA",
+            "alternate-name": ["ILÍDIO FERNANDO CASTRO OLIVEIRA"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-0230-3075",
+            "authenticated-orcid": false,
+            "given": "Inês",
+            "family": "Alexandra Teixeira de Almeida",
+            "alternate-name": ["Inês Alexandra Teixeira de Almeida"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4778-8256",
+            "authenticated-orcid": false,
+            "given": "Inês",
+            "family": "Cruz",
+            "alternate-name": ["Inês Cruz"],
+            "affiliation": []
+          },
+          {
+            "given": "INÊS",
+            "family": "DE SOUSA BERNARDINO",
+            "alternate-name": ["INÊS DE SOUSA BERNARDINO"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6684-9416",
+            "authenticated-orcid": false,
+            "given": "Iouliia",
+            "family": "Skliarova",
+            "alternate-name": ["Iouliia Skliarova"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5589-0501",
+            "authenticated-orcid": false,
+            "given": "Isabel",
+            "family": "Alexandra Costa Pinho do Espírito Santo",
+            "alternate-name": ["Isabel Alexandra Costa Pinho do Espírito Santo"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-2519-9859",
+            "authenticated-orcid": false,
+            "given": "Isabel",
+            "family": "Cecília Correia da Silva Praça Gomes Pereira",
+            "alternate-name": ["Isabel Cecília Correia da Silva Praça Gomes Pereira"],
+            "affiliation": []
+          },
+          {
+            "given": "Isabel",
+            "family": "da Silva Lopes",
+            "alternate-name": ["Isabel da Silva Lopes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-8653-5126",
+            "authenticated-orcid": false,
+            "given": "Isabel",
+            "family": "Maria Alexandrino Duarte",
+            "alternate-name": ["Isabel Maria Alexandrino Duarte"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7545-5822",
+            "authenticated-orcid": false,
+            "given": "Isabel",
+            "family": "Maria de Sousa de Jesus",
+            "alternate-name": ["Isabel Maria de Sousa de Jesus"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0428-0930",
+            "authenticated-orcid": false,
+            "given": "Isabel",
+            "family": "Maria do Nascimento Lopes Nunes",
+            "alternate-name": ["Isabel Maria do Nascimento Lopes Nunes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-8035-4703",
+            "authenticated-orcid": false,
+            "given": "ISABEL",
+            "family": "MARIA PINTO RAMOS",
+            "alternate-name": ["ISABEL MARIA PINTO RAMOS"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9174-2039",
+            "authenticated-orcid": false,
+            "given": "Isabel",
+            "family": "Palmira Joaquim Castanheira",
+            "alternate-name": ["Isabel Palmira Joaquim Castanheira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1131-8746",
+            "authenticated-orcid": false,
+            "given": "Isabel",
+            "family": "Salgado Labouriau",
+            "alternate-name": ["Isabel Salgado Labouriau"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1035-8669",
+            "authenticated-orcid": false,
+            "given": "Izunildo",
+            "family": "Fernandes Cabral",
+            "alternate-name": ["Izunildo Fernandes Cabral"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6703-3278",
+            "authenticated-orcid": false,
+            "given": "Jaime",
+            "family": "Francisco Cruz Fonseca",
+            "alternate-name": ["Jaime Francisco Cruz Fonseca"],
+            "affiliation": []
+          },
+          {
+            "given": "Jerome",
+            "family": "Francois Alain Jean Rousseau",
+            "alternate-name": ["Jerome Francois Alain Jean Rousseau"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-7500-1671",
+            "authenticated-orcid": false,
+            "given": "Joana",
+            "family": "Bicker de Melo Alves Aparício",
+            "alternate-name": ["Joana Bicker de Melo Alves Aparício"],
+            "affiliation": []
+          },
+          {
+            "given": "Joana",
+            "family": "Crisóstomo Silva",
+            "alternate-name": ["Joana Crisóstomo Silva"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-4053-5718",
+            "authenticated-orcid": false,
+            "given": "Joana",
+            "family": "Madeira Martins Costa",
+            "alternate-name": ["Joana Madeira Martins Costa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6342-7824",
+            "authenticated-orcid": false,
+            "given": "Joana",
+            "family": "Mesquita Guimarães",
+            "alternate-name": ["Joana Mesquita Guimarães"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5854-8664",
+            "authenticated-orcid": false,
+            "given": "Joana",
+            "family": "Teresa Ferreira Gonçalves",
+            "alternate-name": ["Joana Teresa Ferreira Gonçalves"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-4009-8685",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Alexandre Dias de Oliveira",
+            "alternate-name": ["João Alexandre Dias de Oliveira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7477-6165",
+            "authenticated-orcid": false,
+            "given": "Joao",
+            "family": "Almeida das Rosas",
+            "alternate-name": ["Joao Almeida das Rosas"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7223-1532",
+            "authenticated-orcid": false,
+            "given": "Joao",
+            "family": "Alvaro Brandao Soares de Carvalho",
+            "alternate-name": ["Joao Alvaro Brandao Soares de Carvalho"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-4172-4502",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "André Pinto Soares",
+            "alternate-name": ["João André Pinto Soares"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9697-9991",
+            "authenticated-orcid": false,
+            "given": "Joao",
+            "family": "Antonio Pereira Almeida Duraes",
+            "alternate-name": ["Joao Antonio Pereira Almeida Duraes"],
+            "affiliation": []
+          },
+          {
+            "given": "João",
+            "family": "Carlos Costa Faria da Cunha",
+            "alternate-name": ["João Carlos Costa Faria da Cunha"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-8434-8391",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Carlos da Palma Goes",
+            "alternate-name": ["João Carlos da Palma Goes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1430-5465",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Carneiro",
+            "alternate-name": ["João Carneiro"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-5562-1996",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Correia",
+            "alternate-name": ["João Correia"],
+            "affiliation": []
+          },
+          {
+            "given": "João",
+            "family": "Eduardo Quintela Alves de Sousa Varajão",
+            "alternate-name": ["João Eduardo Quintela Alves de Sousa Varajão"],
+            "affiliation": []
+          },
+          {
+            "given": "João",
+            "family": "Filipe da Costa Martins",
+            "alternate-name": ["João Filipe da Costa Martins"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3102-3179",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Filipe dos Santos Sarraipa",
+            "alternate-name": ["João Filipe dos Santos Sarraipa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-5889-771X",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Fradinho",
+            "alternate-name": ["João Fradinho"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-2248-2595",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Francisco Alves Martins",
+            "alternate-name": ["João Francisco Alves Martins"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-4800-5201",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Gabriel Monteiro de Carvalho e Silva",
+            "alternate-name": ["João Gabriel Monteiro de Carvalho e Silva"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9128-7064",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Lemos",
+            "alternate-name": ["João Lemos"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-4196-5357",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Luís Araújo Martins Vilaça",
+            "alternate-name": ["João Luís Araújo Martins Vilaça"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1512-1126",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Luis Ferreira Sobral",
+            "alternate-name": ["João Luis Ferreira Sobral"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3287-3995",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Luis Marques Pereira Monteiro",
+            "alternate-name": ["João Luis Marques Pereira Monteiro"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9195-1239",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Luiz Afonso",
+            "alternate-name": ["João Luiz Afonso"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9496-2734",
+            "authenticated-orcid": false,
+            "given": "JOAO",
+            "family": "MANUEL CARVALHO PEDROSO DE LIMA",
+            "alternate-name": ["JOAO MANUEL CARVALHO PEDROSO DE LIMA"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9187-8094",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Manuel de Oliveira e Silva Rodrigues",
+            "alternate-name": ["João Manuel de Oliveira e Silva Rodrigues"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0670-1217",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Manuel Frade Belo Bicker",
+            "alternate-name": ["João Manuel Frade Belo Bicker"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1739-9911",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Mário Burguete Botelho Cardoso",
+            "alternate-name": ["João Mário Burguete Botelho Cardoso"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5303-6467",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Miguel Amorim Novais da Costa Nóbrega",
+            "alternate-name": ["João Miguel Amorim Novais da Costa Nóbrega"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3492-1786",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Miguel Clemente de Sena Esteves",
+            "alternate-name": ["João Miguel Clemente de Sena Esteves"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1174-1966",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Miguel Lobo Fernandes",
+            "alternate-name": ["João Miguel Lobo Fernandes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9283-8497",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Miguel Murta Pina",
+            "alternate-name": ["João Miguel Murta Pina"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-8996-1515",
+            "authenticated-orcid": false,
+            "given": "JOÃO",
+            "family": "MIGUEL SEABRA CASTELHANO",
+            "alternate-name": ["JOÃO MIGUEL SEABRA CASTELHANO"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0596-1500",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Nuno Domingues Tavares",
+            "alternate-name": ["João Nuno Domingues Tavares"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7456-594X",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Nuno Lopes Barata",
+            "alternate-name": ["João Nuno Lopes Barata"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5659-3111",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Paulo Davim Tavares da Silva",
+            "alternate-name": ["João Paulo Davim Tavares da Silva"],
+            "affiliation": []
+          },
+          {
+            "given": "João",
+            "family": "Paulo Fernandes",
+            "alternate-name": ["João Paulo Fernandes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0097-9883",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Paulo Mestre Pinheiro Ramos e Barros",
+            "alternate-name": ["João Paulo Mestre Pinheiro Ramos e Barros"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1716-5165",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Pedro Lourenço Gil Nunes",
+            "alternate-name": ["João Pedro Lourenço Gil Nunes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6906-1870",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Pedro Oliveira",
+            "alternate-name": ["João Pedro Oliveira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-2078-3375",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Tiago Pinheiro Neto Jacob",
+            "alternate-name": ["João Tiago Pinheiro Neto Jacob"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-8586-9554",
+            "authenticated-orcid": false,
+            "given": "João",
+            "family": "Valente Duarte",
+            "alternate-name": ["João Valente Duarte"],
+            "affiliation": []
+          },
+          {
+            "given": "João",
+            "family": "Vilela",
+            "alternate-name": ["João Vilela"],
+            "affiliation": []
+          },
+          {
+            "given": "Joaquim",
+            "family": "Alexandre Mendes de Pinho da Cruz",
+            "alternate-name": ["Joaquim Alexandre Mendes de Pinho da Cruz"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3991-2715",
+            "authenticated-orcid": false,
+            "given": "Joaquim",
+            "family": "Fernando Pinto da Costa",
+            "alternate-name": ["Joaquim Fernando Pinto da Costa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-2219-1816",
+            "authenticated-orcid": false,
+            "given": "Joaquim",
+            "family": "José de Almeida Soares Gonçalves",
+            "alternate-name": ["Joaquim José de Almeida Soares Gonçalves"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-5586-3784",
+            "authenticated-orcid": false,
+            "given": "Joaquim",
+            "family": "Manuel Henriques de Sousa Pinto",
+            "alternate-name": ["Joaquim Manuel Henriques de Sousa Pinto"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5892-1289",
+            "authenticated-orcid": false,
+            "given": "Joaquim",
+            "family": "Melo Henriques de Macedo",
+            "alternate-name": ["Joaquim Melo Henriques de Macedo"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4937-2334",
+            "authenticated-orcid": false,
+            "given": "Joel",
+            "family": "Arrais",
+            "alternate-name": ["Joel Arrais"],
+            "affiliation": []
+          },
+          {
+            "given": "Jorge",
+            "family": "Augusto Fernandes Ferreira",
+            "alternate-name": ["Jorge Augusto Fernandes Ferreira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9954-9746",
+            "authenticated-orcid": false,
+            "given": "Jorge",
+            "family": "Cabral",
+            "alternate-name": ["Jorge Cabral"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0196-2821",
+            "authenticated-orcid": false,
+            "given": "Jorge",
+            "family": "Carlos dos Santos Cardoso",
+            "alternate-name": ["Jorge Carlos dos Santos Cardoso"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9660-2011",
+            "authenticated-orcid": false,
+            "given": "Jorge",
+            "family": "Fernandes Rodrigues Bernardino",
+            "alternate-name": ["Jorge Fernandes Rodrigues Bernardino"],
+            "affiliation": []
+          },
+          {
+            "given": "Jorge",
+            "family": "Filipe Marto Bandeira",
+            "alternate-name": ["Jorge Filipe Marto Bandeira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5766-8402",
+            "authenticated-orcid": false,
+            "given": "JORGE",
+            "family": "GUSTAVO PEREIRA BASTOS ROCHA",
+            "alternate-name": ["JORGE GUSTAVO PEREIRA BASTOS ROCHA"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4622-474X",
+            "authenticated-orcid": false,
+            "given": "Jorge",
+            "family": "Henriques",
+            "alternate-name": ["Jorge Henriques"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1037-6832",
+            "authenticated-orcid": false,
+            "given": "JORGE",
+            "family": "JOAQUIM PAMIES TEIXEIRA",
+            "alternate-name": ["JORGE JOAQUIM PAMIES TEIXEIRA"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4135-2347",
+            "authenticated-orcid": false,
+            "given": "Jorge",
+            "family": "Manuel Gomes Barbosa",
+            "alternate-name": ["Jorge Manuel Gomes Barbosa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3782-8023",
+            "authenticated-orcid": false,
+            "given": "Jorge",
+            "family": "Manuel Martins da Rocha",
+            "alternate-name": ["Jorge Manuel Martins da Rocha"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3829-2382",
+            "authenticated-orcid": false,
+            "given": "Jorge",
+            "family": "Manuel Meneses Guimaraes Almeida",
+            "alternate-name": ["Jorge Manuel Meneses Guimaraes Almeida"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3395-6426",
+            "authenticated-orcid": false,
+            "given": "Jorge",
+            "family": "Manuel Neves Coelho",
+            "alternate-name": ["Jorge Manuel Neves Coelho"],
+            "affiliation": []
+          },
+          {
+            "given": "Jorge",
+            "family": "Miguel Milhazes Freitas",
+            "alternate-name": ["Jorge Miguel Milhazes Freitas"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6267-708X",
+            "authenticated-orcid": false,
+            "given": "Jorge",
+            "family": "Miguel Oliveira Sá Cunha",
+            "alternate-name": ["Jorge Miguel Oliveira Sá Cunha"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6273-1285",
+            "authenticated-orcid": false,
+            "given": "Jorge",
+            "family": "Sá Silva",
+            "alternate-name": ["Jorge Sá Silva"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-0570-7913",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "Abílio Oliveira Matos",
+            "alternate-name": ["José Abílio Oliveira Matos"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1087-8699",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "Alexandre Pires Ferreira",
+            "alternate-name": ["José Alexandre Pires Ferreira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6348-1847",
+            "authenticated-orcid": false,
+            "given": "Jose",
+            "family": "Antonio Barata de Oliveira",
+            "alternate-name": ["Jose Antonio Barata de Oliveira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0790-5801",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "António Colaço Gomes Covas",
+            "alternate-name": ["José António Colaço Gomes Covas"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6033-0760",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "António Vasconcelos Oliveira",
+            "alternate-name": ["José António Vasconcelos Oliveira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9724-0312",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "Dinis de Araújo Carvalho",
+            "alternate-name": ["José Dinis de Araújo Carvalho"],
+            "affiliation": []
+          },
+          {
+            "given": "José",
+            "family": "Ferreira Alves",
+            "alternate-name": ["José Ferreira Alves"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3822-2763",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "Filipe de Sá Rodrigues Soares",
+            "alternate-name": ["José Filipe de Sá Rodrigues Soares"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4710-9292",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "Fonseca",
+            "alternate-name": ["José Fonseca"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4289-4770",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "Gabriel Oliveira Pinto",
+            "alternate-name": ["José Gabriel Oliveira Pinto"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-4544-4698",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "Henrique Brito",
+            "alternate-name": ["José Henrique Brito"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0722-2031",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "João Antunes Guimarães Dias de Almeida",
+            "alternate-name": ["José João Antunes Guimarães Dias de Almeida"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-8485-6441",
+            "authenticated-orcid": false,
+            "given": "Jose",
+            "family": "Luis Costa Pinto de Azevedo",
+            "alternate-name": ["Jose Luis Costa Pinto de Azevedo"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6672-6176",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "Luis Oliveira",
+            "alternate-name": ["José Luis Oliveira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-8863-0351",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "Maia Neves",
+            "alternate-name": ["José Maia Neves"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3512-5930",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "Manuel Andrade de Matos",
+            "alternate-name": ["José Manuel Andrade de Matos"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-8280-1324",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "Manuel Castro Torres",
+            "alternate-name": ["José Manuel Castro Torres"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4121-6169",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "Manuel Ferreira Machado",
+            "alternate-name": ["José Manuel Ferreira Machado"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-7173-7374",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "Manuel Matos Ribeiro da Fonseca",
+            "alternate-name": ["José Manuel Matos Ribeiro da Fonseca"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-4356-4522",
+            "authenticated-orcid": false,
+            "given": "Jose",
+            "family": "Manuel Neto Vieira",
+            "alternate-name": ["Jose Manuel Neto Vieira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4101-7442",
+            "authenticated-orcid": false,
+            "given": "Jose",
+            "family": "Manuel Paixao Conde",
+            "alternate-name": ["Jose Manuel Paixao Conde"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5566-845X",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "Manuel Vasconcelos Valério de Carvalho",
+            "alternate-name": ["José Manuel Vasconcelos Valério de Carvalho"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0681-9354",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "Maria Fernandes",
+            "alternate-name": ["José Maria Fernandes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-8365-1380",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "Miguel Lourenço Aviz Miranda de Melo",
+            "alternate-name": ["José Miguel Lourenço Aviz Miranda de Melo"],
+            "affiliation": []
+          },
+          {
+            "given": "JOSÉ",
+            "family": "MIGUEL PAIVA PROENÇA",
+            "alternate-name": ["JOSÉ MIGUEL PAIVA PROENÇA"],
+            "affiliation": []
+          },
+          {
+            "given": "José",
+            "family": "Miguel Pinto Cardoso de Bourbon Teles",
+            "alternate-name": ["José Miguel Pinto Cardoso de Bourbon Teles"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0562-8994",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "Paulo Domingues",
+            "alternate-name": ["José Paulo Domingues"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1406-4905",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "Pedro Teixeira Domingues",
+            "alternate-name": ["José Pedro Teixeira Domingues"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-2618-4165",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "Requeijo",
+            "alternate-name": ["José Requeijo"],
+            "affiliation": []
+          },
+          {
+            "given": "José",
+            "family": "Vitor Oliveira Sereno",
+            "alternate-name": ["José Vitor Oliveira Sereno"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7836-4598",
+            "authenticated-orcid": false,
+            "given": "José",
+            "family": "Xavier",
+            "alternate-name": ["José Xavier"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1210-2915",
+            "authenticated-orcid": false,
+            "given": "Júlio",
+            "family": "César Machado Viana",
+            "alternate-name": ["Júlio César Machado Viana"],
+            "affiliation": []
+          },
+          { "given": "Kai", "family": "Li", "alternate-name": ["Kai Li"], "affiliation": [] },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3640-0239",
+            "authenticated-orcid": false,
+            "given": "Konstantinos",
+            "family": "Bletsas",
+            "alternate-name": ["Konstantinos Bletsas"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7791-1932",
+            "authenticated-orcid": false,
+            "given": "Leonor",
+            "family": "da Conceição Teixeira",
+            "alternate-name": ["Leonor da Conceição Teixeira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6576-7104",
+            "authenticated-orcid": false,
+            "given": "Leonor",
+            "family": "Gomes",
+            "alternate-name": ["Leonor Gomes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1309-4945",
+            "authenticated-orcid": false,
+            "given": "Leonor",
+            "family": "Isabel de Albuquerque Melo",
+            "alternate-name": ["Leonor Isabel de Albuquerque Melo"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1911-2788",
+            "authenticated-orcid": false,
+            "given": "Licínio",
+            "family": "Roque",
+            "alternate-name": ["Licínio Roque"],
+            "affiliation": []
+          },
+          {
+            "given": "Liliana",
+            "family": "Damas",
+            "alternate-name": ["Liliana Damas"],
+            "affiliation": []
+          },
+          {
+            "given": "Liliana",
+            "family": "Patrícia Ventura Mendes",
+            "alternate-name": ["Liliana Patrícia Ventura Mendes"],
+            "affiliation": []
+          },
+          {
+            "given": "Lino",
+            "family": "Costa",
+            "alternate-name": ["Lino Costa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9375-4228",
+            "authenticated-orcid": false,
+            "given": "Lino",
+            "family": "Figueiredo",
+            "alternate-name": ["Lino Figueiredo"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9936-8088",
+            "authenticated-orcid": false,
+            "given": "loic",
+            "family": "hilliou",
+            "alternate-name": ["loic hilliou"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9426-3834",
+            "authenticated-orcid": false,
+            "given": "Luis",
+            "family": "Alfredo Martins Amaral",
+            "alternate-name": ["Luis Alfredo Martins Amaral"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9544-3028",
+            "authenticated-orcid": false,
+            "given": "Luis",
+            "family": "Almeida",
+            "alternate-name": ["Luis Almeida"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1174-0082",
+            "authenticated-orcid": false,
+            "given": "luís",
+            "family": "António de Almeida Vieira vieira",
+            "alternate-name": ["luís António de Almeida Vieira vieira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0624-1775",
+            "authenticated-orcid": false,
+            "given": "Luis",
+            "family": "Augusto Bica Gomes de Oliveira",
+            "alternate-name": ["Luis Augusto Bica Gomes de Oliveira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6441-227X",
+            "authenticated-orcid": false,
+            "given": "Luís",
+            "family": "Curvo Semedo",
+            "alternate-name": ["Luís Curvo Semedo"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5719-5019",
+            "authenticated-orcid": false,
+            "given": "Luís",
+            "family": "Filipe de Seabra Lopes",
+            "alternate-name": ["Luís Filipe de Seabra Lopes"],
+            "affiliation": []
+          },
+          {
+            "given": "Luis",
+            "family": "Filipe dos Santos Gomes",
+            "alternate-name": ["Luis Filipe dos Santos Gomes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0339-6843",
+            "authenticated-orcid": false,
+            "given": "Luís",
+            "family": "Filipe Figueira Brito Palma",
+            "alternate-name": ["Luís Filipe Figueira Brito Palma"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9635-5372",
+            "authenticated-orcid": false,
+            "given": "Luís",
+            "family": "Gonzaga Martins Ferreira",
+            "alternate-name": ["Luís Gonzaga Martins Ferreira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-4426-0002",
+            "authenticated-orcid": false,
+            "given": "Luís",
+            "family": "Gonzaga Mendes Magalhães",
+            "alternate-name": ["Luís Gonzaga Mendes Magalhães"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-0594-1961",
+            "authenticated-orcid": false,
+            "given": "Luis",
+            "family": "Manuel Camarinha-Matos",
+            "alternate-name": ["Luis Manuel Camarinha-Matos"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3144-0362",
+            "authenticated-orcid": false,
+            "given": "Luís",
+            "family": "Miguel Machado Lopes Macedo",
+            "alternate-name": ["Luís Miguel Machado Lopes Macedo"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5976-8853",
+            "authenticated-orcid": false,
+            "given": "Luis",
+            "family": "Miguel Moreira Lino Ferreira",
+            "alternate-name": ["Luis Miguel Moreira Lino Ferreira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-0281-2339",
+            "authenticated-orcid": false,
+            "given": "Luis",
+            "family": "Miguel Pacheco Mendes Gomes",
+            "alternate-name": ["Luis Miguel Pacheco Mendes Gomes"],
+            "affiliation": []
+          },
+          {
+            "given": "Luís",
+            "family": "Miguel Rosário da Silva Pinho",
+            "alternate-name": ["Luís Miguel Rosário da Silva Pinho"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0765-474X",
+            "authenticated-orcid": false,
+            "given": "Luís",
+            "family": "Miguel Tavares Fernandes",
+            "alternate-name": ["Luís Miguel Tavares Fernandes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-8534-3218",
+            "authenticated-orcid": false,
+            "given": "Luís",
+            "family": "Miguel Teixeira de Jesus",
+            "alternate-name": ["Luís Miguel Teixeira de Jesus"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-0506-1294",
+            "authenticated-orcid": false,
+            "given": "Luís",
+            "family": "Miguel Velez Lapão",
+            "alternate-name": ["Luís Miguel Velez Lapão"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7094-0458",
+            "authenticated-orcid": false,
+            "given": "Luís",
+            "family": "Nogueira",
+            "alternate-name": ["Luís Nogueira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6654-9782",
+            "authenticated-orcid": false,
+            "given": "Luís",
+            "family": "Oliveira",
+            "alternate-name": ["Luís Oliveira"],
+            "affiliation": []
+          },
+          {
+            "given": "Luís",
+            "family": "Paquete",
+            "alternate-name": ["Luís Paquete"],
+            "affiliation": []
+          },
+          {
+            "given": "Luis",
+            "family": "Paulo Gonçalves dos Reis",
+            "alternate-name": ["Luis Paulo Gonçalves dos Reis"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1169-7785",
+            "authenticated-orcid": false,
+            "given": "Luiz",
+            "family": "Felipe Rocha de Faria",
+            "alternate-name": ["Luiz Felipe Rocha de Faria"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1935-9908",
+            "authenticated-orcid": false,
+            "given": "Manuel",
+            "family": "Augusto Fernandes Delgado",
+            "alternate-name": ["Manuel Augusto Fernandes Delgado"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1385-3646",
+            "authenticated-orcid": false,
+            "given": "Manuel",
+            "family": "Augusto Vieira",
+            "alternate-name": ["Manuel Augusto Vieira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4859-6942",
+            "authenticated-orcid": false,
+            "given": "Manuel",
+            "family": "Bernardo Salvador Cunha",
+            "alternate-name": ["Manuel Bernardo Salvador Cunha"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4270-3284",
+            "authenticated-orcid": false,
+            "given": "Manuel",
+            "family": "Duarte Ortigueira",
+            "alternate-name": ["Manuel Duarte Ortigueira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5441-3316",
+            "authenticated-orcid": false,
+            "given": "Manuel",
+            "family": "Filipe Santos",
+            "alternate-name": ["Manuel Filipe Santos"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-2787-4475",
+            "authenticated-orcid": false,
+            "given": "MANUEL",
+            "family": "JOÃO SEPÚLVEDA MESQUITA DE FREITAS",
+            "alternate-name": ["MANUEL JOÃO SEPÚLVEDA MESQUITA DE FREITAS"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-8872-5721",
+            "authenticated-orcid": false,
+            "given": "Manuel",
+            "family": "José Cabral dos Santos Reis",
+            "alternate-name": ["Manuel José Cabral dos Santos Reis"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3508-0509",
+            "authenticated-orcid": false,
+            "given": "Manuela",
+            "family": "Alexandrina David de Aguiar",
+            "alternate-name": ["Manuela Alexandrina David de Aguiar"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3928-1482",
+            "authenticated-orcid": false,
+            "given": "Marco",
+            "family": "Martins Afonso",
+            "alternate-name": ["Marco Martins Afonso"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3713-2464",
+            "authenticated-orcid": false,
+            "given": "Marco",
+            "family": "Simões",
+            "alternate-name": ["Marco Simões"],
+            "affiliation": []
+          },
+          {
+            "given": "Marco",
+            "family": "Soares dos Santos",
+            "alternate-name": ["Marco Soares dos Santos"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-5925-8442",
+            "authenticated-orcid": false,
+            "given": "Marco",
+            "family": "Veloso",
+            "alternate-name": ["Marco Veloso"],
+            "affiliation": []
+          },
+          {
+            "given": "Marco",
+            "family": "Vieira",
+            "alternate-name": ["Marco Vieira"],
+            "affiliation": []
+          },
+          {
+            "given": "MARGARIDA",
+            "family": "ISABEL CABRITA MARQUES COELHO",
+            "alternate-name": ["MARGARIDA ISABEL CABRITA MARQUES COELHO"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-7453-3289",
+            "authenticated-orcid": false,
+            "given": "Margarida",
+            "family": "Maria Araújo Brito",
+            "alternate-name": ["Margarida Maria Araújo Brito"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-2219-2731",
+            "authenticated-orcid": false,
+            "given": "Maria",
+            "family": "Beatriz Alves de Sousa Santos",
+            "alternate-name": ["Maria Beatriz Alves de Sousa Santos"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3538-5804",
+            "authenticated-orcid": false,
+            "given": "Maria",
+            "family": "da Conceição de Jesus Rêgo Paiva",
+            "alternate-name": ["Maria da Conceição de Jesus Rêgo Paiva"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0014-9257",
+            "authenticated-orcid": false,
+            "given": "Maria",
+            "family": "da Graça Cristo dos Santos Lopes Ruano",
+            "alternate-name": ["Maria da Graça Cristo dos Santos Lopes Ruano"],
+            "affiliation": []
+          },
+          {
+            "given": "Maria",
+            "family": "Fatima Loureiro",
+            "alternate-name": ["Maria Fatima Loureiro"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6929-6442",
+            "authenticated-orcid": false,
+            "given": "Maria",
+            "family": "Fatima Taveira Pires Carvalho",
+            "alternate-name": ["Maria Fatima Taveira Pires Carvalho"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4417-8401",
+            "authenticated-orcid": false,
+            "given": "Maria",
+            "family": "Goreti Carvalho Marreiros",
+            "alternate-name": ["Maria Goreti Carvalho Marreiros"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6243-1944",
+            "authenticated-orcid": false,
+            "given": "Maria",
+            "family": "Helena Pinto da Rocha Mena de Matos",
+            "alternate-name": ["Maria Helena Pinto da Rocha Mena de Matos"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6172-5855",
+            "authenticated-orcid": false,
+            "given": "Maria",
+            "family": "João Nicolau",
+            "alternate-name": ["Maria João Nicolau"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1451-4777",
+            "authenticated-orcid": false,
+            "given": "Maria",
+            "family": "João Rodrigues",
+            "alternate-name": ["Maria João Rodrigues"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-8952-8618",
+            "authenticated-orcid": false,
+            "given": "Maria",
+            "family": "João Soares Vidigal Teixeira Ferreira",
+            "alternate-name": ["Maria João Soares Vidigal Teixeira Ferreira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6422-3279",
+            "authenticated-orcid": false,
+            "given": "Maria",
+            "family": "José Braga Marques Ribeiro",
+            "alternate-name": ["Maria José Braga Marques Ribeiro"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1989-5559",
+            "authenticated-orcid": false,
+            "given": "Maria",
+            "family": "José Patrício Marcelino",
+            "alternate-name": ["Maria José Patrício Marcelino"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-2299-1859",
+            "authenticated-orcid": false,
+            "given": "MARIA",
+            "family": "LEONILDE ROCHA VARELA",
+            "alternate-name": ["MARIA LEONILDE ROCHA VARELA"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3515-0135",
+            "authenticated-orcid": false,
+            "given": "Maria",
+            "family": "Madalena Teixeira Araújo",
+            "alternate-name": ["Maria Madalena Teixeira Araújo"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7709-8777",
+            "authenticated-orcid": false,
+            "given": "Maria",
+            "family": "Manuela Cruz Cunha",
+            "alternate-name": ["Maria Manuela Cruz Cunha"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1150-9895",
+            "authenticated-orcid": false,
+            "given": "Maria",
+            "family": "Manuela de Almeida Carvalho Vieira",
+            "alternate-name": ["Maria Manuela de Almeida Carvalho Vieira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3849-0151",
+            "authenticated-orcid": false,
+            "given": "Maria",
+            "family": "Rita Almeida Ribeiro",
+            "alternate-name": ["Maria Rita Almeida Ribeiro"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-7057-6775",
+            "authenticated-orcid": false,
+            "given": "Maria",
+            "family": "Sameiro Faria Brandão Soares de Carvalho",
+            "alternate-name": ["Maria Sameiro Faria Brandão Soares de Carvalho"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-2139-8073",
+            "authenticated-orcid": false,
+            "given": "Maria",
+            "family": "Solange Pires Ferreira Rito Lima",
+            "alternate-name": ["Maria Solange Pires Ferreira Rito Lima"],
+            "affiliation": []
+          },
+          {
+            "given": "Maria",
+            "family": "Teresa Ferreira Soares MENDES",
+            "alternate-name": ["Maria Teresa Ferreira Soares MENDES"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9499-6811",
+            "authenticated-orcid": false,
+            "given": "Maria",
+            "family": "Teresa Torres Monteiro",
+            "alternate-name": ["Maria Teresa Torres Monteiro"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4189-9043",
+            "authenticated-orcid": false,
+            "given": "Maria",
+            "family": "Zélia Ramos Alves da Rocha",
+            "alternate-name": ["Maria Zélia Ramos Alves da Rocha"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3249-6229",
+            "authenticated-orcid": false,
+            "given": "Maribel",
+            "family": "Yasmina Campos Alves Santos",
+            "alternate-name": ["Maribel Yasmina Campos Alves Santos"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6281-0891",
+            "authenticated-orcid": false,
+            "given": "Marilena",
+            "family": "Carmen Butuc",
+            "alternate-name": ["Marilena Carmen Butuc"],
+            "affiliation": []
+          },
+          {
+            "given": "Marilia",
+            "family": "Curado",
+            "alternate-name": ["Marilia Curado"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4665-0933",
+            "authenticated-orcid": false,
+            "given": "Mário",
+            "family": "Alexandre Duarte Magalhães",
+            "alternate-name": ["Mário Alexandre Duarte Magalhães"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0574-7555",
+            "authenticated-orcid": false,
+            "given": "Mário",
+            "family": "Florido",
+            "alternate-name": ["Mário Florido"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-8415-9040",
+            "authenticated-orcid": false,
+            "given": "Mário",
+            "family": "Jorge Ferreira Rodrigues",
+            "alternate-name": ["Mário Jorge Ferreira Rodrigues"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1985-9344",
+            "authenticated-orcid": false,
+            "given": "Mário",
+            "family": "Zenha-Rela",
+            "alternate-name": ["Mário Zenha-Rela"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-2799-305X",
+            "authenticated-orcid": false,
+            "given": "MARTA",
+            "family": "ISABEL PIMENTA VERDETE SILVA CARVALHO",
+            "alternate-name": ["MARTA ISABEL PIMENTA VERDETE SILVA CARVALHO"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9011-0734",
+            "authenticated-orcid": false,
+            "given": "Maryam",
+            "family": "Abbasi",
+            "alternate-name": ["Maryam Abbasi"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6009-7946",
+            "authenticated-orcid": false,
+            "given": "Maryam",
+            "family": "Khaksar Ghalati",
+            "alternate-name": ["Maryam Khaksar Ghalati"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1315-3992",
+            "authenticated-orcid": false,
+            "given": "Matthew",
+            "family": "Edward Price Davies",
+            "alternate-name": ["Matthew Edward Price Davies"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-7814-1653",
+            "authenticated-orcid": false,
+            "given": "Miguel",
+            "family": "Angel Guevara Lopez",
+            "alternate-name": ["Miguel Angel Guevara Lopez"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9288-5058",
+            "authenticated-orcid": false,
+            "given": "Miguel",
+            "family": "Armando Riem de Oliveira",
+            "alternate-name": ["Miguel Armando Riem de Oliveira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9204-7521",
+            "authenticated-orcid": false,
+            "given": "Miguel",
+            "family": "Cavique",
+            "alternate-name": ["Miguel Cavique"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4364-6373",
+            "authenticated-orcid": false,
+            "given": "Miguel",
+            "family": "de Sá e Sousa de Castelo Branco",
+            "alternate-name": ["Miguel de Sá e Sousa de Castelo Branco"],
+            "affiliation": []
+          },
+          {
+            "given": "Miguel",
+            "family": "Machado",
+            "alternate-name": ["Miguel Machado"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6072-8552",
+            "authenticated-orcid": false,
+            "given": "MOHAMMADHOSSEIN",
+            "family": "SHAHZAMANIANCICHANI",
+            "alternate-name": ["MOHAMMADHOSSEIN SHAHZAMANIANCICHANI"],
+            "affiliation": []
+          },
+          {
+            "given": "Mónica",
+            "family": "Sandra Abrantes Oliveira Correia",
+            "alternate-name": ["Mónica Sandra Abrantes Oliveira Correia"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-5817-2284",
+            "authenticated-orcid": false,
+            "given": "Muhammad",
+            "family": "Ali Awan",
+            "alternate-name": ["Muhammad Ali Awan"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1698-553X",
+            "authenticated-orcid": false,
+            "given": "Nadya",
+            "family": "Vasileva Dencheva",
+            "alternate-name": ["Nadya Vasileva Dencheva"],
+            "affiliation": []
+          },
+          {
+            "given": "Naghmeh",
+            "family": "Ramezani Ivaki",
+            "alternate-name": ["Naghmeh Ramezani Ivaki"],
+            "affiliation": []
+          },
+          {
+            "given": "Nelma",
+            "family": "Moreira",
+            "alternate-name": ["Nelma Moreira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9348-8038",
+            "authenticated-orcid": false,
+            "given": "Nélson",
+            "family": "Bruno Martins Marques da Costa",
+            "alternate-name": ["Nélson Bruno Martins Marques da Costa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9985-2806",
+            "authenticated-orcid": false,
+            "given": "Nelson",
+            "family": "Martins",
+            "alternate-name": ["Nelson Martins"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3801-7249",
+            "authenticated-orcid": false,
+            "given": "Nelson",
+            "family": "Pacheco da Rocha",
+            "alternate-name": ["Nelson Pacheco da Rocha"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5895-0880",
+            "authenticated-orcid": false,
+            "given": "Nicolas",
+            "family": "Francisco Lori",
+            "alternate-name": ["Nicolas Francisco Lori"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-2798-7274",
+            "authenticated-orcid": false,
+            "given": "Noel",
+            "family": "de Jesus Mendonça Lopes",
+            "alternate-name": ["Noel de Jesus Mendonça Lopes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-8897-5061",
+            "authenticated-orcid": false,
+            "given": "Nuno",
+            "family": "Alberto Ferreira Lopes",
+            "alternate-name": ["Nuno Alberto Ferreira Lopes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6044-4012",
+            "authenticated-orcid": false,
+            "given": "Nuno",
+            "family": "Antunes",
+            "alternate-name": ["Nuno Antunes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9742-5587",
+            "authenticated-orcid": false,
+            "given": "Nuno",
+            "family": "Filipe Correia de Almeida",
+            "alternate-name": ["Nuno Filipe Correia de Almeida"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-0011-9901",
+            "authenticated-orcid": false,
+            "given": "Nuno",
+            "family": "Laranjeiro",
+            "alternate-name": ["Nuno Laranjeiro"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-0513-158X",
+            "authenticated-orcid": false,
+            "given": "Nuno",
+            "family": "Lau",
+            "alternate-name": ["Nuno Lau"],
+            "affiliation": []
+          },
+          {
+            "given": "Nuno",
+            "family": "Lourenço",
+            "alternate-name": ["Nuno Lourenço"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-8711-5737",
+            "authenticated-orcid": false,
+            "given": "Nuno",
+            "family": "Mendes",
+            "alternate-name": ["Nuno Mendes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-2204-6339",
+            "authenticated-orcid": false,
+            "given": "Nuno",
+            "family": "Miguel Fonseca Ferreira",
+            "alternate-name": ["Nuno Miguel Fonseca Ferreira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-4682-1790",
+            "authenticated-orcid": false,
+            "given": "Nuno",
+            "family": "Octávio Garcia Fernandes",
+            "alternate-name": ["Nuno Octávio Garcia Fernandes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-8053-902X",
+            "authenticated-orcid": false,
+            "given": "Nuno",
+            "family": "Paulino",
+            "alternate-name": ["Nuno Paulino"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6039-8143",
+            "authenticated-orcid": false,
+            "given": "Nuno",
+            "family": "Ricardo Pais Costa",
+            "alternate-name": ["Nuno Ricardo Pais Costa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0498-4612",
+            "authenticated-orcid": false,
+            "given": "Nuno",
+            "family": "Sérgio Mendes Dias",
+            "alternate-name": ["Nuno Sérgio Mendes Dias"],
+            "affiliation": []
+          },
+          {
+            "given": "Olena",
+            "family": "Okhay",
+            "alternate-name": ["Olena Okhay"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-5384-0028",
+            "authenticated-orcid": false,
+            "given": "Olga",
+            "family": "Machado de Sousa Carneiro",
+            "alternate-name": ["Olga Machado de Sousa Carneiro"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-2157-8891",
+            "authenticated-orcid": false,
+            "given": "Orlando",
+            "family": "Belo",
+            "alternate-name": ["Orlando Belo"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9010-2075",
+            "authenticated-orcid": false,
+            "given": "Óscar",
+            "family": "Felgueiras",
+            "alternate-name": ["Óscar Felgueiras"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4849-0507",
+            "authenticated-orcid": false,
+            "given": "Otília",
+            "family": "C d Almeida",
+            "alternate-name": ["Otília C d Almeida"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4333-6754",
+            "authenticated-orcid": false,
+            "given": "PATRÍCIA",
+            "family": "ALEXANDRA PIRES MACEDO",
+            "alternate-name": ["PATRÍCIA ALEXANDRA PIRES MACEDO"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-0473-1559",
+            "authenticated-orcid": false,
+            "given": "Patrick",
+            "family": "Meumeu Yomsi",
+            "alternate-name": ["Patrick Meumeu Yomsi"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-8487-7541",
+            "authenticated-orcid": false,
+            "given": "Paula",
+            "family": "Alexandra Almeida Bastos Carvalho Lomp",
+            "alternate-name": ["Paula Alexandra Almeida Bastos Carvalho Lomp"],
+            "affiliation": []
+          },
+          {
+            "given": "Paula",
+            "family": "Alexandra Gomes da Silva",
+            "alternate-name": ["Paula Alexandra Gomes da Silva"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7498-452X",
+            "authenticated-orcid": false,
+            "given": "Paula",
+            "family": "Alexandrina de Aguiar Pereira Marques",
+            "alternate-name": ["Paula Alexandrina de Aguiar Pereira Marques"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-0874-8593",
+            "authenticated-orcid": false,
+            "given": "Paula",
+            "family": "Machado de Sousa Carneiro",
+            "alternate-name": ["Paula Machado de Sousa Carneiro"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4166-9379",
+            "authenticated-orcid": false,
+            "given": "Paula",
+            "family": "Manuela Lemos Pereira Milheiro de Oliveira",
+            "alternate-name": ["Paula Manuela Lemos Pereira Milheiro de Oliveira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-4167-2052",
+            "authenticated-orcid": false,
+            "given": "Paula",
+            "family": "Maria Garcia Louro",
+            "alternate-name": ["Paula Maria Garcia Louro"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3712-4803",
+            "authenticated-orcid": false,
+            "given": "Paula",
+            "family": "Varandas Ferreira",
+            "alternate-name": ["Paula Varandas Ferreira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3882-2491",
+            "authenticated-orcid": false,
+            "given": "Paulo",
+            "family": "Afonso",
+            "alternate-name": ["Paulo Afonso"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5079-8327",
+            "authenticated-orcid": false,
+            "given": "Paulo",
+            "family": "Alexandre Ferreira Simões",
+            "alternate-name": ["Paulo Alexandre Ferreira Simões"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7991-2090",
+            "authenticated-orcid": false,
+            "given": "PAULO",
+            "family": "ALEXANDRE RIBEIRO CORTEZ",
+            "alternate-name": ["PAULO ALEXANDRE RIBEIRO CORTEZ"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0902-8718",
+            "authenticated-orcid": false,
+            "given": "Paulo",
+            "family": "César Rodrigues Pinto Varandas",
+            "alternate-name": ["Paulo César Rodrigues Pinto Varandas"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3754-2749",
+            "authenticated-orcid": false,
+            "given": "Paulo",
+            "family": "Dias",
+            "alternate-name": ["Paulo Dias"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1153-3112",
+            "authenticated-orcid": false,
+            "given": "Paulo",
+            "family": "Donato",
+            "alternate-name": ["Paulo Donato"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9847-0590",
+            "authenticated-orcid": false,
+            "given": "Paulo",
+            "family": "Fernando Pereira de Carvalho",
+            "alternate-name": ["Paulo Fernando Pereira de Carvalho"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-0937-4044",
+            "authenticated-orcid": false,
+            "given": "Paulo",
+            "family": "Gil",
+            "alternate-name": ["Paulo Gil"],
+            "affiliation": []
+          },
+          {
+            "given": "Paulo",
+            "family": "Jorge Teixeira Fernandes",
+            "alternate-name": ["Paulo Jorge Teixeira Fernandes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7132-880X",
+            "authenticated-orcid": false,
+            "given": "Paulo",
+            "family": "José Abreu Beleza de Vasconcelos",
+            "alternate-name": ["Paulo José Abreu Beleza de Vasconcelos"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1042-4152",
+            "authenticated-orcid": false,
+            "given": "Paulo",
+            "family": "José Guimarães Garrido",
+            "alternate-name": ["Paulo José Guimarães Garrido"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-2701-5248",
+            "authenticated-orcid": false,
+            "given": "PAULO",
+            "family": "JOSÉ OSÓRIO RUPINO DA CUNHA",
+            "alternate-name": ["PAULO JOSÉ OSÓRIO RUPINO DA CUNHA"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6735-7122",
+            "authenticated-orcid": false,
+            "given": "Paulo",
+            "family": "Manuel Martins de Carvalho",
+            "alternate-name": ["Paulo Manuel Martins de Carvalho"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0879-1084",
+            "authenticated-orcid": false,
+            "given": "Paulo",
+            "family": "Sampaio",
+            "alternate-name": ["Paulo Sampaio"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3814-6331",
+            "authenticated-orcid": false,
+            "given": "Pedro",
+            "family": "Alexandre da Costa Sousa",
+            "alternate-name": ["Pedro Alexandre da Costa Sousa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0822-3423",
+            "authenticated-orcid": false,
+            "given": "Pedro",
+            "family": "Alexandre Guimarães Lobo Ferreira do Souto",
+            "alternate-name": ["Pedro Alexandre Guimarães Lobo Ferreira do Souto"],
+            "affiliation": []
+          },
+          {
+            "given": "Pedro",
+            "family": "André Gonçalves Morais",
+            "alternate-name": ["Pedro André Gonçalves Morais"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9421-9123",
+            "authenticated-orcid": false,
+            "given": "Pedro",
+            "family": "Arezes",
+            "alternate-name": ["Pedro Arezes"],
+            "affiliation": []
+          },
+          {
+            "given": "Pedro",
+            "family": "Baltazar Vasconcelos",
+            "alternate-name": ["Pedro Baltazar Vasconcelos"],
+            "affiliation": []
+          },
+          {
+            "given": "Pedro",
+            "family": "Espadinha da Cruz",
+            "alternate-name": ["Pedro Espadinha da Cruz"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5982-8342",
+            "authenticated-orcid": false,
+            "given": "Pedro",
+            "family": "Faria",
+            "alternate-name": ["Pedro Faria"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-6054-637X",
+            "authenticated-orcid": false,
+            "given": "Pedro",
+            "family": "Furtado",
+            "alternate-name": ["Pedro Furtado"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-7728-4935",
+            "authenticated-orcid": false,
+            "given": "PEDRO",
+            "family": "HENRIQUE E FIGUEIREDO QUARESMA DE ALMEIDA",
+            "alternate-name": ["PEDRO HENRIQUE E FIGUEIREDO QUARESMA DE ALMEIDA"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3630-7034",
+            "authenticated-orcid": false,
+            "given": "PEDRO",
+            "family": "JOSÉ MENDES MARTINS",
+            "alternate-name": ["PEDRO JOSÉ MENDES MARTINS"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9278-8194",
+            "authenticated-orcid": false,
+            "given": "PEDRO",
+            "family": "MANUEL HENRIQUES DA CUNHA ABREU",
+            "alternate-name": ["PEDRO MANUEL HENRIQUES DA CUNHA ABREU"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3208-0207",
+            "authenticated-orcid": false,
+            "given": "Pedro",
+            "family": "Manuel Rangel Santos Henriques",
+            "alternate-name": ["Pedro Manuel Rangel Santos Henriques"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3538-9282",
+            "authenticated-orcid": false,
+            "given": "PEDRO",
+            "family": "MIGUEL GONZALEZ DE ABREU RIBEIRO",
+            "alternate-name": ["PEDRO MIGUEL GONZALEZ DE ABREU RIBEIRO"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0445-7935",
+            "authenticated-orcid": false,
+            "given": "PEDRO",
+            "family": "MIGUEL MESTRE ALVES DA SILVA",
+            "alternate-name": ["PEDRO MIGUEL MESTRE ALVES DA SILVA"],
+            "affiliation": []
+          },
+          {
+            "given": "Pedro",
+            "family": "Miguel Moreira",
+            "alternate-name": ["Pedro Miguel Moreira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-2176-3923",
+            "authenticated-orcid": false,
+            "given": "Pedro",
+            "family": "Miguel Picado de Carvalho Serranho",
+            "alternate-name": ["Pedro Miguel Picado de Carvalho Serranho"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7162-0560",
+            "authenticated-orcid": false,
+            "given": "Pedro",
+            "family": "Miguel Salgueiro dos Santos",
+            "alternate-name": ["Pedro Miguel Salgueiro dos Santos"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-5193-0513",
+            "authenticated-orcid": false,
+            "given": "Pedro",
+            "family": "Nuno Miranda de Sousa",
+            "alternate-name": ["Pedro Nuno Miranda de Sousa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1910-8188",
+            "authenticated-orcid": false,
+            "given": "Pedro",
+            "family": "Samuel Gonçalves Coelho",
+            "alternate-name": ["Pedro Samuel Gonçalves Coelho"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6707-6806",
+            "authenticated-orcid": false,
+            "given": "PEDRO",
+            "family": "SÉRGIO OLIVEIRA BRANCO",
+            "alternate-name": ["PEDRO SÉRGIO OLIVEIRA BRANCO"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1819-7289",
+            "authenticated-orcid": false,
+            "given": "Pedro",
+            "family": "Ventura Alves da Silva",
+            "alternate-name": ["Pedro Ventura Alves da Silva"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-4624-3871",
+            "authenticated-orcid": false,
+            "given": "Peter",
+            "family": "Gothen",
+            "alternate-name": ["Peter Gothen"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6424-6590",
+            "authenticated-orcid": false,
+            "given": "Petia",
+            "family": "Georgieva",
+            "alternate-name": ["Petia Georgieva"],
+            "affiliation": []
+          },
+          {
+            "given": "Pukazhselvan",
+            "family": "DHARMAKKON",
+            "alternate-name": ["Pukazhselvan DHARMAKKON"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1244-5624",
+            "authenticated-orcid": false,
+            "given": "Radu",
+            "family": "Godina",
+            "alternate-name": ["Radu Godina"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-7410-8872",
+            "authenticated-orcid": false,
+            "given": "Ramiro",
+            "family": "de Sousa Barbosa",
+            "alternate-name": ["Ramiro de Sousa Barbosa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1054-1818",
+            "authenticated-orcid": false,
+            "given": "Ramiro",
+            "family": "Samano Robles",
+            "alternate-name": ["Ramiro Samano Robles"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6828-6231",
+            "authenticated-orcid": false,
+            "given": "Raquel",
+            "family": "Albuquerque Soares Brás de Almeida",
+            "alternate-name": ["Raquel Albuquerque Soares Brás de Almeida"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-2916-7571",
+            "authenticated-orcid": false,
+            "given": "Raul",
+            "family": "André Brajczewski Barbosa",
+            "alternate-name": ["Raul André Brajczewski Barbosa"],
+            "affiliation": []
+          },
+          {
+            "given": "Ricardo",
+            "family": "Alves de Sousa",
+            "alternate-name": ["Ricardo Alves de Sousa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-4215-3238",
+            "authenticated-orcid": false,
+            "given": "RICARDO",
+            "family": "AUGUSTO RODRIGUES DA SILVA SEVERINO",
+            "alternate-name": ["RICARDO AUGUSTO RODRIGUES DA SILVA SEVERINO"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1237-6964",
+            "authenticated-orcid": false,
+            "given": "Ricardo",
+            "family": "Couceiro",
+            "alternate-name": ["Ricardo Couceiro"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-7184-185X",
+            "authenticated-orcid": false,
+            "given": "RICARDO",
+            "family": "FILIPE ALVES MARTINS",
+            "alternate-name": ["RICARDO FILIPE ALVES MARTINS"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3097-8849",
+            "authenticated-orcid": false,
+            "given": "Ricardo",
+            "family": "João Ferreira Simões",
+            "alternate-name": ["Ricardo João Ferreira Simões"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3626-2569",
+            "authenticated-orcid": false,
+            "given": "Ricardo",
+            "family": "Jorge Silvério de Magalhães Machado",
+            "alternate-name": ["Ricardo Jorge Silvério de Magalhães Machado"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3703-6854",
+            "authenticated-orcid": false,
+            "given": "Ricardo",
+            "family": "Luis Rosa Jardim Goncalves",
+            "alternate-name": ["Ricardo Luis Rosa Jardim Goncalves"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3010-2732",
+            "authenticated-orcid": false,
+            "given": "Ricardo",
+            "family": "Malheiro",
+            "alternate-name": ["Ricardo Malheiro"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6262-7920",
+            "authenticated-orcid": false,
+            "given": "Ricardo",
+            "family": "Manuel da Conceição Rodrigues",
+            "alternate-name": ["Ricardo Manuel da Conceição Rodrigues"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7226-9047",
+            "authenticated-orcid": false,
+            "given": "ROBERTT",
+            "family": "ÂNGELO FONTES VALENTE",
+            "alternate-name": ["ROBERTT ÂNGELO FONTES VALENTE"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-2069-4631",
+            "authenticated-orcid": false,
+            "given": "Rodolfo",
+            "family": "Telo Martins de Abreu",
+            "alternate-name": ["Rodolfo Telo Martins de Abreu"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-8352-5528",
+            "authenticated-orcid": false,
+            "given": "Rogério",
+            "family": "Salema de Araújo Puga Leal",
+            "alternate-name": ["Rogério Salema de Araújo Puga Leal"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9668-0917",
+            "authenticated-orcid": false,
+            "given": "Rogério",
+            "family": "Ventura Lages dos Santos Reis",
+            "alternate-name": ["Rogério Ventura Lages dos Santos Reis"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5114-4421",
+            "authenticated-orcid": false,
+            "given": "Romain",
+            "family": "Aimino",
+            "alternate-name": ["Romain Aimino"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1930-6072",
+            "authenticated-orcid": false,
+            "given": "Rosa",
+            "family": "Antónia de Oliveira Figueiredo Tomás Ferreira",
+            "alternate-name": ["Rosa Antónia de Oliveira Figueiredo Tomás Ferreira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6551-9677",
+            "authenticated-orcid": false,
+            "given": "Rosa",
+            "family": "Maria Mendes Miranda",
+            "alternate-name": ["Rosa Maria Mendes Miranda"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1566-7006",
+            "authenticated-orcid": false,
+            "given": "Rosaldo",
+            "family": "José Fernandes Rossetti",
+            "alternate-name": ["Rosaldo José Fernandes Rossetti"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6142-1840",
+            "authenticated-orcid": false,
+            "given": "Ruben",
+            "family": "Costa",
+            "alternate-name": ["Ruben Costa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-5328-1705",
+            "authenticated-orcid": false,
+            "given": "Rui",
+            "family": "António da Silva Moreira",
+            "alternate-name": ["Rui António da Silva Moreira"],
+            "affiliation": []
+          },
+          {
+            "given": "Rui",
+            "family": "Fernando Martins",
+            "alternate-name": ["Rui Fernando Martins"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3547-2131",
+            "authenticated-orcid": false,
+            "given": "Rui",
+            "family": "José",
+            "alternate-name": ["Rui José"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-6677-2754",
+            "authenticated-orcid": false,
+            "given": "Rui",
+            "family": "Manuel Dias Cortesão dos Santos Bernardes",
+            "alternate-name": ["Rui Manuel Dias Cortesão dos Santos Bernardes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-7607-555X",
+            "authenticated-orcid": false,
+            "given": "Rui",
+            "family": "Manuel Dinis Sousa",
+            "alternate-name": ["Rui Manuel Dinis Sousa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5321-6863",
+            "authenticated-orcid": false,
+            "given": "Rui",
+            "family": "Manuel Ribeiro Castro Mendes",
+            "alternate-name": ["Rui Manuel Ribeiro Castro Mendes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3215-3960",
+            "authenticated-orcid": false,
+            "given": "Rui",
+            "family": "Pedro Pinto de Carvalho e Paiva",
+            "alternate-name": ["Rui Pedro Pinto de Carvalho e Paiva"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3798-9348",
+            "authenticated-orcid": false,
+            "given": "Sabine",
+            "family": "Broda",
+            "alternate-name": ["Sabine Broda"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-5862-5706",
+            "authenticated-orcid": false,
+            "given": "Salviano",
+            "family": "Filipe Silva Pinto Soares",
+            "alternate-name": ["Salviano Filipe Silva Pinto Soares"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1292-0977",
+            "authenticated-orcid": false,
+            "given": "Samuel",
+            "family": "António Sousa Dias Lopes",
+            "alternate-name": ["Samuel António Sousa Dias Lopes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9858-8249",
+            "authenticated-orcid": false,
+            "given": "Samuel",
+            "family": "de Sousa Silva",
+            "alternate-name": ["Samuel de Sousa Silva"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4580-7484",
+            "authenticated-orcid": false,
+            "given": "SANDRO",
+            "family": "EMANUEL SALGADO PINTO",
+            "alternate-name": ["SANDRO EMANUEL SALGADO PINTO"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-7464-3944",
+            "authenticated-orcid": false,
+            "given": "SENHORINHA",
+            "family": "DE FÁTIMA CAPELA FORTUNAS TEIXEIRA",
+            "alternate-name": ["SENHORINHA DE FÁTIMA CAPELA FORTUNAS TEIXEIRA"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-5452-8191",
+            "authenticated-orcid": false,
+            "given": "Sergey",
+            "family": "Mikhalev",
+            "alternate-name": ["Sergey Mikhalev"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3631-6440",
+            "authenticated-orcid": false,
+            "given": "Sérgio",
+            "family": "Dinis Teixeira de sousa",
+            "alternate-name": ["Sérgio Dinis Teixeira de sousa"],
+            "affiliation": []
+          },
+          {
+            "given": "SÉRGIO",
+            "family": "FILIPE CARVALHO RAMOS",
+            "alternate-name": ["SÉRGIO FILIPE CARVALHO RAMOS"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4631-7268",
+            "authenticated-orcid": false,
+            "given": "Sergio",
+            "family": "José Coelho do Carmo",
+            "alternate-name": ["Sergio José Coelho do Carmo"],
+            "affiliation": []
+          },
+          {
+            "given": "Sérgio",
+            "family": "Matos",
+            "alternate-name": ["Sérgio Matos"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5028-0974",
+            "authenticated-orcid": false,
+            "given": "SERGIO",
+            "family": "PAULO CARVALHO MONTEIRO",
+            "alternate-name": ["SERGIO PAULO CARVALHO MONTEIRO "],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5076-8048",
+            "authenticated-orcid": false,
+            "given": "Serguei",
+            "family": "Popov",
+            "alternate-name": ["Serguei Popov"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0852-8892",
+            "authenticated-orcid": false,
+            "given": "Sílvio",
+            "family": "Marques de Almeida Gama",
+            "alternate-name": ["Sílvio Marques de Almeida Gama"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1021-1173",
+            "authenticated-orcid": false,
+            "given": "Simão",
+            "family": "Paredes",
+            "alternate-name": ["Simão Paredes"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9029-6893",
+            "authenticated-orcid": false,
+            "given": "Sofia",
+            "family": "Balbina Santos Dias de Castro Gothen",
+            "alternate-name": ["Sofia Balbina Santos Dias de Castro Gothen"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0375-7610",
+            "authenticated-orcid": false,
+            "given": "Sónia",
+            "family": "Gouveia",
+            "alternate-name": ["Sónia Gouveia"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0536-3113",
+            "authenticated-orcid": false,
+            "given": "Stanimir",
+            "family": "Stoyanov Valtchev",
+            "alternate-name": ["Stanimir Stoyanov Valtchev"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9467-0096",
+            "authenticated-orcid": false,
+            "given": "Susana",
+            "family": "Carla Vieira Lino Medina Duarte",
+            "alternate-name": ["Susana Carla Vieira Lino Medina Duarte"],
+            "affiliation": []
+          },
+          {
+            "given": "Susana",
+            "family": "Manuela Martinho dos Santos Baía Brás",
+            "alternate-name": ["Susana Manuela Martinho dos Santos Baía Brás"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-0804-2024",
+            "authenticated-orcid": false,
+            "given": "Syam",
+            "family": "Sundar Lingala",
+            "alternate-name": ["Syam Sundar Lingala"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-8700-4992",
+            "authenticated-orcid": false,
+            "given": "Tahereh",
+            "family": "Nodehi",
+            "alternate-name": ["Tahereh Nodehi"],
+            "affiliation": []
+          },
+          { "given": "TAO", "family": "YANG", "alternate-name": ["TAO YANG"], "affiliation": [] },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9072-5010",
+            "authenticated-orcid": false,
+            "given": "TELMO",
+            "family": "JORGE GOMES SANTOS",
+            "alternate-name": ["TELMO JORGE GOMES SANTOS"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-3294-042X",
+            "authenticated-orcid": false,
+            "given": "Teresa",
+            "family": "Leonor Ribeiro Cardoso Martins Morgado",
+            "alternate-name": ["Teresa Leonor Ribeiro Cardoso Martins Morgado"],
+            "affiliation": []
+          },
+          {
+            "given": "Teresa",
+            "family": "Maria da Silva Sousa",
+            "alternate-name": ["Teresa Maria da Silva Sousa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3497-7368",
+            "authenticated-orcid": false,
+            "given": "Teresa",
+            "family": "Rocha",
+            "alternate-name": ["Teresa Rocha"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-5065-7938",
+            "authenticated-orcid": false,
+            "given": "Tiago",
+            "family": "Alexandre Narciso da Silva",
+            "alternate-name": ["Tiago Alexandre Narciso da Silva"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-9585-3641",
+            "authenticated-orcid": false,
+            "given": "Tiago",
+            "family": "Baptista",
+            "alternate-name": ["Tiago Baptista"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9278-6503",
+            "authenticated-orcid": false,
+            "given": "Tiago",
+            "family": "José dos Santos Martins da Cruz",
+            "alternate-name": ["Tiago José dos Santos Martins da Cruz"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-0203-5488",
+            "authenticated-orcid": false,
+            "given": "Tiago",
+            "family": "Manuel Rodrigues da Silva",
+            "alternate-name": ["Tiago Manuel Rodrigues da Silva"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-8248-080X",
+            "authenticated-orcid": false,
+            "given": "Tiago",
+            "family": "Pinto",
+            "alternate-name": ["Tiago Pinto"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-3953-6123",
+            "authenticated-orcid": false,
+            "given": "Vanda",
+            "family": "Alexandre Marques dos Santos",
+            "alternate-name": ["Vanda Alexandre Marques dos Santos"],
+            "affiliation": []
+          },
+          {
+            "given": "Vanessa",
+            "family": "Almeida Tomé",
+            "alternate-name": ["Vanessa Almeida Tomé"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-4225-9075",
+            "authenticated-orcid": false,
+            "given": "Vasco",
+            "family": "Nuno Sousa Simões Pereira",
+            "alternate-name": ["Vasco Nuno Sousa Simões Pereira"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1819-7051",
+            "authenticated-orcid": false,
+            "given": "Victor",
+            "family": "Alves",
+            "alternate-name": ["Victor Alves"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-1198-4220",
+            "authenticated-orcid": false,
+            "given": "VICTOR",
+            "family": "FERNANDO SANTOS NETO",
+            "alternate-name": ["VICTOR FERNANDO SANTOS NETO"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0001-9089-0753",
+            "authenticated-orcid": false,
+            "given": "Virgínia",
+            "family": "Helena Arimateia de Campos Machado",
+            "alternate-name": ["Virgínia Helena Arimateia de Campos Machado"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4975-6055",
+            "authenticated-orcid": false,
+            "given": "Vítor",
+            "family": "António Ferreira da Costa",
+            "alternate-name": ["Vítor António Ferreira da Costa"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4658-5844",
+            "authenticated-orcid": false,
+            "given": "Vítor",
+            "family": "Carvalho",
+            "alternate-name": ["Vítor Carvalho"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0003-4197-1754",
+            "authenticated-orcid": false,
+            "given": "Vítor",
+            "family": "Hugo Pereira Alves",
+            "alternate-name": ["Vítor Hugo Pereira Alves"],
+            "affiliation": []
+          },
+          {
+            "given": "Vitor",
+            "family": "Manuel Ferreira dos Santos",
+            "alternate-name": ["Vitor Manuel Ferreira dos Santos"],
+            "affiliation": []
+          },
+          {
+            "given": "Vitor",
+            "family": "Monteiro",
+            "alternate-name": ["Vitor Monteiro"],
+            "affiliation": []
+          },
+          {
+            "ORCID": "http://orcid.org/0000-0002-1819-5606",
+            "authenticated-orcid": false,
+            "given": "Yuriy",
+            "family": "Vygranenko",
+            "alternate-name": ["Yuriy Vygranenko"],
+            "affiliation": []
+          },
+          { "given": "Zita", "family": "Vale", "alternate-name": ["Zita Vale"], "affiliation": [] }
+        ],
+        "lead-investigator": [
+          {
+            "ORCID": "http://orcid.org/0000-0002-3549-0754",
+            "authenticated-orcid": false,
+            "given": "Paulo",
+            "family": "Novais",
+            "alternate-name": ["Paulo Novais"],
+            "affiliation": []
+          }
+        ],
+        "award-amount": { "amount": 678710, "currency": "EUR" },
+        "award-start": { "date-parts": [[2021, 1, 1]] },
+        "award-end": { "date-parts": [[2025, 12, 31]] },
+        "funding": [
+          {
+            "type": "grant",
+            "scheme": "FCT",
+            "award-amount": { "amount": 678710, "currency": "EUR", "percentage": null },
+            "funder": {
+              "id": [
+                { "id": "10.13039/501100001871", "id-type": "DOI", "asserted-by": "publisher" }
+              ],
+              "name": "Fundação para a Ciência e a Tecnologia"
+            }
+          }
+        ]
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2024, 2, 8]],
+      "date-time": "2024-02-08T17:21:45Z",
+      "timestamp": 1707412905000
+    },
+    "score": 0,
+    "resource": { "primary": { "URL": "https://sciproj.ptcris.pt/168241UID" } },
+    "issued": { "date-parts": [[2021, 1, 1]] },
+    "URL": "https://doi.org/10.54499/la/p/0104/2020"
+  }
+}

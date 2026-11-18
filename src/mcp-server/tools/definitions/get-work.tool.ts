@@ -2,7 +2,9 @@
  * @fileoverview crossref_get_work — resolves a DOI to its full Crossref metadata record.
  * The deposited author list is paged by offset/limit the way crossref_get_references pages
  * references: the slice happens once in the handler, so structuredContent and content[] carry
- * the identical page, and authorCount reports the full deposited total.
+ * the identical page, and authorCount reports the full deposited total. A grant deposits no
+ * authors; the investigators of its projects are paged by the same window, slice, continuation,
+ * and notice, with investigatorCount the full total.
  * A funder, an affiliation, and an institution are the organizations a record names, and a
  * publisher may assert any of them through the ROR registry instead of by name — so each is
  * projected with the identifier standing in for the name it lacks, on both surfaces, rather than
@@ -11,6 +13,9 @@
  * returned whole: none approaches the author tail, and each is relayed entry for entry as
  * deposited. Update links also feed the notice, which shares its one string with the
  * author-paging guidance.
+ * A posted-content preprint costs a second request, for the works whose records name it in
+ * has-preprint (publishedVersions). A failed lookup leaves the record whole and says so in the
+ * notice; only a rate limit or the caller's cancellation fails the call.
  * @module mcp-server/tools/definitions/get-work.tool
  */
 
@@ -37,6 +42,29 @@ import {
   projectApproved,
   projectEvent,
 } from '@/mcp-server/tools/work-dates.js';
+import {
+  FunderSchema,
+  funderSection,
+  LicenseSchema,
+  LinkSchema,
+  licenseSection,
+  linkSection,
+  normalizeFunder,
+  projectLicenses,
+  projectLinks,
+  rorId,
+  UNNAMED,
+} from '@/mcp-server/tools/work-funders-licenses-links.js';
+import {
+  grantFields,
+  grantLines,
+  type PageCount,
+  projectGrant,
+  projectReview,
+  projectSections,
+  reviewFields,
+  reviewLines,
+} from '@/mcp-server/tools/work-grants-reviews.js';
 import { locatorFields, locatorLine, projectLocators } from '@/mcp-server/tools/work-locators.js';
 import {
   projectUpdates,
@@ -44,7 +72,13 @@ import {
   updateFields,
   updateSections,
 } from '@/mcp-server/tools/work-updates.js';
-import { getCrossrefService, normalizeDoi } from '@/services/crossref/crossref-service.js';
+import {
+  getCrossrefService,
+  normalizeDoi,
+  PUBLISHED_VERSION_ROWS,
+  type PublishedVersionsLookup,
+  type PublishedVersion as RawPublishedVersion,
+} from '@/services/crossref/crossref-service.js';
 import { formatDateParts, resolveWorkDate } from '@/services/crossref/date-parts.js';
 import {
   normalizeAbstract,
@@ -56,9 +90,7 @@ import {
 import type {
   CrossrefAffiliation,
   CrossrefAuthor,
-  CrossrefFunder,
   CrossrefInstitution,
-  CrossrefOrganizationId,
   CrossrefRelation,
 } from '@/services/crossref/types.js';
 import { UPSTREAM_ERROR_CONTRACT } from '@/services/crossref/upstream-errors.js';
@@ -94,28 +126,6 @@ const AuthorSchema = z
   })
   .describe('Author or contributor');
 
-const FunderSchema = z
-  .object({
-    name: z
-      .string()
-      .optional()
-      .describe(
-        'Funder name as deposited. Absent when the publisher asserted the funder by identifier alone, where ror carries it instead.',
-      ),
-    doi: z
-      .string()
-      .optional()
-      .describe('Funder DOI — the Crossref Funder Registry entry this assertion resolved to'),
-    ror: z
-      .string()
-      .optional()
-      .describe(
-        'ROR identifier for the funding organization, when the deposit carries one. It is the whole identity of an assertion deposited without a name.',
-      ),
-    award: z.array(z.string()).optional().describe('Grant or award numbers'),
-  })
-  .describe('Funding assertion');
-
 const InstitutionSchema = z
   .object({
     name: z
@@ -138,30 +148,6 @@ const InstitutionSchema = z
     acronym: z.array(z.string()).optional().describe('Acronyms as deposited'),
   })
   .describe('Institution');
-
-const LicenseSchema = z
-  .object({
-    url: z.string().describe('License URL'),
-    contentVersion: z.string().optional().describe('Content version (vor, am, tdm, unspecified)'),
-    delayInDays: z.number().optional().describe('Embargo delay in days from publication date'),
-    start: z.string().optional().describe('License start date-time as deposited by the publisher'),
-  })
-  .describe('License entry');
-
-const LinkSchema = z
-  .object({
-    url: z.string().describe('Full-text URL'),
-    contentType: z.string().optional().describe('MIME type of linked content'),
-    contentVersion: z
-      .string()
-      .optional()
-      .describe('Content version of the linked manuscript as deposited (e.g. vor, am)'),
-    intendedApplication: z
-      .string()
-      .optional()
-      .describe('Intended use (text-mining, similarity-checking, etc.)'),
-  })
-  .describe('Registered full-text link');
 
 const RelationSchema = z
   .object({
@@ -186,10 +172,32 @@ const RelationSchema = z
   })
   .describe('Related identifiers sharing one relation type, identifier type, and asserting party');
 
+const PublishedVersionSchema = z
+  .object({
+    doi: z
+      .string()
+      .describe(
+        'DOI of the work, as Crossref records it — pass to crossref_get_work for its record',
+      ),
+    type: z
+      .string()
+      .optional()
+      .describe(
+        'Work type as deposited, e.g. journal-article. Omitted when the record deposits none.',
+      ),
+    title: z
+      .string()
+      .optional()
+      .describe(
+        "Work title, with markup removed as this record's own title is. Omitted when the record deposits none.",
+      ),
+  })
+  .describe('A work whose own record names this preprint in has-preprint');
+
 export const getWorkTool = tool('crossref_get_work', {
   title: 'Get Work by DOI',
   description:
-    'Resolves a DOI to its full Crossref metadata record: title, authors, editors, affiliations, abstract (when deposited), journal or container with the volume, issue, pages, and article number that locate the work in it, ISSNs and ISBNs, publication date, type, license, full-text links, and funder acknowledgements. Where the record deposits them it also carries the conference event of a proceedings paper (event), the approval date that dissertations and most standards deposit in place of a publication date (approved, never read into published), the institutions a record names (the awarding institution of a thesis, the server of a preprint, the laboratories behind a report) and the degree of a thesis, and the subtype and group title of posted content such as a preprint. The author list is paged: authorCount is the full deposited total, offset and limit select the page (25 authors by default), and when authors remain the response carries a nextOffset to pass back as offset — large-collaboration papers deposit thousands. Post-publication updates are relayed as Crossref records them: updatedBy names each correction, retraction, expression of concern, or new version issued against this work, with its notice DOI and whether the publisher or Retraction Watch recorded it, and updateTo names the works this record is itself a notice for. An absent updatedBy does not mean the work was never updated — coverage depends on those deposits. relations lists related identifiers, such as a preprint and its published version, grouped by relation type; only the Crossref-registered DOIs among them resolve through crossref_get_work. clinicalTrialNumbers lists the trial registrations the work names, each with its registry where deposited, and assertions the Crossmark entries its publisher attaches — received, revised, and accepted dates, ethics and competing-interest statements, peer-review details — both returned whole in deposited order; an absent clinicalTrialNumbers does not mean the work reports no trial. memberId is the Crossref member that holds the DOI now — pass it to crossref_get_member for the publisher record and its deposit coverage; the prefix of the DOI names the member that registered the prefix, which for a transferred title is a former publisher. Outgoing references are reported as a count in referencesCount; the reference entries themselves come from crossref_get_references. The isReferencedByCount field reports the total incoming citation count from Crossref; the citing works themselves are not available through Crossref — use OpenAlex for citation graphs.',
+    'Resolves a DOI to its full Crossref metadata record: title, authors, editors, affiliations, abstract (when deposited), journal or container with the volume, issue, pages, and article number that locate the work in it, ISSNs and ISBNs, publication date, type, license, full-text links, and funder acknowledgements. Where the record deposits them it also carries the conference event of a proceedings paper (event), the approval date that dissertations and most standards deposit in place of a publication date (approved, never read into published), the institutions a record names (the awarding institution of a thesis, the server of a preprint, the laboratories behind a report) and the degree of a thesis, and the subtype and group title of posted content such as a preprint. The author list is paged: authorCount is the full deposited total, offset and limit select the page (25 authors by default), and when authors remain the response carries a nextOffset to pass back as offset — large-collaboration papers deposit thousands. A grant, which deposits no title or abstract, carries its award number (award), award start, and projects: titles, descriptions, lead and co-lead investigators, investigators, amounts, dates, and funding, each funder with its Funder Registry DOI or ROR. Its investigators are paged by offset and limit the way authors are, across its projects in deposited order, with investigatorCount the full total; lead and co-lead investigators come back whole. A peer review carries review — its stage, type, running number, revision round, recommendation, competing-interest statement, and language, where deposited. Post-publication updates are relayed as Crossref records them: updatedBy names each correction, retraction, expression of concern, or new version issued against this work, with its notice DOI and whether the publisher or Retraction Watch recorded it, and updateTo names the works this record is itself a notice for. An absent updatedBy does not mean the work was never updated — coverage depends on those deposits. relations lists related identifiers, such as a preprint and its published version, grouped by relation type; only the Crossref-registered DOIs among them resolve through crossref_get_work. The record of a preprint can leave out its published version, so on a posted-content record of subtype preprint a second request reads publishedVersions: the works whose own records name it in has-preprint, each with its DOI, type, and title. Every other record takes one request. clinicalTrialNumbers lists the trial registrations the work names, each with its registry where deposited, and assertions the Crossmark entries its publisher attaches — received, revised, and accepted dates, ethics and competing-interest statements, peer-review details — both returned whole in deposited order; an absent clinicalTrialNumbers does not mean the work reports no trial. memberId is the Crossref member that holds the DOI now — pass it to crossref_get_member for the publisher record and its deposit coverage; the prefix of the DOI names the member that registered the prefix, which for a transferred title is a former publisher. Outgoing references are reported as a count in referencesCount; the reference entries themselves come from crossref_get_references. The isReferencedByCount field reports the total incoming citation count from Crossref; the citing works themselves are not available through Crossref — use OpenAlex for citation graphs.',
   annotations: { readOnlyHint: true, idempotentHint: true },
 
   input: z.object({
@@ -208,7 +216,7 @@ export const getWorkTool = tool('crossref_get_work', {
       .min(0)
       .default(0)
       .describe(
-        'Zero-based index of the first author to return. Pass the nextOffset value from the previous response to continue through a long author list. Only the author list is paged; every other field of the record is returned in full on every page.',
+        'Zero-based index of the first author to return — on a grant, which deposits no authors, the first investigator, counted across its projects in deposited order. Pass the nextOffset value from the previous response to continue through a long list. Only the author and investigator lists are paged; every other field of the record, lead and co-lead investigators included, is returned in full on every page.',
       ),
     limit: z
       .number()
@@ -217,7 +225,7 @@ export const getWorkTool = tool('crossref_get_work', {
       .max(ENTRY_LIMIT_CEILING)
       .default(25)
       .describe(
-        `Maximum number of authors to return in one page (1–${GET_WORK_LIMIT_CAP} per call, default 25). A larger value, up to ${ENTRY_LIMIT_CEILING}, returns ${GET_WORK_LIMIT_CAP} and says so in notice; nextOffset continues after the authors returned. Ordinary records fit in a single page; large-collaboration papers in particle physics and genomics deposit thousands.`,
+        `Maximum number of authors — on a grant, investigators — to return in one page (1–${GET_WORK_LIMIT_CAP} per call, default 25). A larger value, up to ${ENTRY_LIMIT_CEILING}, returns ${GET_WORK_LIMIT_CAP} and says so in notice; nextOffset continues after the entries returned. Ordinary records fit in a single page; large-collaboration papers in particle physics and genomics deposit thousands of authors, and some grants hundreds of investigators.`,
       ),
   }),
 
@@ -251,7 +259,7 @@ export const getWorkTool = tool('crossref_get_work', {
       .number()
       .optional()
       .describe(
-        'Zero-based index of the first returned author within the deposited list. Omitted alongside authors when the record deposits no author field.',
+        'Zero-based index of the first returned author — on a grant, the first returned investigator — within the deposited list. Omitted when the record deposits neither an author field nor an investigator list.',
       ),
     editors: z
       .array(AuthorSchema)
@@ -259,12 +267,20 @@ export const getWorkTool = tool('crossref_get_work', {
       .describe(
         'Editors of the work, or of the book or proceedings containing it, in the entry shape authors use. Returned whole — never paged by offset and limit, and never counted in authorCount. Omitted when the record deposits none.',
       ),
+    ...grantFields,
+    ...reviewFields,
     ...updateFields,
     relations: z
       .array(RelationSchema)
       .optional()
       .describe(
-        "Related identifiers — preprints and published versions, other versions, reviews, supplements, parts — grouped by relation type, identifier type, and asserting party, groups in Crossref's order and ids in deposited order. Returned whole. Omitted when the record deposits none.",
+        "Related identifiers — preprints and published versions, other versions, reviews, supplements, parts — grouped by relation type, identifier type, and asserting party, groups in Crossref's order and ids in deposited order. Returned whole. Omitted when the record deposits none. A preprint's own record can leave out its published version while the article's record still names the preprint: on a posted-content preprint, publishedVersions lists the works whose records name it, which crossref_search_works also finds with the filter relation.type has-preprint and relation.object this record's DOI.",
+      ),
+    publishedVersions: z
+      .array(PublishedVersionSchema)
+      .optional()
+      .describe(
+        `On a posted-content record of subtype preprint, the works whose own records name it in has-preprint — its published version, usually one article — read by a second request. At most ${PUBLISHED_VERSION_ROWS}: when more name it, notice gives the total and the crossref_search_works filter that lists every one. An empty list means no Crossref record names this preprint. Omitted on every other record, and when the lookup failed, which notice then says — an absent list never means no published version. A work here can also appear in relations, which reads this record's own deposit; the two lists are separate deposits and neither is deduplicated against the other.`,
       ),
     abstract: z
       .string()
@@ -327,7 +343,7 @@ export const getWorkTool = tool('crossref_get_work', {
         'Degree a thesis was submitted for, as deposited, e.g. "Doutorado em Educação". Omitted when the record deposits none.',
       ),
     published: DatePartsSchema.optional().describe(
-      'Publication date — the first of published, published-print, published-online, and issued that names one. A component Crossref records as unknown is omitted, and so is every component below it.',
+      'Publication date — the first of published, published-print, published-online, and issued that names one. A component Crossref records as unknown is omitted, and so is every component below it. A grant deposits only issued, which Crossref sets to the award start, so on a grant this is the award start.',
     ),
     ...approvedFields,
     funders: z.array(FunderSchema).optional().describe('Funding acknowledgements'),
@@ -344,19 +360,27 @@ export const getWorkTool = tool('crossref_get_work', {
       .number()
       .optional()
       .describe(
-        'Offset to pass in the next call to retrieve the following page of authors. Absent when this page reaches the end of the author list.',
+        'Offset to pass in the next call to retrieve the following page of authors — on a grant, of investigators. Absent when this page reaches the end of the list.',
       ),
     truncated: z
       .boolean()
       .optional()
-      .describe('True when authors remain beyond this page. Absent when the page is the last.'),
-    shown: z.number().optional().describe('Number of authors returned in this page.'),
-    cap: z.number().optional().describe('The limit that was applied to this page of authors.'),
+      .describe(
+        'True when authors — on a grant, investigators — remain beyond this page. Absent when the page is the last.',
+      ),
+    shown: z
+      .number()
+      .optional()
+      .describe('Number of authors — on a grant, investigators — returned in this page.'),
+    cap: z
+      .number()
+      .optional()
+      .describe('The limit that was applied to this page of authors or investigators.'),
     notice: z
       .string()
       .optional()
       .describe(
-        'When updatedBy is present, the update types Crossref records for this work with the source of each, and where the notice is read. Then, when limit was above its per-call cap, the value requested and the cap applied. Then which authors this page covers and the offset that reaches the next ones, or an explanation when the requested offset is past the end of the author list. All share this one string when more than one applies. Absent when the page holds the whole author list, no update is recorded, and limit was within its cap.',
+        `When updatedBy is present, the update types Crossref records for this work with the source of each, and where the notice is read. Then, on a posted-content preprint, that the published-version lookup failed and publishedVersions is omitted, or that more than ${PUBLISHED_VERSION_ROWS} works name the preprint, with the total — either way naming the crossref_search_works filter that runs the lookup. Then, when limit was above its per-call cap, the value requested and the cap applied. Then which authors — on a grant, which investigators — this page covers and the offset that reaches the next ones, or an explanation when the requested offset is past the end of the list. All share this one string when more than one applies. Absent when the page holds the whole list, no update is recorded, any published-version lookup returned every work naming the preprint, and limit was within its cap.`,
       ),
   },
 
@@ -392,6 +416,17 @@ export const getWorkTool = tool('crossref_get_work', {
       });
       throw ctx.fail('doi_not_found', detail.message, { doi, ...detail.data });
     }
+    /**
+     * A preprint's published version can be missing from its own record while the article's
+     * record names it, so a preprint costs one more request. Gated on the subtype as well as the
+     * type: every work Crossref holds a `has-preprint` link to is a posted-content preprint, and
+     * other posted content (supplementary material, blogs) gains nothing from the lookup. The
+     * record's own DOI is sent, not the caller's spelling of it — see `getPublishedVersions`.
+     */
+    const publishedLookup =
+      raw.type === 'posted-content' && raw.subtype === 'preprint'
+        ? await svc.getPublishedVersions(raw.DOI, ctx)
+        : undefined;
 
     const title = raw.title?.[0] !== undefined ? normalizeMarkupText(raw.title[0]) : undefined;
     const subtitle =
@@ -421,7 +456,20 @@ export const getWorkTool = tool('crossref_get_work', {
      */
     const authorTotal = raw.author?.length ?? 0;
     const authorPage = raw.author?.slice(input.offset, input.offset + limit).map(normalizeAuthor);
-    const authorNextOffset = input.offset + (authorPage?.length ?? 0);
+    const grant = projectGrant(raw, { offset: input.offset, limit });
+    /**
+     * Every list offset and limit page: the author list, and on a grant the investigators of all
+     * its projects as one list, sliced by `projectGrant` the way the authors are sliced here. No
+     * record deposits both — a grant deposits no authors — but both would be cut by the one
+     * window, so one nextOffset continues each.
+     */
+    const pages: Array<PageCount & { noun: 'author' | 'investigator' }> = [];
+    if (raw.author)
+      pages.push({ noun: 'author', total: authorTotal, shown: authorPage?.length ?? 0 });
+    if (grant.investigatorPage) pages.push({ noun: 'investigator', ...grant.investigatorPage });
+    const shown = Math.max(0, ...pages.map((page) => page.shown));
+    const nextOffset = input.offset + shown;
+    const cutPages = pages.filter((page) => input.offset + page.shown < page.total);
 
     const updates = projectUpdates(raw);
     const relations = raw.relation ? groupRelations(raw.relation) : [];
@@ -430,32 +478,35 @@ export const getWorkTool = tool('crossref_get_work', {
 
     /**
      * `notice` is last-wins, and `truncated()` writes it too, so every text the notice carries
-     * is collected here and handed over once — through `truncated()` when the author page is
-     * cut, since that call is what sets the paging fields beside it. The update text leads: a
+     * is collected here and handed over once — through `truncated()` when a page is cut, since
+     * that call is what sets the paging fields beside it. The update text leads: a
      * retraction is the fact about the record, the page range only a fact about this response.
      * Keyed on updatedBy alone — updateTo says what this record is a notice for, and a
      * publisher's erroneous updateTo would otherwise announce the retracted work as a retraction.
+     * The published-version text follows it, since it too is about what the record says.
      */
     const notices: string[] = [];
     if (updates.updatedBy) notices.push(updateNotice(updates.updatedBy, raw.DOI));
+    const lookupNotice = publishedLookup && publishedVersionsNotice(publishedLookup, raw.DOI);
+    if (lookupNotice) notices.push(lookupNotice);
     if (limitClamp.notice) notices.push(limitClamp.notice);
-    const pageCut = authorNextOffset < authorTotal;
-    if (authorTotal > 0 && input.offset >= authorTotal) {
+    // A list run past its end is news only when no list has entries on this page.
+    if (shown === 0) {
+      for (const page of pages.filter((p) => p.total > 0 && input.offset >= p.total)) {
+        notices.push(
+          `Offset ${input.offset} is past the end of this ${page.noun} list (${page.total} ${page.noun}s). Request an offset below ${page.total}.`,
+        );
+      }
+    }
+    for (const page of cutPages) {
       notices.push(
-        `Offset ${input.offset} is past the end of this author list (${authorTotal} authors). Request an offset below ${authorTotal}.`,
-      );
-    } else if (pageCut) {
-      notices.push(
-        `Showing authors ${input.offset + 1}–${authorNextOffset} of ${authorTotal}. Call again with offset=${authorNextOffset} for the next page.`,
+        `Showing ${page.noun}s ${input.offset + 1}–${input.offset + page.shown} of ${page.total}.`,
       );
     }
-    if (pageCut) {
-      ctx.enrich({ nextOffset: authorNextOffset });
-      ctx.enrich.truncated({
-        shown: authorPage?.length ?? 0,
-        cap: limit,
-        guidance: notices.join(' '),
-      });
+    if (cutPages.length > 0) {
+      notices.push(`Call again with offset=${nextOffset} for the next page.`);
+      ctx.enrich({ nextOffset });
+      ctx.enrich.truncated({ shown, cap: limit, guidance: notices.join(' ') });
     } else if (notices.length > 0) {
       ctx.enrich.notice(notices.join(' '));
     }
@@ -468,12 +519,19 @@ export const getWorkTool = tool('crossref_get_work', {
       ...(raw.subtype !== undefined && { subtype: raw.subtype }),
       ...updates,
       ...(relations.length > 0 && { relations }),
+      ...(publishedLookup?.kind === 'found' && {
+        publishedVersions: publishedLookup.works.map(normalizePublishedVersion),
+      }),
       ...(authorPage !== undefined && {
         authors: authorPage,
         authorCount: authorTotal,
         offset: input.offset,
       }),
       ...(raw.editor?.length && { editors: raw.editor.map(normalizeAuthor) }),
+      ...grant.fields,
+      // The investigator page echoes its offset as the author page does, with the same value.
+      ...(grant.investigatorPage && { offset: input.offset }),
+      ...projectReview(raw),
       ...(abstract !== undefined && { abstract }),
       ...(raw['is-referenced-by-count'] !== undefined && {
         isReferencedByCount: raw['is-referenced-by-count'],
@@ -495,24 +553,8 @@ export const getWorkTool = tool('crossref_get_work', {
       ...projectApproved(raw),
       ...(raw.funder && { funders: raw.funder.map(normalizeFunder) }),
       ...projectAssertions(raw),
-      ...(raw.license && {
-        licenses: raw.license.map((l) => ({
-          url: l.URL,
-          ...(l['content-version'] && { contentVersion: l['content-version'] }),
-          ...(l['delay-in-days'] !== undefined && { delayInDays: l['delay-in-days'] }),
-          ...(l.start?.['date-time'] !== undefined && { start: l.start['date-time'] }),
-        })),
-      }),
-      ...(raw.link && {
-        links: raw.link.map((l) => ({
-          url: l.URL,
-          ...(l['content-type'] && { contentType: l['content-type'] }),
-          ...(l['content-version'] !== undefined && { contentVersion: l['content-version'] }),
-          ...(l['intended-application'] && {
-            intendedApplication: l['intended-application'],
-          }),
-        })),
-      }),
+      ...projectLicenses(raw),
+      ...projectLinks(raw),
       ...(raw.URL && { url: raw.URL }),
       ...(raw.subject && raw.subject.length > 0 && { subject: raw.subject.map(normalizeText) }),
       ...(raw.language && { language: raw.language }),
@@ -529,6 +571,7 @@ export const getWorkTool = tool('crossref_get_work', {
     const type = result.type ? ` | **Type:** ${result.type}` : '';
     const subtype = result.subtype !== undefined ? ` | **Subtype:** ${mdText(result.subtype)}` : '';
     lines.push(`**DOI:** ${result.doi}${type}${subtype}`);
+    lines.push(...grantLines(result), ...reviewLines(result));
     if (result.publisher) lines.push(`**Publisher:** ${mdText(result.publisher)}`);
     if (result.memberId !== undefined) lines.push(`**Member ID:** ${result.memberId}`);
     if (result.institutions) lines.push(...result.institutions.map(institutionLine));
@@ -553,15 +596,18 @@ export const getWorkTool = tool('crossref_get_work', {
       lines.push(`**References:** ${result.referencesCount}`);
 
     /**
-     * Update links, relations, and editors render ahead of the author page, which can run to
-     * thousands of lines: a retraction has to be visible before it, not after. Each section is a
+     * Update links, relations, published versions, and editors render ahead of the author page,
+     * which can run to thousands of lines: a retraction has to be visible before it, not after. A
+     * grant's projects follow them, each ending on its own investigator page. Each section is a
      * list of its own, opened and closed by a blank line so a CommonMark reader never folds the
      * next label into the last bullet.
      */
     const sections = [
       ...updateSections(result),
       result.relations && ['**Relations:**', ...result.relations.map(relationLine)],
+      result.publishedVersions && publishedVersionsSection(result.publishedVersions),
       result.editors && ['**Editors:**', ...result.editors.map(contributorLine)],
+      ...projectSections(result),
     ].filter((section) => section !== undefined);
     if (sections.length > 0) {
       for (const section of sections) lines.push('', ...section);
@@ -592,44 +638,12 @@ export const getWorkTool = tool('crossref_get_work', {
      */
     lines.push(result.abstract ? mdTextAtLineStart(result.abstract) : '*Not deposited*');
 
-    if (result.funders?.length) {
-      lines.push('');
-      lines.push('**Funders:**');
-      for (const f of result.funders) {
-        const awards = f.award?.length ? ` (${f.award.join(', ')})` : '';
-        /**
-         * An assertion deposited without a name leads with the identifier that stands in for
-         * one, and whatever identifiers remain trail it exactly as they trail a name. Every
-         * identifier the record carries reaches this surface either way — a name that hid one
-         * would leave a `content[]` reader unable to resolve what `structuredContent` names.
-         */
-        const ids = [f.doi, f.ror].filter((id) => id !== undefined);
-        const label = f.name ? mdText(f.name) : (ids.shift() ?? UNNAMED);
-        lines.push(`- ${label}${ids.length > 0 ? ` — ${ids.join(' ')}` : ''}${awards}`);
-      }
-    }
-
+    /** The assertions sit between the funders and the licenses, as they always have. */
+    const funders = funderSection(result);
+    if (funders) lines.push('', ...funders);
     for (const section of assertionSections(result)) lines.push('', ...section);
-
-    if (result.licenses?.length) {
-      lines.push('');
-      lines.push('**Licenses:**');
-      for (const l of result.licenses) {
-        const delay = l.delayInDays !== undefined ? ` (${l.delayInDays}d embargo)` : '';
-        const start = l.start !== undefined ? ` — starts ${mdText(l.start)}` : '';
-        lines.push(`- ${l.url}${l.contentVersion ? ` [${l.contentVersion}]` : ''}${delay}${start}`);
-      }
-    }
-
-    if (result.links?.length) {
-      lines.push('');
-      lines.push('**Full-text links:**');
-      for (const l of result.links) {
-        const ct = l.contentType ? ` (${l.contentType})` : '';
-        const app = l.intendedApplication ? ` [${l.intendedApplication}]` : '';
-        const version = l.contentVersion !== undefined ? ` [${mdText(l.contentVersion)}]` : '';
-        lines.push(`- ${l.url}${ct}${app}${version}`);
-      }
+    for (const section of [licenseSection(result), linkSection(result)]) {
+      if (section) lines.push('', ...section);
     }
 
     if (result.url) lines.push(`\n**URL:** ${result.url}`);
@@ -639,43 +653,6 @@ export const getWorkTool = tool('crossref_get_work', {
 });
 
 // --- Helpers ---
-
-/**
- * What an organization is called on the Markdown surface when the deposit named none. Shared by
- * the renders so a funder, an affiliation, and an institution say the same thing about the same
- * absence.
- */
-const UNNAMED = '(no name deposited)';
-
-/**
- * The ROR identifier on an organization Crossref carries by identifier rather than by name.
- *
- * A funder, an affiliation, or an institution deposited without a name is not an empty entry —
- * it is an organization the publisher asserted through the registry instead of spelling out, and
- * its `id` array is where that assertion lives. Crossref puts several identifier schemes in that
- * one array, so the type decides which is read: ROR is the one every nameless funder and
- * affiliation in a sampled draw carried, and the only one ever seen alone on them. An ISNI
- * appears beside a ROR and never in place of one, so reading ROR loses nothing those entries
- * depend on for their identity. One sampled institution, on a dataset, carried a Wikidata ID and
- * nothing else; it reads as unnamed, the one rule kept across all three kinds of organization.
- */
-function rorId(ids: CrossrefOrganizationId[] | undefined): string | undefined {
-  return ids?.find((entry) => entry['id-type']?.toUpperCase() === 'ROR')?.id;
-}
-
-/**
- * Project a funding assertion. Every field is conditional because Crossref guarantees none of
- * them: an assertion made by identifier carries a ROR, an award number, and nothing else.
- */
-function normalizeFunder(f: CrossrefFunder) {
-  const ror = rorId(f.id);
-  return {
-    ...(f.name !== undefined && { name: normalizeText(f.name) }),
-    ...(f.DOI && { doi: f.DOI }),
-    ...(ror !== undefined && { ror }),
-    ...(f.award && f.award.length > 0 && { award: f.award }),
-  };
-}
 
 /**
  * How an affiliation reads inside an author's line. A ROR stands in for a name the deposit does
@@ -794,6 +771,51 @@ function groupRelations(relation: Record<string, CrossrefRelation[]>): Relation[
 /** A relation group's line: what the relation is and whose, then every id it holds. */
 function relationLine(r: Relation): string {
   return `- ${mdText(r.type)} (${mdText(r.idType)}, asserted by ${mdText(r.assertedBy)}): ${r.ids.join(', ')}`;
+}
+
+type PublishedVersion = z.infer<typeof PublishedVersionSchema>;
+
+/** Project a work the published-version lookup found; its title reads as a work title does. */
+function normalizePublishedVersion(work: RawPublishedVersion): PublishedVersion {
+  return {
+    doi: work.DOI,
+    ...(work.type !== undefined && { type: work.type }),
+    ...(work.title?.[0] !== undefined && { title: normalizeMarkupText(work.title[0]) }),
+  };
+}
+
+/**
+ * The published versions as a labelled list — the DOI a reader copies first, then its type and
+ * title. An empty list is an answer and gets a line saying so, which an absent one never does.
+ */
+function publishedVersionsSection(versions: PublishedVersion[]): string[] {
+  if (versions.length === 0) {
+    return [
+      '**Published versions:** none found — no Crossref record names this work in has-preprint',
+    ];
+  }
+  return [
+    '**Published versions:**',
+    ...versions.map((v) => {
+      const type = v.type !== undefined ? ` (${mdText(v.type)})` : '';
+      const title = v.title !== undefined ? ` — ${mdText(v.title)}` : '';
+      return `- ${v.doi}${type}${title}`;
+    }),
+  ];
+}
+
+/**
+ * The notice text the published-version lookup adds: that it failed, or that more works name the
+ * preprint than it returned — each with the crossref_search_works filter that runs the same
+ * lookup, which pages past the cap. Nothing for an answer that holds every work naming it.
+ */
+function publishedVersionsNotice(lookup: PublishedVersionsLookup, doi: string): string | undefined {
+  const filter = JSON.stringify({ 'relation.type': 'has-preprint', 'relation.object': doi });
+  if (lookup.kind === 'failed') {
+    return `The lookup for this preprint's published versions failed, so publishedVersions is omitted — which does not mean it has none. crossref_search_works with filter ${filter} runs the same lookup.`;
+  }
+  if (lookup.total <= lookup.works.length) return;
+  return `${lookup.total} works name this preprint in has-preprint; publishedVersions holds the first ${lookup.works.length}. crossref_search_works with filter ${filter} lists every one.`;
 }
 
 /**

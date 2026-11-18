@@ -1,0 +1,82 @@
+{
+  "status": "ok",
+  "message-type": "work",
+  "message-version": "1.0.0",
+  "message": {
+    "indexed": {
+      "date-parts": [[2023, 2, 11]],
+      "date-time": "2023-02-11T05:28:29Z",
+      "timestamp": 1676093309408
+    },
+    "publisher": "Wiener Wissenschafts-, Forschungs- und Technologiefonds (WWTF)",
+    "award": "LS21-017",
+    "DOI": "10.47379\/ls21017",
+    "type": "grant",
+    "created": {
+      "date-parts": [[2023, 2, 10]],
+      "date-time": "2023-02-10T14:25:01Z",
+      "timestamp": 1676039101000
+    },
+    "source": "Crossref",
+    "prefix": "10.47379",
+    "member": "26870",
+    "project": [
+      {
+        "project-title": [
+          {
+            "title": "Hunting and exploiting enzymes which synthesise bacterial and parasite immunomodulatory zwitterionic glycans",
+            "language": "en"
+          }
+        ],
+        "project-description": [
+          {
+            "description": "&lt;p&gt;The \u2018sugar\u2019 coating of any organism consisting of a wide range of glycoconjugates is the first point for interactions between bacteria, viruses or parasites and host cells. Bacterial surface polysaccharides contain many unusual modifications, including non-sugar moieties such as phosphorylcholine (PC) \u2013 which is also found on the glycan chains of glycoproteins and glycolipids of helminth parasites as well as glycans produced by insect cell lines used as cell factories for recombinant proteins, including vaccines. Despite many reports that PC is immunomodulatory, the biosynthesis and interactions of PC-modified glycans are poorly understood. Here we propose to generate chemical tools to fill this gap in knowledge. First, potential PC-transferring enzymes will be expressed and new substrates synthesized to assay them; second, we will exploit these enzymes to create new array-based probes for testing interactions with proteins of the immune system including pentraxins and antibodies. The proposed mix of enzymology, chemical &amp; enzymatic synthesis and glycan array technology will enable us to gain new insights into the \u2018how\u2019 and \u2018why\u2019 of PC-modifications of pathogens, whether these are bacteria or parasites, in terms of characterizing PC from the enzymological and interactomic points of view. Furthermore, we can begin to explore the role of PC in modulating the immune system, including responses to vaccines.&lt;\/p&gt;",
+            "language": "en"
+          }
+        ],
+        "lead-investigator": [
+          {
+            "given": "Iain",
+            "family": "Wilson",
+            "affiliation": [{ "name": "BOKU - University of Natural Resources and Life Sciences" }]
+          }
+        ],
+        "co-lead-investigator": [
+          {
+            "given": "Alla",
+            "family": "Zamyatina",
+            "affiliation": [{ "name": "BOKU - University of Natural Resources and Life Sciences" }]
+          }
+        ],
+        "award-start": { "date-parts": [[2022, 10, 1]] },
+        "award-end": { "date-parts": [[2025, 9, 30]] },
+        "funding": [
+          {
+            "type": "grant",
+            "scheme": "Life Sciences 2021",
+            "award-amount": { "amount": 577800.0, "currency": "EUR", "percentage": 100 },
+            "funder": {
+              "id": [
+                { "id": "10.13039\/501100001821", "id-type": "DOI", "asserted-by": "publisher" }
+              ],
+              "name": "WWTF"
+            }
+          }
+        ]
+      }
+    ],
+    "deposited": {
+      "date-parts": [[2023, 2, 10]],
+      "date-time": "2023-02-10T14:25:01Z",
+      "timestamp": 1676039101000
+    },
+    "score": 1,
+    "resource": {
+      "primary": { "URL": "https:\/\/www.wwtf.at\/funding\/programmes\/ls\/LS21-017\/" }
+    },
+    "issued": { "date-parts": [[2022, 10, 1]] },
+    "URL": "https:\/\/doi.org\/10.47379\/ls21017",
+    "relation": {},
+    "subject": []
+  }
+}

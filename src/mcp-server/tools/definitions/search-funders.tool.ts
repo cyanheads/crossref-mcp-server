@@ -7,7 +7,8 @@
  * matching more than one funder is rejected rather than silently resolved, and a funder the
  * registry has deprecated is reported with its successor's ID rather than redirected to it. A
  * `funder_doi` lookup relays the funder's registry descendants, whose works the funded-works list
- * counts and a `funder` filter on the ID alone does not. A blank `query` or `funder_doi` is read
+ * counts and a `funder` filter on the ID alone does not, and the registry's two work counts, which
+ * leave out the grant records both of those count. A blank `query` or `funder_doi` is read
  * as omitted, and a page with no funder renders nothing of its own, so the notice naming why
  * leads `content[]`.
  * @module mcp-server/tools/definitions/search-funders.tool
@@ -17,6 +18,7 @@ import { tool, z } from '@cyanheads/mcp-ts-core';
 import { JsonRpcErrorCode, McpError } from '@cyanheads/mcp-ts-core/errors';
 import { isBlank, nonBlank } from '@/mcp-server/tools/blank-input.js';
 import { cursorNotice } from '@/mcp-server/tools/cursor-notice.js';
+import { GRANT_TITLE_NOTICE, hasUntitledGrant } from '@/mcp-server/tools/grant-rows.js';
 import { mdText, mdTextInHeading } from '@/mcp-server/tools/markdown-text.js';
 import { fitWindow, ROWS_CEILING } from '@/mcp-server/tools/page-size.js';
 import {
@@ -52,7 +54,13 @@ const FunderSchema = z
       .number()
       .optional()
       .describe(
-        'The Funder Registry record\'s own work count for this ID, not counting the funder\'s registry descendants. It can differ from the total a crossref_search_works funder filter on the ID returns, which counts the works asserting it: for that exact figure, call crossref_search_works with filter {"funder": "<id>"} and rows: 0, and read totalResults. Returned on a funder_doi lookup; name-query rows omit it.',
+        'The Funder Registry record\'s own work count for this ID: the works a crossref_search_works funder filter on the ID matches, less the grant records among them, and not counting the funder\'s registry descendants (descendantWorksCount adds those). That filter counts every grant DOI the funder registers and this count does not. To count without grants under other filters, call crossref_search_works with filter {"funder": "<id>"} and rows: 0, then subtract from totalResults the Grant count of facets {"type-name": "*"} or the totalResults of the same call with "type": "grant" added to the filter. Returned on a funder_doi lookup; name-query rows omit it.',
+      ),
+    descendantWorksCount: z
+      .number()
+      .optional()
+      .describe(
+        "The Funder Registry record's work count across this funder and its registry descendants, less grant records: the funded-works list's total (fundedWorksTotal, with include_works) minus the grant records that list counts. Returned on a funder_doi lookup; name-query rows omit it.",
       ),
     replacedBy: z
       .array(z.string())
@@ -78,7 +86,12 @@ const FunderSchema = z
 const WorkSummarySchema = z
   .object({
     doi: z.string().describe('Work DOI'),
-    title: z.string().optional().describe('Work title'),
+    title: z
+      .string()
+      .optional()
+      .describe(
+        "Work title. Absent on a grant record, which deposits none — crossref_get_work returns a grant's project titles.",
+      ),
     type: z.string().optional().describe('Work type'),
     published: z
       .object({
@@ -96,7 +109,7 @@ const WorkSummarySchema = z
 export const searchFundersTool = tool('crossref_search_funders', {
   title: 'Search Funders',
   description:
-    'Finds funders registered in the Crossref Funder Registry by name or funder DOI. Provide funder_doi for an exact single-funder lookup — the full DOI ("10.13039/100000001"), the bare registry ID ("100000001"), or either behind a doi: or https://doi.org/ prefix — or query for name-based search. Name-query results page with offset — the nextOffset enrichment carries the value for the following page, up to offset + rows = 100000. Set include_works to true to also return a page of the most recent works funded by the matched funder; that list pages two ways, in two orders. works_offset is the simple one: newest published first, capped ten times lower at works_offset + rows = 10000. works_cursor has no ceiling and reaches the whole funded-works list, newest registered first — ordered by the date each DOI was registered with Crossref, since Crossref does not walk a publication-date sort by cursor: pass works_cursor="*" on the first call, then chain the nextWorksCursor token from each response. The two cannot be combined, and a cursor walk always starts at the most recently registered work — it cannot resume from an offset. This list also counts works funded by the funder\'s registry descendants, which a crossref_search_works filter on {"funder": "10.13039/<id>"} does not; a funder_doi lookup returns those descendants\' registry IDs as descendants, and the funder\'s own ID OR\'d with each of them in the funder filter ({"funder": "<id>,funder:<descendant>,…"}) counts the same scope with date, type, or other filters. Returns funder name, registry ID, country, and alternate names, plus the Funder Registry\'s own work count for the ID on a funder_doi lookup. The Funder Registry supersedes entries, and a deprecated one answers to the same names as its successor while carrying only a fraction of its works: such a record carries replacedBy with the superseding registry ID and the response carries a notice naming it. The replacement is never followed automatically — re-run with funder_doi set to that ID to get the current entry.',
+    'Finds funders registered in the Crossref Funder Registry by name or funder DOI. Provide funder_doi for an exact single-funder lookup — the full DOI ("10.13039/100000001"), the bare registry ID ("100000001"), or either behind a doi: or https://doi.org/ prefix — or query for name-based search. Name-query results page with offset — the nextOffset enrichment carries the value for the following page, up to offset + rows = 100000. Set include_works to true to also return a page of the most recent works funded by the matched funder; that list pages two ways, in two orders. works_offset is the simple one: newest published first, capped ten times lower at works_offset + rows = 10000. works_cursor has no ceiling and reaches the whole funded-works list, newest registered first — ordered by the date each DOI was registered with Crossref, since Crossref does not walk a publication-date sort by cursor: pass works_cursor="*" on the first call, then chain the nextWorksCursor token from each response. The two cannot be combined, and a cursor walk always starts at the most recently registered work — it cannot resume from an offset. This list also counts works funded by the funder\'s registry descendants, which a crossref_search_works filter on {"funder": "10.13039/<id>"} does not; a funder_doi lookup returns those descendants\' registry IDs as descendants, and the funder\'s own ID OR\'d with each of them in the funder filter ({"funder": "<id>,funder:<descendant>,…"}) counts the same scope with date, type, or other filters. Both it and that filter count the grant DOIs a funder registers as funded works. Returns funder name, registry ID, country, and alternate names, plus, on a funder_doi lookup, the Funder Registry\'s own work count for the ID and the same with its descendants (descendantWorksCount), both less grant records. The Funder Registry supersedes entries, and a deprecated one answers to the same names as its successor while carrying only a fraction of its works: such a record carries replacedBy with the superseding registry ID and the response carries a notice naming it. The replacement is never followed automatically — re-run with funder_doi set to that ID to get the current entry.',
   annotations: { readOnlyHint: true, openWorldHint: true },
 
   errors: [
@@ -222,7 +235,7 @@ export const searchFundersTool = tool('crossref_search_funders', {
       .number()
       .optional()
       .describe(
-        'Total count of funded works for the matched funder, including works funded by its registry descendants, when include_works is true',
+        'Total of the matched funder\'s funded-works list when include_works is true: works funded by it or its registry descendants, grant records included — every grant DOI the funder and its descendants register counts as a funded work. A funder_doi lookup\'s descendantWorksCount is this total less those grant records. To count that scope without grants under other filters, OR the funder\'s ID with its descendants in a crossref_search_works funder filter with rows: 0, then subtract from totalResults the Grant count of facets {"type-name": "*"} or the totalResults of the same call with "type": "grant" added to the filter.',
       ),
     nextWorksOffset: z
       .number()
@@ -240,7 +253,7 @@ export const searchFundersTool = tool('crossref_search_funders', {
       .string()
       .optional()
       .describe(
-        'Guidance on a page that needs a caveat: a query nothing matched, an offset or works_offset past the end of a list that did match, a page whose offset + rows would pass one of the route offset ceilings, cut to the rows that fit (naming the rows requested and applied), a page that reaches one of those ceilings with records still unretrieved (naming the route to them), a returned funder that the Funder Registry has deprecated in favor of another entry, or a query or funder_doi supplied blank with nothing else to search by, so the page lists every funder unfiltered. Absent otherwise. A page needing more than one caveat carries them all in this one string.',
+        'Guidance on a page that needs a caveat: a query nothing matched, an offset or works_offset past the end of a list that did match, a page whose offset + rows would pass one of the route offset ceilings, cut to the rows that fit (naming the rows requested and applied), a page that reaches one of those ceilings with records still unretrieved (naming the route to them), a returned funder that the Funder Registry has deprecated in favor of another entry, a funded-works row of type grant, which carries no title (naming crossref_get_work as the call that returns it), or a query or funder_doi supplied blank with nothing else to search by, so the page lists every funder unfiltered. Absent otherwise. A page needing more than one caveat carries them all in this one string.',
       ),
   },
 
@@ -371,6 +384,9 @@ export const searchFundersTool = tool('crossref_search_funders', {
       ...(f.location !== undefined && { country: normalizeText(f.location) }),
       ...(f.uri !== undefined && { uri: f.uri }),
       ...(f['work-count'] !== undefined && { worksCount: f['work-count'] }),
+      ...(f['descendant-work-count'] !== undefined && {
+        descendantWorksCount: f['descendant-work-count'],
+      }),
       ...(f['replaced-by']?.length && { replacedBy: f['replaced-by'] }),
       ...(f.replaces?.length && { replaces: f.replaces }),
       ...(funderDoi !== undefined && f.descendants?.length && { descendants: f.descendants }),
@@ -384,8 +400,9 @@ export const searchFundersTool = tool('crossref_search_funders', {
 
     /**
      * `notice` is last-wins, and a page can need more than one caveat at once — a deprecated
-     * match on a page that also stops at an offset ceiling. Collected and emitted as a single
-     * string so neither silently overwrites the other.
+     * match on a page that also stops at an offset ceiling, or a grant row on the last works page
+     * offset paging reaches. Collected and emitted as a single string so neither silently
+     * overwrites the other.
      */
     const notices: string[] = [];
     const flushNotices = () => {
@@ -535,6 +552,9 @@ export const searchFundersTool = tool('crossref_search_funders', {
         );
       }
     }
+    // WORKS_LIST_SELECT always selects `type` and `title`, so an untitled grant row is one that
+    // deposited no title, not one whose title went unrequested.
+    if (hasUntitledGrant(fundedWorks)) notices.push(GRANT_TITLE_NOTICE);
     flushNotices();
 
     return {
@@ -560,6 +580,8 @@ export const searchFundersTool = tool('crossref_search_funders', {
       if (f.country) lines.push(`**Country:** ${mdText(f.country)}`);
       if (f.altNames?.length) lines.push(`**Also known as:** ${f.altNames.map(mdText).join(', ')}`);
       if (f.worksCount !== undefined) lines.push(`**Registry work count:** ${f.worksCount}`);
+      if (f.descendantWorksCount !== undefined)
+        lines.push(`**Registry work count with descendants:** ${f.descendantWorksCount}`);
       if (f.replacedBy?.length)
         lines.push(`**Deprecated — replaced by:** ${f.replacedBy.join(', ')}`);
       if (f.replaces?.length) lines.push(`**Replaces:** ${f.replaces.join(', ')}`);

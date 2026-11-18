@@ -18,6 +18,7 @@ import {
   GET_WORK_LIMIT_CAP,
   ROWS_CEILING,
   SEARCH_WORKS_AUTHOR_LIMIT_CAP,
+  SEARCH_WORKS_OPT_IN_ROWS_CAP,
   SEARCH_WORKS_ROWS_CAP,
 } from '@/mcp-server/tools/page-size.js';
 
@@ -30,6 +31,11 @@ import {
 describe('page-size caps and ceilings', () => {
   it.each([
     ['crossref_search_works rows with abstract or author selected', SEARCH_WORKS_ROWS_CAP, 500],
+    [
+      'crossref_search_works rows with funder, license, or link selected',
+      SEARCH_WORKS_OPT_IN_ROWS_CAP,
+      200,
+    ],
     ['crossref_search_works authorLimit', SEARCH_WORKS_AUTHOR_LIMIT_CAP, 500],
     ['crossref_get_work limit', GET_WORK_LIMIT_CAP, 10_000],
     ['crossref_get_references limit', GET_REFERENCES_LIMIT_CAP, 4000],
@@ -68,8 +74,9 @@ describe('clampPageSize', () => {
 /**
  * The six page-size inputs: tool, input, the smallest value the schema takes, the per-call caps
  * its description states (the first is the one that applies by default), the schema ceiling, and
- * the unchanged default. `crossref_search_works` `rows` takes every value up to the ceiling when
- * `fields` names neither abstract nor author, and 0 for a count-only page.
+ * the unchanged default. `crossref_search_works` `rows` takes up to 200 when `fields` names
+ * funder, license, or link, every value up to the ceiling when it names none of those nor abstract
+ * or author, and 0 for a count-only page.
  * `crossref_search_journals` and `crossref_search_funders` `rows` cap at Crossref's own page
  * maximum, which is also their schema ceiling, so no value either accepts is clamped.
  */
@@ -78,7 +85,7 @@ const PAGE_SIZE_INPUTS = [
     tool: 'crossref_search_works',
     field: 'rows',
     floor: 0,
-    caps: [500, 1000],
+    caps: [500, 200, 1000],
     ceiling: 1000,
     fallback: 20,
   },

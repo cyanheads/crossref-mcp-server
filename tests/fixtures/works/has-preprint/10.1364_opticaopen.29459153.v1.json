@@ -1,0 +1,23 @@
+{
+  "status": "ok",
+  "message-type": "work-list",
+  "message-version": "1.0.0",
+  "message": {
+    "facets": {},
+    "total-results": 1,
+    "items": [
+      {
+        "DOI": "10.1364/oe.572415",
+        "type": "journal-article",
+        "title": [
+          "Optical frequency comb bandwidth enhancement of a monolithically integrated gain switched device"
+        ]
+      }
+    ],
+    "items-per-page": 10,
+    "query": {
+      "start-index": 0,
+      "search-terms": null
+    }
+  }
+}

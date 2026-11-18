@@ -173,6 +173,73 @@ export type CrossrefAssertion = {
   explanation?: { URL?: string };
 };
 
+/**
+ * An amount a grant deposits for a project or for one of its funding entries. `currency` is
+ * `null` on some project amounts and `percentage` on many funding amounts; `amount` is a number on
+ * every one, `0` included.
+ */
+export type CrossrefAwardAmount = {
+  amount: number;
+  currency?: string | null;
+  percentage?: number | null;
+};
+
+/**
+ * A person a grant project names as lead, co-lead, or investigator. Crossref guarantees no name:
+ * an entry can be `{"affiliation": []}` and nothing else. `alternate-name` is an array on every
+ * deposit sampled, though Crossref's schema types it as a string.
+ */
+export type CrossrefInvestigator = {
+  given?: string;
+  family?: string;
+  name?: string;
+  ORCID?: string;
+  'alternate-name'?: string[];
+  affiliation?: Array<CrossrefAffiliation & { country?: string }>;
+  'role-start'?: CrossrefDateParts;
+  'role-end'?: CrossrefDateParts;
+};
+
+/**
+ * One funding source of a grant project. The funder's Funder Registry DOI and its ROR both sit in
+ * `funder.id`, told apart by `id-type`; a funder deposited by ROR carries no `name`.
+ */
+export type CrossrefProjectFunding = {
+  type: string;
+  scheme?: string;
+  'award-amount'?: CrossrefAwardAmount;
+  funder: { name?: string; id?: CrossrefOrganizationId[] };
+};
+
+/**
+ * One project a grant funds. Crossref's schema allows several per grant; every grant sampled
+ * deposits one. Its dates are date-parts objects, though the schema types them as arrays.
+ */
+export type CrossrefProject = {
+  'project-title'?: Array<{ title: string; language?: string }>;
+  'project-description'?: Array<{ description: string; language?: string }>;
+  'lead-investigator'?: CrossrefInvestigator[];
+  'co-lead-investigator'?: CrossrefInvestigator[];
+  investigator?: CrossrefInvestigator[];
+  'award-amount'?: CrossrefAwardAmount;
+  'award-start'?: CrossrefDateParts;
+  'award-end'?: CrossrefDateParts;
+  'award-planned-start'?: CrossrefDateParts;
+  'award-planned-end'?: CrossrefDateParts;
+  funding?: CrossrefProjectFunding[];
+};
+
+/** The review details a peer-review record deposits, every one a string. */
+export type CrossrefReview = {
+  stage?: string;
+  type?: string;
+  'running-number'?: string;
+  'revision-round'?: string;
+  recommendation?: string;
+  'competing-interest-statement'?: string;
+  language?: string;
+};
+
 /** Raw upstream work shape from the Crossref REST API. All optional except DOI; type can be null. */
 export type RawCrossrefWork = {
   DOI: string;
@@ -241,6 +308,13 @@ export type RawCrossrefWork = {
   'group-title'?: string;
   'clinical-trial-number'?: CrossrefClinicalTrialNumber[];
   assertion?: CrossrefAssertion[];
+  /** A grant's award number. Grants deposit no `title`: their substance is `award` and `project`. */
+  award?: string;
+  /** A grant's award start at the record level; some funders deposit it only per project. */
+  'award-start'?: CrossrefDateParts;
+  project?: CrossrefProject[];
+  /** Deposited on peer-review records. */
+  review?: CrossrefReview;
 };
 
 /** Raw journal record from Crossref /journals endpoint. */
@@ -279,10 +353,15 @@ export type RawCrossrefFunder = {
   /** Registry IDs superseding this funder. Always present; empty unless the entry is deprecated. */
   'replaced-by'?: string[];
   /**
-   * Works asserting this registry ID alone — what a `funder` filter on the ID returns. Carried by
-   * `/funders/{id}`; the name search omits it.
+   * Works asserting this registry ID alone, less the `grant` records among them: a `funder` filter
+   * on the ID returns this plus the grants. Carried by `/funders/{id}`; the name search omits it.
    */
   'work-count'?: number;
+  /**
+   * The `/funders/{id}/works` total — this funder and every descendant — less the `grant` records
+   * it counts. Carried by `/funders/{id}`; the name search omits it.
+   */
+  'descendant-work-count'?: number;
   /**
    * Bare registry IDs of every funder below this one in the registry hierarchy, at every depth
    * (NIH's list includes the National Cancer Institute's own). Carried by `/funders/{id}`, empty

@@ -1,17 +1,19 @@
 /**
  * @fileoverview crossref_get_work end to end over captured Crossref records: the real tool
  * definition and the real `CrossrefService` behind a fetch fake answering `/works/{doi}` with a
- * record captured from the live registry. Every assertion reads the assembled `CallToolResult`, so
+ * record captured from the live registry, and a preprint's published-version lookup with the
+ * answer captured for it. Every assertion reads the assembled `CallToolResult`, so
  * `structuredContent` and `content[]` are checked after the enrichment trailer is appended.
  * @module tests/tools/get-work-records.test
  */
 
 import { readFileSync } from 'node:fs';
+import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { createFetchMock, runToolContract } from '@cyanheads/mcp-ts-core/testing';
 import { HtmlRenderer, Parser } from 'commonmark';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderedText } from '../helpers/content.js';
-import { type ToolResult, textOf, workList } from '../helpers/crossref-responses.js';
+import { hang, type ToolResult, textOf, workList } from '../helpers/crossref-responses.js';
 
 vi.mock('@/config/server-config.js', () => ({
   getServerConfig: vi.fn().mockReturnValue({
@@ -40,6 +42,11 @@ const CAPTURED = [
   '10.20944/preprints202302.0051.v34',
   '10.1101/2025.11.10.687519',
   '10.2139/ssrn.4944457',
+  '10.35802/220488',
+  '10.61686/aialz48365',
+  '10.69777/334076',
+  '10.5194/amt-2017-159-rc2',
+  '10.32388/kkcnxz',
 ] as const;
 
 /** The deposited fields the citation, update, and relation outputs read. */
@@ -109,18 +116,72 @@ const TRIAL_AND_ASSERTION_FIELDS = ['clinical-trial-number', 'assertion'] as con
 /** The output keys those fields project to. */
 const TRIAL_AND_ASSERTION_KEYS = ['clinicalTrialNumbers', 'assertions'] as const;
 
+/**
+ * The deposited fields added after those, which a grant and a peer review carry in place of a
+ * work's title and abstract: a grant's award number, award start, and projects, and a peer
+ * review's review details.
+ */
+const GRANT_AND_REVIEW_FIELDS = ['award', 'award-start', 'project', 'review'] as const;
+
+/**
+ * The output keys those fields project to. `offset` is one of them on a record depositing no
+ * author list: there it echoes the investigator page, and before investigators it was absent.
+ */
+const GRANT_AND_REVIEW_KEYS = [
+  'award',
+  'awardStart',
+  'projects',
+  'investigatorCount',
+  'review',
+] as const;
+
+/**
+ * The output key added after those, read by a second request rather than from the record: the
+ * works naming a posted-content preprint in `has-preprint`.
+ */
+const PUBLISHED_VERSION_KEYS = ['publishedVersions'] as const;
+
 type Message = Record<string, unknown>;
+
+/** The fixture file name a DOI is captured under. */
+function fixtureName(doi: string): string {
+  return doi.toLowerCase().replace(/[^a-z0-9.-]/g, '_');
+}
 
 /** A captured `/works/{doi}` response body. */
 function captured(doi: string): { message: Message } {
-  const name = doi.toLowerCase().replace(/[^a-z0-9.-]/g, '_');
-  const file = new URL(`../fixtures/works/${name}.json`, import.meta.url);
+  const file = new URL(`../fixtures/works/${fixtureName(doi)}.json`, import.meta.url);
   return JSON.parse(readFileSync(file, 'utf8')) as { message: Message };
 }
 
 /**
- * The same record with every citation, update, relation, origin, trial, and assertion field, and
- * its member, removed.
+ * A captured answer to the published-version lookup for a preprint: the `/works` list of the
+ * works naming it in `has-preprint`, as Crossref answered on 2026-11-17.
+ */
+function publishedVersionsOf(doi: string): { message: Message } {
+  const file = new URL(`../fixtures/works/has-preprint/${fixtureName(doi)}.json`, import.meta.url);
+  return JSON.parse(readFileSync(file, 'utf8')) as { message: Message };
+}
+
+/** Whether a request is the published-version lookup, rather than a record read. */
+function isLookup(request: Request): boolean {
+  const url = new URL(request.url);
+  return (
+    url.origin === 'https://api.crossref.test' &&
+    url.pathname === '/works' &&
+    url.searchParams.get('filter')?.startsWith('relation.type:has-preprint,') === true
+  );
+}
+
+/** The DOI a published-version lookup asks about. */
+function lookedUp(request: Request): string {
+  const filter = new URL(request.url).searchParams.get('filter') ?? '';
+  return filter.slice('relation.type:has-preprint,relation.object:'.length);
+}
+
+/**
+ * The same record with every citation, update, relation, origin, trial, assertion, grant, and
+ * review field, and its member, removed.
  */
 function stripped(doi: string): { message: Message } {
   const body = captured(doi);
@@ -129,6 +190,7 @@ function stripped(doi: string): { message: Message } {
     ...CITATION_AND_LINK_FIELDS,
     ...ORIGIN_FIELDS,
     ...TRIAL_AND_ASSERTION_FIELDS,
+    ...GRANT_AND_REVIEW_FIELDS,
   ])
     delete message[field];
   delete message.member;
@@ -148,18 +210,26 @@ afterEach(() => {
 });
 
 /**
- * Answer every `/works/{doi}` request with `body(doi)` for the DOI in the path, in place of
- * whatever was served before — routes match in registration order.
+ * Answer every `/works/{doi}` request with `body(doi)` for the DOI in the path, and every
+ * published-version lookup with `lookup(request)` — by default the captured answer for the DOI it
+ * asks about — in place of whatever was served before. Routes match in registration order.
  */
-function serve(body: (doi: string) => { message: Message }): void {
+function serve(
+  body: (doi: string) => { message: Message },
+  lookup: (request: Request) => Response | Promise<Response> = (request) =>
+    Response.json(publishedVersionsOf(lookedUp(request))),
+): void {
   http.reset();
-  http.route({
-    match: /^https:\/\/api\.crossref\.test\/works\/[^?]+$/,
-    respond: (request) => {
-      const path = new URL(request.url).pathname.slice('/works/'.length);
-      return Response.json(body(decodeURIComponent(path)));
+  http.route(
+    {
+      match: /^https:\/\/api\.crossref\.test\/works\/[^?]+$/,
+      respond: (request) => {
+        const path = new URL(request.url).pathname.slice('/works/'.length);
+        return Response.json(body(decodeURIComponent(path)));
+      },
     },
-  });
+    { match: isLookup, respond: lookup },
+  );
 }
 
 async function getWork(doi: string, args: Record<string, unknown> = {}): Promise<ToolResult> {
@@ -180,8 +250,11 @@ function commonmark(markdown: string): string {
 /**
  * What every captured record returned before the citation, update, and relation fields existed.
  * The first file holds each record's structured output minus the keys those fields, the
- * container and member fields, the origin fields, and the trial and assertion fields add, and
- * the notice on the records whose notice now also names their updates. The second holds both
+ * container and member fields, the origin fields, the trial and assertion fields, and the grant
+ * and review fields add, and the published versions a preprint's second request adds, and the
+ * notice on the records whose notice now also names their updates.
+ * The grants and peer reviews in it were captured after the others, so their entries hold what
+ * the server returned for them before grant and review fields existed. The second holds both
  * whole surfaces for each record with those fields and its member removed from the deposit — a
  * record depositing none of them has to come back byte-identical, rendered text included, beside
  * the `containerTitles` its one container title now also fills.
@@ -197,8 +270,11 @@ describe('crossref_get_work output that predates the citation and update fields'
         ...CONTAINER_AND_MEMBER_KEYS,
         ...ORIGIN_KEYS,
         ...TRIAL_AND_ASSERTION_KEYS,
+        ...GRANT_AND_REVIEW_KEYS,
+        ...PUBLISHED_VERSION_KEYS,
       ])
         delete sc[key];
+      if (captured(doi).message.author === undefined) delete sc.offset;
       if (captured(doi).message['updated-by'] !== undefined) delete sc.notice;
       out[doi] = sc;
     }
@@ -1258,5 +1334,752 @@ describe('crossref_get_work member', () => {
 
     expect(structured(result)).not.toHaveProperty('memberId');
     expect(textOf(result)).not.toContain('Member ID');
+  });
+});
+
+/** A Wellcome fellowship: one project, a lead and four investigators, an amount, no top-level start. */
+const WELLCOME_GRANT = '10.35802/220488';
+/** An FCT associate laboratory: 540 investigators, the first deposited with no name at all. */
+const FCT_GRANT = '10.54499/la/p/0104/2020';
+/** An FRQ programme grant, whose funder the deposit names by ROR alone. */
+const FRQ_GRANT = '10.69777/334076';
+/** An NWO grant depositing no description, no investigators, and no amount. */
+const NWO_GRANT = '10.61686/aialz48365';
+
+type GrantProject = {
+  titles?: Array<{ title: string; language?: string }>;
+  descriptions?: Array<{ description: string; language?: string }>;
+  leadInvestigators?: Array<Record<string, unknown>>;
+  coLeadInvestigators?: Array<Record<string, unknown>>;
+  investigators?: Array<Record<string, unknown>>;
+  amount?: Record<string, unknown>;
+  funding?: Array<Record<string, unknown>>;
+};
+
+function projectsOf(result: ToolResult): GrantProject[] {
+  return structured(result).projects as GrantProject[];
+}
+
+/** The first deposited project of a captured grant. */
+function depositedProject(doi: string): Record<string, unknown> {
+  return (captured(doi).message.project as Array<Record<string, unknown>>)[0] ?? {};
+}
+
+/** The deposited text of a captured grant's first project description, by index. */
+function depositedDescription(doi: string, index: number): string {
+  const descriptions = depositedProject(doi)['project-description'] as Array<{
+    description: string;
+  }>;
+  return descriptions[index]?.description ?? '';
+}
+
+/**
+ * Grants deposit no title or abstract: the award number, the projects, and the people sit under
+ * `award` and `project`. Every field is relayed as deposited, the plain investigator list paged
+ * by offset and limit the way an author list is.
+ */
+describe('crossref_get_work grants', () => {
+  beforeEach(() => serve(captured));
+
+  it('returns the award and the whole project of a grant on both surfaces', async () => {
+    const result = await getWork(WELLCOME_GRANT);
+    const sc = structured(result);
+    const cardiff = { name: 'Cardiff University', ror: 'https://ror.org/03kk7td41', country: 'GB' };
+
+    expect(sc).toMatchObject({
+      award: '220488',
+      investigatorCount: 4,
+      offset: 0,
+      // A grant deposits no publication date: `issued`, which Crossref sets to the award start.
+      published: { year: 2020, month: 10, day: 1 },
+    });
+    // The award start is deposited on the project alone here, never at the record level.
+    expect(sc).not.toHaveProperty('awardStart');
+    expect(sc).not.toHaveProperty('title');
+    expect(sc).not.toHaveProperty('notice');
+    expect(projectsOf(result)).toEqual([
+      {
+        titles: [
+          {
+            title:
+              'Using genetics, neurophysiology and longitudinal data to disentangle the complex relationship between sleep and mood disorders.',
+          },
+        ],
+        descriptions: [
+          { description: depositedDescription(WELLCOME_GRANT, 0), language: 'en' },
+          { description: depositedDescription(WELLCOME_GRANT, 1), language: 'en' },
+        ],
+        leadInvestigators: [
+          {
+            given: 'Katie',
+            family: 'Swaden Lewis',
+            orcid: 'https://orcid.org/0000-0002-2220-6873',
+            affiliation: [cardiff],
+          },
+        ],
+        investigators: [
+          {
+            given: 'Michael',
+            family: "O'Donovan",
+            orcid: 'https://orcid.org/0000-0001-7073-2379',
+            affiliation: [cardiff],
+          },
+          {
+            given: 'Katharine',
+            family: 'Saunders',
+            orcid: 'https://orcid.org/0000-0003-3448-9927',
+            affiliation: [
+              { name: 'University of Oxford', ror: 'https://ror.org/052gg0110', country: 'GB' },
+            ],
+          },
+          {
+            given: 'Jonathan',
+            family: 'Heron',
+            orcid: 'https://orcid.org/0000-0001-6199-5644',
+            affiliation: [
+              { name: 'University of Bristol', ror: 'https://ror.org/0524sp257', country: 'GB' },
+            ],
+          },
+          {
+            given: 'Shaun',
+            family: 'Purcell',
+            orcid: 'https://orcid.org/0000-0002-7402-5812',
+            affiliation: [
+              {
+                name: "Brigham & Women's Hospital",
+                ror: 'https://ror.org/04b6nzv94',
+                country: 'US',
+              },
+            ],
+          },
+        ],
+        amount: { amount: 300000, currency: 'GBP' },
+        start: { year: 2020, month: 10, day: 1 },
+        end: { year: 2024, month: 9, day: 30 },
+        funding: [
+          {
+            type: 'fellowship',
+            scheme: 'Population and Public Health',
+            amount: { amount: 300000, currency: 'GBP', percentage: 100 },
+            funder: { name: 'Wellcome Trust', doi: '10.13039/100010269' },
+          },
+        ],
+      },
+    ]);
+
+    const lines = textOf(result).split('\n');
+    expect(lines).toContain('**Award:** 220488');
+    expect(lines).not.toContain('**Award start:** 2020-10-01');
+    expect(listUnder(result, '**Project:**')).toEqual([
+      '- Title: Using genetics, neurophysiology and longitudinal data to disentangle the complex relationship between sleep and mood disorders.',
+      `- Description (en): ${depositedDescription(WELLCOME_GRANT, 0)}`,
+      `- Description (en): ${depositedDescription(WELLCOME_GRANT, 1)}`,
+      '- Amount: 300000 GBP',
+      '- Dates: start 2020-10-01, end 2024-09-30',
+      '- Funding: fellowship, scheme Population and Public Health — Wellcome Trust — 10.13039/100010269 — amount 300000 GBP (100%)',
+    ]);
+    expect(listUnder(result, '**Lead investigators:**')).toEqual([
+      '- Katie Swaden Lewis [ORCID: https://orcid.org/0000-0002-2220-6873] — Cardiff University (https://ror.org/03kk7td41, GB)',
+    ]);
+    expect(listUnder(result, '**Investigators:** showing 4 of 4, starting at index 0')).toEqual([
+      "- Michael O'Donovan [ORCID: https://orcid.org/0000-0001-7073-2379] — Cardiff University (https://ror.org/03kk7td41, GB)",
+      '- Katharine Saunders [ORCID: https://orcid.org/0000-0003-3448-9927] — University of Oxford (https://ror.org/052gg0110, GB)',
+      '- Jonathan Heron [ORCID: https://orcid.org/0000-0001-6199-5644] — University of Bristol (https://ror.org/0524sp257, GB)',
+      "- Shaun Purcell [ORCID: https://orcid.org/0000-0002-7402-5812] — Brigham & Women's Hospital (https://ror.org/04b6nzv94, US)",
+    ]);
+  });
+
+  it('renders the project ahead of the abstract, every section opened by a blank line', async () => {
+    const lines = textOf(await getWork(WELLCOME_GRANT)).split('\n');
+    const labels = [
+      '**Project:**',
+      '**Lead investigators:**',
+      '**Investigators:** showing 4 of 4, starting at index 0',
+      '**Abstract:**',
+    ].map((label) => lines.indexOf(label));
+
+    expect(labels).toEqual([...labels].sort((a, b) => a - b));
+    expect(labels[0]).toBeGreaterThan(lines.indexOf('**Award:** 220488'));
+    for (const index of labels) expect(lines[index - 1]).toBe('');
+  });
+
+  it('pages 540 investigators 25 at a time, keeping the lead and a nameless entry', async () => {
+    const result = await getWork(FCT_GRANT);
+    const sc = structured(result);
+    const [project] = projectsOf(result);
+
+    expect(sc).toMatchObject({
+      award: 'LA/P/0104/2020',
+      awardStart: { year: 2021, month: 1, day: 1 },
+      investigatorCount: 540,
+      offset: 0,
+      nextOffset: 25,
+      truncated: true,
+      shown: 25,
+      cap: 25,
+      notice: 'Showing investigators 1–25 of 540. Call again with offset=25 for the next page.',
+    });
+    expect(project?.investigators).toHaveLength(25);
+    // The entry deposited as `{"affiliation": []}` alone keeps its place, holding nothing.
+    expect(project?.investigators?.[0]).toEqual({});
+    expect(project?.investigators?.[1]).toEqual({
+      given: 'Adriano',
+      family: 'Jorge Cardoso Moreira',
+      orcid: 'http://orcid.org/0000-0002-8967-118X',
+      alternateNames: ['Adriano Jorge Cardoso Moreira'],
+    });
+    expect(project?.leadInvestigators).toEqual([
+      {
+        given: 'Paulo',
+        family: 'Novais',
+        orcid: 'http://orcid.org/0000-0002-3549-0754',
+        alternateNames: ['Paulo Novais'],
+      },
+    ]);
+    expect(project?.titles).toEqual([
+      { title: 'Intelligent Systems Associate Laboratory', language: 'en' },
+      { title: 'Laboratório Associado de Sistemas Inteligentes', language: 'pt' },
+    ]);
+    // A `null` percentage is no percentage.
+    expect(project?.funding).toEqual([
+      {
+        type: 'grant',
+        scheme: 'FCT',
+        amount: { amount: 678710, currency: 'EUR' },
+        funder: { name: 'Fundação para a Ciência e a Tecnologia', doi: '10.13039/501100001871' },
+      },
+    ]);
+    // The investigators past the page are absent from the payload, not merely from the render.
+    expect(JSON.stringify(sc)).not.toContain('Zita');
+
+    const investigators = listUnder(
+      result,
+      '**Investigators:** showing 25 of 540, starting at index 0',
+    );
+    expect(investigators).toHaveLength(25);
+    expect(investigators.slice(0, 2)).toEqual([
+      '- (unknown)',
+      '- Adriano Jorge Cardoso Moreira (also Adriano Jorge Cardoso Moreira) [ORCID: http://orcid.org/0000-0002-8967-118X]',
+    ]);
+    expect(listUnder(result, '**Lead investigators:**')).toEqual([
+      '- Paulo Novais (also Paulo Novais) [ORCID: http://orcid.org/0000-0002-3549-0754]',
+    ]);
+    const lines = textOf(result).split('\n');
+    expect(lines).toContain('**Award:** LA/P/0104/2020');
+    expect(lines).toContain('**Award start:** 2021-01-01');
+    expect(textOf(result)).toContain(
+      'Showing investigators 1–25 of 540. Call again with offset=25 for the next page.',
+    );
+  });
+
+  it('returns the last page of investigators without a continuation, the lead still whole', async () => {
+    const result = await getWork(FCT_GRANT, { offset: 525 });
+    const [project] = projectsOf(result);
+
+    expect(project?.investigators).toHaveLength(15);
+    expect(project?.investigators?.at(-1)).toMatchObject({ given: 'Zita', family: 'Vale' });
+    expect(project?.leadInvestigators).toHaveLength(1);
+    expect(structured(result)).toMatchObject({ investigatorCount: 540, offset: 525 });
+    for (const key of ['nextOffset', 'truncated', 'notice'])
+      expect(structured(result)).not.toHaveProperty(key);
+    expect(textOf(result)).toContain('**Investigators:** showing 15 of 540, starting at index 525');
+  });
+
+  it('explains an offset past the end of the investigator list, returning the rest of the grant', async () => {
+    const result = await getWork(FCT_GRANT, { offset: 540 });
+    const [project] = projectsOf(result);
+
+    expect(project?.investigators).toEqual([]);
+    expect(project?.leadInvestigators).toHaveLength(1);
+    expect(project?.titles).toHaveLength(2);
+    expect(structured(result)).toMatchObject({
+      investigatorCount: 540,
+      offset: 540,
+      notice:
+        'Offset 540 is past the end of this investigator list (540 investigators). Request an offset below 540.',
+    });
+    expect(structured(result)).not.toHaveProperty('nextOffset');
+    expect(textOf(result)).toContain('**Investigators:** showing 0 of 540, starting at index 540');
+  });
+
+  it('returns all 540 investigators in deposited order when limit covers them', async () => {
+    const result = await getWork(FCT_GRANT, { limit: 540 });
+    const deposited = (depositedProject(FCT_GRANT).investigator as Array<{ family?: string }>).map(
+      (i) => i.family,
+    );
+
+    expect(projectsOf(result)[0]?.investigators?.map((i) => i.family)).toEqual(deposited);
+    for (const key of ['nextOffset', 'truncated', 'notice'])
+      expect(structured(result)).not.toHaveProperty(key);
+    expect(
+      listUnder(result, '**Investigators:** showing 540 of 540, starting at index 0'),
+    ).toHaveLength(540);
+  });
+
+  it('carries a funder deposited by ROR alone, and the co-lead and role dates, on both surfaces', async () => {
+    const result = await getWork(FRQ_GRANT);
+    const [project] = projectsOf(result);
+
+    expect(project?.funding).toEqual([
+      {
+        type: 'grant',
+        scheme: 'INNO (INO) - Programme pilote',
+        amount: { amount: 177078400, currency: 'CAD', percentage: 100 },
+        funder: { ror: 'https://ror.org/00w3qhf76' },
+      },
+    ]);
+    expect(project?.coLeadInvestigators).toEqual([
+      {
+        given: 'Carlos',
+        family: 'Vazquez',
+        orcid: 'https://orcid.org/0000-0003-2161-8507',
+        affiliation: [
+          { name: 'École de technologie supérieure [ÉTS]', ror: 'https://ror.org/0020snb74' },
+        ],
+        roleStart: { year: 2022, month: 1, day: 15 },
+      },
+    ]);
+    expect(structured(result)).toMatchObject({
+      award: '334076',
+      awardStart: { year: 2022, month: 1, day: 15 },
+      investigatorCount: 1,
+    });
+
+    expect(listUnder(result, '**Project:**')).toContain(
+      '- Funding: grant, scheme INNO (INO) - Programme pilote — https://ror.org/00w3qhf76 — amount 177078400 CAD (100%)',
+    );
+    expect(listUnder(result, '**Co-lead investigators:**')).toEqual([
+      '- Carlos Vazquez [ORCID: https://orcid.org/0000-0003-2161-8507] — École de technologie supérieure [ÉTS] (https://ror.org/0020snb74) — role from 2022-01-15',
+    ]);
+    expect(listUnder(result, '**Lead investigators:**')).toEqual([
+      '- Djahanchah Ghadiri — HEC Montréal (https://ror.org/05ww3wq27) — role from 2022-01-15',
+    ]);
+  });
+
+  it('omits each project field a grant does not deposit, and every investigator key', async () => {
+    const result = await getWork(NWO_GRANT);
+    const sc = structured(result);
+
+    expect(projectsOf(result)).toEqual([
+      {
+        // `&amp;` decoded, as a work title's is.
+        titles: [{ title: 'Case-study Research & Data Reuse (CaRe & DaRe)', language: 'en' }],
+        start: { year: 2022, month: 4, day: 20 },
+        end: { year: 2023, month: 4, day: 19 },
+        funding: [
+          {
+            type: 'grant',
+            funder: { name: 'Dutch Research Council', doi: '10.13039/501100003246' },
+          },
+        ],
+      },
+    ]);
+    for (const key of ['investigatorCount', 'offset', 'notice', 'nextOffset'])
+      expect(sc).not.toHaveProperty(key);
+    expect(listUnder(result, '**Project:**')).toEqual([
+      '- Title (en): Case-study Research & Data Reuse (CaRe & DaRe)',
+      '- Dates: start 2022-04-20, end 2023-04-19',
+      '- Funding: grant — Dutch Research Council — 10.13039/501100003246',
+    ]);
+    expect(textOf(result)).not.toMatch(
+      /\*\*(Lead investigators|Co-lead investigators|Investigators):\*\*/,
+    );
+  });
+
+  it('keeps every funding entry in deposited order, and an investigator role that ends', async () => {
+    const result = await getWork('10.46936/incite/60012472');
+    const [project] = projectsOf(result);
+
+    expect(project?.funding).toEqual([
+      {
+        type: 'facilities',
+        funder: { name: 'US Department of Energy', doi: '10.13039/100000015' },
+      },
+      { type: 'facilities', funder: { name: 'ORNL-OLCF', doi: '10.13039/100000015' } },
+    ]);
+    expect(project?.investigators).toEqual([
+      {
+        given: 'Richard',
+        family: 'Sandberg',
+        affiliation: [{ name: 'University of Melbourne', country: 'US' }],
+        roleStart: { year: 2024, month: 1, day: 1 },
+        roleEnd: { year: 2027, month: 1, day: 1 },
+      },
+    ]);
+    expect(listUnder(result, '**Investigators:** showing 1 of 1, starting at index 0')).toEqual([
+      '- Richard Sandberg — University of Melbourne (US) — role 2024-01-01 – 2027-01-01',
+    ]);
+  });
+
+  it('keeps an amount of 0 and omits a currency deposited as null', async () => {
+    const result = await getWork('10.52044/hfsp.lt0002402017-l.pc.gr.163608');
+    const [project] = projectsOf(result);
+
+    expect(project?.amount).toEqual({ amount: 0 });
+    expect(listUnder(result, '**Project:**')).toContain('- Amount: 0');
+  });
+});
+
+const REVIEW_LINE = /^\*\*Review( competing interests)?:\*\*/;
+
+/** Peer reviews deposit their review details under `review`; Qeios records deposit none. */
+describe('crossref_get_work peer reviews', () => {
+  beforeEach(() => serve(captured));
+
+  it('returns the review details of a referee report on both surfaces', async () => {
+    const result = await getWork('10.5194/amt-2017-159-rc2');
+
+    expect(structured(result).review).toEqual({
+      stage: 'pre-publication',
+      type: 'referee-report',
+      runningNumber: 'RC2',
+      recommendation: 'minor-revision',
+      language: 'en',
+    });
+    expect(textOf(result).split('\n')).toContain(
+      '**Review:** type: referee-report; stage: pre-publication; running number: RC2; recommendation: minor-revision; language: en',
+    );
+  });
+
+  it('returns the revision round a report deposits', async () => {
+    const result = await getWork('10.1039/d4ra08825e/v2/review1');
+
+    expect(structured(result).review).toEqual({
+      stage: 'pre-publication',
+      type: 'referee-report',
+      runningNumber: 'PR4V2',
+      revisionRound: '2',
+    });
+    expect(textOf(result).split('\n')).toContain(
+      '**Review:** type: referee-report; stage: pre-publication; running number: PR4V2; revision round: 2',
+    );
+  });
+
+  it('returns the competing-interest statement of a post-publication report', async () => {
+    const result = await getWork('10.5256/f1000research.147174.r355552');
+
+    expect(structured(result).review).toEqual({
+      stage: 'post-publication',
+      type: 'referee-report',
+      competingInterestStatement: 'No competing interests were declared',
+    });
+    const lines = textOf(result).split('\n');
+    expect(lines).toContain('**Review:** type: referee-report; stage: post-publication');
+    expect(lines).toContain('**Review competing interests:** No competing interests were declared');
+  });
+
+  it('omits review, and its lines, for a peer review depositing none', async () => {
+    const result = await getWork('10.32388/kkcnxz');
+
+    expect(structured(result)).not.toHaveProperty('review');
+    const reviewLines = textOf(result)
+      .split('\n')
+      .filter((line) => REVIEW_LINE.test(line));
+    expect(reviewLines).toEqual([]);
+  });
+});
+
+/**
+ * A 2020 bioRxiv preprint whose record no longer links the Nature article that names it. It
+ * deposits 100 authors, so the cases that read its whole notice ask for all of them in one page.
+ */
+const BIORXIV_2020 = '10.1101/2020.03.22.002386';
+const WHOLE_AUTHOR_LIST = { limit: 100 };
+
+/** The captured posted-content preprints. */
+const PREPRINTS = [
+  '10.1364/opticaopen.29459153.v1',
+  '10.20944/preprints202302.0051.v34',
+  '10.1101/2025.11.10.687519',
+  '10.2139/ssrn.4944457',
+] as const;
+
+/**
+ * The lookup through the real service: which records make it, what it sends, what each captured
+ * answer returns, and how each side of the failure split reaches the call. The failure classes
+ * one by one are tabled at the service seam in `crossref-service.test.ts`.
+ */
+describe('crossref_get_work published versions', () => {
+  beforeEach(() => serve(captured));
+
+  const FAILED = `The lookup for this preprint's published versions failed, so publishedVersions is omitted — which does not mean it has none. crossref_search_works with filter {"relation.type":"has-preprint","relation.object":"${BIORXIV_2020}"} runs the same lookup.`;
+
+  it('finds the Nature article a 2020 bioRxiv preprint no longer links, in a second request', async () => {
+    const result = await getWork(BIORXIV_2020, WHOLE_AUTHOR_LIST);
+    const sc = structured(result);
+
+    expect(captured(BIORXIV_2020).message.relation).toEqual({});
+    expect(sc).not.toHaveProperty('relations');
+    expect(sc.publishedVersions).toEqual([
+      {
+        doi: '10.1038/s41586-020-2286-9',
+        type: 'journal-article',
+        title: 'A SARS-CoV-2 protein interaction map reveals targets for drug repurposing',
+      },
+    ]);
+    expect(sc).not.toHaveProperty('notice');
+    const lines = textOf(result).split('\n');
+    const label = lines.indexOf('**Published versions:**');
+    expect(lines[label + 1]).toBe(
+      '- 10.1038/s41586-020-2286-9 (journal-article) — A SARS-CoV-2 protein interaction map reveals targets for drug repurposing',
+    );
+    expect(label).toBeLessThan(lines.findIndex((line) => line.startsWith('**Authors:**')));
+
+    expect(http.calls.map((call) => new URL(call.request.url).pathname)).toEqual([
+      `/works/${encodeURIComponent(BIORXIV_2020)}`,
+      '/works',
+    ]);
+    expect(lookedUp(http.calls[1]?.request as Request)).toBe(BIORXIV_2020);
+  });
+
+  it('returns each captured preprint its published versions, the one relations also names kept', async () => {
+    const found: Record<string, unknown> = {};
+    for (const doi of PREPRINTS) found[doi] = structured(await getWork(doi)).publishedVersions;
+
+    expect(found).toEqual({
+      '10.1364/opticaopen.29459153.v1': [
+        {
+          doi: '10.1364/oe.572415',
+          type: 'journal-article',
+          title:
+            'Optical frequency comb bandwidth enhancement of a monolithically integrated gain switched device',
+        },
+      ],
+      '10.20944/preprints202302.0051.v34': [],
+      '10.1101/2025.11.10.687519': [],
+      '10.2139/ssrn.4944457': [],
+    });
+    // The preprint's own deposit names the same article, in the depositor's spelling.
+    expect(structured(await getWork(PREPRINTS[0])).relations).toEqual([
+      { type: 'is-preprint-of', idType: 'doi', assertedBy: 'subject', ids: ['10.1364/OE.572415'] },
+    ]);
+    expect(textOf(await getWork('10.2139/ssrn.4944457')).split('\n')).toContain(
+      '**Published versions:** none found — no Crossref record names this work in has-preprint',
+    );
+  });
+
+  it('reads every other captured record, and posted content of another subtype, in one request', async () => {
+    for (const doi of CAPTURED.filter((d) => !(PREPRINTS as readonly string[]).includes(d))) {
+      const before = http.calls.length;
+      const sc = structured(await getWork(doi));
+      expect(http.calls.length - before, doi).toBe(1);
+      expect(sc, doi).not.toHaveProperty('publishedVersions');
+    }
+
+    serve((doi) => {
+      const body = captured(doi);
+      return { ...body, message: { ...body.message, subtype: 'other' } };
+    });
+    const sc = structured(await getWork('10.1101/2025.11.10.687519'));
+    expect(http.calls).toHaveLength(1);
+    expect(sc).toMatchObject({ type: 'posted-content', subtype: 'other' });
+    expect(sc).not.toHaveProperty('publishedVersions');
+  });
+
+  it('reads each captured preprint in two requests', async () => {
+    for (const doi of [...PREPRINTS, BIORXIV_2020]) {
+      const before = http.calls.length;
+      await getWork(doi);
+      expect(http.calls.length - before, doi).toBe(2);
+    }
+  });
+
+  /**
+   * One case per outcome the record survives: a 404 never reports the record missing, and no
+   * failure puts the lookup's URL on either surface.
+   */
+  it.each<[string, () => Response]>([
+    ['a 404', () => new Response('Resource not found.', { status: 404 })],
+    ['a 503', () => new Response('down', { status: 503 })],
+    ['an HTML page', () => new Response('<!DOCTYPE html><html></html>')],
+    ['a body that is not a works list', () => Response.json({ message: { items: [] } })],
+  ])('returns the record and says the lookup failed on %s', async (_label, respond) => {
+    serve(captured, respond);
+
+    const result = await getWork(BIORXIV_2020, WHOLE_AUTHOR_LIST);
+    const sc = structured(result);
+
+    expect(sc).toMatchObject({ doi: BIORXIV_2020, subtype: 'preprint' });
+    expect(sc).not.toHaveProperty('publishedVersions');
+    expect(sc.notice).toBe(FAILED);
+    expect(renderedText(textOf(result))).toContain(FAILED);
+    expect(JSON.stringify(result)).not.toContain('api.crossref.test');
+    expect(http.calls).toHaveLength(2);
+  });
+
+  it('fails the call on a 429 from the lookup, carrying its wait to both surfaces', async () => {
+    serve(
+      captured,
+      () => new Response('slow down', { status: 429, headers: { 'retry-after': '3' } }),
+    );
+
+    const result = await runToolContract(getWorkTool, { doi: BIORXIV_2020 });
+
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent).toMatchObject({
+      error: { data: { reason: 'rate_limited', retryAfter: '3' } },
+    });
+    expect(textOf(result)).toContain('Retry-After: 3');
+    expect(http.calls).toHaveLength(2);
+  });
+
+  it('fails the call as cancelled when the caller cancels during the lookup', async () => {
+    const controller = new AbortController();
+    serve(captured, (request) => {
+      controller.abort(new Error('caller cancelled'));
+      return Promise.reject(request.signal.reason);
+    });
+
+    const result = await runToolContract(
+      getWorkTool,
+      { doi: BIORXIV_2020 },
+      { context: { signal: controller.signal } },
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.structuredContent).toMatchObject({
+      error: { code: JsonRpcErrorCode.RequestCancelled },
+    });
+    expect(http.calls).toHaveLength(2);
+  });
+
+  it('sends no lookup for a caller who cancels as the record arrives', async () => {
+    const controller = new AbortController();
+    serve((doi) => {
+      controller.abort(new Error('caller cancelled'));
+      return captured(doi);
+    });
+
+    const result = await runToolContract(
+      getWorkTool,
+      { doi: BIORXIV_2020 },
+      { context: { signal: controller.signal } },
+    );
+
+    expect(result.structuredContent).toMatchObject({
+      error: { code: JsonRpcErrorCode.RequestCancelled },
+    });
+    expect(http.calls).toHaveLength(1);
+  });
+
+  it('returns the record with the failure notice when the lookup stalls, inside its window', async () => {
+    vi.useFakeTimers();
+    try {
+      serve(captured, hang);
+      let settled = false;
+      const pending = runToolContract(getWorkTool, {
+        doi: BIORXIV_2020,
+        ...WHOLE_AUTHOR_LIST,
+      }).finally(() => {
+        settled = true;
+      });
+
+      await vi.advanceTimersByTimeAsync(9999);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(settled).toBe(true);
+
+      const result = await pending;
+      expect(result.isError).toBeFalsy();
+      expect(structured(result)).toMatchObject({ doi: BIORXIV_2020, notice: FAILED });
+      expect(structured(result)).not.toHaveProperty('publishedVersions');
+      expect(http.calls).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  /**
+   * The longest chain the tool makes: a record read held to the edge of its 25 s request deadline
+   * by two honored Retry-After waits and a slow third attempt, then a lookup that never answers.
+   * The lookup opens a 10 s CROSSREF_TIMEOUT_MS window of its own, so the call settles inside
+   * 25 s + 10 s with the record and the failure notice.
+   */
+  it('settles a record read near its deadline and a stalled lookup inside that deadline plus one window', async () => {
+    vi.useFakeTimers();
+    try {
+      let reads = 0;
+      http.reset();
+      http.route(
+        {
+          match: /^https:\/\/api\.crossref\.test\/works\/[^?]+$/,
+          respond: (request) => {
+            reads += 1;
+            if (reads < 3) {
+              return new Response('slow down', { status: 429, headers: { 'retry-after': '12' } });
+            }
+            return new Promise<Response>((resolve, reject) => {
+              const timer = setTimeout(() => resolve(Response.json(captured(BIORXIV_2020))), 999);
+              request.signal.addEventListener(
+                'abort',
+                () => {
+                  clearTimeout(timer);
+                  reject(request.signal.reason);
+                },
+                { once: true },
+              );
+            });
+          },
+        },
+        { match: isLookup, respond: hang },
+      );
+      let settled = false;
+      const pending = runToolContract(getWorkTool, {
+        doi: BIORXIV_2020,
+        ...WHOLE_AUTHOR_LIST,
+      }).finally(() => {
+        settled = true;
+      });
+
+      // Attempts at 0 s, 12 s, and 24 s; the third answers at 24 999 ms, 1 ms inside the deadline.
+      await vi.advanceTimersByTimeAsync(24_998);
+      expect(http.calls).toHaveLength(3);
+      // The lookup waits a whole window, not the 1 ms the record read left: it settles at 34 999 ms.
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(http.calls).toHaveLength(4);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(settled).toBe(true);
+
+      const result = await pending;
+      expect(result.isError).toBeFalsy();
+      expect(structured(result)).toMatchObject({ doi: BIORXIV_2020, notice: FAILED });
+      expect(structured(result)).not.toHaveProperty('publishedVersions');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+/**
+ * A grant's project description runs through the markup pass a work title does, so HTML a funder
+ * escaped into it comes out as markup rather than as text. WWTF deposits this one as one escaped
+ * paragraph, `&lt;p&gt;…&lt;/p&gt;`, with an `&amp;` inside it.
+ */
+describe('crossref_get_work on a grant describing its project in escaped HTML', () => {
+  beforeEach(() => serve(captured));
+
+  const GRANT = '10.47379/ls21017';
+  const DESCRIPTION =
+    'The ‘sugar’ coating of any organism consisting of a wide range of glycoconjugates is the first point for interactions between bacteria, viruses or parasites and host cells. Bacterial surface polysaccharides contain many unusual modifications, including non-sugar moieties such as phosphorylcholine (PC) – which is also found on the glycan chains of glycoproteins and glycolipids of helminth parasites as well as glycans produced by insect cell lines used as cell factories for recombinant proteins, including vaccines. Despite many reports that PC is immunomodulatory, the biosynthesis and interactions of PC-modified glycans are poorly understood. Here we propose to generate chemical tools to fill this gap in knowledge. First, potential PC-transferring enzymes will be expressed and new substrates synthesized to assay them; second, we will exploit these enzymes to create new array-based probes for testing interactions with proteins of the immune system including pentraxins and antibodies. The proposed mix of enzymology, chemical & enzymatic synthesis and glycan array technology will enable us to gain new insights into the ‘how’ and ‘why’ of PC-modifications of pathogens, whether these are bacteria or parasites, in terms of characterizing PC from the enzymological and interactomic points of view. Furthermore, we can begin to explore the role of PC in modulating the immune system, including responses to vaccines.';
+
+  it('returns the project description with its escaped markup removed, on both surfaces', async () => {
+    const deposited = captured(GRANT).message.project as Array<{
+      'project-description': Array<{ description: string }>;
+    }>;
+    expect(deposited[0]?.['project-description'][0]?.description).toMatch(
+      /^&lt;p&gt;The ‘sugar’.*&amp; enzymatic.*vaccines\.&lt;\/p&gt;$/,
+    );
+
+    const result = await getWork(GRANT);
+    const projects = structured(result).projects as Array<{ descriptions?: unknown }>;
+    const text = textOf(result);
+
+    expect(projects[0]?.descriptions).toEqual([{ description: DESCRIPTION, language: 'en' }]);
+    expect(text.split('\n')).toContain(`- Description (en): ${DESCRIPTION}`);
+    expect(renderedText(text)).toContain(`Description (en): ${DESCRIPTION}`);
+    for (const surface of [JSON.stringify(result.structuredContent), text]) {
+      expect(surface).not.toMatch(/<\/?p>|&lt;|&amp;/);
+    }
   });
 });

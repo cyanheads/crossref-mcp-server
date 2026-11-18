@@ -10,10 +10,13 @@
  * caller surface, to the largest round size whose heaviest page stays near one. The measure is per
  * surface — `structuredContent` and `content[]` text each, never summed — because a client reads
  * one or the other; `structuredContent` is the heavier on every page measured. crossref_search_works
- * `rows` is capped only when `fields` selects `abstract` or `author` (or is omitted, which selects
- * both): every other selection's heaviest 1000-row page stays under a megabyte. The other lists —
- * funders, a journal title query (whose 1000 journals with their coverage measure ~1.05 MB of
- * `structuredContent`), and a funder's or a journal's works — are bounded by `ROWS_CEILING` alone.
+ * `rows` has three tiers, keyed on the names `fields` selects: the lowest cap when it selects
+ * `funder`, `license`, or `link`, whatever else it selects; otherwise a cap when it selects
+ * `abstract` or `author` (or is omitted, which selects both and none of the first three); and no
+ * cap otherwise, since every other selection's heaviest 1000-row page stays under a megabyte. The
+ * other lists — funders, a journal title query (whose 1000 journals with their coverage measure
+ * ~1.05 MB of `structuredContent`), and a funder's or a journal's works — are bounded by
+ * `ROWS_CEILING` alone.
  * @module mcp-server/tools/page-size
  */
 
@@ -23,11 +26,17 @@ export const ROWS_CEILING = 1000;
 export const ENTRY_LIMIT_CEILING = 100_000;
 
 /**
- * Cap on crossref_search_works `rows` when `fields` selects `abstract` or `author`, or is omitted:
- * 500 abstract-bearing journal articles with default fields measure ~1.07 MB of
- * `structuredContent`.
+ * Cap on crossref_search_works `rows` when `fields` selects `abstract` or `author` and none of
+ * `funder`, `license`, and `link`, or is omitted: 500 abstract-bearing journal articles with
+ * default fields measure ~1.07 MB of `structuredContent`.
  */
 export const SEARCH_WORKS_ROWS_CAP = 500;
+/**
+ * Cap on crossref_search_works `rows` when `fields` selects `funder`, `license`, or `link`: with
+ * each work's funders cut at 25, 200 large-collaboration physics papers with every field measure
+ * ~0.88 MB of `structuredContent`, and the same works pass 1 MB near 225.
+ */
+export const SEARCH_WORKS_OPT_IN_ROWS_CAP = 200;
 /** Cap on crossref_search_works `authorLimit`, per work: six whole consortium lists pass 0.6 MB. */
 export const SEARCH_WORKS_AUTHOR_LIMIT_CAP = 500;
 /** Cap on crossref_get_work `limit`: the longest author list sampled (5,156) is ~0.3 MB whole. */

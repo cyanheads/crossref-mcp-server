@@ -9,6 +9,7 @@ import { createMockContext, getEnrichment, runToolContract } from '@cyanheads/mc
 import { HtmlRenderer, Parser } from 'commonmark';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { searchWorksTool } from '@/mcp-server/tools/definitions/search-works.tool.js';
+import { GRANT_TITLE_NOTICE } from '@/mcp-server/tools/grant-rows.js';
 import { blockText, contentText, renderedText } from '../helpers/content.js';
 
 vi.mock('@/services/crossref/crossref-service.js', async (importOriginal) => {
@@ -598,10 +599,11 @@ describe('searchWorksTool', () => {
 
     /**
      * Asserted exactly, not with a `toContain('&')` that the escaped input satisfies whatever
-     * the projection does. The escaped tags stay literal text: markup is stripped before
-     * entities are decoded, so nothing here decodes into a tag the strip pass would eat.
+     * the projection does. A title is a JATS field, so an escaped `<sub>` closed by its escaped
+     * closer is markup the deposit escaped and comes off like a deposited one, while the
+     * escaped ampersand decodes to the character it stands for.
      */
-    expect(result.works[0]?.title).toBe('CO<sub>2</sub> & climate');
+    expect(result.works[0]?.title).toBe('CO2 & climate');
   });
 
   it('strips JATS markup and embedded newlines from title and container title', async () => {
@@ -873,14 +875,17 @@ describe('searchWorksTool page-size clamp', () => {
 });
 
 /**
- * `rows` is capped by what the selection carries: 500 when it includes `abstract` or `author` —
- * as an omitted or empty `fields` does, selecting every field — and not at all when it names
- * neither, beyond the schema's 1000. The cap keys on those two names alone, so every other
+ * `rows` is capped by what the selection carries: 200 when it includes `funder`, `license`, or
+ * `link`, whatever else it names; otherwise 500 when it includes `abstract` or `author` — as an
+ * omitted or empty `fields` does, selecting every default field — and not at all when it names
+ * none of the five, beyond the schema's 1000. The cap keys on those names alone, so every other
  * selectable field takes Crossref's full page.
  */
 describe('searchWorksTool rows cap by selection', () => {
   const HEAVY_TIER =
     'That cap holds for a fields selection including abstract or author; one naming neither takes rows up to 1000.';
+  const OPT_IN_TIER =
+    'That cap holds for a fields selection including funder, license, or link; without them, one including abstract or author takes rows up to 500, and one naming neither up to 1000.';
   const ROUTE =
     'the last records offset paging reaches. To read past them, walk the list with cursor="*" and chain nextCursor; the walk starts at the first record, not after these.';
   const selectable = (
@@ -888,13 +893,86 @@ describe('searchWorksTool rows cap by selection', () => {
       properties: { fields: { items: { enum: string[] } } };
     }
   ).properties.fields.items.enum;
-  const light = selectable.filter((name) => name !== 'abstract' && name !== 'author');
+  const CAPPING = ['abstract', 'author', 'funder', 'license', 'link'];
+  const light = selectable.filter((name) => !CAPPING.includes(name));
+
+  it.each([
+    ['funder', ['DOI', 'funder'], 201],
+    ['license', ['DOI', 'license'], 500],
+    ['link', ['link'], 1000],
+    ['funder beside abstract and author', ['author', 'abstract', 'funder'], 501],
+    ['every field', selectable, 1000],
+  ])(
+    'clamps rows at 200 once the selection includes %s, naming the other tiers',
+    async (_label, fields, rows) => {
+      mockSearchWorks.mockResolvedValue(
+        makeSearchResult({ totalResults: 5000, items: makeItems(200) }),
+      );
+
+      const result = await runToolContract(searchWorksTool, {
+        query: 'test',
+        fields,
+        rows,
+      } as never);
+
+      expect(mockSearchWorks).toHaveBeenCalledWith(
+        expect.objectContaining({ rows: 200 }),
+        expect.anything(),
+      );
+      expect((result.structuredContent as { works: unknown[] }).works).toHaveLength(200);
+      const notice = `rows ${rows} is above the per-call cap of 200, so 200 was applied. ${OPT_IN_TIER} Pass offset=200 for the next page — the offset after the 200 records returned, not after the ${rows} requested.`;
+      expect((result.structuredContent as { notice?: string }).notice).toBe(notice);
+      expect(renderedText(contentText(result.content))).toContain(notice);
+    },
+  );
+
+  it.each([
+    ['funder', ['funder']],
+    ['license and link', ['DOI', 'license', 'link']],
+  ])('passes rows 200 through untouched once the selection includes %s', async (_label, fields) => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ totalResults: 5000, items: makeItems(200) }),
+    );
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'test',
+      fields,
+      rows: 200,
+    } as never);
+
+    expect(mockSearchWorks).toHaveBeenCalledWith(
+      expect.objectContaining({ rows: 200 }),
+      expect.anything(),
+    );
+    expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
+  });
+
+  it('fits a 200-capped page into the offset window, naming the cap and the window once', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({ totalResults: 50_000, items: makeItems(100, 9900) }),
+    );
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'test',
+      fields: ['DOI', 'license'],
+      offset: 9900,
+      rows: 500,
+    });
+
+    expect(mockSearchWorks).toHaveBeenCalledWith(
+      expect.objectContaining({ offset: 9900, rows: 100 }),
+      expect.anything(),
+    );
+    expect((result.structuredContent as { notice?: string }).notice).toBe(
+      `rows 500 is above the per-call cap of 200, and offset 9900 + 200 would pass the ~10000 limit Crossref puts on offset + rows, so 100 was applied — ${ROUTE}`,
+    );
+  });
 
   it.each([
     ['DOI and title', ['DOI', 'title']],
     ['DOI and update-to', ['DOI', 'update-to']],
     ['DOI alone', ['DOI']],
-    ['every field but abstract and author', light],
+    ['every field but abstract, author, funder, license, and link', light],
   ])('returns 1000 works and no clamp notice at rows 1000 for %s', async (_label, fields) => {
     mockSearchWorks.mockResolvedValue(
       makeSearchResult({ totalResults: 5000, items: makeItems(1000) }),
@@ -1018,10 +1096,101 @@ describe('searchWorksTool rows cap by selection', () => {
     };
     const { description } = schema.properties.rows;
     expect(description).toContain(
-      '0–500 per call when fields names abstract or author, or is omitted or empty',
+      '0–500 per call when fields names abstract or author, or is omitted or empty, which selects every field but funder, license, and link',
     );
-    expect(description).toContain('0–1000 when fields names neither');
+    expect(description).toContain(
+      '0–200 when fields names funder, license, or link, whatever else it names',
+    );
+    expect(description).toContain('0–1000 when fields names none of those five');
     expect(description).not.toContain('600');
+  });
+});
+
+/**
+ * A grant deposits no title, and the fields that carry its project titles are ones a works list
+ * cannot select. A page that asked for titles and got an untitled grant says where they are; one
+ * that did not ask for both type and title cannot tell, and says nothing.
+ */
+describe('searchWorksTool untitled grant rows', () => {
+  const GRANT = { DOI: '10.35802/228257', type: 'grant', publisher: 'Wellcome', member: '13928' };
+
+  it.each([
+    ['an omitted fields', {}],
+    ['a selection naming type and title', { fields: ['DOI', 'type', 'title'] }],
+  ])(
+    'carries the title notice on a page with an untitled grant under %s',
+    async (_label, extra) => {
+      mockSearchWorks.mockResolvedValue(makeSearchResult({ totalResults: 2, items: [GRANT] }));
+
+      const result = await runToolContract(searchWorksTool, {
+        filter: { type: 'grant' },
+        ...extra,
+      } as never);
+
+      const structured = result.structuredContent as {
+        works: Array<Record<string, unknown>>;
+        notice?: string;
+      };
+      expect(structured.works[0]).not.toHaveProperty('title');
+      expect(structured.notice).toBe(GRANT_TITLE_NOTICE);
+      expect(renderedText(contentText(result.content))).toContain(GRANT_TITLE_NOTICE);
+      expect(structured.notice).toContain('crossref_get_work with the grant’s DOI returns them.');
+    },
+  );
+
+  it.each([
+    ['type is not selected', { fields: ['DOI', 'title'] }, [GRANT]],
+    ['title is not selected', { fields: ['DOI', 'type'] }, [GRANT]],
+    ['the grant carries a title', {}, [{ ...GRANT, title: ['A project'] }]],
+    ['no row is a grant', {}, [{ DOI: '10.5555/a', type: 'journal-article' }]],
+  ])('carries no title notice when %s', async (_label, extra, items) => {
+    mockSearchWorks.mockResolvedValue(makeSearchResult({ totalResults: 1, items }));
+
+    const result = await runToolContract(searchWorksTool, { query: 'q', ...extra } as never);
+
+    expect((result.structuredContent as { notice?: string }).notice).toBeUndefined();
+    expect(renderedText(contentText(result.content))).not.toContain('has no title');
+  });
+
+  /** `notice` is last-wins, so every caveat a page needs rides the one string. */
+  it('carries the title notice beside the author and funder caps, in one notice', async () => {
+    mockSearchWorks.mockResolvedValue(
+      makeSearchResult({
+        totalResults: 2,
+        items: [
+          {
+            DOI: '10.1103/collab',
+            type: 'journal-article',
+            title: ['A collaboration paper'],
+            author: makeAuthors(30),
+            funder: Array.from({ length: 30 }, (_, i) => ({ name: `F${i}` })),
+          },
+          GRANT,
+        ],
+      }),
+    );
+
+    const result = await runToolContract(searchWorksTool, {
+      query: 'q',
+      fields: ['type', 'title', 'author', 'funder'],
+    });
+
+    const notice = [
+      'Author lists were capped at 25 per work — 1 of the 2 works on this page carries more authors than are shown. Each work reports its full deposited total as authorCount; call crossref_get_work with that work doi to page its whole author list, or raise authorLimit to widen the cap here.',
+      'Funder lists were capped at 25 per work — 1 of the 2 works on this page carries more funders than are shown. Each work reports its full deposited total as funderCount; call crossref_get_work with that work doi for its whole funder list.',
+      GRANT_TITLE_NOTICE,
+    ].join(' ');
+    expect((result.structuredContent as { notice?: string }).notice).toBe(notice);
+    expect(renderedText(contentText(result.content))).toContain(notice);
+  });
+
+  it('says in its title description where a grant keeps its title', () => {
+    const schema = z.toJSONSchema(searchWorksTool.output) as unknown as {
+      properties: { works: { items: { properties: { title: { description: string } } } } };
+    };
+    expect(schema.properties.works.items.properties.title.description).toContain(
+      'crossref_get_work',
+    );
   });
 });
 
