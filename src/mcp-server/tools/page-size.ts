@@ -28,13 +28,17 @@ export const ENTRY_LIMIT_CEILING = 100_000;
 /**
  * Cap on crossref_search_works `rows` when `fields` selects `abstract` or `author` and none of
  * `funder`, `license`, and `link`, or is omitted: 500 abstract-bearing journal articles with
- * default fields measure ~1.07 MB of `structuredContent`.
+ * default fields measure ~1.07 MB of `structuredContent`. The cap bounds what this server
+ * returns, not what Crossref will assemble: a page under it whose works carry long author lists
+ * can still pass Crossref's own limit, which it refuses with a 500 (`page_too_large`).
  */
 export const SEARCH_WORKS_ROWS_CAP = 500;
 /**
  * Cap on crossref_search_works `rows` when `fields` selects `funder`, `license`, or `link`: with
  * each work's funders cut at 25, 200 large-collaboration physics papers with every field measure
- * ~0.88 MB of `structuredContent`, and the same works pass 1 MB near 225.
+ * ~0.88 MB of `structuredContent`, and the same works pass 1 MB near 225. As under
+ * `SEARCH_WORKS_ROWS_CAP`, a page under this cap can still pass Crossref's own limit when `fields`
+ * selects `author` (`page_too_large`).
  */
 export const SEARCH_WORKS_OPT_IN_ROWS_CAP = 200;
 /** Cap on crossref_search_works `authorLimit`, per work: six whole consortium lists pass 0.6 MB. */

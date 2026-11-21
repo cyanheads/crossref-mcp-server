@@ -29,6 +29,7 @@ vi.mock('@/config/server-config.js', () => ({
 
 import { JsonRpcErrorCode } from '@cyanheads/mcp-ts-core/errors';
 import { logger } from '@cyanheads/mcp-ts-core/utils';
+import { getServerConfig } from '@/config/server-config.js';
 import {
   CrossrefService,
   getCrossrefService,
@@ -1782,38 +1783,60 @@ describe('CrossrefService.getPublishedVersions', () => {
     expect(await pending).toEqual({ kind: 'failed' });
   });
 
-  it('fails the call on a 429, carrying its Retry-After, without a second request', async () => {
-    serveRaw('slow down', { status: 429, headers: { 'retry-after': '7' } });
+  /** The sentence that closes a 429's hint only when the service sends no `mailto`. */
+  const POLITE_POOL =
+    ' Setting CROSSREF_MAILTO on the server moves requests into the polite pool, which has higher limits.';
+  const WAIT_7 =
+    'Crossref returned Retry-After: 7 — wait that long before reissuing the same call.';
+  const NO_WAIT =
+    'Crossref named no wait interval, so back off at least a minute before reissuing the same call, and lower the request rate.';
 
-    const error = await settle(
-      service.getPublishedVersions(PREPRINT, createMockContext()).then(
-        () => undefined,
-        (err: unknown) => err,
-      ),
-    );
+  it.each([
+    { mailto: 'sends a mailto', sendsMailto: true, retryAfter: '7', hint: WAIT_7 },
+    { mailto: 'sends a mailto', sendsMailto: true, retryAfter: undefined, hint: NO_WAIT },
+    {
+      mailto: 'sends no mailto',
+      sendsMailto: false,
+      retryAfter: '7',
+      hint: `${WAIT_7}${POLITE_POOL}`,
+    },
+    {
+      mailto: 'sends no mailto',
+      sendsMailto: false,
+      retryAfter: undefined,
+      hint: `${NO_WAIT}${POLITE_POOL}`,
+    },
+  ])(
+    'fails the call on a 429 with Retry-After $retryAfter, carrying a direct 429 hint, when the service $mailto',
+    async ({ sendsMailto, retryAfter, hint }) => {
+      if (!sendsMailto) {
+        vi.mocked(getServerConfig).mockReturnValueOnce({
+          mailto: undefined,
+          baseUrl: 'https://api.crossref.test',
+          timeoutMs: 5000,
+        });
+        service = new CrossrefService();
+      }
+      serveRaw('slow down', {
+        status: 429,
+        ...(retryAfter !== undefined && { headers: { 'retry-after': retryAfter } }),
+      });
 
-    expect(error).toMatchObject({
-      code: JsonRpcErrorCode.RateLimited,
-      data: {
-        reason: 'rate_limited',
-        retryAfter: '7',
-        recovery: { hint: expect.stringContaining('Retry-After: 7') },
-      },
-    });
-    expect(http.calls).toHaveLength(1);
-  });
+      const error = await settle(
+        service.getPublishedVersions(PREPRINT, createMockContext()).then(
+          () => undefined,
+          (err: unknown) => err,
+        ),
+      );
 
-  it('fails the call on a 429 naming no wait, with the contract hint', async () => {
-    serveRaw('slow down', { status: 429 });
-
-    await expect(
-      settle(service.getPublishedVersions(PREPRINT, createMockContext())),
-    ).rejects.toMatchObject({
-      code: JsonRpcErrorCode.RateLimited,
-      data: { reason: 'rate_limited' },
-    });
-    expect(http.calls).toHaveLength(1);
-  });
+      expect(error).toMatchObject({
+        code: JsonRpcErrorCode.RateLimited,
+        data: { reason: 'rate_limited', recovery: { hint } },
+      });
+      if (retryAfter !== undefined) expect(error).toMatchObject({ data: { retryAfter } });
+      expect(http.calls).toHaveLength(1);
+    },
+  );
 
   it('composes the caller signal, so a cancellation in flight fails the call as cancelled', async () => {
     const controller = new AbortController();

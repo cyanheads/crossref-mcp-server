@@ -13,6 +13,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import type { UnderlyingDefaultSource } from 'node:stream/web';
 import { JsonRpcErrorCode, McpError } from '@cyanheads/mcp-ts-core/errors';
 import {
   createFetchMock,
@@ -22,7 +23,8 @@ import {
 import { logger } from '@cyanheads/mcp-ts-core/utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { blockText, renderedText } from '../../helpers/content.js';
-import { hang } from '../../helpers/crossref-responses.js';
+import { hang, workList } from '../../helpers/crossref-responses.js';
+import { expectLinearScaling } from '../../helpers/scaling.js';
 
 /** The SDK's `CallToolResult`, reached through the runner so the SDK stays a transitive dep. */
 type ToolResult = Awaited<ReturnType<typeof runToolContract>>;
@@ -44,7 +46,11 @@ import {
   searchJournalsTool,
   searchWorksTool,
 } from '@/mcp-server/tools/definitions/index.js';
-import { getCrossrefService, initCrossrefService } from '@/services/crossref/crossref-service.js';
+import {
+  getCrossrefService,
+  initCrossrefService,
+  pageTooLarge,
+} from '@/services/crossref/crossref-service.js';
 import {
   MALFORMED_RESPONSE,
   RATE_LIMITED,
@@ -62,7 +68,27 @@ const BASE_URL = 'https://api.crossref.test';
 /** `withRetry`'s default budget: one attempt plus three retries. */
 const TOTAL_ATTEMPTS = 4;
 
+/** A 429's hint when it names no `Retry-After`. */
+const NO_WAIT_HINT =
+  'Crossref named no wait interval, so back off at least a minute before reissuing the same call, and lower the request rate.';
+/** A 429's hint when it names `Retry-After: 2`. */
+const RETRY_AFTER_2_HINT =
+  'Crossref returned Retry-After: 2 — wait that long before reissuing the same call.';
+/** The sentence that closes a 429's hint only when the server sends no `mailto`. */
+const POLITE_POOL_SENTENCE =
+  'Setting CROSSREF_MAILTO on the server moves requests into the polite pool, which has higher limits.';
+
 const http = createFetchMock();
+
+/** Restart the service as one configured without `CROSSREF_MAILTO`; it reads config once, at construction. */
+function startWithoutMailto(): void {
+  vi.mocked(getServerConfig).mockReturnValueOnce({
+    mailto: undefined,
+    baseUrl: BASE_URL,
+    timeoutMs: 10_000,
+  });
+  initCrossrefService();
+}
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -740,37 +766,69 @@ describe('upstream failure classification', () => {
 });
 
 describe('recovery on both result surfaces', () => {
-  it('carries the Retry-After wait into content[] on an exhausted rate limit', async () => {
-    http.route({
-      match: WORKS_ROUTE,
-      respond: () => new Response('slow down', { status: 429, headers: { 'retry-after': '2' } }),
-    });
+  /**
+   * Every side of the two branches a 429's hint takes: the wait Crossref named or none, and the
+   * polite-pool sentence only when the server sends no mailto — a caller cannot set it, and with
+   * a mailto set it would be false. A content-only client never sees `error.data`, so the wait
+   * and the advice have to be in the text, exactly as `data.recovery.hint` carries them.
+   */
+  it.each([
+    { mailto: 'sends a mailto', sendsMailto: true, retryAfter: undefined, hint: NO_WAIT_HINT },
+    { mailto: 'sends a mailto', sendsMailto: true, retryAfter: '', hint: NO_WAIT_HINT },
+    { mailto: 'sends a mailto', sendsMailto: true, retryAfter: '2', hint: RETRY_AFTER_2_HINT },
+    {
+      mailto: 'sends no mailto',
+      sendsMailto: false,
+      retryAfter: undefined,
+      hint: `${NO_WAIT_HINT} ${POLITE_POOL_SENTENCE}`,
+    },
+    {
+      mailto: 'sends no mailto',
+      sendsMailto: false,
+      retryAfter: '',
+      hint: `${NO_WAIT_HINT} ${POLITE_POOL_SENTENCE}`,
+    },
+    {
+      mailto: 'sends no mailto',
+      sendsMailto: false,
+      retryAfter: '2',
+      hint: `${RETRY_AFTER_2_HINT} ${POLITE_POOL_SENTENCE}`,
+    },
+  ])(
+    'carries the exact hint on an exhausted 429 with Retry-After $retryAfter when the server $mailto',
+    async ({ sendsMailto, retryAfter, hint }) => {
+      if (!sendsMailto) startWithoutMailto();
+      http.route({
+        match: WORKS_ROUTE,
+        respond: () =>
+          new Response('slow down', {
+            status: 429,
+            ...(retryAfter !== undefined && { headers: { 'retry-after': retryAfter } }),
+          }),
+      });
 
-    const result = await getWork();
-    const error = errorOf(result);
+      const result = await getWork();
+      const error = errorOf(result);
 
-    expect(error.code).toBe(JsonRpcErrorCode.RateLimited);
-    expect(error.data).toMatchObject({ reason: 'rate_limited', retryAfter: '2' });
-    // A content-only client never sees error.data, so the wait has to be in the text.
-    expect(textOf(result)).toContain('Retry-After: 2');
-    expect(http.calls).toHaveLength(TOTAL_ATTEMPTS);
-  });
+      expect(error.code).toBe(JsonRpcErrorCode.RateLimited);
+      expect(error.data).toMatchObject({ reason: 'rate_limited', recovery: { hint } });
+      expect(renderedText(textOf(result))).toContain(`\nRecovery: ${hint}\n`);
+      if (retryAfter === undefined) {
+        expect(error.data).not.toHaveProperty('retryAfter');
+      } else {
+        expect(error.data).toMatchObject({ retryAfter });
+      }
+      // An empty header names no wait, so the text sends no caller looking for one.
+      if (!retryAfter) expect(textOf(result)).not.toContain('Retry-After');
+      if (sendsMailto) expect(JSON.stringify(result)).not.toContain('CROSSREF_MAILTO');
+      expect(http.calls).toHaveLength(TOTAL_ATTEMPTS);
+    },
+  );
 
-  it('falls back to the contract hint when a 429 names no Retry-After', async () => {
-    http.route({
-      match: WORKS_ROUTE,
-      respond: () => new Response('slow down', { status: 429 }),
-    });
-
-    const result = await getWork();
-    const error = errorOf(result);
-
-    expect(error.data).not.toHaveProperty('retryAfter');
-    expect(textOf(result)).toContain(RATE_LIMITED.recovery);
-    expect(textOf(result)).not.toContain('Retry-After:');
-    // This is the only path on which RATE_LIMITED.recovery itself reaches the wire,
-    // and on it there is no interval in the message and no retryAfter in the data —
-    // so the text must not send a caller looking for either.
+  it('keeps the contract hint a config-independent literal of the backoff advice alone', () => {
+    expect(RATE_LIMITED.recovery).toBe(NO_WAIT_HINT);
+    // It reaches the wire only on a 429 with no Retry-After, where there is no interval in the
+    // message and no retryAfter in the data — so the text must not send a caller looking for either.
     expect(RATE_LIMITED.recovery).not.toMatch(/retryAfter|interval named/i);
   });
 
@@ -1133,6 +1191,28 @@ describe('the request deadline', () => {
     expect(http.calls).toHaveLength(3);
     expect(vi.getTimerCount()).toBe(0);
   });
+
+  it.each([
+    { mailto: 'sends a mailto', sendsMailto: true, closing: '' },
+    { mailto: 'sends no mailto', sendsMailto: false, closing: ` ${POLITE_POOL_SENTENCE}` },
+  ])(
+    'reports that 429 with the hint a direct one carries when the server $mailto',
+    async ({ sendsMailto, closing }) => {
+      if (!sendsMailto) startWithoutMailto();
+      http.route({
+        match: WORKS_ROUTE,
+        respond: inTurn(rateLimitedFor('10'), rateLimitedFor('10'), hang),
+      });
+
+      const call = track(runToolContract(getWorkTool, { doi: DOI }));
+      await vi.advanceTimersByTimeAsync(25_000);
+
+      const hint = `Crossref returned Retry-After: 10 — wait that long before reissuing the same call.${closing}`;
+      const result = await call.result();
+      expect(errorOf(result).data).toMatchObject({ reason: 'rate_limited', recovery: { hint } });
+      expect(renderedText(textOf(result))).toContain(`\nRecovery: ${hint}\n`);
+    },
+  );
 
   it('forgets the 429 once a later attempt completes with another failure', async () => {
     // 429 at 0 s; a 503 answered at 19 s; after its 2 s backoff the third attempt is cut at 25 s.
@@ -1636,8 +1716,13 @@ describe('Crossref rejections of caller input', () => {
         'sort_cursor_conflict',
         'invalid_cursor',
         'invalid_parameter',
+        'page_too_large',
       ]),
     );
+    // Only a works search selects author lists, and the narrowing the recovery names is its own.
+    for (const definition of allToolDefinitions.filter((d) => d !== searchWorksTool)) {
+      expect(reasons(definition), definition.name).not.toContain('page_too_large');
+    }
     for (const definition of [searchJournalsTool, searchFundersTool]) {
       expect(reasons(definition)).toEqual(
         expect.arrayContaining(['invalid_cursor', 'invalid_parameter']),
@@ -1773,6 +1858,504 @@ describe('the issn filter value', () => {
     expect(error.data).not.toHaveProperty('responseBody');
     expect(JSON.stringify(result)).not.toContain('NullPointerException');
   });
+});
+
+describe('a page too large for Crossref to assemble', () => {
+  /** Crossref's 500 for a works page past its buffer, as captured from the live route. */
+  const CONTENT_TOO_LONG = readFileSync(
+    new URL('../../fixtures/errors/content-too-long-500.json', import.meta.url),
+    'utf8',
+  );
+
+  /** The captured body with one field of its `message` replaced, every other field as sent. */
+  function capturedWith(field: string, value: unknown): string {
+    const body = JSON.parse(CONTENT_TOO_LONG);
+    body.message[field] = value;
+    return JSON.stringify(body);
+  }
+
+  /** The captured body padded to exactly `bytes` bytes, the padding in its description. */
+  function capturedPaddedTo(bytes: number): string {
+    const body = JSON.parse(CONTENT_TOO_LONG);
+    body.message.description += 'x'.repeat(bytes - JSON.stringify(body).length);
+    return JSON.stringify(body);
+  }
+
+  const RECOVERY =
+    'Halve rows, and halve again if that page is refused too, or pass fields without author — an omitted fields selects author, and author lists are what fill a page this large. Trimming rows by a few can be refused again, and reissuing the same call always is.';
+  const WITH_SIZES =
+    "Crossref could not serve this page (HTTP 500): it reported the page's content at 107929917 bytes, over its 104857600-byte buffer limit.";
+  const WITHOUT_SIZES =
+    "Crossref could not serve this page (HTTP 500): it reported the page's content as over its buffer limit.";
+
+  /** Answer every works request with a 500 carrying `body`. */
+  function serve500(body: string): void {
+    http.route({
+      match: WORKS_ROUTE,
+      respond: () =>
+        new Response(body, { status: 500, headers: { 'content-type': 'application/json' } }),
+    });
+  }
+
+  const encoded = (text: string): Uint8Array => new TextEncoder().encode(text);
+
+  /** Each reason the service cancelled a streamed 500 body with, one per cancelled send. */
+  const cancels: unknown[] = [];
+  beforeEach(() => {
+    cancels.length = 0;
+  });
+
+  /** A 500 whose body is the stream `source` describes, its cancels recorded in `cancels`. */
+  function streamed500(source: UnderlyingDefaultSource<Uint8Array>): Response {
+    return new Response(
+      new ReadableStream<Uint8Array>({
+        ...source,
+        cancel(reason) {
+          cancels.push(reason);
+          return source.cancel?.(reason);
+        },
+      }),
+      { status: 500 },
+    );
+  }
+
+  /** A 500 whose body sends its first bytes and then nothing, until the request is aborted. */
+  const stalled500: Responder = (request) =>
+    streamed500({
+      start(stream) {
+        stream.enqueue(encoded('{"status":"error",'));
+        request.signal.addEventListener('abort', () => stream.error(request.signal.reason), {
+          once: true,
+        });
+      },
+    });
+
+  function serveStalled500(): void {
+    http.route({ match: WORKS_ROUTE, respond: stalled500 });
+  }
+
+  /** A 500 sending the captured body with its last bytes `ms` after the headers, unless cancelled first. */
+  const lastBytesAfter =
+    (ms: number): Responder =>
+    () => {
+      const bytes = encoded(CONTENT_TOO_LONG);
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      return streamed500({
+        start(stream) {
+          stream.enqueue(bytes.subarray(0, -16));
+          timer = setTimeout(() => {
+            stream.enqueue(bytes.subarray(-16));
+            stream.close();
+          }, ms);
+        },
+        cancel() {
+          clearTimeout(timer);
+        },
+      });
+    };
+
+  /** A 500 sending `sent` on its first pull and failing on its second, with no abort. */
+  const failingAfter =
+    (sent: string): Responder =>
+    () => {
+      let pulls = 0;
+      return streamed500({
+        pull(stream) {
+          pulls += 1;
+          if (pulls === 1) stream.enqueue(encoded(sent));
+          else stream.error(new TypeError('terminated'));
+        },
+      });
+    };
+
+  /** The call the refused page came from: a heavy filter, at the opt-in tier's 200-row cap. */
+  const searchHeavyPage = () =>
+    settle(
+      runToolContract(searchWorksTool, {
+        filter: { funder: '501100013699', prefix: '10.1103', 'from-pub-date': '2022' },
+        rows: 200,
+      }),
+    );
+
+  it('fails as page_too_large after one attempt, naming both of the sizes Crossref gives', async () => {
+    serve500(CONTENT_TOO_LONG);
+
+    const result = await searchHeavyPage();
+    const error = errorOf(result);
+    const rendered = renderedText(textOf(result));
+
+    expect(error.code).toBe(JsonRpcErrorCode.ValidationError);
+    expect(error.message).toBe(WITH_SIZES);
+    expect(error.data).toEqual({
+      retryable: false,
+      reason: 'page_too_large',
+      recovery: { hint: RECOVERY },
+    });
+    expect(rendered).toContain(`Error: ${WITH_SIZES}`);
+    expect(rendered).toContain(`Recovery: ${RECOVERY}`);
+    expect(rendered).toContain('(reason page_too_large · not retryable)');
+    expect(http.calls).toHaveLength(1);
+  });
+
+  it('keeps the body, its stack, and the request URL off both surfaces and the log line', async () => {
+    const warning = vi.spyOn(logger, 'warning').mockImplementation(() => {});
+    serve500(CONTENT_TOO_LONG);
+
+    const result = await searchHeavyPage();
+    const error = errorOf(result);
+    const wire = JSON.stringify(result);
+    const logged = JSON.stringify(
+      warning.mock.calls.map(([message, context]) => [message, context]),
+    );
+
+    for (const key of ['body', 'responseBody', 'url', 'stack', 'status', 'statusCode']) {
+      expect(error.data).not.toHaveProperty(key);
+    }
+    for (const fromBody of [
+      'ContentTooLongException',
+      'entity content is too long',
+      'HeapBufferedAsyncResponseConsumer',
+      'elasticsearch',
+    ]) {
+      expect(wire).not.toContain(fromBody);
+      expect(logged).not.toContain(fromBody);
+    }
+    expect(wire).not.toContain(BASE_URL);
+    expect(wire).not.toContain('501100013699');
+    warning.mockRestore();
+  });
+
+  it.each([
+    ['no sizes', 'entity content is too long'],
+    ['one size alone', 'entity content is too long [107929917]'],
+    [
+      'a size longer than any page',
+      `entity content is too long [${'9'.repeat(16)}] for the configured buffer limit [104857600]`,
+    ],
+    [
+      'sizes that are not digits',
+      'entity content is too long [1e9] for the configured buffer limit [0x64]',
+    ],
+    ['no message at all', undefined],
+    ['a message that is not text', 107929917],
+    [
+      'a message that is a list',
+      ['entity content is too long [107929917] for the configured buffer limit [104857600]'],
+    ],
+  ])(
+    'fails as page_too_large worded without sizes when the message carries %s',
+    async (_label, message) => {
+      serve500(capturedWith('message', message));
+
+      const error = errorOf(await searchHeavyPage());
+
+      expect(error.code).toBe(JsonRpcErrorCode.ValidationError);
+      expect(error.message).toBe(WITHOUT_SIZES);
+      expect(error.data).toMatchObject({
+        retryable: false,
+        reason: 'page_too_large',
+        recovery: { hint: RECOVERY },
+      });
+      expect(http.calls).toHaveLength(1);
+    },
+  );
+
+  it('names a size of 15 digits, the longest it reads, in the message', async () => {
+    serve500(
+      capturedWith(
+        'message',
+        `entity content is too long [${'9'.repeat(15)}] for the configured buffer limit [104857600]`,
+      ),
+    );
+
+    expect(errorOf(await searchHeavyPage()).message).toBe(
+      "Crossref could not serve this page (HTTP 500): it reported the page's content at 999999999999999 bytes, over its 104857600-byte buffer limit.",
+    );
+  });
+
+  it('classifies a body at the 64 KiB read bound and none past it', async () => {
+    serve500(capturedPaddedTo(65_536));
+    expect(errorOf(await searchHeavyPage()).data).toMatchObject({ reason: 'page_too_large' });
+    expect(http.calls).toHaveLength(1);
+
+    http.reset();
+    serve500(capturedPaddedTo(65_537));
+    expect(errorOf(await searchHeavyPage()).data).toMatchObject({
+      reason: 'upstream_unavailable',
+      status: 500,
+    });
+    expect(http.calls).toHaveLength(TOTAL_ATTEMPTS);
+  });
+
+  /** `body`'s bytes as a stream of two chunks, each half the body, whatever the runtime's chunking. */
+  function inTwoChunks(body: string): UnderlyingDefaultSource<Uint8Array> {
+    const bytes = encoded(body);
+    const half = Math.ceil(bytes.length / 2);
+    return {
+      start(stream) {
+        stream.enqueue(bytes.subarray(0, half));
+        stream.enqueue(bytes.subarray(half));
+        stream.close();
+      },
+    };
+  }
+
+  it('holds the 64 KiB read bound on the bytes of every chunk together', async () => {
+    http.route({
+      match: WORKS_ROUTE,
+      respond: () => streamed500(inTwoChunks(capturedPaddedTo(65_536))),
+    });
+    expect(errorOf(await searchHeavyPage()).data).toMatchObject({ reason: 'page_too_large' });
+    expect(http.calls).toHaveLength(1);
+
+    http.reset();
+    http.route({
+      match: WORKS_ROUTE,
+      respond: () => streamed500(inTwoChunks(capturedPaddedTo(65_537))),
+    });
+    expect(errorOf(await searchHeavyPage()).data).toMatchObject({
+      reason: 'upstream_unavailable',
+      status: 500,
+    });
+    expect(http.calls).toHaveLength(TOTAL_ATTEMPTS);
+  });
+
+  it('cancels a body past the 64 KiB read bound on every send', async () => {
+    http.route({
+      match: WORKS_ROUTE,
+      respond: () =>
+        streamed500({
+          pull(stream) {
+            stream.enqueue(encoded('x'.repeat(40_000)));
+          },
+        }),
+    });
+
+    expect(errorOf(await searchHeavyPage()).data).toMatchObject({
+      reason: 'upstream_unavailable',
+      status: 500,
+    });
+    expect(http.calls).toHaveLength(TOTAL_ATTEMPTS);
+    expect(cancels).toHaveLength(TOTAL_ATTEMPTS);
+  });
+
+  it.each([
+    [
+      'a body naming another exception',
+      capturedWith('name', 'class java.lang.NullPointerException'),
+    ],
+    ['a body naming no exception', capturedWith('name', undefined)],
+    ['a body that is not JSON', 'boom'],
+    ['an empty body', ''],
+    ['JSON that is not an exception envelope', '[1,2,3]'],
+  ])('keeps upstream_unavailable and its four attempts on %s', async (_label, body) => {
+    serve500(body);
+
+    const result = await searchHeavyPage();
+    const error = errorOf(result);
+
+    expect(error.code).toBe(JsonRpcErrorCode.ServiceUnavailable);
+    expect(error.message).toBe(
+      `Crossref returned HTTP 500. (failed after ${TOTAL_ATTEMPTS} attempts)`,
+    );
+    expect(error.data).toMatchObject({ reason: 'upstream_unavailable', status: 500 });
+    expect(textOf(result)).toContain(UPSTREAM_UNAVAILABLE.recovery);
+    expect(http.calls).toHaveLength(TOTAL_ATTEMPTS);
+  });
+
+  it('keeps upstream_unavailable on a 503 whose body names the same exception', async () => {
+    http.route({
+      match: WORKS_ROUTE,
+      respond: () => new Response(CONTENT_TOO_LONG, { status: 503 }),
+    });
+
+    const error = errorOf(await searchHeavyPage());
+
+    expect(error.data).toMatchObject({ reason: 'upstream_unavailable', status: 503 });
+    expect(http.calls).toHaveLength(TOTAL_ATTEMPTS);
+  });
+
+  it('leaves the upstream_unavailable contract text as it was', () => {
+    expect(UPSTREAM_UNAVAILABLE.when).toBe(
+      'Crossref was unreachable, returned a 5xx status, or served an HTML error page instead of JSON.',
+    );
+    expect(UPSTREAM_UNAVAILABLE.recovery).toBe(
+      'The request was accepted as well-formed and Crossref failed to serve it — retry the same call in a minute rather than rewriting the query, and check https://status.crossref.org if it keeps failing.',
+    );
+  });
+
+  /**
+   * A 500's body is read for 2 s at most, so a body that does not arrive costs a send that long and
+   * no more. Backoff jitter is pinned to its midpoint, so the waits are exactly 1 s, 2 s, and 4 s.
+   */
+  describe('a 500 whose body does not arrive', () => {
+    let random: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      random = vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    });
+
+    afterEach(() => {
+      random.mockRestore();
+    });
+
+    it('is retried as any other 500 once its 2 s read bound passes, each body cancelled', async () => {
+      serveStalled500();
+
+      // Reads cut at 2 s, 5 s, 9 s, and 15 s: sends at 0 s, 3 s, 7 s, and 13 s.
+      const call = track(runToolContract(searchWorksTool, { query: 'collaboration', rows: 1 }));
+      await vi.advanceTimersByTimeAsync(14_999);
+      expect(call.settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(call.settled).toBe(true);
+      expect(errorOf(await call.result())).toMatchObject({
+        code: JsonRpcErrorCode.ServiceUnavailable,
+        message: `Crossref returned HTTP 500. (failed after ${TOTAL_ATTEMPTS} attempts)`,
+        data: { reason: 'upstream_unavailable', status: 500 },
+      });
+      expect(http.calls).toHaveLength(TOTAL_ATTEMPTS);
+      expect(cancels).toHaveLength(TOTAL_ATTEMPTS);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it.each([
+      ['one stalled 500', [stalled500], 3_000],
+      ['two stalled 500s', [stalled500, stalled500], 7_000],
+    ])('serves the page Crossref sends after %s', async (_label, stalls, servedAtMs) => {
+      http.route({
+        match: WORKS_ROUTE,
+        respond: inTurn(...stalls, () =>
+          workList([{ DOI, type: 'journal-article', title: ['T'] }]),
+        ),
+      });
+
+      const call = track(runToolContract(searchWorksTool, { query: 'collaboration', rows: 1 }));
+      await vi.advanceTimersByTimeAsync(servedAtMs - 1);
+      expect(call.settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(call.settled).toBe(true);
+      const result = await call.result();
+      expect(result.isError).toBeFalsy();
+      expect(result.structuredContent).toMatchObject({ works: [{ doi: DOI }] });
+      expect(http.calls).toHaveLength(stalls.length + 1);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('classifies the captured body whole inside the read bound, and not one finishing past it', async () => {
+      http.route({ match: WORKS_ROUTE, respond: lastBytesAfter(1_999) });
+      const call = track(runToolContract(searchWorksTool, { query: 'collaboration', rows: 1 }));
+      await vi.advanceTimersByTimeAsync(1_999);
+
+      expect(call.settled).toBe(true);
+      expect(errorOf(await call.result()).data).toMatchObject({ reason: 'page_too_large' });
+      expect(http.calls).toHaveLength(1);
+      expect(cancels).toHaveLength(0);
+      // The bound's timer is cleared with the read it bounds, not left pending.
+      expect(vi.getTimerCount()).toBe(0);
+
+      http.reset();
+      http.route({ match: WORKS_ROUTE, respond: lastBytesAfter(2_001) });
+      expect(errorOf(await searchHeavyPage()).data).toMatchObject({
+        reason: 'upstream_unavailable',
+        status: 500,
+      });
+      expect(http.calls).toHaveLength(TOTAL_ATTEMPTS);
+      expect(cancels).toHaveLength(TOTAL_ATTEMPTS);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('keeps upstream_unavailable when a CROSSREF_TIMEOUT_MS shorter than the bound cuts the read', async () => {
+      vi.mocked(getServerConfig).mockReturnValueOnce({
+        mailto: 'test@example.com',
+        baseUrl: BASE_URL,
+        timeoutMs: 1_000,
+      });
+      initCrossrefService();
+      serveStalled500();
+
+      const error = errorOf(await searchHeavyPage());
+
+      expect(error).toMatchObject({
+        code: JsonRpcErrorCode.ServiceUnavailable,
+        data: { reason: 'upstream_unavailable', status: 500 },
+      });
+      expect(error.data).not.toHaveProperty('timeoutMs');
+      expect(http.calls).toHaveLength(TOTAL_ATTEMPTS);
+    });
+  });
+
+  it.each([
+    ['part of the body', '{"status":"error",'],
+    ['the whole body', CONTENT_TOO_LONG],
+  ])(
+    'keeps upstream_unavailable and its four attempts when the body stream fails after %s',
+    async (_label, sent) => {
+      http.route({ match: WORKS_ROUTE, respond: failingAfter(sent) });
+
+      const error = errorOf(await searchHeavyPage());
+
+      expect(error.code).toBe(JsonRpcErrorCode.ServiceUnavailable);
+      expect(error.message).toBe(
+        `Crossref returned HTTP 500. (failed after ${TOTAL_ATTEMPTS} attempts)`,
+      );
+      expect(error.data).toMatchObject({ reason: 'upstream_unavailable', status: 500 });
+      expect(http.calls).toHaveLength(TOTAL_ATTEMPTS);
+    },
+  );
+
+  it('reports a cancellation during the body read as RequestCancelled, unretried', async () => {
+    const controller = new AbortController();
+    serveStalled500();
+
+    const call = track(
+      getCrossrefService().searchWorks(
+        { query: 'collaboration', rows: 1 },
+        createMockContext({ signal: controller.signal }),
+      ),
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    controller.abort(new Error('caller cancelled'));
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(call.settled).toBe(true);
+    expect(await call.error()).toMatchObject({ code: JsonRpcErrorCode.RequestCancelled });
+    expect(http.calls).toHaveLength(1);
+  });
+
+  /**
+   * `pageTooLarge` reads an upstream body of up to 64 KiB; each shape runs it far past that so
+   * any super-linear step in the parse or the size match shows in the ratio.
+   */
+  function contentTooLongBody(size: number, unit: string, head = '', tail = ''): string {
+    const wrap = (message: string) =>
+      JSON.stringify({
+        message: { name: 'class org.apache.http.ContentTooLongException', message },
+      });
+    const unitLength = JSON.stringify(unit).length - 2;
+    const room = size - wrap(`${head}${tail}`).length;
+    return wrap(`${head}${unit.repeat(Math.floor(room / unitLength))}${tail}`);
+  }
+
+  it.each([
+    ['a repeated opener with no closer', (size: number) => contentTooLongBody(size, '[')],
+    ['an opener and digit with no closer', (size: number) => contentTooLongBody(size, '[1')],
+    ['one opener before a long digit run', (size: number) => contentTooLongBody(size, '1', '[')],
+    ['closed numbers never paired', (size: number) => contentTooLongBody(size, '[1]]')],
+    ['a closed number then no second', (size: number) => contentTooLongBody(size, 'x', '[1]')],
+    [
+      'one long line ending in a break',
+      (size: number) => contentTooLongBody(size, '§1 x', '[1]', '\ny'),
+    ],
+    ['line breaks throughout', (size: number) => contentTooLongBody(size, '  \r\n', '[1]')],
+  ])(
+    'classifies in linear time on %s',
+    (_name, make) => {
+      expectLinearScaling(make, pageTooLarge);
+    },
+    0,
+  );
 });
 
 describe('upstream error contract', () => {

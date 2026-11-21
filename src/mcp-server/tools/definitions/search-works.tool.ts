@@ -68,6 +68,7 @@ import {
 import {
   INVALID_CURSOR,
   INVALID_PARAMETER,
+  PAGE_TOO_LARGE,
   SORT_CURSOR_CONFLICT,
   UNKNOWN_FILTER,
   UPSTREAM_ERROR_CONTRACT,
@@ -468,6 +469,7 @@ export const searchWorksTool = tool('crossref_search_works', {
     SORT_CURSOR_CONFLICT,
     INVALID_CURSOR,
     INVALID_PARAMETER,
+    PAGE_TOO_LARGE,
     {
       reason: 'cursor_offset_conflict',
       code: JsonRpcErrorCode.ValidationError,

@@ -43,6 +43,7 @@ import {
   INVALID_CURSOR,
   INVALID_PARAMETER,
   MALFORMED_RESPONSE,
+  PAGE_TOO_LARGE,
   REQUEST_TIMEOUT,
   rateLimitHint,
   SORT_CURSOR_CONFLICT,
@@ -347,6 +348,12 @@ export class CrossrefService {
   private readonly requestDeadlineMs: number;
   private readonly userAgent: string;
   /**
+   * Whether Crossref requests carry the operator's `mailto`. A 429's hint advises setting
+   * `CROSSREF_MAILTO` only when they do not (`rateLimitHint`); the address itself never
+   * reaches a hint.
+   */
+  private readonly sendsMailto: boolean;
+  /**
    * What the DOI registry is told. The `mailto` is the operator's contact, given for Crossref's
    * polite pool; doi.org is a second party with no pool to admit anyone to, so it hears the
    * server and version and nothing else.
@@ -358,7 +365,8 @@ export class CrossrefService {
     this.baseUrl = cfg.baseUrl;
     this.timeoutMs = cfg.timeoutMs;
     this.requestDeadlineMs = Math.max(REQUEST_DEADLINE_MS, cfg.timeoutMs);
-    this.userAgent = cfg.mailto
+    this.sendsMailto = Boolean(cfg.mailto);
+    this.userAgent = this.sendsMailto
       ? `${this.registryUserAgent} (mailto:${cfg.mailto})`
       : this.registryUserAgent;
   }
@@ -600,6 +608,12 @@ export class CrossrefService {
    * rather than a missing record — a `cursor-invalid` body. Any other 404 passes through as
    * `httpErrorFromResponse` classified it, for the tool handlers to turn into their own typed
    * not-found reasons; the upstream statuses are re-classified onto the upstream contract.
+   *
+   * One 5xx is classified by its body: a 500 naming `ContentTooLongException` is Crossref
+   * refusing a page too large to assemble (`pageTooLarge`), which no retry can change. The body
+   * is read only to classify it, best effort, under `SERVER_ERROR_BODY_LIMIT_BYTES` and
+   * `SERVER_ERROR_BODY_LIMIT_MS`; a body that does not arrive whole within them, or names anything
+   * else, leaves the 500 as `upstream_unavailable`, retried like any 500.
    */
   private async responseError(response: Response): Promise<McpError> {
     if (response.status === 400) return crossrefRejection(await readRejected(response));
@@ -609,6 +623,15 @@ export class CrossrefService {
         return crossrefRejection(rejected);
       }
     }
+    if (response.status === 500) {
+      const body = await readBoundedText(
+        response,
+        SERVER_ERROR_BODY_LIMIT_BYTES,
+        SERVER_ERROR_BODY_LIMIT_MS,
+      );
+      const tooLarge = body === undefined ? undefined : pageTooLarge(body);
+      if (tooLarge) return tooLarge;
+    }
 
     const retryAfter = response.headers.get('retry-after');
     /**
@@ -616,8 +639,9 @@ export class CrossrefService {
      * `includeUrl` is left at its default: the framework stopped putting `response.url` there
      * in 0.13.4, and this server's base URL is operator-set. `captureBody` is turned off: a
      * Crossref 5xx body is a Java exception with a stack excerpt, which tells the caller
-     * nothing to do, and the status and message already say what failed. `request()` logs the
-     * URL on the sink an operator reads.
+     * nothing to do, and the status and message already say what failed. A 500's body may
+     * already have been read above; with `captureBody` off the status, status text, and
+     * `Retry-After` are all this reads. `request()` logs the URL on the sink an operator reads.
      */
     const error = await httpErrorFromResponse(response, {
       service: 'Crossref',
@@ -628,11 +652,14 @@ export class CrossrefService {
 
     return upstreamError(entry, error.message, {
       data: error.data,
-      // The concrete wait is only reachable from content[] through the hint —
-      // error.data.retryAfter never reaches a content-only client.
+      /**
+       * The one 429 throw site: the deadline's report of a 429 and the published-version lookup
+       * rethrow this error, hint included. The concrete wait is only reachable from content[]
+       * through the hint — error.data.retryAfter never reaches a content-only client.
+       */
       hint:
-        entry.code === JsonRpcErrorCode.RateLimited && retryAfter
-          ? rateLimitHint(retryAfter)
+        entry.code === JsonRpcErrorCode.RateLimited
+          ? rateLimitHint(retryAfter, this.sendsMailto)
           : undefined,
     });
   }
@@ -1048,6 +1075,94 @@ async function readRejected(response: Response): Promise<RejectedInput[] | undef
     value: entry?.value == null ? '' : String(entry.value),
     message: typeof entry?.message === 'string' ? entry.message : '',
   }));
+}
+
+/**
+ * The most of a 500's body read to classify it. Crossref's `ContentTooLongException` body is about
+ * 2 KB; a body past this is cancelled and the 500 keeps its upstream classification.
+ */
+const SERVER_ERROR_BODY_LIMIT_BYTES = 65_536;
+
+/**
+ * The longest a 500's body is read, from the start of the read. Crossref's `ContentTooLongException`
+ * body arrives with its headers; a body not whole by then is cancelled and the 500 keeps its
+ * upstream classification, so a body that never arrives costs a send this long at most, not the
+ * attempt's `CROSSREF_TIMEOUT_MS` window, before the 500 is retried.
+ */
+const SERVER_ERROR_BODY_LIMIT_MS = 2_000;
+
+/**
+ * A response body as text when it arrives whole within `maxBytes` and within `maxMs` of the start of
+ * the read, else `undefined`: no body, one past either bound (the stream is cancelled when the bound
+ * passes, releasing the connection), or a stream that fails mid-read — the attempt's window closing
+ * or the caller cancelling among them; `request()` turns the caller's cancellation into
+ * `RequestCancelled` on its own. What arrived of a body that did not finish is never returned.
+ * Consumes the body.
+ */
+async function readBoundedText(
+  response: Response,
+  maxBytes: number,
+  maxMs: number,
+): Promise<string | undefined> {
+  if (!response.body) return;
+  const decoder = new TextDecoder();
+  let text = '';
+  let read = 0;
+  const bound = new AbortController();
+  const timer = setTimeout(() => bound.abort(), maxMs);
+  try {
+    // The pipe cancels the body, and waits for the cancel, when the time bound aborts it or the
+    // byte bound refuses a chunk.
+    await response.body.pipeTo(
+      new WritableStream<Uint8Array>({
+        write(chunk) {
+          read += chunk.byteLength;
+          if (read > maxBytes) throw new RangeError(`Body passed ${maxBytes} bytes.`);
+          text += decoder.decode(chunk, { stream: true });
+        },
+      }),
+      { signal: bound.signal },
+    );
+  } catch {
+    return;
+  } finally {
+    clearTimeout(timer);
+  }
+  return text + decoder.decode();
+}
+
+/**
+ * The two sizes a `ContentTooLongException` message names: `entity content is too long [N] for the
+ * configured buffer limit [M]`. Up to 15 digits each — any page size fits — so nothing longer
+ * from the body reaches the message.
+ */
+const CONTENT_TOO_LONG_SIZES = /\[(\d{1,15})\][^[\]]*\[(\d{1,15})\]/;
+
+/**
+ * Crossref's refusal of a page too large to assemble, read from a 500's body, or `undefined` for
+ * any other body. Crossref names the failure in `message.name`; the error's message carries the
+ * two integers its `message.message` gives, the page's size and the limit, and nothing else of
+ * the body, so neither its stack nor its exception text reaches the caller or the log.
+ */
+export function pageTooLarge(body: string): McpError | undefined {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return;
+  }
+  const message = (parsed as { message?: { name?: unknown; message?: unknown } } | null)?.message;
+  if (typeof message?.name !== 'string' || !message.name.includes('ContentTooLongException')) {
+    return;
+  }
+  const sizes =
+    typeof message.message === 'string' ? CONTENT_TOO_LONG_SIZES.exec(message.message) : null;
+  return upstreamError(
+    PAGE_TOO_LARGE,
+    sizes
+      ? `Crossref could not serve this page (HTTP 500): it reported the page's content at ${sizes[1]} bytes, over its ${sizes[2]}-byte buffer limit.`
+      : "Crossref could not serve this page (HTTP 500): it reported the page's content as over its buffer limit.",
+  );
 }
 
 /** The reason each Crossref rejection `type` is declared under; anything else is `invalid_parameter`. */

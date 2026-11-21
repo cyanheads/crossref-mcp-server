@@ -1,9 +1,10 @@
 /**
- * @fileoverview Error contract for Crossref transport and upstream failures and for Crossref's
- * rejections of caller input, plus the factory that throws against it. `CrossrefService` is
- * shared by every tool, so the reasons it can raise are declared once here, spread into each
- * tool's `errors[]`, and used as the wire recovery hint at the throw site — one table, so a
- * tool's declared contract and the hint its caller receives cannot drift apart.
+ * @fileoverview Error contract for Crossref transport and upstream failures, for Crossref's
+ * rejections of caller input, and for a works page too large for Crossref to assemble, plus the
+ * factory that throws against it. `CrossrefService` is shared by every tool, so the reasons it
+ * can raise are declared once here, spread into each tool's `errors[]`, and used as the wire
+ * recovery hint at the throw site — one table, so a tool's declared contract and the hint its
+ * caller receives cannot drift apart.
  * @module services/crossref/upstream-errors
  */
 
@@ -15,9 +16,11 @@ import { JsonRpcErrorCode, McpError } from '@cyanheads/mcp-ts-core/errors';
  * for a wait longer than the budget, or than what was left of the request deadline, and
  * `withRetry` failed fast; or the deadline ran out on the attempt after it.
  *
- * This `recovery` reaches the wire only when the 429 carried no `Retry-After` header:
- * when one is present, {@link rateLimitHint} overrides it with the concrete value. So
- * the text names no interval and no `retryAfter` field — neither exists in this case.
+ * Every 429 carries the hint {@link rateLimitHint} builds at the throw site. This `recovery` is
+ * its text when the 429 carried no `Retry-After` header, so it names no interval and no
+ * `retryAfter` field — neither exists in this case. It stays a literal independent of
+ * configuration: the polite-pool sentence the hint adds when the server sends no `mailto` is
+ * the throw site's to add, since the entry is evaluated at import, before the config is read.
  */
 export const RATE_LIMITED = {
   reason: 'rate_limited',
@@ -25,13 +28,14 @@ export const RATE_LIMITED = {
   thrownBy: 'service',
   when: 'Crossref answered HTTP 429 and the limit did not clear inside the retry budget, or answered it to the single-attempt published-version lookup on a preprint.',
   recovery:
-    'Crossref named no wait interval, so back off at least a minute before reissuing the same call, and lower the request rate. Setting CROSSREF_MAILTO on the server moves requests into the polite pool, which has higher limits.',
+    'Crossref named no wait interval, so back off at least a minute before reissuing the same call, and lower the request rate.',
 } as const satisfies ErrorContract;
 
 /**
- * Crossref unreachable or failing: a network-level error, a 5xx, or an HTML error page
- * served in place of JSON. One reason rather than three, because the caller's move is
- * the same for all of them — the request was fine, the upstream was not.
+ * Crossref unreachable or failing: a network-level error, a 5xx other than the 500 that is
+ * `page_too_large`, or an HTML error page served in place of JSON. One reason rather than
+ * three, because the caller's move is the same for all of them — the request was fine, the
+ * upstream was not.
  */
 export const UPSTREAM_UNAVAILABLE = {
   reason: 'upstream_unavailable',
@@ -158,6 +162,34 @@ export const INVALID_PARAMETER = {
 } as const satisfies ErrorContract;
 
 /**
+ * Crossref could not assemble a works page: it answers HTTP 500 with a body naming
+ * `ContentTooLongException` when the page's content passes its buffer limit. Classified on that
+ * body in `CrossrefService.responseError`, which puts the two sizes Crossref's message gives in
+ * the error's message; every other 500 stays `upstream_unavailable`.
+ *
+ * A `ValidationError` with `retryable: false` rather than an upstream reason, because the refusal
+ * is deterministic — the same request is refused on every send — so the narrowing is
+ * the caller's next move, not a retry. The recovery names a ratio rather than a row count: the
+ * sizes Crossref reports are not proportional to `rows` (on one filter their ratio said 194 of 200
+ * rows fit, and 190 was refused three times while 180 was served), so neither they nor the
+ * request predict the row count that fits. Half the rows was served on every page measured, but
+ * a filter matching fewer works than `rows` can leave a halved page almost unchanged, hence the
+ * second halving; leaving out `author` served every page measured at the cap. It is declared on
+ * `crossref_search_works` alone, since the journal and funder works lists select no author lists,
+ * and outside `UPSTREAM_ERROR_CONTRACT`, since lowering `rows` means nothing on the single-record
+ * tools.
+ */
+export const PAGE_TOO_LARGE = {
+  reason: 'page_too_large',
+  code: JsonRpcErrorCode.ValidationError,
+  thrownBy: 'service',
+  retryable: false,
+  when: 'Crossref answered HTTP 500 naming ContentTooLongException: the page was too large for it to assemble, which a page under either rows cap can be when its works carry long author lists.',
+  recovery:
+    'Halve rows, and halve again if that page is refused too, or pass fields without author — an omitted fields selects author, and author lists are what fill a page this large. Trimming rows by a few can be refused again, and reissuing the same call always is.',
+} as const satisfies ErrorContract;
+
+/**
  * Values an entry's `recovery` quotes for the caller to send back as written. Whenever
  * `upstreamError` puts that recovery on the wire, it declares them as the error's `literals`,
  * so `content[]` renders each as a code span — escaped, the `*` that restarts a cursor walk
@@ -235,10 +267,19 @@ export function upstreamEntryForStatus(status: number): ErrorContract | undefine
 }
 
 /**
- * Recovery text carrying the upstream's own `Retry-After`. The header value is quoted
- * rather than described in seconds because RFC 9110 allows both delta-seconds and an
- * HTTP-date, and only the raw value is correct for both.
+ * The recovery a 429 carries: the upstream's own `Retry-After` when it sent one, else
+ * `RATE_LIMITED.recovery`, then the polite-pool sentence only when `sendsMailto` is false. The
+ * header value is quoted rather than described in seconds because RFC 9110 allows both
+ * delta-seconds and an HTTP-date, and only the raw value is correct for both. The polite-pool
+ * sentence is conditional because it is true only of a server sending no `mailto` — with one
+ * set, the 429 came from the polite pool already, and advice to set it would read as a fault
+ * in the server's configuration.
  */
-export function rateLimitHint(retryAfter: string): string {
-  return `Crossref returned Retry-After: ${retryAfter} — wait that long before reissuing the same call. Setting CROSSREF_MAILTO on the server moves requests into the polite pool, which has higher limits.`;
+export function rateLimitHint(retryAfter: string | null, sendsMailto: boolean): string {
+  const wait = retryAfter
+    ? `Crossref returned Retry-After: ${retryAfter} — wait that long before reissuing the same call.`
+    : RATE_LIMITED.recovery;
+  return sendsMailto
+    ? wait
+    : `${wait} Setting CROSSREF_MAILTO on the server moves requests into the polite pool, which has higher limits.`;
 }
