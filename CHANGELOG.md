@@ -4,7 +4,7 @@ All notable changes to this project. Each entry links to its full per-version fi
 
 ## [0.5.5](changelog/0.5.x/0.5.5.md) — 2026-11-21
 
-Text a deposit escaped twice now reads as plain text; a works page too large for Crossref fails once as page_too_large, with a recovery naming how to narrow it; rate_limited hints and the server instructions no longer tell callers to set CROSSREF_MAILTO; a superscript before a digit keeps its braces.
+Text a deposit escaped twice now reads as plain text; a works page too large for Crossref fails once as page_too_large, with a recovery naming how to narrow it; rate_limited hints advise setting CROSSREF_MAILTO only when the server sends none, and the server instructions no longer do; a superscript before a digit keeps its braces.
 
 ## [0.5.4](changelog/0.5.x/0.5.4.md) — 2026-11-17
 
