@@ -70,10 +70,10 @@ describe('mdText', () => {
   });
 
   /**
-   * The escape mirrors the decode. The one string that reaches this point still spelled as a
-   * character reference is the one a publisher escaped twice, and it has to stay text on both
-   * surfaces; a bare ampersand somebody typed is left bare, which is the common case by two
-   * orders of magnitude.
+   * The escape mirrors the decode. A value still spelled with a character reference carries one
+   * the decode leaves as deposited — a name the table lacks, a numeric reference naming no
+   * scalar — or was relayed as deposited, and it has to stay text on both surfaces; a bare
+   * ampersand somebody typed is left bare, which is the common case by two orders of magnitude.
    */
   it('escapes an ampersand only where it heads a character reference', () => {
     expect(mdText('Double-escaped &lt;i&gt; stays escaped')).toBe(

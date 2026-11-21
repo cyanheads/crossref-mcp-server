@@ -27,22 +27,22 @@ import { getCrossrefService } from '@/services/crossref/crossref-service.js';
 
 /**
  * One probe, deposited the way a publisher deposits each of its parts, chosen so that both
- * normalization passes hand back the identical string: a lone escaped opener survives as literal text on both,
- * a doubly-escaped reference survives spelled as a reference, and an asterisk is prose. It leads
- * with an ordered-list marker, which is inert everywhere but column zero — the one placement
- * where a renderer consumes it rather than showing it.
+ * normalization passes hand back the identical string: a lone escaped opener survives as literal
+ * text on both, a doubly-escaped name the entity table lacks survives spelled as a reference, and
+ * an asterisk is prose. It leads with an ordered-list marker, which is inert everywhere but
+ * column zero — the one placement where a renderer consumes it rather than showing it.
  */
-const DEPOSITED = '19. Wafers &lt;p&gt; at &amp;lt; *starred*';
+const DEPOSITED = '19. Wafers &lt;p&gt; at &amp;Eng; *starred*';
 /** What both surfaces are about: the value normalization produced. */
-const NORMALIZED = '19. Wafers <p> at &lt; *starred*';
+const NORMALIZED = '19. Wafers <p> at &Eng; *starred*';
 /** The same value, with every character a renderer would take for markup made inert. */
-const ESCAPED = '19. Wafers \\<p> at \\&lt; \\*starred\\*';
+const ESCAPED = '19. Wafers \\<p> at \\&Eng; \\*starred\\*';
 /**
  * The same again for a value that begins its line. A tool that renders one at column zero
  * through the inline escape alone emits a line starting with `ESCAPED` instead — which is what
  * the guard below fails on, whichever tool grows that line.
  */
-const ESCAPED_AT_LINE_START = '19\\. Wafers \\<p> at \\&lt; \\*starred\\*';
+const ESCAPED_AT_LINE_START = '19\\. Wafers \\<p> at \\&Eng; \\*starred\\*';
 
 const service = {
   getWork: vi.fn(),

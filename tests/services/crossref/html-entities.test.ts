@@ -4,8 +4,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { decodeHtmlEntities } from '@/services/crossref/html-entities.js';
-import { expectLinearScaling, repeatWhole } from '../../helpers/scaling.js';
+import { decodeHtmlEntities, lowerEscapedReferences } from '@/services/crossref/html-entities.js';
+import { expectLinearScaling, repeatTo, repeatWhole } from '../../helpers/scaling.js';
 
 describe('decodeHtmlEntities', () => {
   it('decodes &amp;, &lt;, &gt;, &quot;, &apos;', () => {
@@ -64,15 +64,90 @@ describe('decodeHtmlEntities', () => {
   });
 
   /**
-   * One pass, so a reference is resolved exactly once. `&amp;lt;` is the escaped text
-   * `&lt;` and must stay that — a chained per-name replace resolves it twice and
-   * manufactures a tag out of text a publisher escaped so it would not be one.
+   * A deposit escaped one level too deep writes a run of `&amp;` in front of a reference, and no
+   * sampled deposit means the doubled reference literally: `false discovery rate &amp;lt; 10%`
+   * is an inequality. The reference behind the run decodes as that reference at any depth.
    */
-  it('decodes each reference once, never the result of a previous decode', () => {
-    expect(decodeHtmlEntities('&amp;lt;')).toBe('&lt;');
-    expect(decodeHtmlEntities('&amp;amp;')).toBe('&amp;');
-    expect(decodeHtmlEntities('&amp;#65;')).toBe('&#65;');
-    expect(decodeHtmlEntities('&amp;beta;')).toBe('&beta;');
+  it('decodes a reference behind any run of &amp; as that reference', () => {
+    expect(decodeHtmlEntities('&amp;lt;')).toBe('<');
+    expect(decodeHtmlEntities('&amp;amp;')).toBe('&');
+    expect(decodeHtmlEntities('&amp;#65;')).toBe('A');
+    expect(decodeHtmlEntities('&amp;#x41;')).toBe('A');
+    expect(decodeHtmlEntities('&amp;beta;')).toBe('β');
+    expect(decodeHtmlEntities('CEC&amp;amp;rsquo;17')).toBe('CEC’17');
+    expect(decodeHtmlEntities('&amp;amp;amp;')).toBe('&');
+    expect(decodeHtmlEntities('false discovery rate &amp;lt; 10%')).toBe(
+      'false discovery rate < 10%',
+    );
+  });
+
+  /**
+   * Behind a name the table lacks, or a numeric reference that names no scalar, exactly one level
+   * comes off, the one an ordinary decode takes, and the rest stays as deposited.
+   */
+  it('takes one level off a run whose reference does not resolve', () => {
+    expect(decodeHtmlEntities('&amp;Eng;')).toBe('&Eng;');
+    expect(decodeHtmlEntities('&amp;amp;Eng;')).toBe('&amp;Eng;');
+    expect(decodeHtmlEntities('a&amp;#0;b')).toBe('a&#0;b');
+    expect(decodeHtmlEntities('R&amp;amp;D, AT&amp;T, &amp;amp')).toBe('R&D, AT&T, &amp');
+  });
+
+  /**
+   * One pass that never reads its own output: a chained per-name replace resolves `&amp;` into
+   * an `&` the next name then reads. Each run is decoded where it was deposited, so an `&` the
+   * decode writes never heads a reference after it.
+   */
+  it('never reads a reference out of its own output', () => {
+    expect(decodeHtmlEntities('&#38;lt;')).toBe('&lt;');
+    expect(decodeHtmlEntities('&amp;#38;lt;')).toBe('&lt;');
+    expect(decodeHtmlEntities('&amp;&#108;t;')).toBe('&lt;');
+    expect(decodeHtmlEntities('&amp;amp;Eng;')).toBe('&amp;Eng;');
+  });
+
+  /** The lowering the markup pass reads a field through: one `&amp;` off each one heading a reference. */
+  describe('lowerEscapedReferences', () => {
+    it('writes each &amp; that heads a reference as &', () => {
+      expect(lowerEscapedReferences('&amp;lt;p&amp;gt;x&amp;lt;/p&amp;gt;')).toBe(
+        '&lt;p&gt;x&lt;/p&gt;',
+      );
+      expect(lowerEscapedReferences('p style=&amp;quot;a b&amp;quot;')).toBe(
+        'p style=&quot;a b&quot;',
+      );
+      expect(lowerEscapedReferences('&amp;amp;rsquo; &amp;amp;lt; &amp;#160; &amp;Eng;')).toBe(
+        '&amp;rsquo; &amp;lt; &#160; &Eng;',
+      );
+      expect(lowerEscapedReferences('&amp;amp;x')).toBe('&amp;x');
+    });
+
+    it('leaves every other ampersand as deposited', () => {
+      for (const raw of [
+        '&lt;p&gt;',
+        'R&amp;D',
+        'AT&T',
+        '&amp',
+        '&amp;#;',
+        '&amp;&amp;',
+        'plain',
+      ]) {
+        expect(lowerEscapedReferences(raw)).toBe(raw);
+      }
+    });
+
+    /**
+     * The decode reads a string and the string lowered alike wherever the reference resolves, and
+     * wherever a reference it does not resolve is escaped once. Escaped twice, such a reference
+     * reads one level apart, since the decode takes exactly one level off it either way.
+     */
+    it('reads the same through the decode, lowered or not, but for an unresolved name escaped twice', () => {
+      for (const raw of [
+        '&amp;lt;i&amp;gt; &amp;amp;rsquo; &amp;#65; &amp;#x41; &amp;nbsp; &amp;amp;amp;',
+        'R&amp;amp;D, AT&amp;T, &amp;Eng;, a&amp;#0;b',
+      ]) {
+        expect(decodeHtmlEntities(lowerEscapedReferences(raw))).toBe(decodeHtmlEntities(raw));
+      }
+      expect(decodeHtmlEntities('&amp;amp;Eng;')).toBe('&amp;Eng;');
+      expect(decodeHtmlEntities(lowerEscapedReferences('&amp;amp;Eng;'))).toBe('&Eng;');
+    });
   });
 
   /**
@@ -139,6 +214,33 @@ describe('decodeHtmlEntities', () => {
     it.each([
       ['an entity-dense run', dense],
       ['an unterminated reference run', unterminated],
+      /**
+       * Each run is held to 80,000 characters, past which the input grows by more runs: a single
+       * run past about 60,000 repetitions of its `amp;` group sends JavaScriptCore's regex engine
+       * to a slower mode. The work stays linear on both sides of the switch, but measured across
+       * it the step reads as growth.
+       */
+      [
+        'a run of &amp; heading no reference',
+        (size: number) => repeatWhole(`&${'amp;'.repeat(Math.min(size, 80_000) / 4 - 1)}x`, size),
+      ],
+      [
+        '&amp; before a long letter run with no semicolon',
+        (size: number) => `&amp;${'x'.repeat(size - 5)}`,
+      ],
+      [
+        '&amp; before a long digit run with no semicolon',
+        (size: number) => `&amp;#${'1'.repeat(size - 6)}`,
+      ],
+      [
+        'runs of &amp; each before a letter run with no semicolon',
+        (size: number) => repeatWhole(`&amp;amp;${'x'.repeat(91)}`, size),
+      ],
+      [
+        'one long line ending in a break',
+        (size: number) => `&amp;lt;${repeatTo('§1 x', size - 10)}\ny`,
+      ],
+      ['breaks throughout', (size: number) => `&amp;lt;${repeatTo('  \r\n', size - 8)}`],
     ])(
       'stays linear on %s',
       (_name, make) => {

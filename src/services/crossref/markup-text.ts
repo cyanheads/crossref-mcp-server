@@ -15,7 +15,8 @@
  * formula leaves, whichever encoding it kept; a MathML formula is the one region that is read
  * rather than emptied — see `mathml` — so the operators its tree encodes as structure survive
  * the loss of its tags. Every region is found by a scan linear in the field, however many of
- * its openers the deposit leaves unclosed, and every escaped tag is decided in one linear scan.
+ * its openers the deposit leaves unclosed, and every escaped tag is decided in at most two linear
+ * scans.
  * All three passes end in the same baseline: character references decoded against the HTML5
  * named set in `html-entities`, then whitespace collapsed — in a JATS field holding escaped
  * markup, after every reference escaped with it is lowered one level.
@@ -26,7 +27,7 @@
  * @module services/crossref/markup-text
  */
 
-import { decodeHtmlEntities } from './html-entities.js';
+import { decodeHtmlEntities, lowerEscapedReferences } from './html-entities.js';
 import { type LinkText, linkTextReader } from './link-text.js';
 import { mathmlText } from './mathml.js';
 
@@ -83,8 +84,7 @@ export function normalizeNonEmptyTexts(raw: readonly string[] | undefined): stri
  *
  * The bare-value form excludes quotes so that each value has exactly one parse. Letting it also
  * match `"y"` gives every attribute two readings and the whole tail 2^n of them, which a tag
- * left unterminated by its deposit backtracks through: `<p class="a" x = "y" x = "y" …` costs
- * seconds at fifty pairs and does not improve with fewer. A bare value containing a quote is not
+ * left unterminated by its deposit backtracks through. A bare value containing a quote is not
  * well formed in any case. It excludes `<` for the same kind of reason: a tag cannot hold one
  * unquoted, and admitting it lets the value of a tag the deposit never terminated run on through
  * every tag after it — `<i x=1<i x=1…` — so each one is rescanned to the end of the field.
@@ -102,16 +102,22 @@ const TAG_SOURCE = String.raw`<(\/?)(?:[A-Za-z][\w.-]*:)?([A-Za-z][\w.-]*)${TAG_
 const TAG = new RegExp(TAG_SOURCE, 'g');
 
 /**
- * `TAG_ATTRIBUTES` as it reads with its brackets escaped. A quoted value holds no `<`, so an
- * escaped tag never reaches across a deposited one, and a bare value ends at the `&lt;` or
- * `&gt;` that would open or close another tag, for the reason the deposited tail excludes `<`.
+ * `TAG_ATTRIBUTES` as it reads with its brackets escaped, plus a value quoted `&quot;…&quot;`. A
+ * quoted value holds no `<`, so an escaped tag never reaches across a deposited one, and a bare
+ * value ends at the `&lt;` or `&gt;` that would open or close another tag, for the reason the
+ * deposited tail excludes `<`.
+ *
+ * The bare form refuses `&quot;` for the reason it refuses `"`: admitting it gives every
+ * `&quot;`-quoted value a second parse, and an unterminated tag 2^n of them. The `&quot;` form's
+ * text is read as runs between ampersands, so it is a character-class loop rather than a group
+ * repeated per character, and ends at the first `&quot;`.
  */
-const ESCAPED_TAG_ATTRIBUTES = String.raw`(?:\s+[A-Za-z_:][\w.:-]*\s*=\s*(?:"[^"<]*"|'[^'<]*'|(?:[^\s<>"'&]|&(?!lt;|gt;))+))*\s*`;
+const ESCAPED_TAG_ATTRIBUTES = String.raw`(?:\s+[A-Za-z_:][\w.:-]*\s*=\s*(?:"[^"<]*"|'[^'<]*'|&quot;[^<&]*(?:&(?!quot;)[^<&]*)*&quot;|(?:[^\s<>"'&]|&(?!lt;|gt;|quot;))+))*\s*`;
 
 /**
  * A tag a deposit escaped into its text — `&lt;p class="x"&gt;` — in the shape of `TAG` with its
  * brackets written as references, and the same three captures. Deposits that escape HTML into
- * JATS write the brackets `&lt;` and `&gt;` and leave the quotes bare.
+ * JATS write the brackets `&lt;` and `&gt;`, and the quotes either bare or `&quot;`.
  */
 const ESCAPED_TAG_SOURCE = String.raw`&lt;(\/?)(?:[A-Za-z][\w.-]*:)?([A-Za-z][\w.-]*)${ESCAPED_TAG_ATTRIBUTES}(\/?)&gt;`;
 
@@ -122,7 +128,12 @@ const ESCAPED_TAG_SOURCE = String.raw`&lt;(\/?)(?:[A-Za-z][\w.-]*:)?([A-Za-z][\w
  */
 const ANY_TAG = new RegExp(`${TAG_SOURCE}|${ESCAPED_TAG_SOURCE}`, 'g');
 
-/** `ANY_TAG`, or the `&amp;` of a reference escaped one level past the text around it. */
+/**
+ * `ANY_TAG`, or an `&amp;` — in a field holding escaped markup, the level the HTML escaped its own
+ * references with. The decode reads a reference it resolves through any run of `&amp;`; this
+ * takes the HTML's level off one it does not, so the HTML's `&amp;Eng;`, escaped into the field
+ * as `&amp;amp;Eng;`, reads `&Eng;` as that HTML does.
+ */
 const ANY_TAG_OR_AMPERSAND = new RegExp(`${TAG_SOURCE}|${ESCAPED_TAG_SOURCE}|&amp;`, 'g');
 
 /** One tag as the classifier reads it, however the deposit wrote it. */
@@ -518,21 +529,34 @@ function readMathml(inner: string): string {
   return ` ${mathmlText(inner)} `;
 }
 
+/** A character that would read as more of a bare one-character script written before it. */
+const DIGIT = /[0-9]/;
+
 /**
  * Read closed numeric superscripts before stripping tags. A single token scan counts text
  * incompatible with a numeric script; nested scripts invalidate their parent, so accepted
  * spans never overlap and no nested body is rescanned or recursively rendered. With `escaped`,
  * an escaped script is read the same way, and closes only an escaped opener: the `&` that keys
  * its stack is in no element name, so the two kinds never share one.
+ *
+ * A script of one character is written bare (`x^2`) and a longer one braced (`10^{16}`). The bare
+ * form ends at its one character only while no digit follows it, so a one-character script a
+ * digit runs into is braced too: `10<sup>2</sup>5` is `10^{2}5`, never `10^25`. The digit can
+ * sit behind tags that join tight — `χ<sup>2</sup><sub>7</sub>` is `χ^{2}7` — or be written as a
+ * reference (`&#53;`), and is not one when it is the next script's own
+ * (`x<sup>1</sup><sup>2</sup>` stays `x^1^2`).
  */
 function readNumericSuperscripts(text: string, escaped: boolean): string {
   if (!text.includes('<') && !(escaped && text.includes('&lt;'))) return text;
+  type Script = { start: number; end: number; from: number; to: number; digitAt?: number };
   const openers = new Map<string, Array<{ start: number; content: number; invalid: number }>>();
-  const edits: Array<{ start: number; end: number; from: number; to: number }> = [];
+  const edits: Script[] = [];
   const parts: string[] = [];
   let length = 0;
   let invalid = 0;
   let previous = 0;
+  /** The script whose next character is still unread: only tags that join tight follow it so far. */
+  let unread: Script | undefined;
   for (const match of text.matchAll(escaped ? ANY_TAG : TAG)) {
     const [tag] = match;
     const { close, escaped: isEscaped, name, selfClose } = tagOf(match.slice(1)) as Tag;
@@ -541,6 +565,11 @@ function readNumericSuperscripts(text: string, escaped: boolean): string {
     parts.push(plain);
     length += plain.length;
     if (/[^0-9+.−-]/.test(plain)) invalid++;
+    if (unread && plain) {
+      if (DIGIT.test(plain.charAt(0))) unread.digitAt = previous;
+      unread = undefined;
+    }
+    if (!TIGHT_ELEMENTS.includes(name)) unread = undefined;
     if (name === 'sup' || name === 'superscript') {
       const key = isEscaped ? `&${name}` : name;
       const stack = openers.get(key) ?? [];
@@ -549,7 +578,8 @@ function readNumericSuperscripts(text: string, escaped: boolean): string {
         if (opener && opener.invalid === invalid && length > opener.content) {
           let start = opener.start;
           while (start > 0 && /\s/.test(text.charAt(start - 1))) start--;
-          edits.push({ start, end: offset + tag.length, from: opener.content, to: length });
+          unread = { start, end: offset + tag.length, from: opener.content, to: length };
+          edits.push(unread);
         }
       } else if (!selfClose) {
         stack.push({ start: offset, content: length, invalid: invalid + 1 });
@@ -562,12 +592,20 @@ function readNumericSuperscripts(text: string, escaped: boolean): string {
     previous = offset + tag.length;
   }
   if (!edits.length) return text;
+  if (unread && DIGIT.test(decodeHtmlEntities(text.slice(previous)).charAt(0))) {
+    unread.digitAt = previous;
+  }
   const content = parts.join('');
   const output: string[] = [];
   previous = 0;
-  for (const edit of edits) {
+  for (const [index, edit] of edits.entries()) {
     const value = content.slice(edit.from, edit.to);
-    output.push(text.slice(previous, edit.start), value.length === 1 ? `^${value}` : `^{${value}}`);
+    const next = edits[index + 1];
+    const digitFollows = edit.digitAt !== undefined && !(next && next.start <= edit.digitAt);
+    output.push(
+      text.slice(previous, edit.start),
+      value.length === 1 && !digitFollows ? `^${value}` : `^{${value}}`,
+    );
     previous = edit.end;
   }
   output.push(text.slice(previous));
@@ -649,6 +687,19 @@ function settleEscapedTags(text: string): string | undefined {
   return parts.join('');
 }
 
+/**
+ * `settleEscapedTags` one level down, for a field none of whose escaped tags as deposited is
+ * markup: the field read with each `&amp;` that heads a reference written `&`, and settled as if
+ * deposited that way. Some deposits escape HTML into their JATS twice (`&amp;lt;p&amp;gt;`), and
+ * so read exactly as the same HTML escaped once. Undefined when that reading finds no markup
+ * either, and the field then continues as deposited. A field holding escaped markup as deposited
+ * never comes here, so a tag escaped twice beside it stays the HTML's own text.
+ */
+function settleEscapedTwice(text: string): string | undefined {
+  const lowered = lowerEscapedReferences(text);
+  return lowered === text ? undefined : settleEscapedTags(lowered);
+}
+
 /** The separator removing an element of a class leaves — see `stripMarkup`. */
 function separatorFor(
   verdict: Exclude<Verdict, 'keep'>,
@@ -691,10 +742,14 @@ function separatorFor(
  * only with escaped tags: the deposited bookkeeping — which openers came out, which links have no
  * closer, the outline — never sees one, so neither kind of tag can close the other. Each `&amp;`
  * in the text becomes `&`: the HTML the deposit escaped wrote `&nbsp;`, and the decode that
- * follows the strip resolves it.
+ * follows the strip resolves it. A field holding none as deposited is settled once more one
+ * level down (`settleEscapedTwice`), and where that finds markup the lowered field is what
+ * continues, read by the same rule.
  */
 function stripTags(text: string, surface: Surface, outline?: OutlineMark[]): string {
-  const settled = surface.escapedMarkup ? settleEscapedTags(text) : undefined;
+  const settled = surface.escapedMarkup
+    ? (settleEscapedTags(text) ?? settleEscapedTwice(text))
+    : undefined;
   const escaped = settled !== undefined;
   text = readNumericSuperscripts(settled ?? text, escaped);
   const removed: string[] = [];
@@ -731,7 +786,8 @@ function stripTags(text: string, surface: Surface, outline?: OutlineMark[]): str
           escapedUnclosed.add(name);
           return tag;
         }
-        const kept = !linkAddressSurvives(`<${tag.slice(4, -4)}>`, inner);
+        const deposited = `<${tag.slice('&lt;'.length, -'&gt;'.length).replaceAll('&quot;', '"')}>`;
+        const kept = !linkAddressSurvives(deposited, inner);
         open.push(kept);
         if (kept) return tag;
       }

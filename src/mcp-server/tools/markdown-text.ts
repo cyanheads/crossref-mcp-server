@@ -9,8 +9,8 @@
  * them would cost the reader an address, a Miller index, a DOI fragment, or a phrase somebody
  * typed. Interpolated raw into a Markdown line, several of those are read a second time — this
  * time by the client's renderer, which consumes an unknown element as its children alone and
- * resolves a character reference the single-pass decode deliberately left as text. What the
- * strip protected, the render then deletes.
+ * resolves a character reference the decode left spelled. What the strip protected, the render
+ * then deletes.
  *
  * The escape belongs here rather than in normalization because normalization decides what the
  * value *is* and `format()` decides how it is *shown*. A backslash written into the value
@@ -79,9 +79,11 @@ const MARKDOWN_ACTIVE = new RegExp(
      */
     '<(?=[A-Za-z/!?])',
     /**
-     * `&` only where it heads a well-formed character reference, which mirrors the decode: the
-     * one string that reaches this point still spelled as a reference is the one a publisher
-     * escaped twice (`&amp;lt;`), and it must stay the text `&lt;` on both surfaces. A bare
+     * `&` only where it heads a well-formed character reference, which mirrors the decode: a
+     * reference still spelled in a normalized value is one the decode leaves as deposited — a
+     * name the table lacks (`&Eng;`, or `&amp;Eng;` a level deeper) or a numeric reference that
+     * names no scalar (`&#0;`, which a renderer shows as U+FFFD) — and a value relayed as
+     * deposited can carry any reference. Each must stay that text on both surfaces. A bare
      * ampersand somebody typed — `R&D`, `Taylor & Francis`, `?a=1&lang=en` — is left bare.
      */
     '&(?=(?:[A-Za-z][A-Za-z0-9]{0,31}|#[0-9]{1,7}|#[xX][0-9A-Fa-f]{1,6});)',

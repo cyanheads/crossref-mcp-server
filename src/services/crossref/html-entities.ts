@@ -1,6 +1,7 @@
 /**
  * @fileoverview Character-reference decoding for deposited Crossref text — the HTML5 named
- * set plus numeric and hex references.
+ * set plus numeric and hex references, each read through the run of `&amp;` a deposit escaped
+ * it with one level too deep.
  *
  * The table is the WHATWG named-character-reference set — 2,125 semicolon-terminated names,
  * packed as space-separated `name=characters` pairs. Regenerate from the spec's own data
@@ -11,7 +12,8 @@
  * typed far more often than the head of a reference — `Nuc. Sci. &Eng 2013` is a journal
  * abbreviation, not an entity — so requiring the semicolon is what keeps a bare `&` bare.
  * A terminated reference whose name is not in the table (`&Amp;`, `&Eng;`) is left exactly
- * as deposited for the same reason.
+ * as deposited for the same reason, and behind a run of `&amp;` loses only the one level an
+ * ordinary decode takes.
  * @module services/crossref/html-entities
  */
 
@@ -27,11 +29,14 @@ const NAMED_REFERENCES = new Map(
 );
 
 /**
- * A reference in the three forms HTML defines: `&name;`, `&#1234;`, `&#x4d2;`. The
- * alternation is of literal character classes with no nested quantifier, so matching is
- * linear in the length of the input — an entity-dense field cannot send it exponential.
+ * A reference in the three forms HTML defines — `&name;`, `&#1234;`, `&#x4d2;` — behind the run of
+ * `amp;` a deposit escaped it with one level too deep, captured whole (`&amp;amp;lt;` is `lt` behind
+ * `amp;amp;`). The alternation is of literal character classes with no nested quantifier, and
+ * neither the run nor the reference after it can cross an `&`, so each attempt reads no further
+ * than the next ampersand and matching is linear in the length of the input.
  */
-const CHARACTER_REFERENCE = /&(?:#([0-9]+)|#[xX]([0-9a-fA-F]+)|([A-Za-z][A-Za-z0-9]*));/g;
+const CHARACTER_REFERENCE =
+  /&((?:amp;)*)(?:#([0-9]+)|#[xX]([0-9a-fA-F]+)|([A-Za-z][A-Za-z0-9]*));/g;
 
 /**
  * The scalar a numeric reference names, or nothing when it names no scalar at all — zero,
@@ -45,16 +50,33 @@ function scalarValue(codePoint: number): string | undefined {
   return String.fromCodePoint(codePoint);
 }
 
+/** The characters a reference's name or digits stand for, or nothing when they stand for none. */
+function resolve(decimal?: string, hex?: string, name?: string): string | undefined {
+  if (name !== undefined) return NAMED_REFERENCES.get(name);
+  const digits = decimal ?? hex;
+  if (digits === undefined) return;
+  return scalarValue(Number.parseInt(digits, decimal === undefined ? 16 : 10));
+}
+
+/** A matched reference with one `amp;` of its run taken off: `&amp;amp;Eng;` as `&amp;Eng;`. */
+function lowerOneLevel(reference: string, run: string): string {
+  return run === '' ? reference : `&${reference.slice('&amp;'.length)}`;
+}
+
 /**
  * Decode every character reference in a deposited string. An unrecognized or malformed
  * reference is passed through as its source text.
  *
- * One pass over the input, which is what keeps a reference from being resolved twice:
- * `&amp;lt;` is the escaped text `&lt;` and decodes to exactly that, never to `<`. A chain
- * of per-entity replaces decodes it twice and manufactures markup out of text a publisher
- * escaped precisely so it would not be markup. The one place a second level is read is a
- * JATS field holding escaped HTML: there the markup pass lowers each reference escaped with
- * that HTML (`&amp;nbsp;`) by one level before this decode runs, once and on purpose.
+ * A reference behind a run of `&amp;` decodes as that reference however deep the run goes:
+ * `&amp;lt;` is `<`, `&amp;amp;rsquo;` is `’`. Some deposits escape their text one level too
+ * deep, and no sampled deposit means a doubly escaped reference literally. Behind a name the
+ * table lacks, or a numeric reference that names no scalar, exactly one level comes off
+ * — `&amp;Eng;` is `&Eng;`, `&amp;amp;Eng;` is `&amp;Eng;` — since nothing there says the
+ * deposit escaped too deep.
+ *
+ * One pass over the input, which never reads its own output: a chain of per-entity replaces
+ * turns `&amp;` into an `&` the next name then reads, and `&#38;lt;` into a `<`. Here each
+ * reference is decoded where the deposit wrote it, so `&#38;lt;` is `&lt;`.
  *
  * Callers strip markup before decoding, never after — see the normalization passes in
  * `markup-text`. An escaped tag has to reach the strip still escaped, where it is decided:
@@ -65,11 +87,18 @@ export function decodeHtmlEntities(raw: string): string {
   if (!raw.includes('&')) return raw;
   return raw.replace(
     CHARACTER_REFERENCE,
-    (reference: string, decimal?: string, hex?: string, name?: string) => {
-      if (name !== undefined) return NAMED_REFERENCES.get(name) ?? reference;
-      const digits = decimal ?? hex;
-      if (digits === undefined) return reference;
-      return scalarValue(Number.parseInt(digits, decimal === undefined ? 16 : 10)) ?? reference;
-    },
+    (reference: string, run: string, decimal?: string, hex?: string, name?: string) =>
+      resolve(decimal, hex, name) ?? lowerOneLevel(reference, run),
   );
+}
+
+/**
+ * Write each `&amp;` that heads a reference as `&`: the string as it reads escaped one level
+ * less (`&amp;lt;p&amp;gt;` as `&lt;p&gt;`, `&amp;amp;rsquo;` as `&amp;rsquo;`), and every other
+ * ampersand as deposited. The markup pass reads a JATS field this way when it holds no escaped
+ * markup as deposited, to find HTML escaped twice — see `stripTags`.
+ */
+export function lowerEscapedReferences(raw: string): string {
+  if (!raw.includes('&amp;')) return raw;
+  return raw.replace(CHARACTER_REFERENCE, lowerOneLevel);
 }

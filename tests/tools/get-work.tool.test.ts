@@ -878,12 +878,12 @@ describe('getWorkTool', () => {
   /**
    * An escaped tag inside a JATS field is markup the deposit escaped when a later escaped closer
    * of its name closes it (or it is a `br`): it comes out as the same tag deposited unescaped
-   * would, and every reference escaped with it in that field loses one level before the decode.
-   * A lone escaped opener is prose naming an element, so it stays literal text on the structured
-   * surface, and with no escaped markup in the field the doubly-escaped reference beside it stays
-   * spelled as a reference. The Markdown escape is what stops a renderer taking either back.
+   * would. A lone escaped opener is prose naming an element, so it stays literal text on the
+   * structured surface, and the doubly-escaped reference beside it reads as the `<` it encodes.
+   * The Markdown escape is what stops a renderer taking the tag back; a `<` before a non-ASCII
+   * letter opens none, so it reaches `content[]` bare.
    */
-  it('keeps a lone escaped opener and a doubly-escaped reference visible on both surfaces', async () => {
+  it('keeps a lone escaped opener visible and decodes a doubly-escaped reference, on both surfaces', async () => {
     mockGetWork.mockResolvedValue(
       makeRawWork({ abstract: '<jats:p>&lt;p&gt;wafers of 1μs &amp;lt;τ&amp;lt;1.2μs</jats:p>' }),
     );
@@ -892,9 +892,33 @@ describe('getWorkTool', () => {
     const text = result.content.map(blockText).join('\n');
 
     expect(result.structuredContent).toMatchObject({
-      abstract: '<p>wafers of 1μs &lt;τ&lt;1.2μs',
+      abstract: '<p>wafers of 1μs <τ<1.2μs',
     });
-    expect(text).toContain('\\<p>wafers of 1μs \\&lt;τ\\&lt;1.2μs');
+    expect(text).toContain('\\<p>wafers of 1μs <τ<1.2μs');
+  });
+
+  /**
+   * HTML a deposit escaped into its abstract twice comes out as HTML escaped once does, on both
+   * surfaces, and an element named in prose escaped twice stays as the text it names.
+   */
+  it('reads HTML escaped twice into an abstract as its text, on both surfaces', async () => {
+    mockGetWork.mockResolvedValue(
+      makeRawWork({
+        DOI: '10.5194/egusphere-egu22-2991',
+        abstract:
+          '<jats:p>&amp;lt;p&amp;gt;&amp;lt;span&amp;gt;In recent decades, rainfall varied &amp;lt; 10%, e.g. when &amp;lt;choice&amp;gt; appears.&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;</jats:p>',
+      }),
+    );
+
+    const result = await runToolContract(getWorkTool, { doi: '10.5194/egusphere-egu22-2991' });
+    const text = result.content.map(blockText).join('\n');
+
+    expect(result.structuredContent).toMatchObject({
+      abstract: 'In recent decades, rainfall varied < 10%, e.g. when <choice> appears.',
+    });
+    expect(text).toContain(
+      'In recent decades, rainfall varied < 10%, e.g. when \\<choice> appears.',
+    );
   });
 
   /**

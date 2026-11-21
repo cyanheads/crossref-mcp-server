@@ -116,16 +116,18 @@ describe('normalizeMarkupText', () => {
    */
   it('keeps an escaped tag that names an element as literal text', () => {
     expect(normalizeMarkupText('Use &lt;i&gt; for italics')).toBe('Use <i> for italics');
-    // Same protection through the numeric spelling, and through a double escape.
+    // Same protection through the numeric spelling, and through a double escape, which the
+    // decode reads through to the tag it names.
     expect(normalizeMarkupText('Use &#60;i&#62; for italics')).toBe('Use <i> for italics');
-    expect(normalizeMarkupText('Deposited as &amp;lt;i&amp;gt;')).toBe('Deposited as &lt;i&gt;');
+    expect(normalizeMarkupText('Deposited as &amp;lt;i&amp;gt;')).toBe('Deposited as <i>');
+    expect(normalizeMarkupText('e.g. when &amp;lt;choice&amp;gt; appears')).toBe(
+      'e.g. when <choice> appears',
+    );
     expect(normalizeMarkupText('the &lt;meta&gt; tag')).toBe('the <meta> tag');
     expect(normalizeMarkupText('a&lt;b&gt;c')).toBe('a<b>c');
     expect(normalizeMarkupText('the TEI &lt;gap&gt; element')).toBe('the TEI <gap> element');
-    // Nor does a reference escaped beside one lose a level: nothing in the field is markup.
-    expect(normalizeMarkupText('the &lt;gap&gt; element&amp;nbsp;')).toBe(
-      'the <gap> element&nbsp;',
-    );
+    // A reference escaped twice beside one reads as its character, as it does anywhere.
+    expect(normalizeMarkupText('the &lt;gap&gt; element&amp;nbsp;')).toBe('the <gap> element');
   });
 
   /** A title carries the same named references a citation does. */
@@ -399,6 +401,7 @@ describe('normalizeAbstract', () => {
       '<jats:p>Para one.</jats:p><jats:p>Para two.</jats:p>',
       'CO<sub>2</sub> uptake in <i>E. coli</i> &amp; yeast at 10<sup>16</sup>',
       'Use &lt;i&gt; for italics, and &amp;lt;b&amp;gt; too',
+      '&amp;lt;p&amp;gt;HTML &amp;lt;i&amp;gt;escaped&amp;lt;/i&amp;gt; twice&amp;amp;nbsp;&amp;lt;/p&amp;gt;',
       'the <alternatives><tex-math>$x$</tex-math><graphic href="e.png" /></alternatives> case',
       'Fractal <math xmlns="x"><semantics><mi>A</mi><annotation encoding="application/x-tex">\\mathrm{A}</annotation></semantics></math> processes',
       'Registered at <ext-link xlink:href="https://clinicaltrials.gov/ct2/show/NCT01234567">NCT01234567</ext-link>.',
@@ -686,6 +689,11 @@ describe('normalizeAbstract', () => {
   });
 });
 
+/** Both JATS-surface entry points, which have to agree on a field with no heading. */
+function jats(raw: string): [string, string | undefined] {
+  return [normalizeMarkupText(raw), normalizeAbstract(raw)];
+}
+
 /**
  * HTML a deposit escaped into its JATS text — `<jats:p>&lt;p&gt;…&lt;/p&gt;</jats:p>`. An escaped
  * tag is markup unless it is an opener other than `br` that no later escaped closer of its name
@@ -695,11 +703,6 @@ describe('normalizeAbstract', () => {
  * escaped tags, and lowers a reference escaped with it by one level. JATS surface only.
  */
 describe('escaped markup on the JATS surface', () => {
-  /** Both JATS-surface entry points, which have to agree on a field with no heading. */
-  function jats(raw: string): [string, string | undefined] {
-    return [normalizeMarkupText(raw), normalizeAbstract(raw)];
-  }
-
   /** The deposits behind #111, as Crossref returns them, trimmed to the sentences at issue. */
   it.each([
     [
@@ -778,6 +781,12 @@ describe('escaped markup on the JATS surface', () => {
     // deposited.
     ["&lt;jats:italic toggle='yes'&gt;in vivo&lt;/jats:italic&gt; work", 'in vivo work'],
     ['&lt;font size=2&gt;y&lt;/font&gt; z', 'y z'],
+    // Quotes escaped with the brackets, as HTML escaped twice reads one level down.
+    ['&lt;p style=&quot;text-align: justify;&quot;&gt;x&lt;/p&gt;', 'x'],
+    [
+      '&lt;span data-ccp-props=&quot;{&amp;quot;201341983&amp;quot;:2}&quot;&gt;y&lt;/span&gt; z',
+      'y z',
+    ],
   ])('reads %j as %j', (raw, expected) => {
     expect(jats(raw)).toEqual([expected, expected]);
   });
@@ -845,14 +854,18 @@ describe('escaped markup on the JATS surface', () => {
 
   /**
    * In a field holding escaped markup, a reference escaped with it loses that one extra level:
-   * the HTML it escaped wrote `&nbsp;` and `&lt;`. A field holding none keeps every reference
-   * as deposited (pinned above), and the lowered reference is never read as a tag.
+   * the HTML it escaped wrote `&nbsp;` and `&lt;`. A reference the decode resolves reads as its
+   * character at any depth anyway; the level is what a name the table lacks, or a numeric
+   * reference naming no scalar, loses beside markup and nowhere else. The lowered reference is
+   * never read as a tag.
    */
   it.each([
     ['&lt;p&gt;have.&amp;nbsp;&lt;/p&gt;', 'have.'],
     ['&lt;b&gt;R&amp;amp;D&lt;/b&gt; costs', 'R&D costs'],
-    ['&lt;br&gt;x &amp;amp;lt; y', 'x &lt; y'],
+    ['&lt;br&gt;x &amp;amp;lt; y', 'x < y'],
     ['&lt;br&gt;x &amp;Eng; y', 'x &Eng; y'],
+    ['&lt;br&gt;x &amp;amp;Eng; y', 'x &Eng; y'],
+    ['&lt;br&gt;a&amp;amp;#0;b', 'a&#0;b'],
     ['&lt;br&gt;R&amp;D', 'R&D'],
     ['&lt;br&gt;Deposited as &amp;lt;i&amp;gt;x&amp;lt;/i&amp;gt;', 'Deposited as <i>x</i>'],
     [
@@ -925,9 +938,15 @@ describe('escaped markup on the JATS surface', () => {
         'escaped link siblings',
         (size) => repeatWhole('&lt;/a&gt;&lt;a href="https://example.org/a"&gt;', size),
       ],
+      /**
+       * Each attribute is long enough that the largest input holds fewer than about 8,000 of
+       * them. Past about 10,000, JavaScriptCore's regex engine switches to a slower mode for the
+       * repeated escaped-attribute group when it reads captures. The work stays linear on both
+       * sides of the switch, but measured across it the step reads as growth.
+       */
       [
         'an unterminated escaped attribute run',
-        (size) => `&lt;br&gt;&lt;p class="a" ${repeatWhole('x = "yyyyyyyyyyyyyyyyy" ', size - 26)}`,
+        (size) => `&lt;br&gt;&lt;p class="a" ${repeatWhole(`x = "${'y'.repeat(33)}" `, size - 26)}`,
       ],
       ['escaped attribute openers that never terminate', (size) => repeatTo('&lt;i x=1', size)],
       [
@@ -941,6 +960,182 @@ describe('escaped markup on the JATS surface', () => {
       ['breaks throughout', (size) => `&lt;br&gt;${repeatTo('  \r\n', size - 10)}`],
       ['escaped siblings across breaks', (size) => repeatWhole('&lt;/p&gt;  \r\n&lt;p&gt;', size)],
       ['escaped openers with breaks in the tail', (size) => repeatTo('&lt;p  \r\n', size)],
+    ];
+
+    it.each(shapes)(
+      'stays linear on %s',
+      (_name, make) => {
+        expectLinearScaling(make, (raw) => {
+          normalizeMarkupText(raw);
+          normalizeAbstract(raw);
+        });
+      },
+      0,
+    );
+  });
+});
+
+/**
+ * HTML a deposit escaped into its JATS text and then escaped again — `&amp;lt;p&amp;gt;…`. A field
+ * holding no escaped markup as deposited is read once more with each `&amp;` that heads a
+ * reference written `&`, and where that reading finds escaped markup the field reads exactly as
+ * it would escaped once, by the rule above. A field holding escaped markup as deposited keeps
+ * that reading, and a doubly escaped tag beside it is the HTML's own text. JATS surface only.
+ */
+describe('markup escaped twice on the JATS surface', () => {
+  /** The deposits behind #118, as Crossref returns them, trimmed to the sentences at issue. */
+  it.each([
+    [
+      '10.5194/egusphere-egu22-2991 abstract',
+      '<jats:p>&amp;lt;p&amp;gt;&amp;lt;span&amp;gt;In recent decades, West Africa has experienced some of the most extreme rainfall variability anywhere in the world. Climate projections for the 21&amp;lt;/span&amp;gt;&amp;lt;sup&amp;gt;&amp;lt;span&amp;gt;st&amp;lt;/span&amp;gt;&amp;lt;/sup&amp;gt;&amp;lt;span&amp;gt; century tend to show that the future could be even worse.&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;</jats:p>',
+      'In recent decades, West Africa has experienced some of the most extreme rainfall variability anywhere in the world. Climate projections for the 21st century tend to show that the future could be even worse.',
+    ],
+    [
+      '10.65641/afmnai-2026-114 abstract',
+      '<jats:p>&amp;lt;p style=&amp;quot;text-align: justify;&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;a_GcMg font-feature-liga-off&amp;quot;&amp;gt;Dysautonomia, reflecting autonomic nervous system dysfunction, is frequently observed in patients with syncope. &amp;lt;/span&amp;gt;&amp;lt;em&amp;gt;&amp;lt;span class=&amp;quot;a_GcMg&amp;quot;&amp;gt;Thymus serpyllum &amp;lt;/span&amp;gt;&amp;lt;/em&amp;gt;&amp;lt;span class=&amp;quot;a_GcMg&amp;quot;&amp;gt;L. (wild thyme) has demonstrated antioxidant activity.&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;</jats:p>',
+      'Dysautonomia, reflecting autonomic nervous system dysfunction, is frequently observed in patients with syncope. Thymus serpyllum L. (wild thyme) has demonstrated antioxidant activity.',
+    ],
+    [
+      '10.5114/pjr.2019.84829 title',
+      'Endovascular treatment of small (&amp;lt; 5 mm) unruptured middle cerebral artery aneurysms',
+      'Endovascular treatment of small (< 5 mm) unruptured middle cerebral artery aneurysms',
+    ],
+    [
+      '10.1158/1538-7445.am2014-2360 abstract',
+      '<jats:p>(fold-change ≥ 1.2 and false discovery rate &amp;lt; 10%) comparing all</jats:p>',
+      '(fold-change ≥ 1.2 and false discovery rate < 10%) comparing all',
+    ],
+  ])('reads %s as the text it marks up', (_name, raw, expected) => {
+    expect(jats(raw)).toEqual([expected, expected]);
+  });
+
+  /** Each class, the link rule, and the pairing rule, reached through the double escape. */
+  it.each([
+    [
+      '<jats:p>We used &amp;lt;i&amp;gt;P&amp;lt;/i&amp;gt; &amp;lt; 0.05</jats:p>',
+      'We used P < 0.05',
+    ],
+    ['&amp;lt;p style=&amp;quot;a&amp;quot;&amp;gt;x&amp;lt;/p&amp;gt;', 'x'],
+    ['&amp;lt;p&amp;gt;have.&amp;amp;nbsp;&amp;lt;/p&amp;gt;', 'have.'],
+    ['&amp;lt;p&amp;gt;x &amp;amp;Eng; y&amp;lt;/p&amp;gt;', 'x &Eng; y'],
+    ['One.&amp;lt;br&amp;gt;Two.', 'One. Two.'],
+    ['A&amp;lt;i&amp;gt;B&amp;lt;/i&amp;gt;C', 'A B C'],
+    ['CD4&amp;lt;sup&amp;gt;+&amp;lt;/sup&amp;gt; T cells', 'CD4^+ T cells'],
+    ['H&amp;lt;sub&amp;gt;2&amp;lt;/sub&amp;gt;O', 'H2O'],
+    [
+      'see &amp;lt;a href=&amp;quot;https://osf.io/t5nes&amp;quot;&amp;gt;https://osf.io/t5nes&amp;lt;/a&amp;gt;.',
+      'see https://osf.io/t5nes.',
+    ],
+    [
+      'on &amp;lt;a href=&amp;quot;http://www.zoom.us/&amp;quot;&amp;gt;Zoom&amp;lt;/a&amp;gt; and &amp;lt;i&amp;gt;x&amp;lt;/i&amp;gt;',
+      'on <a href="http://www.zoom.us/">Zoom</a> and x',
+    ],
+    ['agents. &amp;lt;/P&amp;gt;&amp;lt;P&amp;gt; Methods: y', 'agents. Methods: y'],
+    ['&amp;lt;i&amp;gt;a</i>b&amp;lt;/i&amp;gt;', 'a</i>b'],
+    ['&amp;lt;i&amp;gt;a&amp;lt;i&amp;gt;b&amp;lt;/i&amp;gt;', '<i>a b'],
+  ])('reads %j as %j', (raw, expected) => {
+    expect(jats(raw)).toEqual([expected, expected]);
+  });
+
+  /**
+   * A field holding escaped markup as deposited keeps that reading: a tag escaped twice beside it
+   * is the HTML's own text, and stays as the text it names.
+   */
+  it.each([
+    ['&lt;br&gt;Deposited as &amp;lt;i&amp;gt;x&amp;lt;/i&amp;gt;', 'Deposited as <i>x</i>'],
+    ['&lt;b&gt;x&lt;/b&gt; and &amp;lt;i&amp;gt;y&amp;lt;/i&amp;gt;', 'x and <i>y</i>'],
+  ])('keeps the reading of a field holding escaped markup: %j as %j', (raw, expected) => {
+    expect(jats(raw)).toEqual([expected, expected]);
+  });
+
+  /**
+   * Prose naming an element stays, as it does escaped once. Prose that names both an element's
+   * start tag and its end tag reads as the pair it writes, escaped once or twice — the accepted
+   * residual of the escaped-tag rule, whose premise is that prose about an element does not
+   * write its end tag.
+   */
+  it.each([
+    ['e.g. when &amp;lt;choice&amp;gt; appears', 'e.g. when <choice> appears'],
+    ['&lt;p&gt;wafers of 1μs &amp;lt;τ&amp;lt;1.2μs', '<p>wafers of 1μs <τ<1.2μs'],
+    ['the &amp;lt;head&amp;gt; and &amp;lt;/head&amp;gt; tags', 'the and tags'],
+    ['the &lt;head&gt; and &lt;/head&gt; tags', 'the and tags'],
+  ])('reads %j as %j', (raw, expected) => {
+    expect(jats(raw)).toEqual([expected, expected]);
+  });
+
+  /** Headings and items come from deposited tags only, as they do beside markup escaped once. */
+  it.each([
+    [
+      '<sec><title>Background</title><p>&amp;lt;p&amp;gt;Body&amp;amp;nbsp;&amp;lt;/p&amp;gt;</p></sec><sec><title>Methods</title><p>&amp;lt;i&amp;gt;In vivo&amp;lt;/i&amp;gt; work.</p></sec>',
+      'Background: Body Methods: In vivo work.',
+    ],
+    ['<p>&amp;lt;title&amp;gt;Background&amp;lt;/title&amp;gt;Body.</p>', 'Background Body.'],
+  ])('reads %j as %j', (raw, expected) => {
+    expect(normalizeAbstract(raw)).toBe(expected);
+  });
+
+  /**
+   * A field with no escaped markup as deposited reads exactly as the same field with every
+   * `&amp;` that heads a reference written `&` — a field escaped one level too deep reads as the
+   * field escaped correctly. The one reference outside it is a name the table lacks escaped
+   * three deep, which the decode takes one level off either way (`html-entities.test.ts`).
+   */
+  it('reads a field with no escaped markup as the same field escaped one level less', () => {
+    const lowerOneLevel = (raw: string) =>
+      raw.replace(/&amp;(?=(?:#[0-9]+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);)/g, '&');
+    const fields = [
+      '<jats:p>&amp;lt;p&amp;gt;&amp;lt;span&amp;gt;West Africa, 21&amp;lt;/span&amp;gt;&amp;lt;sup&amp;gt;st&amp;lt;/sup&amp;gt; century&amp;lt;/p&amp;gt;</jats:p>',
+      '&amp;lt;p style=&amp;quot;text-align: justify;&amp;quot;&amp;gt;x&amp;amp;nbsp;y&amp;lt;/p&amp;gt;',
+      '<title>Results</title><p>&amp;lt;i&amp;gt;P&amp;lt;/i&amp;gt; &amp;lt; .05</p>',
+      'false discovery rate &amp;lt; 10%, CEC&amp;amp;rsquo;17, Kontakte &amp;ndash; Konflikte',
+      'Deposited as &amp;lt;i&amp;gt;, the &amp;lt;head&amp;gt; and &amp;lt;/head&amp;gt; tags',
+      'R&amp;amp;D, AT&amp;T, &amp;Eng;, a&amp;#0;b, Tecnolog&amp;#x00ED;a',
+      '<jats:p>&lt;p&gt;wafers of 1μs &amp;lt;τ&amp;lt;1.2μs</jats:p>',
+      'see &amp;lt;a href=&amp;quot;https://osf.io/t5nes&amp;quot;&amp;gt;https://osf.io/t5nes&amp;lt;/a&amp;gt;.',
+      '<ext-link xlink:href="https://e.org/?a=1&amp;amp;b=2">https://e.org/?a=1&amp;amp;b=2</ext-link>',
+      'x<sup>&amp;#50;</sup> and <i>In vivo</i>&amp;nbsp;work',
+    ];
+    for (const raw of fields) {
+      expect(normalizeMarkupText(raw), raw).toBe(normalizeMarkupText(lowerOneLevel(raw)));
+      expect(normalizeAbstract(raw), raw).toBe(normalizeAbstract(lowerOneLevel(raw)));
+    }
+  });
+
+  /**
+   * The second reading is one more decision scan and one more strip, so the cost stays linear in
+   * the field however its doubly escaped tags pair, and a `&quot;`-quoted attribute value has one
+   * parse however many pairs an unterminated tag holds.
+   */
+  describe('on adversarial input escaped twice', () => {
+    const shapes: Array<[string, (size: number) => string]> = [
+      ['unclosed openers escaped twice', (size) => repeatTo('&amp;lt;p&amp;gt;a', size)],
+      [
+        'alternating siblings escaped twice',
+        (size) => repeatWhole('&amp;lt;/p&amp;gt;&amp;lt;p&amp;gt;', size),
+      ],
+      [
+        'openers whose quoted value never closes',
+        (size) => repeatTo('&amp;lt;p x=&amp;quot;y ', size),
+      ],
+      [
+        'one opener with an unterminated run of quoted values',
+        (size) => `&amp;lt;p ${repeatWhole('x=&amp;quot;y ', size - 10)}`,
+      ],
+      /** Sized as `an unterminated escaped attribute run` is, and for the same reason. */
+      [
+        'an unterminated run of quoted attributes beside markup',
+        (size) =>
+          `&lt;br&gt;&lt;p class=&quot;a&quot; ${repeatWhole(`x = &quot;${'y'.repeat(29)}&quot; `, size - 36)}`,
+      ],
+      [
+        'references escaped three deep beside markup escaped twice',
+        (size) => `&amp;lt;br&amp;gt;${repeatWhole('&amp;amp;nbsp;', size - 18)}`,
+      ],
+      [
+        'one long line ending in a break',
+        (size) => `&amp;lt;i&amp;gt;${repeatTo('§1 x', size - 37)}\ny&amp;lt;/i&amp;gt;`,
+      ],
+      ['breaks throughout', (size) => `&amp;lt;br&amp;gt;${repeatTo('  \r\n', size - 18)}`],
     ];
 
     it.each(shapes)(
@@ -1602,8 +1797,13 @@ describe('the JATS pass and the reference pass', () => {
       ],
       // The ordering both passes depend on: markup out, then entities.
       ['Use &lt;i&gt; for italics', 'Use <i> for italics'],
-      ['Deposited as &amp;lt;i&amp;gt;', 'Deposited as &lt;i&gt;'],
+      ['Deposited as &amp;lt;i&amp;gt;', 'Deposited as <i>'],
       ['Interleukin-1-&beta; and M&uuml;ller', 'Interleukin-1-β and Müller'],
+      // A reference escaped twice reads as its character on both surfaces.
+      [
+        'CEC&amp;amp;rsquo;17, 018&amp;lt;1126:CSOEAP&amp;gt;2.3.CO;2',
+        'CEC’17, 018<1126:CSOEAP>2.3.CO;2',
+      ],
     ];
     for (const [raw, expected] of agreeing) {
       expect(normalizeMarkupText(raw), `JATS pass on ${raw}`).toBe(expected);
@@ -1662,12 +1862,13 @@ describe('the JATS pass and the reference pass', () => {
 
   /**
    * The second, and the last. A JATS field is XML, so markup a deposit escaped into its text is
-   * HTML the publisher meant as markup and comes out; a reference entry is typed text, where an
-   * escaped tag and a reference escaped beside it are the publisher's characters and stay.
+   * HTML the publisher meant as markup and comes out, escaped once or twice; a reference entry
+   * is typed text, where an escaped tag is the publisher's characters and stays.
    */
   it('differs on escaped markup, which only a JATS field reads as markup', () => {
     const differing: Array<[string, string, string]> = [
-      ['&lt;p&gt;x&amp;nbsp;&lt;/p&gt;', 'x', '<p>x&nbsp;</p>'],
+      ['&lt;p&gt;x&amp;nbsp;&lt;/p&gt;', 'x', '<p>x </p>'],
+      ['&amp;lt;p&amp;gt;x&amp;lt;/p&amp;gt;', 'x', '<p>x</p>'],
       ['CD4&lt;sup&gt;+&lt;/sup&gt; cells', 'CD4^+ cells', 'CD4<sup>+</sup> cells'],
       ['<jats:p>x &lt;/p&gt;</jats:p>', 'x', 'x </p>'],
       [
@@ -1835,18 +2036,27 @@ describe('normalizeReferenceText', () => {
 
   /**
    * A citation string is typed text, so an escaped tag in one is the publisher's characters
-   * even where it pairs, and so is a reference escaped beside it. Markup comes out before
-   * entities are decoded, so neither decodes into a tag the strip pass then eats.
+   * even where it pairs, escaped once or twice. Markup comes out before entities are decoded,
+   * so none decodes into a tag the strip pass then eats; a reference escaped twice beside one
+   * reads as its character, as it does anywhere.
    */
   it('keeps an escaped tag as literal text', () => {
     expect(normalizeReferenceText('Deposited entity &lt;i&gt;stays literal&lt;/i&gt;')).toBe(
       'Deposited entity <i>stays literal</i>',
     );
-    expect(normalizeReferenceText('Double-escaped &amp;lt;i&amp;gt; stays escaped')).toBe(
-      'Double-escaped &lt;i&gt; stays escaped',
+    expect(normalizeReferenceText('Double-escaped &amp;lt;i&amp;gt; stays text')).toBe(
+      'Double-escaped <i> stays text',
     );
     expect(normalizeReferenceText('3 Suppl:&lt;i&gt;e1&lt;/i&gt;&amp;nbsp;x')).toBe(
-      '3 Suppl:<i>e1</i>&nbsp;x',
+      '3 Suppl:<i>e1</i> x',
+    );
+    // The deposit behind #118 on this surface: 10.5194/ejm-35-25-2023, `ref13` and `ref58`.
+    expect(
+      normalizeReferenceText(
+        'older (&amp;gt; 40 ka) ignimbrites, https://doi.org/10.1130/0091-7613(1990)018&amp;lt;1126:CSOEAP&amp;gt;2.3.CO;2, 1990.',
+      ),
+    ).toBe(
+      'older (> 40 ka) ignimbrites, https://doi.org/10.1130/0091-7613(1990)018<1126:CSOEAP>2.3.CO;2, 1990.',
     );
     // Inside a citation envelope too, where the deposited tags around it all come out.
     expect(
