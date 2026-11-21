@@ -1,6 +1,6 @@
 # crossref-mcp-server - Directory Structure
 
-Generated on: 2026-11-18 05:26:59
+Generated on: 2026-11-21 19:08:49
 
 ```text
 crossref-mcp-server/
@@ -197,6 +197,8 @@ crossref-mcp-server/
 │   │   │   ├── 10.3743_kosim.2014.31.4.049.json
 │   │   │   ├── 10.48550_arxiv.2507.06261.json
 │   │   │   └── 10.5281_zenodo.3242074.json
+│   │   ├── errors/
+│   │   │   └── content-too-long-500.json
 │   │   ├── funders/
 │   │   │   ├── 100000002.json
 │   │   │   ├── 100000054.json
@@ -279,30 +281,31 @@ crossref-mcp-server/
 │   │       ├── mathml.test.ts
 │   │       ├── numeric-superscripts.test.ts
 │   │       └── upstream-classification.test.ts
-│   └── tools/
-│       ├── cursor-notice.test.ts
-│       ├── date-surface.test.ts
-│       ├── get-member.tool.test.ts
-│       ├── get-prefix.tool.test.ts
-│       ├── get-references.tool.test.ts
-│       ├── get-work-records.test.ts
-│       ├── get-work.tool.test.ts
-│       ├── input-strictness.test.ts
-│       ├── markdown-surface.test.ts
-│       ├── markdown-text.test.ts
-│       ├── mathml-surface.test.ts
-│       ├── metadata-coverage.test.ts
-│       ├── page-size.test.ts
-│       ├── registration-agency.test.ts
-│       ├── search-blank-inputs.test.ts
-│       ├── search-empty-pages.test.ts
-│       ├── search-funders.tool.test.ts
-│       ├── search-journals.tool.test.ts
-│       ├── search-works-fields.test.ts
-│       ├── search-works.tool.test.ts
-│       ├── work-dates.test.ts
-│       ├── work-funders-licenses-links.test.ts
-│       └── works-cursor-walk.test.ts
+│   ├── tools/
+│   │   ├── cursor-notice.test.ts
+│   │   ├── date-surface.test.ts
+│   │   ├── get-member.tool.test.ts
+│   │   ├── get-prefix.tool.test.ts
+│   │   ├── get-references.tool.test.ts
+│   │   ├── get-work-records.test.ts
+│   │   ├── get-work.tool.test.ts
+│   │   ├── input-strictness.test.ts
+│   │   ├── markdown-surface.test.ts
+│   │   ├── markdown-text.test.ts
+│   │   ├── mathml-surface.test.ts
+│   │   ├── metadata-coverage.test.ts
+│   │   ├── page-size.test.ts
+│   │   ├── registration-agency.test.ts
+│   │   ├── search-blank-inputs.test.ts
+│   │   ├── search-empty-pages.test.ts
+│   │   ├── search-funders.tool.test.ts
+│   │   ├── search-journals.tool.test.ts
+│   │   ├── search-works-fields.test.ts
+│   │   ├── search-works.tool.test.ts
+│   │   ├── work-dates.test.ts
+│   │   ├── work-funders-licenses-links.test.ts
+│   │   └── works-cursor-walk.test.ts
+│   └── index.test.ts
 ├── .dockerignore
 ├── .env.example
 ├── .gitattributes
